@@ -113,7 +113,7 @@
 
 ## 3. 五分钟玩一局
 
-> 📍 打开：https://puinnacleyoung.github.io/Mercury/index.html
+> 📍 打开：https://puinnacleyoung.github.io/Mercury/src/index.html
 
 ### 第一步：建号
 

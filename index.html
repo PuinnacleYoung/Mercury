@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Q版换装小游戏 · Mercury</title>
+<style>
+  :root{
+    --bg1:#1b1630; --bg2:#2a1f45; --card:rgba(255,255,255,.07);
+    --line:rgba(255,255,255,.14); --ink:#f4f1ff; --sub:#b9b0d8;
+    --violet:#a78bfa; --pink:#f472b6; --gold:#fbbf24; --mint:#5eead4; --blue:#7dd3fc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh; font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:radial-gradient(1200px 700px at 20% -10%,#3b2b63 0%,transparent 60%),
+               radial-gradient(900px 600px at 100% 100%,#4a2b5c 0%,transparent 60%),
+               linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--ink); padding:32px 20px 48px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  header{text-align:center;margin-bottom:28px}
+  .logo{font-size:56px;line-height:1;margin-bottom:10px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4))}
+  h1{font-size:30px;font-weight:900;letter-spacing:1px;
+     background:linear-gradient(92deg,var(--pink),var(--gold),var(--mint),var(--violet));
+     -webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{margin-top:8px;font-size:14px;color:var(--sub)}
+
+  .notice{
+    margin:0 0 26px;padding:14px 18px;border-radius:14px;
+    background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.34);
+    font-size:13.5px;line-height:1.85;color:#ffeab8;
+  }
+  .notice b{color:#fff}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+  .card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;
+    backdrop-filter:blur(12px);transition:transform .18s,box-shadow .18s,border-color .18s;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(0,0,0,.36);border-color:rgba(255,255,255,.3)}
+  .card .ico{font-size:34px;line-height:1;margin-bottom:10px}
+  .card .nm{font-size:17px;font-weight:800;margin-bottom:6px}
+  .card .ds{font-size:13px;color:var(--sub);line-height:1.7}
+  .card.main{grid-column:1/-1;background:linear-gradient(120deg,rgba(244,114,182,.2),rgba(167,139,250,.2));border-color:rgba(255,255,255,.26)}
+  .card.main .nm{font-size:20px}
+  .badge{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;font-size:11px;
+         background:rgba(255,255,255,.18);vertical-align:middle;font-weight:700}
+  .badge.adm{background:rgba(251,191,36,.26);color:#ffe08a}
+
+  footer{margin-top:32px;text-align:center;font-size:12.5px;color:#8f86ad;line-height:2}
+  footer a{color:var(--blue);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🌸</div>
+    <h1>Q 版换装小游戏</h1>
+    <div class="tag">Mercury · 纯前端 · 打开即玩，无需安装</div>
+  </header>
+
+  <div class="notice">
+    ⚠️ <b>三条规矩，先看一眼再点：</b><br>
+    ① <b>一直用这个网址</b>（<code>puinnacleyoung.github.io/Mercury/</code>），别换成双击本地文件——两边数据<b>不通</b>，换了等于从头再来。<br>
+    ② 你做的东西存在<b>你自己这台电脑的浏览器里</b>，不会上传，别人看不到；换浏览器/清缓存会丢。<br>
+    ③ 做完了记得在各引擎右上角点 <b>💾 备份 → 导出 JSON</b>，把文件存好，那才是真正的备份。
+  </div>
+
+  <div class="grid">
+    <a class="card main" href="src/index.html">
+      <div class="ico">🎮</div>
+      <div class="nm">进入游戏 <span class="badge">从这里开始</span></div>
+      <div class="ds">登录 → 捏脸 → 大厅逛街 → 时装店买衣服 → 衣橱换装 → 抽塔罗 → 去地图里走走</div>
+    </a>
+
+    <a class="card" href="src/素材对齐引擎.html">
+      <div class="ico">🎨</div>
+      <div class="nm">素材对齐引擎 <span class="badge adm">管理员</span></div>
+      <div class="ds">做衣服、做素体、上架到商店、编辑套装。账号 <code>1</code> 密码 <code>1</code></div>
+    </a>
+
+    <a class="card" href="src/地图编辑引擎.html">
+      <div class="ico">🗺️</div>
+      <div class="nm">地图编辑引擎 <span class="badge adm">管理员</span></div>
+      <div class="ds">搭世界/城市/房间、摆建筑、拉传送门触发区、挂衣橱面板</div>
+    </a>
+
+    <a class="card" href="src/塔罗编辑引擎.html">
+      <div class="ico">🃏</div>
+      <div class="nm">塔罗编辑引擎 <span class="badge adm">管理员</span></div>
+      <div class="ds">做 78 张牌面、花边模板、牌背，导出 ZIP 素材包</div>
+    </a>
+
+    <a class="card" href="src/数据备份与迁移.html">
+      <div class="ico">💾</div>
+      <div class="nm">备份与迁移</div>
+      <div class="ds">一键导出全部存档 / 导入别人的存档 / 查看本机存了哪些东西</div>
+    </a>
+  </div>
+
+  <footer>
+    不知道从哪下手？看 <a href="README.md">使用手册 README</a>（新手向，配图 + 完整案例）<br>
+    仓库：<a href="https://github.com/PuinnacleYoung/Mercury">github.com/PuinnacleYoung/Mercury</a>
+  </footer>
+</div>
+</body>
+</html>
