@@ -1,4 +1,4 @@
-/* Mercury PWA 安装引导 —— 安卓弹原生气泡，iOS 显示图解步骤，已装则不打扰 */
+/* 拾光·澈屿 PWA 安装引导 —— 安卓弹原生气泡，iOS 显示图解步骤，已装则不打扰 */
 (function () {
   if (window.__MER_PWA_INIT__) return; window.__MER_PWA_INIT__ = true;
 

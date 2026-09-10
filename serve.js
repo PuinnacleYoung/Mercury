@@ -25,5 +25,5 @@ http.createServer((req, res) => {
     res.end(buf);
   });
 }).listen(PORT, () => {
-  console.log('Q版换装小游戏 → http://localhost:' + PORT + '/index.html');
+  console.log('拾光·澈屿 → http://localhost:' + PORT + '/index.html');
 });

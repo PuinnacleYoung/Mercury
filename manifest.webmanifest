@@ -1,7 +1,7 @@
 {
-  "name": "Q版换装工坊",
-  "short_name": "换装",
-  "description": "纯前端 Q 版换装小游戏，含素材/塔罗/地图/备份四款编辑引擎",
+  "name": "拾光·澈屿",
+  "short_name": "拾光",
+  "description": "拾光·澈屿 · 纯前端换装小游戏，含素材/塔罗/地图/备份四款编辑引擎",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

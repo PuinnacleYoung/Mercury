@@ -1,4 +1,4 @@
-/* Mercury PWA 安装引导（根目录版）—— 同 src/pwa-install.js：注册相对当前页的 sw.js */
+/* 拾光·澈屿 PWA 安装引导（根目录版）—— 同 src/pwa-install.js：注册相对当前页的 sw.js */
 (function () {
   if (window.__MER_PWA_INIT__) return; window.__MER_PWA_INIT__ = true;
 
