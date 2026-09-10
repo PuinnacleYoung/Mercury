@@ -149,7 +149,7 @@
       `请点右上角 <b>···</b> → <b>在浏览器中打开</b>（选系统浏览器 / Chrome）` +
       `<button class="cbtn" id="merPwaCopy2">复制网址</button>`;
     document.body.appendChild(bar);
-    document.body.style.paddingTop = (document.body.style.paddingTop || '') + '';
+    document.body.style.paddingTop = (bar.offsetHeight + 10) + 'px';   // 别挡住页面顶部的按钮
     bar.querySelector('#merPwaCopy2').onclick = async e => {
       e.stopPropagation();
       const ok = await copy(location.href);
