@@ -1,35 +1,51 @@
-/* 拾光·澈屿 —— 手机锁横屏
+/* 拾光·澈屿 —— 手机锁横屏 v2
    规则：手机 / 平板手机 访问 → 强制横屏；电脑（含桌面浏览器）完全不干预。
    三层保险：
      ① 系统级：screen.orientation.lock('landscape')（Chrome / Edge 全屏或 PWA 下有效）
      ② 交互级：竖屏时盖一层「请把手机横过来」遮罩，点任意处自动全屏 + 锁横屏
      ③ 兜底层：手机系统方向被锁死时，用 CSS 把整个画面旋转 90°，竖着拿也能横着看
    关闭方法（给陛下留的后路）：网址后面加 ?ls=off，或点遮罩底部的小字。
+   注意：index.html 里那套「3 秒倒计时横屏提示」在手机上会被本脚本接管，
+         避免两套遮罩打架导致卡死。
 */
 (function () {
   if (window.__MER_LS_INIT__) return; window.__MER_LS_INIT__ = true;
 
-  const UA = navigator.userAgent || '';
+  // 本地存储兜底：隐私模式 / 无痕 / 某些内核会直接抛异常，不能让它打断本脚本
+  var LS = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+
+  var UA = navigator.userAgent || '';
   // iPadOS 13+ 会把 UA 伪装成 Macintosh，用触摸点数补判
-  const isIPadOS = /Macintosh/.test(UA) && navigator.maxTouchPoints > 1;
-  const isPhoneLike = /Android|iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|Mobile/i.test(UA);
-  const isTablet = /iPad|Tablet|Silk|Nexus (7|9|10)|Xoom|SM-T|SM-P|Lenovo Tab|HUAWEI MatePad|Pad/i.test(UA);
-  const IS_MOBILE = (isPhoneLike && !isTablet) || isIPadOS;
+  var isIPadOS = /Macintosh/.test(UA) && navigator.maxTouchPoints > 1;
+  var isPhoneLike = /Android|iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|Mobile/i.test(UA);
+  var isTablet = /iPad|Tablet|Silk|Nexus (7|9|10)|Xoom|SM-T|SM-P|Lenovo Tab|HUAWEI MatePad|Pad/i.test(UA);
+  var IS_MOBILE = (isPhoneLike && !isTablet) || isIPadOS;
 
-  const OFF_KEY = 'mer_landscape_off';
-  const MODE_KEY = 'mer_landscape_mode';
-  const qs = new URLSearchParams(location.search);
-  if (qs.get('ls') === 'off') localStorage.setItem(OFF_KEY, '1');
-  if (qs.get('ls') === 'on') localStorage.removeItem(OFF_KEY);
+  var OFF_KEY = 'mer_landscape_off';
+  var MODE_KEY = 'mer_landscape_mode';
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('ls') === 'off') LS.set(OFF_KEY, '1');
+  if (qs.get('ls') === 'on') LS.del(OFF_KEY);
 
-  if (!IS_MOBILE) return;                            // 电脑：完全不干预
-  if (localStorage.getItem(OFF_KEY) === '1') return; // 陛下手动关过
+  if (!IS_MOBILE) return;                  // 电脑：完全不干预
+  if (LS.get(OFF_KEY) === '1') return;     // 陛下手动关过
 
-  const isPortrait = () => window.innerHeight > window.innerWidth;
-  let rotateMode = localStorage.getItem(MODE_KEY) === 'rotate';
+  window.__MER_LS_ACTIVE__ = true;         // 告诉页面：横屏由我接管，别再弹倒计时
+
+  var isPortrait = function () { return window.innerHeight > window.innerWidth; };
+  var rotateMode = LS.get(MODE_KEY) === 'rotate';
+  function setRotate(on) {
+    rotateMode = !!on;
+    if (rotateMode) LS.set(MODE_KEY, 'rotate'); else LS.del(MODE_KEY);
+    sync();
+  }
 
   // ---------- 样式 ----------
-  const st = document.createElement('style');
+  var st = document.createElement('style');
   st.textContent = `
   .mer-ls-mask{position:fixed;inset:0;z-index:999997;display:none;
     align-items:center;justify-content:center;flex-direction:column;gap:16px;
@@ -57,10 +73,10 @@
     background:rgba(43,33,64,.55);color:rgba(255,255,255,.6);font-size:11px}
   .mer-ls-exit.show{display:block}
   `;
-  document.head.appendChild(st);
+  (document.head || document.documentElement).appendChild(st);
 
   // ---------- 遮罩 ----------
-  const mask = document.createElement('div');
+  var mask = document.createElement('div');
   mask.className = 'mer-ls-mask';
   mask.innerHTML = `
     <div class="mer-ls-phone"></div>
@@ -73,7 +89,7 @@
     <button class="mer-ls-tiny" id="merLsOff">临时关闭横屏限制</button>`;
   document.body.appendChild(mask);
 
-  const exitBtn = document.createElement('button');
+  var exitBtn = document.createElement('button');
   exitBtn.className = 'mer-ls-exit';
   exitBtn.textContent = '退出旋转画面';
   document.body.appendChild(exitBtn);
@@ -95,13 +111,13 @@
   }
 
   // ---------- ③ CSS 旋转兜底 ----------
-  let savedBodyCss = null;
+  var savedBodyCss = null;
   function applyRotate() {
-    const on = rotateMode && isPortrait();
-    const b = document.body;
+    var on = rotateMode && isPortrait();
+    var b = document.body;
     if (on) {
       if (savedBodyCss === null) savedBodyCss = b.style.cssText;
-      const w = window.innerWidth, h = window.innerHeight;
+      var w = window.innerWidth, h = window.innerHeight;
       b.style.position = 'fixed';
       b.style.top = '0';
       b.style.left = w + 'px';
@@ -110,7 +126,6 @@
       b.style.transformOrigin = 'top left';
       b.style.transform = 'rotate(90deg)';
       b.style.overflow = 'auto';
-      b.style.background = b.style.background || '';
       exitBtn.classList.add('show');
     } else {
       if (savedBodyCss !== null) { b.style.cssText = savedBodyCss; savedBodyCss = null; }
@@ -124,37 +139,25 @@
   }
 
   // ---------- 事件 ----------
-  mask.querySelector('#merLsLock').onclick = async e => {
+  // 锁不上就自动退到「旋转画面」，绝不把陛下晾在遮罩上
+  async function tryLockOrRotate() {
+    var ok = await lockLandscape();
+    if (!ok) setRotate(true);
+    return ok;
+  }
+  mask.querySelector('#merLsLock').onclick = function (e) { e.stopPropagation(); tryLockOrRotate(); };
+  mask.querySelector('#merLsRotate').onclick = function (e) { e.stopPropagation(); setRotate(true); };
+  mask.querySelector('#merLsOff').onclick = function (e) {
     e.stopPropagation();
-    const ok = await lockLandscape();
-    if (!ok) {
-      // 锁不上（多数浏览器不允许）→ 直接退到旋转兜底，别卡住陛下
-      rotateMode = true;
-      localStorage.setItem(MODE_KEY, 'rotate');
-      sync();
-    }
-  };
-  mask.querySelector('#merLsRotate').onclick = e => {
-    e.stopPropagation();
-    rotateMode = true;
-    localStorage.setItem(MODE_KEY, 'rotate');
-    sync();
-  };
-  mask.querySelector('#merLsOff').onclick = e => {
-    e.stopPropagation();
-    localStorage.setItem(OFF_KEY, '1');
+    LS.set(OFF_KEY, '1');
     location.reload();
   };
-  exitBtn.onclick = () => {
-    rotateMode = false;
-    localStorage.removeItem(MODE_KEY);
-    sync();
-  };
+  exitBtn.onclick = function () { setRotate(false); };
   // 点遮罩空白处也尝试锁定（用户手势已具备）
-  mask.onclick = () => lockLandscape();
+  mask.onclick = function () { tryLockOrRotate(); };
 
-  window.addEventListener('orientationchange', () => setTimeout(sync, 260));
-  window.addEventListener('resize', () => setTimeout(sync, 160));
+  window.addEventListener('orientationchange', function () { setTimeout(sync, 260); });
+  window.addEventListener('resize', function () { setTimeout(sync, 160); });
 
   sync();
   // 页面加载时先试一次（PWA / 已全屏的场景下会成功）

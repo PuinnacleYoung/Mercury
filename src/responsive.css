@@ -18,13 +18,8 @@ html, body { font-size: calc(14px * var(--ui-scale)); }
 button { font-size: calc(14px * var(--ui-scale)); padding: calc(8px * var(--ui-scale)) calc(16px * var(--ui-scale)); border-radius: calc(10px * var(--ui-scale)); }
 input, select, textarea { font-size: calc(14px * var(--ui-scale)); padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale)); }
 
-/* 通用断点 */
-@media (max-height: 480px) and (orientation: landscape) {
-  :root { --ui-scale: 0.6; }
-}
-@media (min-height: 481px) and (max-height: 600px) and (orientation: landscape) {
-  :root { --ui-scale: 0.75; }
-}
-@media (min-height: 601px) and (max-height: 800px) and (orientation: landscape) {
-  :root { --ui-scale: 0.88; }
-}
+/* ============================================================
+   【重要原则】只缩尺寸，绝不挪位置
+   --ui-scale 完全由 responsive.js 计算并写到 :root（inline 优先级最高）
+   这里不再用 @media 硬编码 scale，避免和 JS 打架、也避免布局跑位
+   ============================================================ */

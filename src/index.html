@@ -96,6 +96,41 @@ input{font-family:inherit;outline:none;}
 /* 竖屏持续提示（小角标） */
 #portrait-toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;background:rgba(0,0,0,.75);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;display:none;align-items:center;gap:8px;}
 
+/* ---------- 大厅布置（背景 / 装饰 / 交互） ---------- */
+.deco-bar{position:absolute;left:50%;bottom:calc(16px * var(--ui-scale));transform:translateX(-50%);z-index:30;
+  display:flex;align-items:center;gap:calc(8px * var(--ui-scale));flex-wrap:wrap;justify-content:center;
+  max-width:96vw;padding:calc(10px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  background:rgba(var(--glass-rgb),.82);backdrop-filter:blur(18px) saturate(180%);
+  border:1px solid rgba(var(--accent-rgb),.18);border-radius:calc(18px * var(--ui-scale));
+  box-shadow:0 10px 30px rgba(var(--shadow-rgb),.18);}
+.deco-tip{font-size:calc(12px * var(--ui-scale));color:var(--c-sub);margin-right:calc(6px * var(--ui-scale));}
+.deco-b{border:none;border-radius:calc(12px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  font-size:calc(13px * var(--ui-scale));font-weight:700;cursor:pointer;color:#fff;
+  background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));box-shadow:0 4px 12px var(--gold-glow);}
+.deco-b:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.deco-b.ghost{background:rgba(var(--accent-rgb),.14);color:var(--c-ink);box-shadow:none;}
+.deco-b.danger{background:linear-gradient(135deg,#e05a5a,#c0392b);box-shadow:none;}
+.deco-b.ok{background:linear-gradient(135deg,#4caf50,#2e7d32);box-shadow:none;}
+.deco-mask{position:fixed;inset:0;z-index:200;background:rgba(20,14,32,.55);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;padding:16px;}
+.deco-card{width:min(420px,94vw);max-height:88vh;overflow:auto;background:var(--c-bg);color:var(--c-ink);
+  border-radius:calc(20px * var(--ui-scale));padding:calc(22px * var(--ui-scale)) calc(24px * var(--ui-scale));
+  box-shadow:0 24px 60px rgba(0,0,0,.32);border:1px solid rgba(var(--accent-rgb),.2);}
+.deco-card h3{margin:0 0 calc(14px * var(--ui-scale));font-size:calc(18px * var(--ui-scale));}
+.dp-row{display:flex;flex-direction:column;gap:calc(5px * var(--ui-scale));margin-bottom:calc(12px * var(--ui-scale));
+  font-size:calc(13px * var(--ui-scale));color:var(--c-sub);font-weight:700;}
+.dp-row input,.dp-row select,.dp-row textarea{width:100%;padding:calc(8px * var(--ui-scale));
+  border-radius:calc(10px * var(--ui-scale));border:1px solid rgba(var(--accent-rgb),.25);
+  background:rgba(var(--glass-rgb),.7);color:var(--c-ink);font-size:calc(14px * var(--ui-scale));resize:vertical;}
+.dp-btns{display:flex;gap:calc(10px * var(--ui-scale));justify-content:flex-end;margin-top:calc(8px * var(--ui-scale));}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:calc(6px * var(--ui-scale));margin-bottom:calc(14px * var(--ui-scale));}
+.emoji-grid button{font-size:calc(22px * var(--ui-scale));padding:calc(6px * var(--ui-scale));border:none;cursor:pointer;
+  border-radius:calc(10px * var(--ui-scale));background:rgba(var(--accent-rgb),.1);}
+.emoji-grid button:hover{background:rgba(var(--accent-rgb),.26);}
+.deco-card.talk{width:min(520px,94vw);}
+.talk-name{font-weight:800;font-size:calc(16px * var(--ui-scale));color:var(--c-accent);margin-bottom:calc(10px * var(--ui-scale));}
+.talk-text{font-size:calc(15px * var(--ui-scale));line-height:1.8;min-height:calc(70px * var(--ui-scale));white-space:pre-wrap;}
+
 /* ---------- 通用卡片/表单 ---------- */
 .panel{background:rgba(var(--glass-rgb),.55);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(var(--accent-rgb),.15);border-radius:22px;box-shadow:0 20px 60px rgba(var(--shadow-rgb),.15),0 0 0 1px rgba(var(--accent-rgb),.08);padding:32px 34px;width:min(440px,92vw);}
 .panel h2{margin:0 0 6px;font-size:22px;text-align:center;}
@@ -684,95 +719,27 @@ input{font-family:inherit;outline:none;}
 .bg-custom-wrap{gap:calc(8px * var(--ui-scale));margin-top:calc(8px * var(--ui-scale));}
 
 /* ============================================================
-   断点 1：手机横屏高度 < 480px（极紧凑）
-   —— 左侧按钮改横排放底部，摇杆移右下
+   【重要原则】只缩尺寸，绝不挪位置
+   —— 手机横屏看到的布局 = 电脑横屏看到的布局
+   —— 布局方向（摇杆在左下、按钮竖排左侧、衣橱左预览右面板）
+      任何机型都不改写，只靠 --ui-scale 等比缩小
+   --ui-scale 由 responsive.js 计算并写入 :root（inline 优先级最高）
    ============================================================ */
+
+/* 极矮横屏（手机横屏 高度<480）：只收紧间距，方向一律不动 */
 @media (max-height: 480px) and (orientation: landscape) {
-  :root { --ui-scale: 0.6; }
-
-  #game-screen .left-ui{
-    top: auto;
-    left: calc(16px * var(--ui-scale));
-    bottom: calc(16px * var(--ui-scale));
-    transform: none;
-    flex-direction: row;
-    gap: calc(8px * var(--ui-scale));
-  }
-  #game-screen .joystick{
-    left: auto;
-    right: calc(28px * var(--ui-scale));
-    bottom: calc(28px * var(--ui-scale));
-  }
-  #game-screen .joy-hint{
-    left: calc(28px * var(--ui-scale));
-    bottom: calc(120px * var(--ui-scale));
-  }
-
-  /* 衣橱改成上下布局（预览区 + 底部面板） */
-  .wardrobe-layout{
-    flex-direction: column;
-    height: min(560px, 96vh);
-  }
-  .wb-preview{
-    flex: 1 1 auto;
-    border-right: none;
-    border-bottom: 1px solid rgba(var(--accent-rgb),.12);
-  }
-  .wb-side{
-    width: 100%;
-    flex-direction: row;
-    border-right: none;
-    border-bottom: 1px solid rgba(var(--accent-rgb),.12);
-    padding: calc(8px * var(--ui-scale)) calc(16px * var(--ui-scale));
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex: 0 0 auto;
-  }
-  .cat-col{
-    flex-direction: row;
-    gap: calc(6px * var(--ui-scale));
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-  .cat-btn{white-space: nowrap;flex-shrink: 0;}
-  .wb-panel{flex: 0 0 38%;max-height: 38%;}
-
-  /* 塔罗 */
-  .tarot-wrap{
-    flex-direction: row;
-    height: min(540px, 96vh);
-  }
-  .tarot-stage{flex: 1;}
+  #game-screen .left-ui{ gap: calc(5px * var(--ui-scale)); }
+  #game-screen .joy-hint{ font-size: calc(11px * var(--ui-scale)); }
+  .wardrobe-layout{ height: 96vh; }
 }
 
-/* ============================================================
-   断点 2：480-600px 中等高度（小 iPad 横屏）
-   ============================================================ */
-@media (min-height: 481px) and (max-height: 600px) and (orientation: landscape) {
-  :root { --ui-scale: 0.75; }
-}
-
-/* ============================================================
-   断点 3：600-800px 中高（iPad 横屏）
-   ============================================================ */
-@media (min-height: 601px) and (max-height: 800px) and (orientation: landscape) {
-  :root { --ui-scale: 0.88; }
-}
-
-/* ============================================================
-   竖屏窄屏（手机竖屏意外进入）：退化为居中卡片
-   ============================================================ */
+/* 竖屏窄屏（手机竖屏意外进入）：仅登录页退化为上下卡片 */
 @media (max-width: 560px), (orientation: portrait) and (max-width: 700px){
   .split{flex-direction: column;width:min(440px, 92vw);}
   .split .brand{width: 100%;min-width: 0;padding:calc(22px * var(--ui-scale)) calc(20px * var(--ui-scale));gap:calc(10px * var(--ui-scale));}
   .split .brand .logo{width:calc(64px * var(--ui-scale));height:calc(64px * var(--ui-scale));font-size:calc(32px * var(--ui-scale));border-radius:calc(20px * var(--ui-scale));}
   .split .brand h1{font-size:calc(20px * var(--ui-scale));}
   .split .form{padding:calc(26px * var(--ui-scale)) calc(24px * var(--ui-scale));}
-  .wardrobe-layout{flex-direction: column;height: min(720px, 96vh);}
-  .wb-side{width: 100%;border-right: none;border-bottom: 1px solid rgba(var(--accent-rgb),.12);}
-  .cat-col{flex-direction: row;overflow-x: auto;overflow-y: hidden;}
-  .cat-btn{white-space: nowrap;flex-shrink: 0;}
-  .tarot-wrap{height: min(640px, 96vh);}
 }
 
 </style>
@@ -780,7 +747,7 @@ input{font-family:inherit;outline:none;}
 <body data-page-node-id="KQs3LMuqGFTswhhrhfm9Cx">
 
 <!-- ===== 横屏提示 ===== -->
-<div id="landscape-overlay" class="screen" data-page-node-id="B9ScFrOyfVpt5xmQBn5VkF">
+<div id="landscape-overlay" class="screen hidden" data-page-node-id="B9ScFrOyfVpt5xmQBn5VkF">
   <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="eE0LmfpIfmDmnOX4AEJEKv">
     <rect x="2" y="6" width="20" height="12" rx="3" fill="rgba(255,255,255,.06)" data-page-node-id="mBzPdTUqm7DinoPBvP445A"/>
     <path d="M9 2v2M15 2v2M9 20v2M15 20v2" data-page-node-id="3GihDE28iNNQGdEcpBc4yp"/>
@@ -916,6 +883,59 @@ input{font-family:inherit;outline:none;}
     <button class="ui-btn" id="btn-friends" data-page-node-id="GVhNRQUY0h4zcncW7mQIG0"><span class="ico" data-page-node-id="CtAukaIBZDjANOzzXqWZID">👥</span>好友</button>
     <button class="ui-btn" id="btn-logout" data-page-node-id="mEGmeO4RSRafTlZn4sYQvE"><span class="ico" data-page-node-id="lezJKolZv4NWL6QwCXCDjg">🚪</span>退出</button>
     <button class="ui-btn" id="btn-settings" data-page-node-id="SetBtn001"><span class="ico" data-page-node-id="SetBtn002">⚙️</span>设置</button>
+  </div>
+
+  <!-- ===== 大厅布置（背景图 / 自由摆装饰 / 交互） ===== -->
+  <div class="deco-bar hidden" id="deco-bar">
+    <span class="deco-tip" id="deco-tip">布置模式：拖动装饰移动 · 拖右下角缩放 · 点空白处取消选中</span>
+    <button class="deco-b" id="deco-add-img">＋图片</button>
+    <button class="deco-b" id="deco-add-emoji">＋图标</button>
+    <button class="deco-b" id="deco-bg">🖼 背景图</button>
+    <button class="deco-b" id="deco-prop" disabled>⚙ 属性</button>
+    <button class="deco-b danger" id="deco-del" disabled>🗑 删除</button>
+    <button class="deco-b ok" id="deco-save">💾 保存</button>
+    <button class="deco-b ghost" id="deco-done">✓ 完成</button>
+  </div>
+  <input type="file" id="deco-file" accept="image/*" style="display:none">
+  <input type="file" id="deco-bg-file" accept="image/*" style="display:none">
+
+  <div class="deco-mask hidden" id="deco-emoji-mask">
+    <div class="deco-card">
+      <h3>选一个图标当装饰</h3>
+      <div class="emoji-grid" id="deco-emoji-grid"></div>
+      <button class="deco-b ghost" id="deco-emoji-close">取消</button>
+    </div>
+  </div>
+
+  <div class="deco-mask hidden" id="deco-modal">
+    <div class="deco-card">
+      <h3>装饰属性</h3>
+      <label class="dp-row"><span>名称</span><input id="dp-name" placeholder="例如：时装店 / 守卫阿七"></label>
+      <label class="dp-row"><span>点它会</span>
+        <select id="dp-action">
+          <option value="none">什么都不做（纯装饰）</option>
+          <option value="shop">打开商店</option>
+          <option value="talk">NPC 说话</option>
+          <option value="map">传送到地图</option>
+          <option value="panel">打开面板</option>
+        </select>
+      </label>
+      <label class="dp-row hidden" id="dp-target-wrap"><span>目标</span><select id="dp-target"></select></label>
+      <label class="dp-row hidden" id="dp-text-wrap"><span>说的话</span><textarea id="dp-text" rows="3" placeholder="一行一句，会逐句显示"></textarea></label>
+      <label class="dp-row"><span>大小</span><input type="range" id="dp-size" min="0.03" max="0.7" step="0.01"></label>
+      <div class="dp-btns">
+        <button class="deco-b ok" id="dp-ok">确定</button>
+        <button class="deco-b ghost" id="dp-cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="deco-mask hidden" id="talk-mask">
+    <div class="deco-card talk">
+      <div class="talk-name" id="talk-name">NPC</div>
+      <div class="talk-text" id="talk-text"></div>
+      <div class="dp-btns"><button class="deco-b ok" id="talk-next">继续</button><button class="deco-b ghost" id="talk-close">关闭</button></div>
+    </div>
   </div>
 
   <div class="joy-hint" data-page-node-id="D9gQ324MbeofTTRr0gG6tx">拖动摇杆移动</div>
@@ -1110,21 +1130,32 @@ function fatalBar(msg){
   b.querySelector('button').onclick = ()=>b.remove();
 }
 
-/* ---- 看门狗：8 秒后遮罩仍未消失 = 引导链断了，强制放行 ---- */
+/* ---- 引导兜底提示语：按协议分别给方案，不再一律喊 start-server.bat ---- */
+function protocolTip(){
+  const p = location.protocol;
+  if(p === 'file:')  return '当前是 <b>file://</b> 本地直开，请用 <b>start-server.bat</b> 以 http 方式打开。';
+  if(p === 'https:') return '当前已是 <b>https 线上版</b>（不用再换 http）：请<b>下拉刷新</b>一次；反复出现就在网址后加 <b>?hard=1</b> 清一次缓存。';
+  return '当前是 http 本机版，请下拉刷新一次重试。';
+}
+
+/* ---- 看门狗：5 秒后还没进任何界面 = 引导链断了，强制放行 ---- */
 setTimeout(()=>{
   try{
     const ov = document.getElementById('landscape-overlay');
-    if(!ov || ov.classList.contains('hidden')) return;
-    ov.classList.add('hidden');
-    try{ afterLandscape(); }catch(e){}
+    const stuck = !!(ov && !ov.classList.contains('hidden'));
+    if(stuck) ov.classList.add('hidden');
     const ids = ['auth-screen','nickname-screen','element-screen','game-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'];
     const any = ids.some(function(id){ const el=document.getElementById(id); return el && !el.classList.contains('hidden'); });
-    if(!any){ const a=document.getElementById('auth-screen'); if(a) a.classList.remove('hidden'); }
+    if(any && !stuck) return;                       // 一切正常，别打扰陛下
+    if(!any){
+      try{ if(window.__finishLandscape) window.__finishLandscape(); else afterLandscape(); }catch(e){}
+      const a = document.getElementById('auth-screen'); if(a) a.classList.remove('hidden');
+    }
     fatalBar('引导超时，已强制放行。'
       + (window.__lastErr ? '捕获到的错误：<b>' + window.__lastErr + '</b>。' : '')
-      + ' 若反复出现，请用 <b>start-server.bat</b> 以 http 方式打开（file:// 直开会被浏览器限制）。');
+      + ' ' + protocolTip());
   }catch(e){}
-}, 8000);
+}, 5000);
 
 /* ================= 全局状态 ================= */
 const LS_ACCOUNTS = 'game_accounts';
@@ -1169,17 +1200,11 @@ const BUILDINGS = [
 ];
 function getBuildingPositions(){
   const w = lobby.w, h = lobby.h;
-  return BUILDINGS.map((b,i)=>{
-    const pos = [
-      {x:w*0.16, y:h*0.30},
-      {x:w*0.84, y:h*0.30},
-      {x:w*0.16, y:h*0.72},
-      {x:w*0.84, y:h*0.72},
-      {x:w*0.50, y:h*0.22},
-      {x:w*0.50, y:h*0.84},
-    ][i];
-    return Object.assign({}, b, pos);
-  });
+  // 矮屏（手机横屏）纵向收拢，别顶到顶部 HUD 和左下角摇杆
+  const short = h < 560;
+  const LX = short ? [0.14,0.86,0.14,0.86,0.50,0.50] : [0.16,0.84,0.16,0.84,0.50,0.50];
+  const LY = short ? [0.32,0.32,0.66,0.66,0.30,0.70] : [0.30,0.30,0.72,0.72,0.22,0.84];
+  return BUILDINGS.map((b,i)=> Object.assign({}, b, { x:w*LX[i], y:h*LY[i] }));
 }
 function darken(hex, amt){
   amt = (amt==null)?0.22:amt;
@@ -1743,6 +1768,61 @@ window.addEventListener('storage', e=>{
 });
 refreshEngineData();
 
+/* ---------- 角色素材自检：为什么游戏里还是占位小人 ---------- */
+function hintBar(msg, btn){
+  let b = document.getElementById('hint-bar');
+  if(b) b.remove();
+  b = document.createElement('div');
+  b.id = 'hint-bar';
+  b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:9998;'
+    + 'max-width:min(680px,92vw);background:linear-gradient(135deg,#6b4fa8,#8a6fc4);color:#fff;'
+    + 'font-size:13px;line-height:1.7;padding:12px 16px;border-radius:14px;'
+    + 'box-shadow:0 12px 32px rgba(60,40,110,.35);display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+  const sp = document.createElement('span');
+  sp.style.cssText = 'flex:1;min-width:200px';
+  sp.innerHTML = '🎨 ' + msg;
+  b.appendChild(sp);
+  if(btn && btn.href){
+    const a = document.createElement('a');
+    a.href = btn.href; a.textContent = btn.text;
+    a.style.cssText = 'background:rgba(255,255,255,.22);border:0;color:#fff;border-radius:8px;'
+      + 'padding:6px 14px;cursor:pointer;text-decoration:none;white-space:nowrap;font-weight:700;font-size:13px';
+    b.appendChild(a);
+  }
+  const x = document.createElement('button');
+  x.textContent = '知道了';
+  x.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;'
+    + 'border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap;font-size:12px';
+  x.onclick = function(){ b.remove(); };
+  b.appendChild(x);
+  document.body.appendChild(b);
+}
+function checkCharacterSource(){
+  try{
+    if(engine.bodyReady) return false;
+    let raw = null;
+    try{ raw = localStorage.getItem(ENG_LS.body); }catch(e){}
+    let msg;
+    if(raw){
+      const miss = [];
+      try{
+        const d = JSON.parse(raw) || {};
+        ENG_PART_DEFS.forEach(function(x){
+          const s = d[x.key];
+          if(!s || !s.imgSrc || !(+s.w > 0)) miss.push(x.label);
+        });
+      }catch(e){ miss.push('数据损坏'); }
+      msg = '角色还是<b>占位小人</b>：素体数据不完整（缺 ' + (miss.join('、') || '未知部件') + '）。'
+          + '回服装编辑引擎把缺的部件补上，<b>重新保存</b>一次即可。';
+    } else {
+      msg = '角色还是<b>占位小人</b>：还没配置素体。去「服装编辑引擎 → 素体工坊」把 '
+          + '<b>头 / 身体 / 左臂 / 右臂 / 左腿 / 右腿</b> 六块对齐保存，回来刷新就是你自己的素材了。';
+    }
+    hintBar(msg, { text:'去服装编辑引擎', href:'服装编辑引擎.html' });
+    return true;
+  }catch(e){ return false; }
+}
+
 let currentUser = null; // {username, password, nickname, element, outfit, friends:[], level, wealth, coins, hideWealth}
 
 /* ================= 存储 ================= */
@@ -1786,24 +1866,42 @@ function showScreen(id){
 }
 
 /* ================= 横屏提示 ================= */
+function _isMobileUA(){
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPod|IEMobile|Opera Mini|Mobile/i.test(ua)
+      || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
 function startLandscapePrompt(){
-  let timer = null;
+  let done = false, timer = null;
   const finishLandscape = ()=>{
+    if(done) return; done = true;
     if(timer){ clearInterval(timer); timer = null; }
     try{
       const ck = $('ls-noremind');
       if(ck && ck.checked) localStorage.setItem(LS_NOREMIND, '1');
     }catch(e){}
-    $('landscape-overlay').classList.add('hidden');
-    afterLandscape();
+    try{ $('landscape-overlay').classList.add('hidden'); }catch(e){}
+    try{ afterLandscape(); }catch(e){
+      console.warn('afterLandscape', e);
+      try{ showScreen('auth-screen'); }catch(_){}
+    }
   };
+  window.__finishLandscape = finishLandscape;   // 看门狗 / 遮罩点击都能直接调
+
+  // ① 手机平板：横屏交给 orientation-lock.js 全权管，这里不再弹（两套遮罩会打架卡死）
+  // ② 已经横着拿：也不用干等 3 秒
+  try{
+    if(_isMobileUA() || window.innerWidth > window.innerHeight){ finishLandscape(); return; }
+  }catch(e){ finishLandscape(); return; }
+
   // 不再提醒 —— 读取失败也放行，绝不能卡死
   try{
-    if(localStorage.getItem(LS_NOREMIND)==='1'){ afterLandscape(); return; }
-  }catch(e){ afterLandscape(); return; }
+    if(localStorage.getItem(LS_NOREMIND)==='1'){ finishLandscape(); return; }
+  }catch(e){ finishLandscape(); return; }
 
-  $('landscape-overlay').classList.remove('hidden');
-  // 先绑跳过按钮，保证即使倒计时出问题也能手动进
+  const ov = $('landscape-overlay');
+  if(!ov){ finishLandscape(); return; }
+  ov.classList.remove('hidden');
   const skip = $('ls-skip');
   if(skip) skip.onclick = finishLandscape;
 
@@ -1811,10 +1909,10 @@ function startLandscapePrompt(){
   const cnt = $('ls-count');
   if(cnt) cnt.textContent = n;
   timer = setInterval(()=>{
-    n--;
-    if(cnt) cnt.textContent = n;
-    if(n<=0) finishLandscape();
+    try{ n--; if(cnt) cnt.textContent = n; if(n<=0) finishLandscape(); }
+    catch(e){ finishLandscape(); }
   }, 1000);
+  setTimeout(finishLandscape, 4200);   // 硬兜底：倒计时哪怕没跑，4.2 秒也必进
 }
 function afterLandscape(){
   // 管理员从引擎返回中枢：index.html?hub=1
@@ -1828,7 +1926,7 @@ function afterLandscape(){
     normalizeUser(currentUser);
     if(!currentUser.nickname) showScreen('nickname-screen');
     else if(!currentUser.element) showScreen('element-screen');
-    else enterLobby();
+    else { enterLobby(); checkCharacterSource(); }
   } else {
     showScreen('auth-screen');
   }
@@ -1849,7 +1947,7 @@ $('tab-register').onclick = ()=>setAuthMode('register');
 /* ================= 管理员入口 & 引擎中枢 ================= */
 const ADMIN_USER = '1', ADMIN_PASS = '1';   // Q10 硬编码，正式发布前改
 const ENGINES = [
-  { ico:'🎨', nm:'服装引擎',        ds:'素体工坊 · 服装工坊 · 套装编辑 · 商店编辑 · 衣橱预览', file:'素材对齐引擎.html' },
+  { ico:'🎨', nm:'服装引擎',        ds:'素体工坊 · 服装工坊 · 套装编辑 · 商店编辑 · 衣橱预览', file:'服装编辑引擎.html' },
   { ico:'🃏', nm:'塔罗牌编辑引擎',  ds:'78 张定制牌面 · 花边模板 · 牌背 · 导出 ZIP 素材包',    file:'塔罗编辑引擎.html' },
   { ico:'🗺', nm:'地图编辑引擎',    ds:'世界 → 国家 → 城市 层层嵌套 · 地块摆放与连线',        file:'地图编辑引擎.html' },
   { ico:'💾', nm:'数据备份与迁移',  ds:'导出/导入 JSON · 在 file:// 与 localhost 之间搬运数据', file:'数据备份与迁移.html' },
@@ -1968,6 +2066,35 @@ let lobby = {
 const MOVE_SPEED = 220; // px/s
 const MAP_SPEED  = 230; // 地图内行走速度 px/s
 let loopId = 0;
+
+/* ================= 世界视口（全机型：把可玩区缩进 UI 安全区） =================
+   手机横屏时顶部有 HUD、左下角有按钮行 + 摇杆。
+   若房子仍按整屏比例摆放，就会被压在 UI 底下、显得巨大。
+   这里算一个统一缩放 k + 偏移，把「世界」整体挪进中间那块干净区域。
+   大厅 canvas 与地图 canvas 共用同一套，电脑端 k 会接近 1（几乎不变）。 */
+const WORLD = { k:1, vx:0, vy:0 };
+function updateWorldView(){
+  const W = window.innerWidth || 800, H = window.innerHeight || 600;
+  let s = 1;
+  try{ s = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1; }catch(e){}
+  const pad   = 14 * s;
+  const topUI = 46 * s + 18;                 // 顶部 HUD（头像 / 昵称 / 货币）
+  const botUI = 128 * s + 64 * s + 34;       // 左下角：按钮行 + 摇杆
+  const availW = Math.max(200, W - pad * 2);
+  const availH = Math.max(140, H - topUI - botUI);
+  const short  = H < 560;
+  const contentW = 0.68 * W + 150;                       // 建筑横向跨度 + 自身尺寸
+  const contentH = (short ? 0.40 : 0.62) * H + 150;      // 建筑纵向跨度 + 自身尺寸
+  let k = Math.min(1, availW / contentW, availH / contentH);
+  k = Math.max(0.42, k);
+  WORLD.k  = k;
+  WORLD.vx = pad + availW / 2 - 0.5 * W * k;
+  WORLD.vy = topUI + availH / 2 - (short ? 0.50 : 0.53) * H * k;
+}
+function w2sx(x){ return x * WORLD.k + WORLD.vx; }   // 世界 → 屏幕
+function w2sy(y){ return y * WORLD.k + WORLD.vy; }
+function s2wx(x){ return (x - WORLD.vx) / WORLD.k; }  // 屏幕 → 世界
+function s2wy(y){ return (y - WORLD.vy) / WORLD.k; }
 function stopLoop(){ if(loopId){ cancelAnimationFrame(loopId); loopId = 0; } }
 
 /* ---- 地图运行时状态（v2：可行走） ---- */
@@ -2003,6 +2130,7 @@ function initLobbyCanvas(){
 }
 function resizeLobby(){
   if(!lobby.canvas) return;
+  updateWorldView();
   lobby.dpr = Math.min(window.devicePixelRatio||1, 2);
   lobby.w = window.innerWidth; lobby.h = window.innerHeight;
   lobby.canvas.width = lobby.w * lobby.dpr;
@@ -2092,31 +2220,42 @@ function stepLobby(now){
 
 function drawLobby(){
   const c = lobby.ctx, w=lobby.w, h=lobby.h;
-  // 背景渐变（纯色大厅）
+  const k = WORLD.k;
+  // 背景渐变铺满整屏（不缩放，避免出现空白边）
   const g = c.createLinearGradient(0,0,0,h);
   g.addColorStop(0,'#f3eef9'); g.addColorStop(1,'#e6ddf4');
   c.fillStyle = g; c.fillRect(0,0,w,h);
-  // 地板
+  // 大厅自定义背景（陛下在「🛠 布置」里上传的画）——铺满整屏
+  if(decoBgImg && decoBgImg.complete && decoBgImg.naturalWidth) drawCover(c, decoBgImg, w, h);
+  // 地板：整屏宽度，地平线跟随缩放后的世界（左右不留空）
+  const floorY = w2sy(h*0.68);
   c.fillStyle = 'rgba(255,255,255,.5)';
-  c.fillRect(0, h*0.68, w, h*0.32);
+  c.fillRect(0, floorY, w, h - floorY);
   c.strokeStyle = 'rgba(120,130,150,.12)';
   c.lineWidth = 1;
-  const grid = 60;
-  for(let x=0;x<w;x+=grid){ c.beginPath(); c.moveTo(x,h*0.68); c.lineTo(x,h); c.stroke(); }
-  for(let y=h*0.68;y<h;y+=grid){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
+  const grid = Math.max(26, 60*k);
+  for(let x=0;x<w;x+=grid){ c.beginPath(); c.moveTo(x,floorY); c.lineTo(x,h); c.stroke(); }
+  for(let y=floorY;y<h;y+=grid){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
+  // 以下内容整体缩放，缩进中间的可玩区
+  c.save();
+  c.translate(WORLD.vx, WORLD.vy);
+  c.scale(k, k);
   // 装饰色块（大厅纯色 + 几块示意）
   c.fillStyle='rgba(var(--accent-rgb),.9)'; c.fillRect(w*0.08, h*0.2, 90, 16); // 门框示意
   c.fillStyle='rgba(176,137,104,.65)'; c.fillRect(w*0.82, h*0.28, 60, 90); // 装饰柱
-  c.fillStyle='rgba(120,200,120,.7)'; 
+  c.fillStyle='rgba(120,200,120,.7)';
   c.beginPath(); c.arc(w*0.16, h*0.6, 22, 0, Math.PI*2); c.fill(); // 绿植
   // 建筑（占位）
   drawBuildings();
+  // 自定义装饰（商店 / NPC / 传送点 / 纯摆设）
+  drawDecoItems(c);
   // 大厅水印
   c.fillStyle='rgba(120,130,150,.25)';
   c.font='600 14px "Microsoft YaHei"'; c.textAlign='center';
   c.fillText('走近建筑，开启小游戏', w/2, h*0.95);
   // 角色
   drawCharacter(c, lobby.px, lobby.py, currentUser.outfit, lobby.facing, lobby.moving?lobby.walkPhase:0, 1.15);
+  c.restore();
 }
 
 /* ---- 建筑绘制 + 靠近检测 ---- */
@@ -2157,8 +2296,8 @@ function updateBuildingPop(){
   if(near){
     lobby.nearBuilding = near;
     pop.classList.remove('hidden');
-    pop.style.left = near.x + 'px';
-    pop.style.top = (near.y - near.h/2 - 8) + 'px';
+    pop.style.left = w2sx(near.x) + 'px';
+    pop.style.top  = (w2sy(near.y) - near.h/2*WORLD.k - 8) + 'px';
     $('bp-name').textContent = near.name;
   } else {
     lobby.nearBuilding = null;
@@ -3416,13 +3555,25 @@ function showMapPop(t){
   tipEl.textContent = t.tip || (t.action==='panel' ? '打开面板' : '前往另一张地图');
   tipEl.style.display = (t.tip && String(t.tip).trim()) ? '' : 'none';
   pop.classList.remove('hidden');
-  pop.style.left = (t.x * mapRun.w) + 'px';
-  pop.style.top  = ((t.y - ((typeof t.h==='number' && t.h>0) ? t.h : 0.1)/2) * mapRun.h) + 'px';
+  // 地图用「世界画布 + contain 居中偏移」的变换，不是大厅的 WORLD.k
+  pop.style.left = (t.x * mapRun.w + (mapRun.ox||0)) + 'px';
+  pop.style.top  = ((t.y - ((typeof t.h==='number' && t.h>0) ? t.h : 0.1)/2) * mapRun.h + (mapRun.oy||0)) + 'px';
   $('mp-enter').onclick = ()=>{ mapRun.lastFired = t.id; hideMapPop(); fireTrigger(t); };
 }
 function hideMapPop(){ const pop = $('map-pop'); if(pop) pop.classList.add('hidden'); }
 
 /* ---- 绘制 ---- */
+/* ---- 世界画布：固定 16:9，contain 等比缩放居中（安全区方案 §2） ----
+   地图节点存的是 0~1 归一化坐标，若直接乘屏幕宽高 = 拉伸变形
+   （16:9 的设计稿在 21:9 手机上会被拉扁）。
+   改成 contain：短边贴合、等比不拉伸，多出来的部分留边（letterbox），
+   留边正好落在 UI 禁区上，视觉上看不出来。                                */
+const WORLD_ASPECT = 16/9;
+function worldFit(W, H){
+  let w = W, h = W / WORLD_ASPECT;
+  if(h > H){ h = H; w = H * WORLD_ASPECT; }
+  return { w:Math.round(w), h:Math.round(h), ox:Math.round((W-w)/2), oy:Math.round((H-h)/2) };
+}
 function resizeMap(){
   if(!mapRun.canvas){
     mapRun.canvas = $('map-canvas');
@@ -3430,15 +3581,19 @@ function resizeMap(){
     mapRun.ctx = mapRun.canvas.getContext('2d');
   }
   const W = window.innerWidth, H = window.innerHeight;
+  const f = worldFit(W, H);
   const oldW = mapRun.w, oldH = mapRun.h;
   mapRun.dpr = Math.min(window.devicePixelRatio||1, 2);
-  mapRun.w = W; mapRun.h = H;
+  /* fw/fh = 全屏（背景铺满，留边也有底）  w/h = 世界画布（内容等比居中） */
+  mapRun.fw = W; mapRun.fh = H;
+  mapRun.w = f.w; mapRun.h = f.h;
+  mapRun.ox = f.ox; mapRun.oy = f.oy;
   mapRun.canvas.width = Math.round(W*mapRun.dpr);
   mapRun.canvas.height = Math.round(H*mapRun.dpr);
   mapRun.canvas.style.width = W+'px';
   mapRun.canvas.style.height = H+'px';
   mapRun.ctx.setTransform(mapRun.dpr,0,0,mapRun.dpr,0,0);
-  if(oldW && oldH && mapState.currentId){ mapRun.px = mapRun.px/oldW*W; mapRun.py = mapRun.py/oldH*H; }
+  if(oldW && oldH && mapState.currentId){ mapRun.px = mapRun.px/oldW*f.w; mapRun.py = mapRun.py/oldH*f.h; }
 }
 const _mapImgCache = Object.create(null);
 function mapImg(src){
@@ -3511,17 +3666,21 @@ function drawTriggerBox(c, n, W, H){
 }
 function drawMap(){
   const c = mapRun.ctx; if(!c) return;
-  const W = mapRun.w, H = mapRun.h;
+  const W = mapRun.w, H = mapRun.h;              // 世界画布（16:9）
+  const FW = mapRun.fw || W, FH = mapRun.fh || H; // 全屏（背景铺满，留边也有底）
   const d = ensureMaps(); const m = d.maps[mapState.currentId];
-  c.clearRect(0,0,W,H);
-  if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, W, H);
+  c.clearRect(0,0,FW,FH);
+  if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, FW, FH);
   else {
     const base = (m && m.bgColor) || '#a9c9e8';
-    const g = c.createLinearGradient(0,0,0,H);
+    const g = c.createLinearGradient(0,0,0,FH);
     g.addColorStop(0, base); g.addColorStop(1, darken(base, .35));
-    c.fillStyle = g; c.fillRect(0,0,W,H);
+    c.fillStyle = g; c.fillRect(0,0,FW,FH);
   }
   if(!m) return;
+  /* 世界内容：整体平移到居中位置，比例永不拉伸 */
+  c.save();
+  c.translate(mapRun.ox||0, mapRun.oy||0);
   c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(0, H*0.62, W, H*0.38);
   // 入口点（淡淡的旗子）
   (m.spawns||[]).forEach(s=>{
@@ -3531,6 +3690,7 @@ function drawMap(){
   (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H); });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
   drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
+  c.restore();
 }
 
 /* ---- 点一下也能进（手机友好） ---- */
@@ -3539,7 +3699,8 @@ function drawMap(){
   mc.addEventListener('click', e=>{
     if(!mapRun.active) return;
     const rect = mc.getBoundingClientRect();
-    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    // 屏幕坐标 → 世界画布坐标（减去 contain 的居中留边）
+    const x = e.clientX - rect.left - (mapRun.ox||0), y = e.clientY - rect.top - (mapRun.oy||0);
     const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return;
     const W = mapRun.w, H = mapRun.h;
     let hitT = null;
@@ -3590,8 +3751,8 @@ try{
 }
 try{ checkOrientation(); }catch(e){}
 if(window.__storageFallback){
-  fatalBar('当前环境<b>禁用了本地存储</b>（file:// 直开 / 隐私模式 / 禁用 Cookie 都会触发），'
-    + '本局能玩，但<b>账号与进度不会保存</b>。请用 <b>start-server.bat</b> 以 http 方式打开。');
+  fatalBar('当前环境<b>禁用了本地存储</b>（隐私/无痕模式、或 file:// 直开会触发），'
+    + '本局能玩，但<b>账号与进度不会保存</b>。' + protocolTip());
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->

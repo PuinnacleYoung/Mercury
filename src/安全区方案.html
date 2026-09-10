@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>拾光·澈屿 · 全机型安全区方案</title>
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<style>
+:root{
+  --ink:#2f2545; --sub:#6f6590; --line:rgba(122,98,180,.18);
+  --accent:#7a5fc4; --accent2:#a98fe0;
+  --glass:rgba(255,255,255,.72);
+  --danger:#e0556b; --danger-bg:rgba(224,85,107,.12);
+  --safe:#3fa87a;  --safe-bg:rgba(63,168,122,.12);
+  --warn:#e0952f;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;padding:0 20px 80px;
+  font-family:"Microsoft YaHei","PingFang SC",-apple-system,sans-serif;
+  color:var(--ink); line-height:1.85;
+  background:
+    radial-gradient(1200px 600px at 12% -8%, #efe7fb 0%, transparent 60%),
+    radial-gradient(1000px 520px at 92% 4%, #e6f0fb 0%, transparent 55%),
+    #f7f4fc;
+}
+.wrap{max-width:1120px;margin:0 auto;}
+header{padding:44px 0 26px;text-align:center;}
+header h1{
+  margin:0 0 10px;font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:1px;
+  background:linear-gradient(96deg,#6b4fa8,#9a7ee0 55%,#5f8fd0);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+header .lead{color:var(--sub);font-size:15px;max-width:760px;margin:0 auto;}
+.badge-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
+.badge{font-size:12px;padding:4px 12px;border-radius:999px;background:rgba(122,95,196,.1);
+  color:var(--accent);font-weight:800;border:1px solid var(--line);}
+
+section{
+  margin:26px 0;padding:26px 28px;border-radius:20px;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(160%);
+  border:1px solid var(--line);box-shadow:0 14px 40px rgba(80,60,140,.08);
+}
+h2{
+  margin:0 0 16px;font-size:21px;font-weight:900;
+  display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:2px solid var(--line);
+}
+h2 .n{
+  width:30px;height:30px;flex:0 0 30px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;font-weight:900;
+}
+h3{margin:22px 0 10px;font-size:16px;font-weight:800;color:var(--accent);}
+p{margin:10px 0;}
+b{color:var(--accent);}
+code{
+  background:rgba(122,95,196,.1);padding:2px 7px;border-radius:6px;
+  font-family:Consolas,Monaco,monospace;font-size:13px;color:#5b3f9e;
+}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);}
+th{background:rgba(122,95,196,.08);font-weight:800;color:var(--accent);white-space:nowrap;}
+td.num{font-family:Consolas,monospace;font-size:12.5px;}
+tr:hover td{background:rgba(122,95,196,.045);}
+.hi{color:var(--danger);font-weight:800;}
+.ok{color:var(--safe);font-weight:800;}
+
+/* 三层模型图 */
+.layer-box{display:grid;gap:12px;margin:16px 0;}
+.layer{
+  border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;
+  border:1px solid var(--line);
+}
+.layer .tag{
+  position:absolute;right:14px;top:12px;font-size:11px;font-weight:900;
+  padding:3px 10px;border-radius:999px;
+}
+.L0{background:linear-gradient(120deg,#f3eefb,#e9e2f7);}
+.L1{background:var(--danger-bg);border-color:rgba(224,85,107,.3);}
+.L2{background:var(--safe-bg);border-color:rgba(63,168,122,.3);}
+.L0 .tag{background:rgba(122,95,196,.16);color:var(--accent);}
+.L1 .tag{background:#e0556b;color:#fff;}
+.L2 .tag{background:#3fa87a;color:#fff;}
+.layer .t{font-weight:900;font-size:15px;margin-bottom:4px;}
+.layer .d{font-size:13.5px;color:var(--sub);}
+
+/* 交互预览 */
+.devbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px;}
+.devbtn{
+  padding:8px 15px;border-radius:11px;border:1.5px solid var(--line);
+  background:#fff;color:var(--sub);font-size:13px;font-weight:800;cursor:pointer;
+  transition:.16s;font-family:inherit;
+}
+.devbtn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px);}
+.devbtn.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;
+  box-shadow:0 6px 16px rgba(122,95,196,.3);}
+
+.stage-shell{
+  background:linear-gradient(140deg,#3a2d57,#241b3a);border-radius:16px;padding:18px;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.stage{
+  position:relative;border-radius:10px;overflow:hidden;
+  box-shadow:0 10px 34px rgba(0,0,0,.4);
+  background:linear-gradient(160deg,#efe9f8,#dcd2ef);
+  transition:width .35s cubic-bezier(.4,1.4,.5,1),height .35s cubic-bezier(.4,1.4,.5,1);
+}
+.stage .lbl{
+  position:absolute;font-size:10px;font-weight:900;letter-spacing:.5px;
+  padding:2px 6px;border-radius:5px;white-space:nowrap;pointer-events:none;
+}
+/* 禁区 */
+.zone-danger{
+  position:absolute;pointer-events:none;
+  background:repeating-linear-gradient(45deg,
+    rgba(224,85,107,.34) 0 6px, rgba(224,85,107,.14) 6px 12px);
+  border:1px dashed rgba(224,85,107,.75);
+}
+/* 内容安全区 */
+.zone-safe{
+  position:absolute;pointer-events:none;
+  background:rgba(63,168,122,.13);
+  border:2px solid rgba(63,168,122,.85);
+}
+/* 世界画布（contain 后） */
+.zone-world{
+  position:absolute;pointer-events:none;
+  border:2px solid rgba(255,255,255,.9);
+  box-shadow:0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.15);
+}
+.zone-letterbox{
+  position:absolute;pointer-events:none;
+  background:repeating-linear-gradient(45deg,
+    rgba(60,45,90,.5) 0 5px, rgba(60,45,90,.28) 5px 10px);
+}
+/* 世界内内容安全边距 */
+.zone-inner{
+  position:absolute;pointer-events:none;
+  border:1px dashed rgba(224,149,47,.9);
+  background:rgba(224,149,47,.09);
+}
+.stage-cap{
+  color:rgba(255,255,255,.72);font-size:12.5px;text-align:center;line-height:1.7;
+}
+.stage-cap b{color:#ffd98a;}
+
+.readout{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px;
+}
+.ro{
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+}
+.ro .k{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.5px;}
+.ro .v{font-size:19px;font-weight:900;color:var(--accent);font-family:Consolas,monospace;}
+.ro .u{font-size:11px;color:var(--sub);font-weight:600;}
+
+.rule{
+  border-left:4px solid var(--accent);background:rgba(122,95,196,.06);
+  padding:12px 16px;border-radius:0 12px 12px 0;margin:14px 0;font-size:14px;
+}
+.rule.red{border-left-color:var(--danger);background:var(--danger-bg);}
+.rule.green{border-left-color:var(--safe);background:var(--safe-bg);}
+.rule .rt{font-weight:900;display:block;margin-bottom:3px;}
+
+ul{margin:10px 0;padding-left:22px;}
+li{margin:6px 0;}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px;margin:10px 0;}
+.kv .k{font-weight:800;color:var(--accent);white-space:nowrap;}
+footer{text-align:center;color:var(--sub);font-size:12.5px;padding:26px 0 0;}
+@media (max-width:640px){
+  body{padding:0 12px 60px;}
+  section{padding:20px 16px;}
+  table{font-size:12px;}
+  th,td{padding:7px 6px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>拾光·澈屿 · 全机型安全区方案</h1>
+  <p class="lead">
+    一份写给「做地图 / 做 UI / 摆装饰」的统一规范：<b>哪里能放东西、哪里绝对不能放、画布该多大。</b>
+    照着做，手机横屏、iPad、电脑三种屏幕看到的是同一个画面，只是整体缩放，不会跑位、不会挤、不会被 UI 压住。
+  </p>
+  <div class="badge-row">
+    <span class="badge">世界画布 16:9</span>
+    <span class="badge">归一化坐标 0~1</span>
+    <span class="badge">contain 等比缩放</span>
+    <span class="badge">内容安全区 88% × 80%</span>
+  </div>
+</header>
+
+<!-- ============ 1 ============ -->
+<section>
+  <h2><span class="n">1</span>三层区域模型</h2>
+  <p>任何一屏都分成三层。搞清楚这三层，往哪放东西就不会错：</p>
+
+  <div class="layer-box">
+    <div class="layer L0">
+      <span class="tag">L0</span>
+      <div class="t">屏幕层 Screen</div>
+      <div class="d">整块 <code>window.innerWidth × innerHeight</code>。
+        手机横屏约 <code>855×400</code>，iPad 横屏 <code>1180×820</code>，电脑 <code>1920×1080</code>。
+        <b>这层的尺寸千变万化，不能拿它当设计基准。</b></div>
+    </div>
+    <div class="layer L1">
+      <span class="tag">L1 · 禁区</span>
+      <div class="t">UI 禁区 UI-Exclusion</div>
+      <div class="d">四角和边缘被 UI 控件占用的地方：顶部 HUD 条、左上状态、右上货币、
+        <b>左下摇杆方块</b>、左侧竖排按钮列。
+        <b>这里绝对不能放房子、地块、触发区、可点击装饰</b> —— 会被压住点不到。</div>
+    </div>
+    <div class="layer L2">
+      <span class="tag">L2 · 可用</span>
+      <div class="t">内容安全区 Safe-Content</div>
+      <div class="d">中间这块干净的区域，才是你真正的<b>可编辑区</b>。
+        房子、地块、触发区、装饰、NPC 全部摆在这里。规范值：<b>画布宽的 88% × 高的 80%</b>。</div>
+    </div>
+  </div>
+
+  <div class="rule red">
+    <span class="rt">🚫 最常见的翻车</span>
+    把建筑摆在画布正下方或最左边 → 电脑上看着挺好 → 手机上被摇杆和按钮列完全盖住，玩家点不到。
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section>
+  <h2><span class="n">2</span>世界画布规范（核心）</h2>
+
+  <h3>2.1 固定 16:9 逻辑画布</h3>
+  <p>不管玩家屏幕是什么比例，<b>世界画布永远是 16:9</b>（逻辑分辨率 1600×900）。你在编辑器里看到的比例，就是所有人看到的比例。</p>
+
+  <h3>2.2 contain 等比缩放 + 居中留边</h3>
+  <p>渲染时按 <b>contain</b>（短边贴合、等比不拉伸）缩放居中，多出来的部分留边（letterbox）。</p>
+  <div class="kv">
+    <span class="k">电脑 16:9</span><span>完美贴合，零留边（1920×1080 → 画布 1920×1080）</span>
+    <span class="k">iPad 4:3</span><span>上下各留一点边（1180×820 → 画布 1180×664，上下各 78）</span>
+    <span class="k">手机 21:9</span><span>左右各留边（855×400 → 画布 711×400，左右各 72）— <b class="ok">正好被左侧按钮列和右侧留白吃掉</b></span>
+  </div>
+  <div class="rule green">
+    <span class="rt">✅ 为什么留边是好事</span>
+    手机横屏是 21:9（又宽又扁），如果强行拉伸到满屏，16:9 的设计会被横向拉扁 —— 圆变椭圆、格子变长方形。
+    改成 contain 后比例永远正确，而留出来的边<b>刚好落在 UI 禁区上</b>，视觉上完全看不出来。
+  </div>
+
+  <h3>2.3 一切坐标用归一化 0~1</h3>
+  <p>地图节点、大厅装饰、建筑位置<b>全部存 0~1 的小数</b>（比如 <code>x:0.5, y:0.3</code>），渲染时乘以画布宽高。
+  这样换个屏幕尺寸，相对位置一像素都不错。<b>这套机制项目里已经实现了</b>，继续沿用即可。</p>
+  <div class="rule red">
+    <span class="rt">🚫 绝对不要</span>
+    用绝对像素存坐标（<code>x:420, y:180</code>）。那样手机上一打开，所有东西都堆在左上角。
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section>
+  <h2><span class="n">3</span>UI 禁区清单（你写代码/摆 UI 时要让开的地方）</h2>
+  <p>下表是 <b>scale = 1</b>（电脑 / iPad）时的基准像素。手机上整体乘 <code>--ui-scale</code>。</p>
+  <table>
+    <thead><tr><th>UI 元素</th><th>位置</th><th>占用尺寸（基准 px）</th><th>换算成禁区</th></tr></thead>
+    <tbody>
+      <tr><td>顶部 HUD 条</td><td>顶部居中</td><td class="num">高 42 + 上边距 14</td><td>顶部 <b class="hi">56px</b> 通栏</td></tr>
+      <tr><td>货币 / 状态</td><td>右上</td><td class="num">约 130 × 36</td><td>右上 <b class="hi">146×50</b></td></tr>
+      <tr><td>左侧按钮列</td><td>左侧居中竖排 5 个</td><td class="num">64 宽 + 左 16</td><td>左侧 <b class="hi">80px</b> 竖条</td></tr>
+      <tr><td>虚拟摇杆</td><td>左下</td><td class="num">128×128 + 边距 28</td><td>左下 <b class="hi">156×156</b> 方块</td></tr>
+      <tr><td>拖动提示</td><td>摇杆上方</td><td class="num">高约 16</td><td>已在摇杆禁区内</td></tr>
+    </tbody>
+  </table>
+  <div class="rule">
+    <span class="rt">📐 摇杆位置是陛下钦定的，不许再挪</span>
+    摇杆<b>永远在左下</b>，左侧按钮<b>永远竖排</b>，衣橱<b>永远左预览右面板</b>。
+    手机上只缩尺寸，不换方向 —— 手机横屏看到的布局 = 电脑横屏看到的布局。
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section>
+  <h2><span class="n">4</span>各机型实测数值</h2>
+  <p><code>--ui-scale</code> 由 <code>responsive.js</code> 自动算：<b>scale = clamp(屏幕高 / 620, 0.58, 1)</b>，电脑恒为 1。</p>
+  <table>
+    <thead><tr><th>机型</th><th>视口 (CSS px)</th><th>ui-scale</th><th>世界画布(16:9)</th><th>左右留边</th><th>内容安全区</th></tr></thead>
+    <tbody id="tbody-dev"></tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--sub)">
+    * 视口为浏览器 CSS 像素（已减去地址栏/刘海）。内容安全区 = 世界画布内缩 <b>左6% 右6% 上10% 下10%</b> 后的可用区。
+  </p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section>
+  <h2><span class="n">5</span>实时预览：切机型看安全区</h2>
+  <div class="devbar" id="devbar"></div>
+  <div class="stage-shell">
+    <div class="stage" id="stage"></div>
+    <div class="stage-cap" id="stage-cap"></div>
+  </div>
+  <div class="readout" id="readout"></div>
+  <p style="font-size:12.5px;color:var(--sub);margin-top:12px">
+    图例：<span style="color:var(--danger);font-weight:800">红色斜纹 = UI 禁区</span>（不能放东西）·
+    <span style="color:var(--warn);font-weight:800">橙色虚线 = 世界画布内安全边距</span> ·
+    <span style="color:var(--safe);font-weight:800">绿色框 = 内容安全区</span>（可编辑）·
+    深色斜纹 = contain 留边
+  </p>
+</section>
+
+<!-- ============ 6 ============ -->
+<section>
+  <h2><span class="n">6</span>地图编辑器怎么用</h2>
+  <h3>6.1 画板尺寸</h3>
+  <ul>
+    <li>画板固定 <b>16:9</b>，逻辑分辨率建议 <b>1600×900</b>（够清晰，也不至于太大）。</li>
+    <li>编辑器里看到的画板比例 = 玩家看到的比例，<b>所见即所得</b>。</li>
+    <li>节点位置存百分比，画板多大都不影响最终效果。</li>
+  </ul>
+  <h3>6.2 必开「安全框」叠加</h3>
+  <p>编辑时叠加显示安全区边框（虚线橙色 + 绿色实心框），
+    <b>所有地块、触发区、装饰都必须放在绿框以内</b>。这是防止"电脑上好看、手机上点不到"的唯一硬手段。</p>
+  <h3>6.3 最小尺寸建议</h3>
+  <table>
+    <thead><tr><th>元素</th><th>最小尺寸（占画布）</th><th>1600×900 下</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>地块 tile</td><td class="num">宽 6% × 高 10%</td><td class="num">96 × 90 px</td><td>手机上约 43px，拇指可点</td></tr>
+      <tr><td>触发区 trigger</td><td class="num">宽 8% × 高 12%</td><td class="num">128 × 108 px</td><td>走入式触发，太小走不进去</td></tr>
+      <tr><td>可点装饰</td><td class="num">48 × 48 px</td><td class="num">48 × 48 px</td><td>低于 44px 手指点不准</td></tr>
+      <tr><td>建筑（大厅）</td><td class="num">宽 10% × 高 22%</td><td class="num">160 × 198 px</td><td>手机上约 71px，看得清</td></tr>
+    </tbody>
+  </table>
+  <h3>6.4 摆位速查</h3>
+  <div class="kv">
+    <span class="k">x 范围</span><span><b>0.06 ~ 0.94</b>（左右各留 6%）</span>
+    <span class="k">y 范围</span><span><b>0.10 ~ 0.90</b>（上下各留 10%）</span>
+    <span class="k">中心点</span><span><code>x:0.5, y:0.5</code></span>
+    <span class="k">六宫格</span><span>x ∈ {0.22, 0.5, 0.78}，y ∈ {0.30, 0.5, 0.70}</span>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section>
+  <h2><span class="n">7</span>一句话记住</h2>
+  <div class="rule green" style="font-size:15px">
+    <span class="rt">🎯 三句话</span>
+    ① 画布永远 <b>16:9</b>，坐标永远 <b>0~1</b>；<br>
+    ② 内容只放中间 <b>88% × 80%</b>，四周是 UI 的地盘；<br>
+    ③ 手机只是<b>把电脑那套整体缩小</b>，布局方向一个都不许改。
+  </div>
+</section>
+
+<footer>拾光·澈屿 · 全机型安全区方案 · 随项目实时更新</footer>
+</div>
+
+<script>
+/* ================= 机型数据 ================= */
+var DEVICES = [
+  { id:'phone-s',  nm:'iPhone 14 Pro 横屏', w:852,  h:393,  tag:'最紧凑' },
+  { id:'phone-m',  nm:'小米 / 华为 横屏',    w:855,  h:400,  tag:'最常见' },
+  { id:'phone-l',  nm:'大屏手机 横屏',       w:932,  h:430,  tag:'' },
+  { id:'pad-mini', nm:'iPad mini 横屏',      w:1133, h:744,  tag:'' },
+  { id:'pad',      nm:'iPad 横屏',           w:1180, h:820,  tag:'' },
+  { id:'pad-pro',  nm:'iPad 12.9 横屏',      w:1366, h:1024, tag:'' },
+  { id:'laptop',   nm:'笔记本',              w:1440, h:900,  tag:'' },
+  { id:'desktop',  nm:'电脑 1080P',          w:1920, h:1080, tag:'设计基准' }
+];
+
+/* --ui-scale 算法（与 responsive.js 完全一致） */
+function calcScale(w, h){
+  var handheld = (w <= 1366) && (h <= 1024) && (h < 900);
+  // 方案页只做演示：用真实算法
+  var REF_H = 620;
+  var s = Math.max(0.58, Math.min(1, h / REF_H));
+  if(!handheld) s = 1;
+  if(w < 520) s = Math.min(s, Math.max(0.58, Math.min(1, w / 520)));
+  return s;
+}
+
+var WORLD_ASPECT = 16 / 9;
+function worldFit(W, H){
+  var w = W, h = W / WORLD_ASPECT;
+  if(h > H){ h = H; w = H * WORLD_ASPECT; }
+  return { w:Math.round(w), h:Math.round(h), ox:Math.round((W - w) / 2), oy:Math.round((H - h) / 2) };
+}
+
+/* 内容安全边距（占世界画布的比例） */
+var PAD_X = 0.06, PAD_Y = 0.10;
+
+/* ============ 表格 ============ */
+(function(){
+  var tb = document.getElementById('tbody-dev');
+  var html = '';
+  DEVICES.forEach(function(d){
+    var s = calcScale(d.w, d.h);
+    var f = worldFit(d.w, d.h);
+    var sw = Math.round(f.w * (1 - PAD_X * 2));
+    var sh = Math.round(f.h * (1 - PAD_Y * 2));
+    html += '<tr>'
+      + '<td><b>' + d.nm + '</b>' + (d.tag ? ' <span style="font-size:11px;color:var(--accent)">· '+d.tag+'</span>' : '') + '</td>'
+      + '<td class="num">' + d.w + ' × ' + d.h + '</td>'
+      + '<td class="num">' + s.toFixed(2) + '</td>'
+      + '<td class="num">' + f.w + ' × ' + f.h + '</td>'
+      + '<td class="num">' + (f.ox > 0 ? '左右各 ' + f.ox : (f.oy > 0 ? '上下各 ' + f.oy : '无')) + '</td>'
+      + '<td class="num">' + sw + ' × ' + sh + '</td>'
+      + '</tr>';
+  });
+  tb.innerHTML = html;
+})();
+
+/* ============ 交互预览 ============ */
+var cur = DEVICES[1];
+var bar = document.getElementById('devbar');
+DEVICES.forEach(function(d){
+  var b = document.createElement('button');
+  b.className = 'devbtn' + (d.id === cur.id ? ' on' : '');
+  b.textContent = d.nm;
+  b.onclick = function(){
+    cur = d;
+    Array.prototype.forEach.call(bar.children, function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    render();
+  };
+  bar.appendChild(b);
+});
+
+function render(){
+  var stage = document.getElementById('stage');
+  var d = cur, s = calcScale(d.w, d.h), f = worldFit(d.w, d.h);
+
+  /* 舞台按屏幕比例等比缩小到最大 760px 宽 */
+  var MAXW = 760, MAXH = 330;
+  var k = Math.min(MAXW / d.w, MAXH / d.h);
+  var SW = Math.round(d.w * k), SH = Math.round(d.h * k);
+  stage.style.width = SW + 'px';
+  stage.style.height = SH + 'px';
+  stage.innerHTML = '';
+
+  function add(cls, x, y, w, h, label, lx, ly){
+    var el = document.createElement('div');
+    el.className = cls;
+    el.style.left = (x * k) + 'px';
+    el.style.top = (y * k) + 'px';
+    el.style.width = (w * k) + 'px';
+    el.style.height = (h * k) + 'px';
+    if(label){
+      var t = document.createElement('div');
+      t.className = 'lbl';
+      t.textContent = label;
+      t.style.left = (lx || 4) + 'px';
+      t.style.top = (ly !== undefined ? ly : 3) + 'px';
+      if(/danger/.test(cls)) t.style.cssText += 'background:rgba(224,85,107,.92);color:#fff;';
+      else if(/safe/.test(cls)) t.style.cssText += 'background:rgba(63,168,122,.92);color:#fff;';
+      else if(/inner/.test(cls)) t.style.cssText += 'background:rgba(224,149,47,.92);color:#fff;';
+      else t.style.cssText += 'background:rgba(47,37,69,.85);color:#fff;';
+      el.appendChild(t);
+    }
+    stage.appendChild(el);
+  }
+
+  /* contain 留边 */
+  if(f.ox > 0){
+    add('zone-letterbox', 0, 0, f.ox, d.h, '');
+    add('zone-letterbox', d.w - f.ox, 0, f.ox, d.h, '');
+  } else if(f.oy > 0){
+    add('zone-letterbox', 0, 0, d.w, f.oy, '');
+    add('zone-letterbox', 0, d.h - f.oy, d.w, f.oy, '');
+  }
+
+  /* 世界画布 */
+  add('zone-world', f.ox, f.oy, f.w, f.h, '世界画布 ' + f.w + '×' + f.h, 4, 3);
+
+  /* 内容安全区（画布内缩） */
+  var ix = f.ox + f.w * PAD_X, iy = f.oy + f.h * PAD_Y;
+  var iw = f.w * (1 - PAD_X * 2), ih = f.h * (1 - PAD_Y * 2);
+  add('zone-inner', ix, iy, iw, ih, '内容安全区', 4, 3);
+
+  /* UI 禁区（相对屏幕，乘 scale） */
+  var TOP = 56 * s, LEFT = 80 * s, RIGHT = 80 * s, JOY = 156 * s;
+  add('zone-danger', 0, 0, d.w, TOP, '顶部 HUD ' + Math.round(TOP), 4, Math.max(0, TOP * k / 2 - 8));
+  add('zone-danger', 0, TOP, LEFT, d.h - TOP, '左按钮列', 2, 40);
+  add('zone-danger', d.w - RIGHT, TOP, RIGHT, d.h - TOP, '右', 2, 40);
+  add('zone-danger', 0, d.h - JOY, JOY, JOY, '摇杆 ' + Math.round(128 * s), 4, 4);
+  add('zone-danger', d.w - 146 * s, 0, 146 * s, 50 * s, '货币', 4, 3);
+
+  /* 说明 */
+  document.getElementById('stage-cap').innerHTML =
+    '<b>' + d.nm + '</b>　屏幕 ' + d.w + '×' + d.h
+    + '　·　ui-scale <b>' + s.toFixed(2) + '</b>'
+    + '　·　世界画布 <b>' + f.w + '×' + f.h + '</b>'
+    + (f.ox > 0 ? '（左右各留 ' + f.ox + '）' : (f.oy > 0 ? '（上下各留 ' + f.oy + '）' : '（满屏贴合）'));
+
+  /* 数值卡片 */
+  var rows = [
+    ['UI 缩放 scale', s.toFixed(2), '倍'],
+    ['世界画布', f.w + '×' + f.h, 'px'],
+    ['contain 留边', Math.max(f.ox, f.oy), 'px'],
+    ['顶部禁区', Math.round(TOP), 'px'],
+    ['左/右禁区', Math.round(LEFT), 'px'],
+    ['摇杆禁区', Math.round(128 * s), 'px'],
+    ['内容安全区', Math.round(iw) + '×' + Math.round(ih), 'px'],
+    ['占屏比', Math.round(iw / d.w * 100) + '%', '宽']
+  ];
+  document.getElementById('readout').innerHTML = rows.map(function(r){
+    return '<div class="ro"><div class="k">' + r[0] + '</div><div class="v">' + r[1]
+      + ' <span class="u">' + r[2] + '</span></div></div>';
+  }).join('');
+}
+render();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>
