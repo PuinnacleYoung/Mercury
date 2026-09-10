@@ -1,0 +1,2624 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="KcvWkOfdI0KtSCMHHCeig4">
+<head data-page-node-id="3PQiJph0mYgKyLG10s8ny7">
+<meta charset="UTF-8" data-page-node-id="AstfBtrgdK5LFNK3s5OeWt">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="jqXscFIIsE1RTZytMyXEHD">
+<title>换装引擎 · 素体 / 服装 / 衣橱</title>
+<style>
+  :root{
+    --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+    --line:#e6ddf4; --line2:#efeaf8;
+    --paper:rgba(var(--glass-rgb),0.95); --paper2:#faf7ff;
+    --bg1:#f3eef9; --bg2:#e9e1f5; --bg3:#ddd2f0;
+    --pink:#a78cd9; --pink-soft:#c9bde8; --pink-tint:#f1ebfb;
+    --violet:#7f66c4; --violet-soft:#d6caf0; --violet-tint:#ece4fa;
+    --amber:#b8860b; --mint:#6b9080; --danger:#c75050;
+    --shadow-sm:0 4px 14px rgba(var(--shadow-rgb),.10);
+    --shadow-md:0 10px 30px rgba(var(--shadow-rgb),.14);
+    --shadow-lg:0 20px 50px rgba(var(--shadow-rgb),.20);
+    --glass:rgba(var(--glass-rgb),0.78);
+    --glass-border:rgba(var(--accent-rgb),0.2);
+    --gold-glow:rgba(var(--accent-rgb),.35);
+    --accent-rgb:167,140,217; --violet-rgb:127,102,196; --shadow-rgb:110,90,160; --glass-rgb:255,253,252;
+  }
+  :root[data-theme="pink"]{
+    --ink:#4a3340; --sub:#9b7d8a; --hint:#c9aab8;
+    --line:#f6dde7; --line2:#fbeef3; --paper2:#fff7fa;
+    --bg1:#fdf0f5; --bg2:#fbe2ec; --bg3:#f6cfe0;
+    --pink:#e88bb0; --pink-soft:#f3b7cd; --pink-tint:#fdeef4;
+    --violet:#d56a94; --violet-soft:#f0c3d5; --violet-tint:#fbe4ec;
+    --accent-rgb:232,139,176; --violet-rgb:213,106,148; --shadow-rgb:150,80,110; --glass-rgb:255,253,254;
+  }
+  :root[data-theme="mint"]{
+    --ink:#2f3a36; --sub:#6e8a80; --hint:#9cb5ac;
+    --line:#d8ece5; --line2:#eaf6f1; --paper2:#f3fbf8;
+    --bg1:#eef7f3; --bg2:#dff0e9; --bg3:#cfe7de;
+    --pink:#7cc4ad; --pink-soft:#a9d9c9; --pink-tint:#e6f5f0;
+    --violet:#5aa78f; --violet-soft:#a5d5c4; --violet-tint:#e0f2ec;
+    --accent-rgb:124,196,173; --violet-rgb:90,167,143; --shadow-rgb:70,130,110; --glass-rgb:252,255,254;
+  }
+  :root[data-theme="sky"]{
+    --ink:#2f3d52; --sub:#6e8299; --hint:#9db1c7;
+    --line:#dae6f5; --line2:#ecf3fb; --paper2:#f4f8fd;
+    --bg1:#eef5fd; --bg2:#dfebf9; --bg3:#cfe0f4;
+    --pink:#7fafe0; --pink-soft:#accced; --pink-tint:#e8f1fb;
+    --violet:#5d8fd0; --violet-soft:#a6c7ec; --violet-tint:#e1edf9;
+    --accent-rgb:127,175,224; --violet-rgb:93,143,208; --shadow-rgb:70,110,160; --glass-rgb:253,254,255;
+  }
+  :root[data-theme="gold"]{
+    --ink:#4a3d2a; --sub:#9b8a6b; --hint:#c9b89b;
+    --line:#efe4cd; --line2:#f7f0e0; --paper2:#fbf6ea;
+    --bg1:#faf5ea; --bg2:#f3e9d5; --bg3:#eadcc2;
+    --pink:#c9a96e; --pink-soft:#ddc7a0; --pink-tint:#f6eeda;
+    --violet:#a8864e; --violet-soft:#d2bc90; --violet-tint:#f0e5cf;
+    --accent-rgb:201,169,110; --violet-rgb:168,134,78; --shadow-rgb:150,120,70; --glass-rgb:255,253,248;
+  }
+  :root[data-theme="dark"]{
+    --ink:#ece7f8; --sub:#a99fc4; --hint:#7d7598;
+    --line:#3a3350; --line2:#433b5e; --paper2:#352f4e;
+    --bg1:#2b2440; --bg2:#241e36; --bg3:#1c172c;
+    --pink:#b49ae0; --pink-soft:#8f78c9; --pink-tint:#3a3350;
+    --violet:#8f78c9; --violet-soft:#6f5ba3; --violet-tint:#433b5e;
+    --accent-rgb:180,154,224; --violet-rgb:143,120,201; --shadow-rgb:10,8,18; --glass-rgb:44,38,62;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 800px at 15% -10%, rgba(var(--accent-rgb),.3) 0%, transparent 60%),
+      radial-gradient(1000px 700px at 100% 100%, rgba(var(--violet-rgb),.25) 0%, transparent 55%),
+      linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 70%, var(--bg3) 100%);
+    color:var(--ink);
+    font-family:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,sans-serif;
+    font-weight:500; letter-spacing:.2px;
+    min-height:100vh; display:flex; flex-direction:column;
+    background-size:cover; background-position:center;
+    transition:background .4s;
+    overflow-x:auto; /* 缩放页面时允许横向滚动条兜底，避免内容被错位切掉 */
+  }
+  button,input,select{font-family:inherit;}
+  header{
+    padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:20px;
+    position:sticky; top:0; z-index:30;
+    background:rgba(var(--glass-rgb),.72); backdrop-filter:blur(20px) saturate(180%);
+    border-bottom:1px solid var(--glass-border);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .logo{width:34px; height:34px; border-radius:12px; background:linear-gradient(135deg,var(--pink),var(--violet)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; box-shadow:0 6px 16px var(--gold-glow);}
+  .brand h1{font-size:16px; font-weight:800; letter-spacing:.5px;}
+  .brand .sub{font-size:11px; color:var(--sub); margin-top:1px;}
+  .tabs{display:flex; gap:6px; background:rgba(var(--glass-rgb),.72); padding:6px; border-radius:999px; box-shadow:var(--shadow-sm); border:1px solid var(--glass-border); backdrop-filter:blur(10px);}
+  .tabs button{padding:8px 20px; border-radius:999px; border:0; background:transparent; color:var(--sub); font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; display:flex; align-items:center; gap:6px;}
+  .tabs button:hover{color:var(--ink);}
+  .tabs button.on{background:linear-gradient(135deg,var(--pink),var(--violet)); color:#fff; box-shadow:0 6px 18px var(--gold-glow);}
+  .tabs .dot{width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.5;}
+  .tabs button.on .dot{opacity:1; background:#fff;}
+  .top-meta{font-size:12px; color:var(--sub);}
+  .top-meta b{color:var(--ink);}
+  .page{flex:1; display:none; padding:20px; overflow:auto; min-height:0;}
+  .page.on{display:flex;}
+  /* grid/flex 子项加 min-width:0，防止子元素 min-content 把容器撑大，缩放时错位 */
+  .card, .studio-body, .studio-cloth, .wardrobe-frame, .stage-col, .edit-col, .cat-col, .right-panel, .parts-grid > *, .wb-items{min-width:0;}
+  .card{background:var(--glass); border-radius:20px; box-shadow:var(--shadow-md); padding:20px; display:flex; flex-direction:column; min-height:0; backdrop-filter:blur(16px); border:1px solid var(--glass-border);}
+  .card h2{font-size:17px; font-weight:800;}
+  .card .card-sub{font-size:12px; color:var(--sub); margin-top:3px;}
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  .badge{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700;}
+  .badge.pink{background:var(--pink-tint); color:var(--pink);}
+  .badge.violet{background:var(--violet-tint); color:var(--violet);}
+  .badge.mint{background:#e8f0ec; color:#4a7a66;}
+  .stage-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:14px; position:relative; background:var(--glass); border-radius:16px; border:1px solid var(--glass-border); min-height:0; backdrop-filter:blur(8px);}
+  .stage{position:relative; width:300px; height:533px; flex-shrink:0; background:radial-gradient(circle at 50% 92%, rgba(var(--accent-rgb),.12) 0%, transparent 60%), repeating-conic-gradient(rgba(var(--glass-rgb),.5) 0% 25%, rgba(var(--glass-rgb),.5) 0% 50%) 0 0 / 20px 20px; border:1px solid var(--line); border-radius:12px; overflow:hidden; touch-action:none; user-select:none;}
+  .stage-tag{position:absolute; top:10px; left:10px; padding:5px 12px; border-radius:999px; background:rgba(var(--glass-rgb),.92); font-size:11px; font-weight:700; color:var(--violet); letter-spacing:.5px; box-shadow:var(--shadow-sm);}
+  .stage-hint{position:absolute; bottom:10px; left:10px; right:10px; padding:7px 12px; border-radius:12px; background:rgba(var(--glass-rgb),.88); backdrop-filter:blur(6px); font-size:12px; color:var(--sub); text-align:center;}
+  .stage-hint b{color:var(--ink);}
+  .layer-el{position:absolute; transform-origin:center center; touch-action:none;}
+  .layer-el img{width:100%; height:100%; display:block; pointer-events:none; object-fit:fill;}
+  .layer-el .flip-wrap{position:absolute; inset:0; transform-origin:center center;}
+  .layer-el.selected{outline:2px solid var(--pink); outline-offset:2px; border-radius:4px;}
+  .joint-dot{position:absolute; width:18px; height:18px; border-radius:50%; border:3px solid #fff; background:#c75050; box-shadow:0 2px 6px rgba(0,0,0,.3); z-index:15; transform:translate(-50%,-50%); cursor:grab; touch-action:none;}
+  .handle{position:absolute; width:16px; height:16px; border-radius:50%; border:2px solid #fff; z-index:12; touch-action:none; transform:translate(-50%,-50%); box-shadow:0 2px 5px rgba(0,0,0,.28); display:none;}
+  .layer-el.selected .handle{display:block;}
+  .handle.scale{background:var(--violet); left:100%; top:100%; cursor:nwse-resize;}
+  .handle.rotate{background:#f0a500; left:100%; top:0; cursor:grab;}
+  /* 服装素材自由变换手柄（8 向缩放 + 旋转），跟随素材一起旋转/镜像 */
+  .pc-h{position:absolute; width:13px; height:13px; border-radius:50%; border:2px solid #fff; z-index:14; touch-action:none; pointer-events:auto; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,.32);}
+  .pc-h.corner{background:var(--violet);}
+  .pc-h.edge{background:#37c8b0; width:10px; height:10px;}
+  .pc-h.rot{background:#f0a500; width:15px; height:15px; cursor:grab;}
+  .pc-hnw{left:0; top:0; cursor:nwse-resize;} .pc-hne{left:100%; top:0; cursor:nesw-resize;}
+  .pc-hsw{left:0; top:100%; cursor:nesw-resize;} .pc-hse{left:100%; top:100%; cursor:nwse-resize;}
+  .pc-hn{left:50%; top:0; cursor:ns-resize;} .pc-hs{left:50%; top:100%; cursor:ns-resize;}
+  .pc-hw{left:0; top:50%; cursor:ew-resize;} .pc-he{left:100%; top:50%; cursor:ew-resize;}
+  .pc-hrot{left:50%; top:-16px;}
+  .piece-sel{outline:1px dashed var(--pink); outline-offset:3px; border-radius:3px;}
+  .mid-line{position:absolute; top:0; bottom:0; left:50%; width:0; border-left:1px dashed rgba(var(--violet-rgb),.55); z-index:8; pointer-events:none; transition:border-color .12s, box-shadow .12s;}
+  .mid-line::before{content:''; position:absolute; top:-1px; left:-4px; width:8px; height:8px; border-radius:50%; background:var(--violet); opacity:.6;}
+  .mid-line::after{content:''; position:absolute; bottom:-1px; left:-4px; width:8px; height:8px; border-radius:50%; background:var(--violet); opacity:.6;}
+  .mid-line.snap{border-left:2px dashed var(--pink); box-shadow:0 0 12px var(--gold-glow);}
+  .mid-line.snap::before,.mid-line.snap::after{background:var(--pink); opacity:1;}
+  .sublayer-slot{position:absolute; border:2px dashed var(--violet); border-radius:10px; background:rgba(var(--violet-rgb),.06); pointer-events:auto; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:4px; transition:.15s; z-index:8;}
+  .sublayer-slot:hover, .sublayer-slot.drag-hover{background:rgba(var(--accent-rgb),.14); border-color:var(--pink);}
+  .sublayer-slot.on{border-color:var(--pink); background:rgba(var(--accent-rgb),.08); border-style:solid;}
+  .sublayer-slot.drag-hover{border-style:solid; box-shadow:0 0 0 4px rgba(var(--accent-rgb),.25);}
+  /* 拖拽上传覆盖反馈（素体零件 / 服装素材均适用） */
+  .drag-hover{outline:3px dashed var(--pink) !important; outline-offset:-3px; background:rgba(var(--accent-rgb),.12) !important;}
+  .sublayer-slot .slot-label{font-size:11px; font-weight:800; color:var(--violet); background:rgba(255,255,255,.85); padding:2px 8px; border-radius:6px;}
+  .sublayer-slot.on .slot-label{color:var(--pink);}
+  .sublayer-slot .slot-hint{font-size:10px; color:var(--hint);}
+  .btn{padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:rgba(var(--glass-rgb),.92); color:var(--ink); font-size:12px; font-weight:700; cursor:pointer; transition:all .18s; white-space:nowrap; display:inline-flex; align-items:center; gap:5px;}
+  .btn:hover{border-color:var(--pink-soft); background:var(--pink-tint);}
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:linear-gradient(135deg,var(--pink),var(--violet)); border-color:transparent; color:#fff; box-shadow:0 4px 12px var(--gold-glow);}
+  .btn.primary:hover{filter:brightness(1.05);}
+  .btn.violet{background:var(--violet-tint); border-color:var(--violet-soft); color:var(--violet);}
+  .btn.mint{background:#e5f5ee; border-color:#c4e8d7; color:#2f8a67;}
+  .btn.amber{background:#fdf1d9; border-color:#f7dfa4; color:#a06a00;}
+  .btn.danger{background:#fbecec; border-color:#f2c9c9; color:var(--danger);}
+  .btn.on{background:linear-gradient(135deg,var(--pink),var(--violet)); border-color:transparent; color:#fff;}
+  .btn.small{padding:5px 10px; font-size:11px; border-radius:8px;}
+  .btn.tiny{padding:3px 7px; font-size:11px; border-radius:6px;}
+  .btn-row{display:flex; gap:6px; flex-wrap:wrap;}
+  .studio-body{width:min(1360px,100%); margin:0 auto; display:grid; grid-template-columns:1.05fr 1fr; gap:16px; height:100%;}
+  .parts-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .part-slot{background:var(--paper2); border:2px solid transparent; border-radius:12px; padding:8px 5px; text-align:center; cursor:pointer; transition:.18s;}
+  .part-slot:hover{border-color:var(--line);}
+  .part-slot.on{background:linear-gradient(135deg,var(--pink-tint),var(--violet-tint)); border-color:var(--pink);}
+  .part-slot .thumb{width:100%; aspect-ratio:1; background:#fff; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:5px; box-shadow:inset 0 0 0 1px var(--line2);}
+  .part-slot .thumb img{max-width:80%; max-height:80%; object-fit:contain;}
+  .part-slot .name{font-size:11px; font-weight:700;}
+  .studio-cloth{width:100%; display:grid; grid-template-columns:210px 1fr 340px; gap:14px; height:100%;}
+  @media(max-width:1200px){ .studio-cloth{grid-template-columns:180px 1fr 300px;} }
+  /* 窄视口兜底：缩放 / 小屏时单列堆叠，避免 grid 列被压成 0 宽导致内容错位 */
+  @media(max-width:1000px){
+    .studio-cloth{grid-template-columns:1fr; grid-auto-rows:min-content;}
+    .studio-body{grid-template-columns:1fr;}
+    .wardrobe-frame{flex-direction:column; max-height:none;}
+    .stage-wrap{min-height:560px;}
+    .parts-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  .cat-col{display:flex; flex-direction:column; gap:4px; overflow-y:auto; padding:14px 12px; background:rgba(var(--glass-rgb),.65); backdrop-filter:blur(16px); border-radius:20px; box-shadow:var(--shadow-md); border:1px solid var(--glass-border);}
+  .cat-col h3{font-size:11px; font-weight:800; color:var(--sub); letter-spacing:1px; padding:4px 8px; margin-top:6px;}
+  .cat-col h3:first-child{margin-top:0;}
+  .cat-btn{display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:11px; cursor:pointer; background:transparent; border:0; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--ink); transition:.15s;}
+  .cat-btn:hover{background:var(--pink-tint);}
+  .cat-btn.on{background:linear-gradient(135deg,var(--pink),var(--violet)); color:#fff;}
+  .cat-btn .em{font-size:16px;}
+  .cat-btn .cnt{margin-left:auto; font-size:10px; opacity:.6; background:rgba(0,0,0,.05); padding:1px 6px; border-radius:99px;}
+  .cat-btn.on .cnt{opacity:.9; background:rgba(255,255,255,.25);}
+  .item-list-mini{display:flex; flex-direction:column; gap:4px; padding-top:8px; margin-top:6px; border-top:1px dashed var(--line);}
+  .item-list-mini-title{font-size:10px; color:var(--sub); font-weight:800; letter-spacing:1px; padding:2px 8px;}
+  .mini-item{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:9px; cursor:pointer; background:var(--paper2); border:1.5px solid transparent; font-size:12px; font-weight:600; color:var(--ink);}
+  .mini-item:hover{border-color:var(--pink-soft);}
+  .mini-item.on{border-color:var(--pink); background:var(--pink-tint);}
+  .mini-item .th{width:24px; height:24px; border-radius:6px; background:#fff; box-shadow:inset 0 0 0 1px var(--line2); flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center;}
+  .mini-item .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .mini-item .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;}
+  .stage-col{display:flex; flex-direction:column; gap:10px; min-width:0;}
+  .stage-toolbar{display:flex; gap:8px; align-items:center; padding:10px 14px; background:rgba(var(--glass-rgb),.65); backdrop-filter:blur(12px); border-radius:14px; box-shadow:var(--shadow-sm); border:1px solid var(--glass-border); flex-wrap:wrap;}
+  .stage-toolbar .title{font-size:14px; font-weight:800; margin-right:auto;}
+  .stage-toolbar .title .accent{background:linear-gradient(135deg,var(--pink),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .edit-col{display:flex; flex-direction:column; gap:10px; overflow:hidden;}
+  .edit-empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(var(--glass-rgb),.5); backdrop-filter:blur(16px); border-radius:20px; box-shadow:var(--shadow-md); border:1px solid var(--glass-border); padding:30px 20px; text-align:center; color:var(--sub); font-size:13px; gap:10px;}
+  .edit-empty .big{font-size:36px;}
+  .item-name-input{width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:14px; font-weight:700; color:var(--ink);}
+  .item-name-input:focus{outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pink-tint);}
+  .sub-tabs{display:flex; flex-wrap:wrap; gap:5px;}
+  .sub-tab{padding:6px 11px; border-radius:9px; background:var(--paper2); color:var(--sub); font-size:12px; font-weight:700; cursor:pointer; border:1.5px solid transparent; transition:.15s; display:inline-flex; gap:5px; align-items:center;}
+  .sub-tab:hover{color:var(--ink);}
+  .sub-tab.on{background:var(--pink); color:#fff;}
+  .sub-tab .zn{font-size:10px; opacity:.7;}
+  .sub-tab .mirror-tag{font-size:9px; padding:1px 5px; border-radius:4px; background:rgba(var(--violet-rgb),.15); color:var(--violet);}
+  .sub-tab.on .mirror-tag{background:rgba(255,255,255,.3); color:#fff;}
+  .mirror-row{display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--violet-tint); border-radius:10px; font-size:12px;}
+  .mirror-row label{font-weight:700; color:var(--violet); cursor:pointer; display:flex; align-items:center; gap:6px;}
+  .mirror-row input{accent-color:var(--violet);}
+  .piece-list{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:5px; padding-right:2px; min-height:60px;}
+  .piece-list::-webkit-scrollbar{width:5px;}
+  .piece-list::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+  .piece{display:flex; align-items:center; gap:6px; padding:6px 8px; border-radius:10px; background:var(--paper2); border:1.5px solid transparent; cursor:pointer; font-size:12px;}
+  .piece:hover{border-color:var(--pink-soft);}
+  .piece.on{border-color:var(--pink); background:var(--pink-tint);}
+  .piece .th{width:28px; height:28px; border-radius:6px; background:#fff; box-shadow:inset 0 0 0 1px var(--line2); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .piece .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .piece .nm{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700;}
+  .piece .ops{display:flex; gap:2px;}
+  .piece .ops button{width:22px; height:22px; border:0; background:transparent; border-radius:5px; cursor:pointer; font-size:12px; color:var(--sub);}
+  .piece .ops button:hover{background:#fff; color:var(--ink);}
+  .drop-hint{border:2px dashed var(--violet-soft); border-radius:12px; padding:14px 12px; text-align:center; font-size:12px; color:var(--violet); font-weight:700; background:var(--violet-tint); cursor:pointer; margin-top:6px;}
+  .drop-hint:hover, .drop-hint.drag-hover{background:var(--pink-tint); border-color:var(--pink); color:var(--pink); border-style:solid;}
+  /* 全局动画控制条：任何页面（素体工坊/服装工坊/衣橱）都能播放/停止走路挥手 */
+  .anim-fab{position:fixed; right:18px; bottom:18px; z-index:200; display:flex; gap:8px; padding:10px 12px; background:var(--glass); backdrop-filter:blur(20px) saturate(180%); border:1px solid var(--glass-border); border-radius:999px; box-shadow:var(--shadow-lg);}
+  .anim-fab .btn{white-space:nowrap; padding:8px 14px; font-size:13px;}
+  .anim-fab .btn.on{box-shadow:0 0 0 2px var(--pink);}
+  .wardrobe-frame{width:min(1120px,100%); height:100%; max-height:calc(100vh - 100px); margin:0 auto; display:flex; border-radius:24px; overflow:hidden; box-shadow:0 20px 60px rgba(var(--shadow-rgb),.2),0 0 0 1px rgba(var(--accent-rgb),.15); background:rgba(var(--glass-rgb),.45); backdrop-filter:blur(30px) saturate(180%); border:1px solid rgba(var(--accent-rgb),.18);}
+  .wb-left{flex:1.1; position:relative; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 40%, rgba(var(--glass-rgb),.95) 0%, rgba(var(--glass-rgb),.88) 55%, rgba(var(--accent-rgb),.5) 100%); backdrop-filter:blur(8px); border-right:1px solid rgba(var(--accent-rgb),.12);}
+  .wb-floor{position:absolute; left:12%; right:12%; bottom:16%; height:1px; background:linear-gradient(90deg,transparent, rgba(var(--accent-rgb),.3), transparent);}
+  .wb-right{flex:1; display:flex; flex-direction:column; padding:24px 26px; min-width:0; background:rgba(var(--glass-rgb),.5); backdrop-filter:blur(20px);}
+  .wb-head{display:flex; align-items:baseline; gap:10px; margin-bottom:14px;}
+  .wb-head h2{font-size:22px; font-weight:800; letter-spacing:1px;}
+  .wb-head .sub{font-size:12px; color:var(--sub);}
+  .wb-body{flex:1; display:flex; gap:14px; min-height:0;}
+  .wb-viewtip{display:none; margin:-4px 0 10px; padding:8px 12px; border-radius:10px; font-size:11.5px; font-weight:700; letter-spacing:.3px; background:linear-gradient(135deg, rgba(255,183,197,.22), rgba(167,139,250,.22)); border:1px solid var(--glass-border); color:var(--sub);}
+  .wb-viewtip.on{display:block;}
+  .wb-item.locked{opacity:.42; filter:grayscale(1); cursor:not-allowed;}
+  .wb-item.locked:hover{transform:none; border-color:var(--glass-border); box-shadow:none; background:rgba(var(--glass-rgb),.65);}
+  .wb-item .lockbadge{position:absolute; top:6px; right:6px; font-size:11px;}
+  .wb-item{position:relative;}
+  .wb-cat{display:flex; flex-direction:column; gap:4px; width:120px; flex-shrink:0; overflow-y:auto; padding:10px; background:rgba(var(--glass-rgb),.55); backdrop-filter:blur(16px); border-radius:16px; border:1px solid var(--glass-border); box-shadow:var(--shadow-sm);}
+  .wb-cat button{display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:10px; background:transparent; border:0; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--ink); cursor:pointer; transition:all .15s; letter-spacing:.3px;}
+  .wb-cat button:hover{background:var(--pink-tint);}
+  .wb-cat button.on{background:linear-gradient(135deg,var(--pink),var(--violet)); color:#fff; box-shadow:0 4px 12px var(--gold-glow);}
+  .wb-cat button .em{font-size:15px;}
+  .wb-cat button .cnt{margin-left:auto; font-size:10px; opacity:.6; background:rgba(0,0,0,.06); padding:1px 6px; border-radius:99px;}
+  .wb-cat button.on .cnt{opacity:.9; background:rgba(255,255,255,.25);}
+  .wb-items{flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px; align-content:start; padding-right:6px; scrollbar-width:thin; scrollbar-color:var(--line) transparent;}
+  .wb-items::-webkit-scrollbar{width:5px;}
+  .wb-items::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+  .wb-item{display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 8px; border-radius:14px; border:1.5px solid var(--glass-border); background:rgba(var(--glass-rgb),.65); backdrop-filter:blur(12px); cursor:pointer; transition:all .22s; text-align:center;}
+  .wb-item:hover{border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--glass-rgb),.92); transform:translateY(-3px); box-shadow:0 8px 20px rgba(var(--shadow-rgb),.14);}
+  .wb-item.on{border-color:var(--pink); background:rgba(var(--accent-rgb),.16); box-shadow:0 6px 20px var(--gold-glow);}
+  .wb-item .th{width:52px; height:52px; border-radius:12px; background:var(--paper2); flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.06),inset 0 0 0 1px var(--line2);}
+  .wb-item .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .wb-item .nm{font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; letter-spacing:.3px; max-width:100%;}
+  .wb-item .equip-check{width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; opacity:0; transition:.2s;}
+  .wb-item.on .equip-check{opacity:1; background:linear-gradient(135deg,var(--pink),var(--violet)); color:#fff; box-shadow:0 2px 8px var(--gold-glow);}
+  .wb-off{padding:12px 16px; border-radius:16px; background:rgba(var(--glass-rgb),.5); color:var(--sub); text-align:center; font-size:13px; font-weight:700; cursor:pointer; border:1.5px dashed var(--glass-border); backdrop-filter:blur(8px); transition:all .2s;}
+  .wb-off:hover{color:var(--danger); border-color:#f2c9c9; background:rgba(255,240,240,.7);}
+  .wb-outfits{margin-top:12px; border-top:1px solid rgba(var(--accent-rgb),.15); padding-top:12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+  .wb-outfits label{font-size:12px; font-weight:800;}
+  .wb-outfits select{flex:1; min-width:110px; padding:7px 10px; border-radius:10px; border:1px solid var(--glass-border); background:rgba(var(--glass-rgb),.72); font-size:12px; color:var(--ink); backdrop-filter:blur(8px);}
+  #toast{position:fixed; left:50%; top:20px; transform:translateX(-50%) translateY(-80px); z-index:200; background:rgba(58,51,80,.92); color:#fff; padding:10px 22px; border-radius:999px; font-size:13px; font-weight:600; transition:transform .3s; pointer-events:none; box-shadow:var(--shadow-md);}
+  #toast.show{transform:translateX(-50%) translateY(0);}
+  /* ===== 协作：导出 / 导入弹层 ===== */
+  .ovl{position:fixed; inset:0; z-index:150; background:rgba(30,25,45,.45); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px);}
+  .ovl-panel{width:min(640px,92vw); max-height:84vh; background:var(--glass); border:1px solid var(--glass-border); border-radius:20px; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; overflow:hidden;}
+  .ovl-head{display:flex; align-items:center; gap:8px; padding:14px 18px; border-bottom:1px solid var(--glass-border);}
+  .ovl-head h2{font-size:15px; font-weight:800; margin-right:auto;}
+  .ovl-body{flex:1; overflow-y:auto; padding:12px 18px; min-height:0;}
+  .ovl-foot{display:flex; gap:8px; justify-content:flex-end; align-items:center; padding:12px 18px; border-top:1px solid var(--glass-border);}
+  .ovl-foot .sel-count{margin-right:auto; font-size:12px; color:var(--sub); font-weight:700;}
+  .xp-tools{display:flex; gap:6px; align-items:center; margin-bottom:4px;}
+  .xp-tools input[type=text]{flex:1; padding:7px 10px; border-radius:10px; border:1px solid var(--glass-border); background:rgba(var(--glass-rgb),.72); font-size:12px; color:var(--ink);}
+  .xp-cathead{display:flex; align-items:center; gap:6px; margin:14px 0 4px; font-weight:800; font-size:13px; color:var(--ink);}
+  .xp-cathead .cnt{font-size:11px; color:var(--sub); font-weight:600;}
+  .xp-item{display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(var(--glass-rgb),.5); margin-bottom:6px; cursor:pointer;}
+  .xp-item input[type=checkbox]{width:16px; height:16px; accent-color:var(--pink); flex-shrink:0;}
+  .xp-th{width:38px; height:38px; border-radius:8px; overflow:hidden; background:rgba(var(--glass-rgb),.6); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:20px;}
+  .xp-th img{width:100%; height:100%; object-fit:contain;}
+  .xp-meta{flex:1; min-width:0;}
+  .xp-meta .nm{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .xp-meta .cat{font-size:11px; color:var(--sub);}
+  .imp-err{font-size:12px; color:#e24b4a; margin:6px 0;}
+  .divider{height:1px; background:var(--line); margin:10px 0;}
+  input[type=range]{-webkit-appearance:none; appearance:none; height:5px; border-radius:5px; background:var(--line); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--pink); cursor:pointer;}
+  .field{display:flex; align-items:center; gap:8px; font-size:12px; margin:4px 0;}
+  .field label{color:var(--sub); font-weight:700; min-width:38px;}
+  .field input[type=range]{flex:1;}
+  .field .v{min-width:38px; text-align:right; font-family:ui-monospace,monospace; color:var(--sub); font-size:11px;}
+  .anim-cfg{margin-top:2px; padding:10px 12px; border-radius:14px; background:rgba(var(--glass-rgb),.55); border:1px solid var(--line);}
+  .anim-cfg-title{font-size:13px; font-weight:800; color:var(--ink); margin-bottom:6px;}
+  .anim-cfg-title .hint{font-size:11px; color:var(--sub); font-weight:600; margin-left:4px;}
+  .anim-cfg .field label{min-width:48px;}
+  .anim-cfg .field .v{min-width:52px;}
+  .anim-cfg .arm-toggle{display:flex; gap:6px; flex:1;}
+
+  /* ---------- 套装编辑页 ---------- */
+  .set-frame{width:min(1400px,100%); margin:0 auto; display:grid; grid-template-columns:230px 1fr 330px; gap:16px; height:100%; min-height:0;}
+  @media(max-width:1100px){ .set-frame{grid-template-columns:200px 1fr 280px;} }
+  .set-list{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; min-height:0;}
+  .set-list .li{padding:9px 12px; border-radius:12px; border:1px solid var(--line); background:var(--paper2); font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px; transition:.15s; flex-shrink:0;}
+  .set-list .li:hover{border-color:var(--accent);}
+  .set-list .li.on{background:var(--accent); color:#fff; border-color:transparent;}
+  .set-list-btns{display:flex; gap:6px; margin-top:10px;}
+  .set-list-btns .btn{flex:1; justify-content:center;}
+  .set-stage-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:14px; background:linear-gradient(180deg,#fff 0%, var(--paper2) 100%); border-radius:16px; border:1px solid var(--line); min-height:0; overflow:hidden;}
+  .set-stage-wrap .stage{width:300px; height:480px; flex-shrink:0;}
+  .set-slots{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; min-height:0; padding-right:2px;}
+  .set-slot{display:flex; align-items:center; gap:8px;}
+  .set-slot label{font-size:12px; font-weight:700; color:var(--sub); width:56px; flex-shrink:0;}
+  .set-slot select{flex:1; min-width:0; padding:7px 9px; border-radius:10px; border:1px solid var(--line); background:var(--paper2); font-size:12px; color:var(--ink);}
+  .set-foot{border-top:1px solid var(--line); margin-top:10px; padding-top:10px; display:flex; flex-direction:column; gap:7px;}
+  .set-foot .fl{font-size:12px; font-weight:700; color:var(--sub);}
+  .set-foot input[type=text]{width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:var(--paper2); font-size:13px; color:var(--ink);}
+  .tag-chk{display:flex; flex-wrap:wrap; gap:6px;}
+  .tag-chk span{padding:5px 11px; border-radius:999px; border:1px solid var(--line); background:var(--paper2); font-size:11px; font-weight:700; cursor:pointer; transition:.15s; color:var(--sub);}
+  .tag-chk span.on{background:var(--accent); color:#fff; border-color:transparent;}
+  .price-row{display:flex; gap:6px; align-items:center;}
+  .price-row i{font-style:normal; font-size:14px; width:20px; text-align:center;}
+  .price-row input{flex:1; min-width:0; padding:7px 9px; border-radius:10px; border:1px solid var(--line); background:var(--paper2); font-size:12px; color:var(--ink);}
+  .limit-row{display:flex; gap:6px; align-items:center;}
+  .limit-row input{flex:1; min-width:0; padding:7px 8px; border-radius:10px; border:1px solid var(--line); background:var(--paper2); font-size:11px; color:var(--ink);}
+
+  /* ---------- 商店编辑页 ---------- */
+  .shop-frame{width:min(1400px,100%); margin:0 auto; display:grid; grid-template-columns:1fr 330px; gap:16px; height:100%; min-height:0;}
+  @media(max-width:1100px){ .shop-frame{grid-template-columns:1fr 280px;} }
+  .shop-zones{display:flex; gap:7px; margin-bottom:12px; flex-wrap:wrap;}
+  .shop-zone{padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:var(--paper2); font-size:13px; font-weight:800; cursor:pointer; transition:.16s; color:var(--sub);}
+  .shop-zone:hover{color:var(--ink);}
+  .shop-zone.on{background:var(--accent); color:#fff; border-color:transparent;}
+  .shop-bar{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .shop-bar .cnt{font-size:12px; color:var(--sub); font-weight:700; flex:1;}
+  .shop-cards{flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:12px; align-content:start; min-height:0; padding-right:4px;}
+  .shop-c{position:relative; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--paper2); cursor:pointer; transition:.16s; display:flex; flex-direction:column;}
+  .shop-c:hover{transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:var(--accent);}
+  .shop-c.on{border-color:var(--accent); box-shadow:0 0 0 2px rgba(var(--accent-rgb),.28);}
+  .shop-c .th{height:104px; background:radial-gradient(circle at 50% 35%,#fff,rgba(var(--accent-rgb),.12)); display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .shop-c .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .shop-c .nm{padding:6px 8px 2px; font-size:12px; font-weight:800; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .shop-c .pr{display:flex; gap:4px; justify-content:center; flex-wrap:wrap; padding:0 6px 7px;}
+  .shop-c .pr b{font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; background:var(--paper); border:1px solid var(--line);}
+  .shop-c .ord{position:absolute; top:6px; left:6px; width:20px; height:20px; border-radius:50%; background:rgba(0,0,0,.45); color:#fff; font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  .shop-c .lim{position:absolute; top:6px; right:6px; font-size:9px; font-weight:800; padding:2px 6px; border-radius:999px; background:#d4a24a; color:#fff;}
+  .shop-empty-tip{grid-column:1/-1; text-align:center; color:var(--hint); font-size:13px; padding:44px 0;}
+  .shop-ed{display:flex; flex-direction:column; gap:9px; overflow-y:auto; flex:1; min-height:0;}
+  .shop-ed .hd{font-size:14px; font-weight:800; color:var(--ink);}
+  .shop-ed .meta{font-size:11px; color:var(--hint);}
+  .shop-ed .btn-row{display:flex; gap:6px; margin-top:4px;}
+  .shop-ed .btn-row .btn{flex:1; justify-content:center;}
+  /* 添加弹层 */
+  .pick-mask{position:fixed; inset:0; z-index:200; background:rgba(30,24,46,.5); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center;}
+  .pick-panel{width:min(680px,92vw); max-height:80vh; background:var(--paper); border-radius:20px; box-shadow:var(--shadow-lg); padding:22px; display:flex; flex-direction:column; overflow:hidden;}
+  .pick-list{flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(126px,1fr)); gap:10px; margin:12px 0; align-content:start;}
+  .pick-i{border:1px solid var(--line); border-radius:12px; padding:8px; cursor:pointer; transition:.15s; display:flex; flex-direction:column; align-items:center; gap:5px; background:var(--paper2);}
+  .pick-i:hover{border-color:var(--accent);}
+  .pick-i.on{border-color:var(--accent); background:rgba(var(--accent-rgb),.12); box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25);}
+  .pick-i .th{width:100%; height:76px; display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .pick-i .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .pick-i .nm2{font-size:11px; font-weight:800; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+</style>
+</head>
+<body data-page-node-id="BBqZMoGiDcmoelV3UbYabe">
+  <header data-page-node-id="4rTvuE5nqgJol70Ca2ZosT">
+    <div class="brand" data-page-node-id="bcztZ2LPuwCiWrXyFCI58c">
+      <div class="logo" data-page-node-id="DoprwCZPjWSiXJDTPqmyNq">✦</div>
+      <div data-page-node-id="h54j9o27SNzeYx14prAkT0"><h1 data-page-node-id="q6VZAArXsCQe03UxrGLyT3">换装引擎</h1><div class="sub" data-page-node-id="onFmXbCj9miG4ARmr9Yglk">Q版角色 · DIY 分层换装</div></div>
+    </div>
+    <div class="tabs" id="tabs" data-page-node-id="swVH8XAqFNCETjMy0RldsU">
+      <button data-page="body" class="on" data-page-node-id="BE7Z3FMXIudrChNb1iVNi0"><span class="dot" data-page-node-id="AzjYejfy1YFBWbqmfZUc6n"></span>素体工坊</button>
+      <button data-page="cloth" data-page-node-id="QR6eEU20Vys2v3U2F8PVAJ"><span class="dot" data-page-node-id="leJl0HKKjgiCtl4edQLibI"></span>服装工坊</button>
+      <button data-page="wb" data-page-node-id="x8hJSwsfP54Gx3w376y7HM"><span class="dot" data-page-node-id="HSwaFDzADehhRBrz8GEjBJ"></span>衣橱预览</button>
+      <button data-page="set" data-page-node-id="setTab00000000000000001"><span class="dot" data-page-node-id="setDot00000000000000001"></span>套装编辑</button>
+      <button data-page="shop" data-page-node-id="shopTab000000000000001"><span class="dot" data-page-node-id="shopDot000000000000001"></span>商店编辑</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="top-meta" id="topMeta" data-page-node-id="Q7v8WUajHr5zjHQt67AnN9"></div>
+      <button class="btn small" id="btnHubBack" title="返回引擎中枢" style="font-weight:800;">← 返回中枢</button>
+      <button class="btn small" id="btnBackup" title="导出 / 导入数据备份（跨打开方式搬运数据）" style="font-weight:800;">💾 备份</button>
+      <button class="btn small on" id="btnAutoTrim" title="上传 PNG 时自动裁掉四周透明边（抠图素材占比小时更省事）">✂️ 自动裁边</button>
+      <div style="position:relative;" id="themeSwitcherWrap">
+        <button class="btn small" id="btnThemeSwitcher" title="切换界面配色">🎨 主题</button>
+        <div id="themePanel" style="display:none; position:absolute; top:calc(100% + 8px); right:0; width:224px; padding:16px; background:var(--glass); backdrop-filter:blur(20px); border:1px solid var(--glass-border); border-radius:16px; box-shadow:var(--shadow-lg); z-index:100;">
+          <div style="font-size:13px; font-weight:800; color:var(--ink); margin-bottom:12px;">🎨 界面配色</div>
+          <div id="themeSwatches" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+        </div>
+      </div>
+      <div style="position:relative;" id="bgSwitcherWrap">
+        <button class="btn small" id="btnBgSwitcher" title="更换背景">🎨 背景</button>
+        <div id="bgPanel" style="display:none; position:absolute; top:calc(100% + 8px); right:0; width:260px; padding:16px; background:var(--glass); backdrop-filter:blur(20px); border:1px solid var(--glass-border); border-radius:16px; box-shadow:var(--shadow-lg); z-index:100;">
+          <div style="font-size:13px; font-weight:800; color:var(--ink); margin-bottom:10px;">🎨 页面背景</div>
+          <div style="font-size:11px; color:var(--sub); font-weight:700; margin-bottom:6px;">纯色预设</div>
+          <div id="bgColors" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+          <div style="font-size:11px; color:var(--sub); font-weight:700; margin-bottom:6px;">自定义颜色</div>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+            <input type="color" id="bgCustomColor" value="#f3eef9" style="width:36px; height:28px; border:1px solid var(--line); border-radius:8px; padding:2px; cursor:pointer; background:var(--paper2);">
+            <button class="btn tiny" id="btnApplyColor">应用</button>
+          </div>
+          <div style="font-size:11px; color:var(--sub); font-weight:700; margin-bottom:6px;">背景图片</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn tiny" id="btnBgUpload">🖼 上传图片</button>
+            <button class="btn tiny danger" id="btnBgReset">↺ 恢复默认</button>
+          </div>
+          <input type="file" id="bgFileInput" accept="image/*" style="display:none;">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="page on" id="page-body" data-page-node-id="njhFk0LjrYf7qtFU1zGqKr">
+    <div class="studio-body" data-page-node-id="CzkE09rrsh5xwBNDeHVieB">
+      <div class="card" data-page-node-id="AYFDnAM7sNeoIYq38Eie2n">
+        <div class="card-head" data-page-node-id="I87XlrByhkpuaBZlEaeShh">
+          <div data-page-node-id="NfIds1DcTuvmrxojLAGZJA"><h2 data-page-node-id="PRTu09aiHIcGLUpcWMHrvW">🧍 素体工坊</h2><div class="card-sub" data-page-node-id="U72mXlqgL9NjrpDyWjQjs7">拖本体移动 · 蓝点缩放 · 黄点旋转 · 红点关节</div></div>
+          <span class="badge violet" data-page-node-id="NqVbFAxPAxuCKGHCnDfvCH">6 零件</span>
+        </div>
+        <div class="stage-wrap" data-page-node-id="hEEcvV72xEGQejvpyvQvmm">
+          <span class="stage-tag" data-page-node-id="VCR7XEbnRv3C4xohIEB7QY">SKELETON</span>
+          <div class="stage" id="stage-body" data-page-node-id="pWjownb5OJ01GTBvPCpVYD"></div>
+          <div class="stage-hint" data-page-node-id="1Vo1UwGFuektXZB9FwlgVN">拖 <b data-page-node-id="LzUTLgv2nACC1CEPc7BA2m">本体移动</b> · <b>紫点不等比缩放</b>（← → 改宽 · ↑ ↓ 改高） · <b>黄点旋转</b> · 拖 <b data-page-node-id="yQOTospyHtd2a9xcmWo8mD">红点调关节</b> · 中线 <b>吸附</b> · 左右 <b>双向镜像</b>（Shift 禁用）</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px; overflow:hidden;" data-page-node-id="aXn7HC43n5hUGMs2mcZlW7">
+        <div class="card" data-page-node-id="FDFRhGOwfH67mO20CHSo1D">
+          <div class="card-head" data-page-node-id="jpwbs0MWHyl7oOKExC35MS">
+            <div data-page-node-id="LHrAt9lb6GyTAbPLsRxr0c"><h2 data-page-node-id="9EGdi3tbi2C0vVMABGK3oS">零件</h2><div class="card-sub" data-page-node-id="zo8qBtmH263ugRN2fkBcx2">选中后可操作</div></div>
+            <span class="badge pink" id="curPartTag" data-page-node-id="ELP5emRu4ZJCciI5Cl9qrq">头</span>
+          </div>
+          <div class="parts-grid" id="partsGrid" data-page-node-id="yjH6W2HuUeAsOcYR1STOpj"></div>
+        </div>
+        <div class="card" data-page-node-id="Ig6eftLqdOGdrz3YinDDx1">
+          <div class="card-head" data-page-node-id="4zp0nOX3F2uh0E8HIKD9cR"><div data-page-node-id="zCGuAc0PSUBQWJ76YUW6Dx"><h2 data-page-node-id="F6SNGkhRxzjHG5SmtIl9iR">操作</h2><div class="card-sub" data-page-node-id="dBzDemoy1iRJIs06Yfmamv">上传 / 镜像 / 示例 / 重置 / 动作</div></div></div>
+          <div class="btn-row" data-page-node-id="v2Hk4vxnSC9WB0bbRm6QpG">
+            <button class="btn primary" id="bSaveBody" title="把当前素体（底膜）的位置/尺寸/关节/镜像保存到本地浏览器">💾 保存底膜</button>
+            <button class="btn" id="bDemo" data-page-node-id="sSBBAaCpC9eCtGaaPLSBIj">✨ 生成示例</button>
+            <button class="btn violet" id="bUpBody" data-page-node-id="87KhQKunmcPgrTQzjZkdKU">🖼 上传零件图</button>
+            <button class="btn" id="bFlipBody" data-page-node-id="8JoULItT7PBSp4vda8ls8p">↔ 部件镜像</button>
+            <button class="btn danger" id="bResetBody" data-page-node-id="j4NefONSfOvK8nM5v9ZlGW">↺ 重置</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn on" id="bSnapMid" title="拖动时中心接近舞台中线自动吸附">📏 中线吸附</button>
+            <button class="btn on" id="bSymLink" title="拖左臂/左腿时右臂/右腿自动对称跟随">🪞 左右对称</button>
+            <button class="btn" id="bMirrorAll" title="把整个人物左右翻转">⇋ 整体镜像</button>
+          </div>
+          <div class="divider" data-page-node-id="4n90XN2zLtGZh3fKQ8ZMwj"></div>
+          <div class="btn-row" data-page-node-id="2CoCoWKUuQISspCxbJc2VU">
+            <button class="btn mint" id="bWalk" data-page-node-id="vxGqpW78lpSBmqn2xGrE47">🚶 走路</button>
+            <button class="btn amber" id="bWave" data-page-node-id="AsAvJha1qXkanWorZsc0mu">👋 挥手</button>
+            <button class="btn" id="bStop" data-page-node-id="4PgkM0OhcHpiFECw59IAnG">⏹ 停止</button>
+          </div>
+          <div class="anim-cfg">
+            <div class="anim-cfg-title">🎚 挥手参数<span class="hint">素材朝向不定，按需调角度</span></div>
+            <div class="field">
+              <label>手臂</label>
+              <div class="arm-toggle">
+                <button class="btn tiny on" id="waveArmR">右臂</button>
+                <button class="btn tiny" id="waveArmL">左臂</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>基准角</label>
+              <input type="range" id="waveBase" min="-180" max="180" step="1" value="-60">
+              <span class="v" id="waveBaseV">-60°</span>
+            </div>
+            <div class="field">
+              <label>摆幅</label>
+              <input type="range" id="waveSwing" min="0" max="120" step="1" value="20">
+              <span class="v" id="waveSwingV">20°</span>
+            </div>
+            <div class="field">
+              <label>速度</label>
+              <input type="range" id="waveSpeed" min="0.3" max="3" step="0.1" value="1">
+              <span class="v" id="waveSpeedV">1.0×</span>
+            </div>
+          </div>
+          <div class="anim-cfg">
+            <div class="anim-cfg-title">🚶 走路参数<span class="hint">腿的节奏错开，0=一起摆 · 180=交替</span></div>
+            <div class="field">
+              <label>腿错开</label>
+              <input type="range" id="walkPhase" min="0" max="180" step="1" value="0">
+              <span class="v" id="walkPhaseV">0°</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-cloth" data-page-node-id="5NiFXen3rLyKBCjCVV9OXB">
+    <div class="studio-cloth" data-page-node-id="NMdappeElJ1j0TkxeRE4Em">
+      <div class="cat-col" id="catCol" data-page-node-id="CyauyVcgODf8acCYtlemxf"></div>
+      <div class="stage-col" data-page-node-id="f0OdBzCI7UN3AHuCyAIGZt">
+        <div class="stage-toolbar" data-page-node-id="vpC040sgACl1NnVFuw4pG4">
+          <div class="title" data-page-node-id="xbasn8akqdO80iaDaW9j6W">🎨 <span class="accent" id="stageTitle" data-page-node-id="TLHzUVZL7KGPpKO4y4v6L2">服装工坊</span></div>
+          <button class="btn small" id="btnToggleBody" data-page-node-id="AIRUEjQnZVHrEaWa0zoA0q">👁 素体显示</button>
+          <button class="btn small mint" id="btnExport">📤 导出</button>
+          <button class="btn small" id="btnImport">📥 导入</button>
+        </div>
+        <div class="stage-wrap" data-page-node-id="ohXgH3Gb9hsv84lWYD2kW2">
+          <span class="stage-tag" id="clothTag" data-page-node-id="uG0nwHgvrIHil7VuDunnBU">纯素体</span>
+          <div class="stage" id="stage-cloth" data-page-node-id="fpLdM8SexRIkWZRSsbJ8Fl"></div>
+          <div class="stage-hint" id="clothHint" data-page-node-id="Ly9ZciT0qXVQUERPQvkOqI">点左边分类 → 新建 / 选 Item → 拖 PNG 到虚线框</div>
+        </div>
+      </div>
+      <div class="edit-col" id="editCol" data-page-node-id="3DQT3ArfgjrvP6fS90AIa0"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-wb" data-page-node-id="igbHTRGnhmPTFxeFLFU4KA">
+    <div class="wardrobe-frame" data-page-node-id="Ri0hy3UGQaf8lHutdqJMNY">
+      <div class="wb-left" data-page-node-id="MedQiqHEEDd6xsOrwJkdFW"><div class="wb-floor" data-page-node-id="xvktVOrQWMuzVO4ZffGjPE"></div><div class="stage" id="stage-wb" data-page-node-id="eGSP8qSiEAXiCEYfYjYbJa"></div></div>
+      <div class="wb-right" data-page-node-id="HyqF2EDn1PtzIPCCNJosgU">
+        <div class="wb-head" data-page-node-id="eORegpQy6YUXoPGLEKG0kv"><h2 data-page-node-id="Jfdlr3TwO5fdoJbiBs3PZC">衣橱</h2><span class="sub" data-page-node-id="h3WopHWeNBCv77MSAXiGEG">整件替换 · 跟游戏内一致</span><button class="btn small violet" id="wbViewBtn" style="margin-left:auto;" data-page-node-id="wbViewBtn000000001">👁 管理员视角</button></div>
+        <div class="wb-viewtip" id="wbViewTip" data-page-node-id="wbViewTip000000001"></div>
+        <div class="wb-body" data-page-node-id="wbBody00000000000000000001">
+          <div class="wb-cat" id="wbCat" data-page-node-id="U5zope2EFhxKA3bCgrQ1Rj"></div>
+          <div class="wb-items" id="wbItems" data-page-node-id="8Y3ChDTRyKKbVg1dsfrSqv"></div>
+        </div>
+        <div class="wb-outfits" data-page-node-id="BKGOvSz2JP31e5axYdOhEP">
+          <label data-page-node-id="AaermSijGffbrftCm4xO8B">👗 穿搭</label>
+          <select id="wbOutfitSel" data-page-node-id="fTHa4VIFtOG0FvZavEDatY"></select>
+          <button class="btn small" id="wbLoad" data-page-node-id="czk4Gr6LLBONLs8bV1EwSc">加载</button>
+          <button class="btn small violet" id="wbSave" data-page-node-id="eWe4JJVeHlmbErFWYK9hvj">保存</button>
+          <button class="btn small mint" id="wbSaveAs" data-page-node-id="GPUVAeazk3CxS3wH4Dcfpv">另存</button>
+          <button class="btn small danger" id="wbDel" data-page-node-id="YhAANn7Lxs4m7PejgGCxyz">删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面：套装编辑 ===== -->
+  <div class="page" id="page-set" data-page-node-id="pageSet00000000000001">
+    <div class="set-frame" data-page-node-id="setFrame0000000000001">
+      <div class="card" data-page-node-id="setLeft00000000000001">
+        <div class="card-head" data-page-node-id="setLeftHead00000001"><h2 data-page-node-id="setLeftH2x0000001">👗 <span class="accent" data-page-node-id="setLeftAcc0000001">套装</span></h2></div>
+        <div class="set-list" id="setList" data-page-node-id="setList0000000000001"></div>
+        <div class="set-list-btns" data-page-node-id="setListBtns00000001">
+          <button class="btn small mint" id="setNew" data-page-node-id="setNew0000000000001">＋ 新建</button>
+          <button class="btn small danger" id="setDel" data-page-node-id="setDel0000000000001">删除</button>
+        </div>
+      </div>
+      <div class="card" data-page-node-id="setMid000000000000001">
+        <div class="card-head" data-page-node-id="setMidHead000000001"><h2 data-page-node-id="setMidH2x000000001">预览</h2><span class="sub" id="setPreviewSub" data-page-node-id="setPrevSub0000001">实时合成 · 跟游戏衣橱一致</span></div>
+        <div class="set-stage-wrap" data-page-node-id="setStageWrap000001"><div class="stage" id="stage-set" data-page-node-id="stageSet000000000001"></div></div>
+      </div>
+      <div class="card" data-page-node-id="setRight0000000000001">
+        <div class="card-head" data-page-node-id="setRightHead0000001"><h2 data-page-node-id="setRightH2x0000001">部位搭配</h2><span class="sub" id="setSlotCount" data-page-node-id="setSlotCount00001"></span></div>
+        <div class="set-slots" id="setSlots" data-page-node-id="setSlots00000000001"></div>
+        <div class="set-foot" data-page-node-id="setFoot0000000000001">
+          <span class="fl" data-page-node-id="setFl10000000000001">套装名</span>
+          <input type="text" id="setName" placeholder="例如：初雪校服" data-page-node-id="setName0000000000001">
+          <span class="fl" data-page-node-id="setFl20000000000001">上架区（可多选）</span>
+          <div class="tag-chk" id="setTags" data-page-node-id="setTags0000000000001"></div>
+          <span class="fl" data-page-node-id="setFl30000000000001">定价（可填 1~3 种）</span>
+          <div class="price-row" data-page-node-id="setPr10000000000001"><i data-page-node-id="setPrIco100000001">🪙</i><input type="number" id="setPriceCoin" placeholder="金币" min="0" data-page-node-id="setPc000000000001"></div>
+          <div class="price-row" data-page-node-id="setPr20000000000001"><i data-page-node-id="setPrIco200000001">💎</i><input type="number" id="setPriceDiamond" placeholder="钻石" min="0" data-page-node-id="setPd000000000001"></div>
+          <div class="price-row" data-page-node-id="setPr30000000000001"><i data-page-node-id="setPrIco300000001">🦪</i><input type="number" id="setPricePearl" placeholder="珍珠" min="0" data-page-node-id="setPp000000000001"></div>
+          <span class="fl" data-page-node-id="setFl40000000000001">限时（选填）</span>
+          <div class="limit-row" data-page-node-id="setLimRow000000001"><input type="date" id="setLimFrom" data-page-node-id="setLf000000000001"><input type="date" id="setLimTo" data-page-node-id="setLt000000000001"></div>
+          <button class="btn primary" id="setSave" style="justify-content:center;margin-top:4px;" data-page-node-id="setSave0000000000001">💾 保存套装（含快照）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面：商店编辑 ===== -->
+  <div class="page" id="page-shop" data-page-node-id="pageShop0000000000001">
+    <div class="shop-frame" data-page-node-id="shopFrame00000000001">
+      <div class="card" data-page-node-id="shopLeft0000000000001">
+        <div class="card-head" data-page-node-id="shopLeftHead0000001"><h2 data-page-node-id="shopLeftH2x0000001">🏪 <span class="accent" data-page-node-id="shopLeftAcc0000001">商店编辑</span></h2><span class="sub" id="shopHint" data-page-node-id="shopHint0000000001">左侧卡片可拖拽调序</span></div>
+        <div class="shop-zones" id="shopZones" data-page-node-id="shopZones000000001"></div>
+        <div class="shop-bar" data-page-node-id="shopBar0000000000001">
+          <button class="btn small mint" id="shopAdd" data-page-node-id="shopAdd0000000000001">＋ 添加到本区</button>
+          <span class="cnt" id="shopCount" data-page-node-id="shopCount000000001"></span>
+          <button class="btn small" id="shopRefresh" data-page-node-id="shopRefresh00000001">↻ 刷新</button>
+        </div>
+        <div class="shop-cards" id="shopCards" data-page-node-id="shopCards000000001"></div>
+      </div>
+      <div class="card" data-page-node-id="shopRight000000000001">
+        <div class="card-head" data-page-node-id="shopRightHead000001"><h2 data-page-node-id="shopRightH2x000001">编辑</h2></div>
+        <div class="shop-ed" id="shopEditor" data-page-node-id="shopEditor00000001"><div style="text-align:center;color:var(--hint);font-size:12px;padding:24px 0;" data-page-node-id="shopEdEmpty000001">点左边卡片开始编辑</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全局动画控制条：走路/挥手预览，三个页面通用 -->
+  <div class="anim-fab" id="animFab" data-page-node-id="animFab00000000000001">
+    <button class="btn mint" id="fabWalk" data-page-node-id="fabWalk0000000001">🚶 走路</button>
+    <button class="btn amber" id="fabWave" data-page-node-id="fabWave0000000001">👋 挥手</button>
+    <button class="btn" id="fabStop" data-page-node-id="fabStop0000000001">⏹ 停止</button>
+  </div>
+
+  <div id="toast" data-page-node-id="ons7WnFHMUt0mBU6k9ZIUT"></div>
+  <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0" data-page-node-id="d4vNxJkB284Da7F22UBsMC">
+
+<script data-page-node-id="LFI6IqmhKO9GbGvCxK590t">
+/* ================= 存储兜底（隐私模式 / file:// / 禁 Cookie 时 localStorage 会抛异常） ================= */
+const _MEM_STORE = Object.create(null);
+function _mkStore(real){
+  try{ const k='__probe__'; real.setItem(k,'1'); real.removeItem(k); return real; }
+  catch(e){
+    window.__storageFallback = true;
+    return {
+      getItem: k => (k in _MEM_STORE ? _MEM_STORE[k] : null),
+      setItem: (k, v) => { _MEM_STORE[k] = String(v); },
+      removeItem: k => { delete _MEM_STORE[k]; },
+      clear: () => { for(const k in _MEM_STORE) delete _MEM_STORE[k]; },
+      key: () => null,
+      get length(){ return Object.keys(_MEM_STORE).length; }
+    };
+  }
+}
+const localStorage   = _mkStore(window.localStorage);
+const sessionStorage = _mkStore(window.sessionStorage);
+
+(function(){
+  const STAGE_W=300, STAGE_H=533;
+  const CATEGORIES=[
+    { id:'hair',     label:'头发',   em:'💇', layers:[
+      { key:'front', name:'前发片', z:25, anchor:'head' },
+      { key:'back',  name:'后发片', z:0,  anchor:'head' } ]},
+    { id:'face',     label:'妆容',   em:'💄', layers:[
+      { key:'face',  name:'妆容',   z:15, anchor:'head' } ]},
+    { id:'headwear', label:'头饰',   em:'👑', layers:[
+      { key:'main',  name:'头饰',   z:26, anchor:'head' } ]},
+    { id:'earring',  label:'耳饰',   em:'💎', layers:[
+      { key:'L',     name:'左耳饰', z:26, anchor:'earL' },
+      { key:'R',     name:'右耳饰', z:26, anchor:'earR', mirrorOf:'L' } ]},
+    { id:'backwear', label:'背饰',   em:'🪽', layers:[
+      { key:'main',  name:'背饰',   z:-10, anchor:'torso' } ]},
+    { id:'top',      label:'上衣',   em:'👕', layers:[
+      { key:'body',    name:'主体', z:22, anchor:'torso' },
+      { key:'sleeveL', name:'左袖', z:23, anchor:'armL' },
+      { key:'sleeveR', name:'右袖', z:23, anchor:'armR', mirrorOf:'sleeveL' } ]},
+    { id:'gloves',   label:'手套',   em:'🧤', layers:[
+      { key:'L',     name:'左手套', z:24, anchor:'handL' },
+      { key:'R',     name:'右手套', z:24, anchor:'handR', mirrorOf:'L' } ]},
+    { id:'handheld', label:'手把件', em:'💐', layers:[
+      { key:'L',     name:'左手',   z:27, anchor:'handL' },
+      { key:'R',     name:'右手',   z:27, anchor:'handR' } ]},
+    { id:'bottom',   label:'下衣',   em:'👖', layers:[
+      { key:'body',  name:'身体层', z:21, anchor:'hip' },
+      { key:'legL',  name:'左腿',   z:20, anchor:'legL' },
+      { key:'legR',  name:'右腿',   z:20, anchor:'legR', mirrorOf:'legL' } ]},
+    { id:'socks',    label:'袜子',   em:'🧦', layers:[
+      { key:'L',     name:'左袜',   z:18, anchor:'legL' },
+      { key:'R',     name:'右袜',   z:18, anchor:'legR', mirrorOf:'L' } ]},
+    { id:'shoes',    label:'鞋子',   em:'👟', layers:[
+      { key:'L',     name:'左鞋',   z:19, anchor:'footL' },
+      { key:'R',     name:'右鞋',   z:19, anchor:'footR', mirrorOf:'L' } ]},
+  ];
+  const CAT_MAP={}; CATEGORIES.forEach(c=>CAT_MAP[c.id]=c);
+  const SLOT_BOX={
+    'hair/front':   { w:100, h:70,  ox:0, oy:-10 },
+    'hair/back':    { w:110, h:90,  ox:0, oy:10  },
+    'face/face':    { w:70,  h:56,  ox:0, oy:5   },
+    'headwear/main':{ w:90,  h:52,  ox:0, oy:-30 },
+    'earring/L':    { w:16,  h:26,  ox:0, oy:0   },
+    'earring/R':    { w:16,  h:26,  ox:0, oy:0   },
+    'backwear/main':{ w:130, h:120, ox:0, oy:20  },
+    'top/body':     { w:88,  h:80,  ox:0, oy:0   },
+    'top/sleeveL':  { w:34,  h:62,  ox:0, oy:10  },
+    'top/sleeveR':  { w:34,  h:62,  ox:0, oy:10  },
+    'gloves/L':     { w:26,  h:28,  ox:0, oy:0   },
+    'gloves/R':     { w:26,  h:28,  ox:0, oy:0   },
+    'handheld/L':   { w:32,  h:48,  ox:0, oy:10  },
+    'handheld/R':   { w:32,  h:48,  ox:0, oy:10  },
+    'bottom/body':  { w:72,  h:70,  ox:0, oy:0   },
+    'bottom/legL':  { w:34,  h:60,  ox:0, oy:6   },
+    'bottom/legR':  { w:34,  h:60,  ox:0, oy:6   },
+    'socks/L':      { w:30,  h:40,  ox:0, oy:5   },
+    'socks/R':      { w:30,  h:40,  ox:0, oy:5   },
+    'shoes/L':      { w:36,  h:26,  ox:0, oy:0   },
+    'shoes/R':      { w:36,  h:26,  ox:0, oy:0   },
+  };
+  const PART_DEFS=[
+    { key:'head', label:'头',   hasJoint:false },
+    { key:'body', label:'身体', hasJoint:false },
+    { key:'armL', label:'左臂', hasJoint:true  },
+    { key:'armR', label:'右臂', hasJoint:true  },
+    { key:'legL', label:'左腿', hasJoint:true  },
+    { key:'legR', label:'右腿', hasJoint:true  },
+  ];
+  const BODY_Z={ armL:5, armR:5, legL:5, legR:5, body:6, head:7 };
+  const MIRROR_PAIR={ armL:'armR', armR:'armL', legL:'legR', legR:'legL' };
+  // 服装层挂接点 → 素体关节：动画时服装层继承对应关节的旋转（袖子跟臂、袜鞋裤腿跟腿、头/躯干不摆）
+  const ANCHOR_JOINT={ head:'head', earL:'head', earR:'head', torso:'body', hip:'body', armL:'armL', armR:'armR', handL:'armL', handR:'armR', legL:'legL', legR:'legR', footL:'legL', footR:'legR' };
+  const CENTER_PARTS={ head:1, body:1 };  // 拖动时用于中线吸附
+  const SNAP_PX=6;
+  const LS={ body:'engine_body_v4', bodyOld:'engine_body_v3', lib:'engine_lib_v3', outfits:'engine_outfits_v3', sets:'engine_outfitsets_v1', trim:'engine_auto_trim', anim:'engine_anim_cfg' };
+  // 商店四区 + 套装区（Q1 四区只是稀有度分类，跟货币不绑定）
+  const SHOP_ZONES=[
+    { id:'common',  name:'普通', em:'🛍️' },
+    { id:'premium', name:'高级', em:'💎' },
+    { id:'special', name:'特殊', em:'✨' },
+    { id:'limited', name:'限时', em:'⏰' },
+    { id:'outfit',  name:'套装', em:'👗' },
+  ];
+  const ZONE_MAP={}; SHOP_ZONES.forEach(z=>ZONE_MAP[z.id]=z);
+  const CURRENCIES=[ {k:'coin',em:'🪙',nm:'金币'}, {k:'diamond',em:'💎',nm:'钻石'}, {k:'pearl',em:'🦪',nm:'珍珠'} ];
+
+  let snapMid=true;      // 中线吸附开关
+  let symLink=true;      // 左右对称联动开关
+  let shiftHeld=false;   // 按 Shift 临时禁用
+  window.addEventListener('keydown',e=>{ if(e.key==='Shift') shiftHeld=true; });
+  window.addEventListener('keyup',  e=>{ if(e.key==='Shift') shiftHeld=false; });
+
+  let parts={};
+  PART_DEFS.forEach(d=>{ parts[d.key]={img:null,x:0,y:0,w:100,h:100,rot:0,flipH:false,jointPct:d.hasJoint?{x:0.5,y:0}:null}; });
+  let library={};
+  let outfits=[];
+  let outfitSets=[];          // 套装库（可上架商店，区别于 outfits「穿搭方案」）
+  let currentSetId=null;
+  let wbView='admin';         // 衣橱视角：'admin' 管理员（全部） | 'player' 玩家（只看已购）
+  let currentOutfit={};
+  let currentCat='top';
+  let currentItemId=null;
+  let currentSubKey=null;
+  let currentPieceId=null;
+  let pcLockRatio=false;   // 服装素材属性面板：宽高联动（默认关 = 可不等比）
+  let currentPart='head';
+  let animMode=null, animT=0, animRaf=null;
+  let animCfg=loadAnimCfg();  // 挥手参数：素材朝向不定，角度范围交给陛下自控
+  let showBodyInCloth=true;
+  let autoTrim = localStorage.getItem(LS.trim) !== '0';  // 上传 PNG 时自动裁掉四周透明边（默认开）
+
+  const stageBody=document.getElementById('stage-body');
+  const stageCloth=document.getElementById('stage-cloth');
+  const stageWb=document.getElementById('stage-wb');
+  const toastEl=document.getElementById('toast');
+  function $(id){ return document.getElementById(id); }
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>toastEl.classList.remove('show'),1800); }
+  function uid(){ return Date.now().toString(36)+'_'+Math.floor(Math.random()*46656).toString(36); }
+  function getXY(ev){
+    if(ev.touches&&ev.touches.length) return {x:ev.touches[0].clientX,y:ev.touches[0].clientY};
+    if(ev.changedTouches&&ev.changedTouches.length) return {x:ev.changedTouches[0].clientX,y:ev.changedTouches[0].clientY};
+    return {x:ev.clientX,y:ev.clientY};
+  }
+
+  function generateDemo(){
+    const skin='#ffd9b8', eye='#3a2a1a';
+    function mk(w,h,fn){ const c=document.createElement('canvas'); c.width=w; c.height=h; fn(c.getContext('2d'),w,h); const img=new Image(); img.src=c.toDataURL(); return img; }
+    parts.head.img=mk(120,120,(ctx,w,h)=>{
+      const cx=w/2,cy=h/2;
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(cx,cy+6,42,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(cx-14,cy+10,4,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(cx+14,cy+10,4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(255,150,150,0.35)'; ctx.beginPath(); ctx.ellipse(cx-22,cy+20,7,4,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(cx+22,cy+20,7,4,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#c04a4a'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy+26,8,0.1,Math.PI-0.1); ctx.stroke();
+    });
+    parts.body.img=mk(100,120,(ctx,w,h)=>{
+      const cx=w/2;
+      ctx.fillStyle='#fff5db'; ctx.beginPath(); ctx.roundRect(cx-38,10,76,100,18); ctx.fill();
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(cx,22,14,0,Math.PI); ctx.fill();
+    });
+    const armImg=mk(50,110,(ctx,w,h)=>{
+      const cx=w/2;
+      ctx.fillStyle='#fff5db'; ctx.beginPath(); ctx.roundRect(cx-14,0,28,55,12); ctx.fill();
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.roundRect(cx-11,50,22,45,10); ctx.fill();
+      ctx.fillStyle=skin; ctx.beginPath(); ctx.arc(cx,100,10,0,Math.PI*2); ctx.fill();
+    });
+    parts.armL.img=armImg; parts.armR.img=armImg;
+    const legImg=mk(50,110,(ctx,w,h)=>{ ctx.fillStyle=skin; ctx.beginPath(); ctx.roundRect(w/2-10,0,20,90,9); ctx.fill(); });
+    parts.legL.img=legImg; parts.legR.img=legImg;
+    const HW=80,HH=80,BW=80,BH=96,AW=32,AH=76,LW=26,LH=92, CX=150;
+    parts.head.w=HW; parts.head.h=HH; parts.body.w=BW; parts.body.h=BH;
+    parts.armL.w=AW; parts.armL.h=AH; parts.armR.w=AW; parts.armR.h=AH;
+    parts.legL.w=LW; parts.legL.h=LH; parts.legR.w=LW; parts.legR.h=LH;
+    parts.armL.jointPct={x:.5,y:0}; parts.armR.jointPct={x:.5,y:0};
+    parts.legL.jointPct={x:.5,y:0}; parts.legR.jointPct={x:.5,y:0};
+    parts.head.x=CX-HW/2; parts.head.y=20;
+    parts.body.x=CX-BW/2; parts.body.y=parts.head.y+HH;
+    parts.armL.x=parts.body.x-AW+6; parts.armL.y=parts.body.y+8;
+    parts.armR.x=parts.body.x+BW-6; parts.armR.y=parts.body.y+8;
+    parts.legL.x=CX-LW; parts.legL.y=parts.body.y+BH-6;
+    parts.legR.x=CX; parts.legR.y=parts.body.y+BH-6;
+  }
+
+  function getAnchors(){
+    const h=parts.head,b=parts.body,aL=parts.armL,aR=parts.armR,lL=parts.legL,lR=parts.legR;
+    return {
+      head:  {x:h.x+h.w/2,   y:h.y+h.h*0.5},
+      earL:  {x:h.x+h.w*0.08,y:h.y+h.h*0.55},
+      earR:  {x:h.x+h.w*0.92,y:h.y+h.h*0.55},
+      torso: {x:b.x+b.w/2,   y:b.y+b.h*0.42},
+      hip:   {x:b.x+b.w/2,   y:b.y+b.h*0.92},
+      armL:  {x:aL.x+aL.w/2, y:aL.y+aL.h*0.15},
+      armR:  {x:aR.x+aR.w/2, y:aR.y+aR.h*0.15},
+      handL: {x:aL.x+aL.w/2, y:aL.y+aL.h*0.88},
+      handR: {x:aR.x+aR.w/2, y:aR.y+aR.h*0.88},
+      legL:  {x:lL.x+lL.w/2, y:lL.y+lL.h*0.45},
+      legR:  {x:lR.x+lR.w/2, y:lR.y+lR.h*0.45},
+      footL: {x:lL.x+lL.w/2, y:lL.y+lL.h*0.96},
+      footR: {x:lR.x+lR.w/2, y:lR.y+lR.h*0.96},
+    };
+  }
+
+  function newItem(catId, name){
+    const cat=CAT_MAP[catId]; const layers={};
+    cat.layers.forEach(L=>{ layers[L.key]={ pieces:[], composed:null, mirrorEnabled:!!L.mirrorOf }; });
+    const it={ id:catId+'_'+uid(), name:name||('新'+cat.label), category:catId, layers };
+    ensureShopFields(it); return it;
+  }
+  /* ===== 商店字段（Q1~Q3）：补默认值，老 Item 自动拥有 ===== */
+  function ensureShopFields(o){
+    if(!o.shopTags) o.shopTags=[];
+    if(!o.price) o.price={ coin:null, diamond:null, pearl:null };
+    if(o.limitedFrom===undefined) o.limitedFrom=null;
+    if(o.limitedTo===undefined) o.limitedTo=null;
+    if(!o.shopOrder) o.shopOrder={ common:0, premium:0, special:0, limited:0, outfit:0 };
+    else { SHOP_ZONES.forEach(z=>{ if(o.shopOrder[z.id]===undefined) o.shopOrder[z.id]=0; }); }
+    return o;
+  }
+  // 旧存档迁移：下衣单层 main -> body/legL/legR；手把件去掉强制镜像；补齐新结构缺失层
+  function migrateItem(it){
+    if(!it || !it.layers) return false;
+    const cat=CAT_MAP[it.category]; if(!cat) return false;
+    let changed=false;
+    if(cat.id==='bottom' && it.layers.main && !it.layers.body){
+      it.layers.body=it.layers.main; delete it.layers.main; changed=true;
+    }
+    cat.layers.forEach(L=>{
+      if(!it.layers[L.key]){
+        it.layers[L.key]={ pieces:[], composed:null, mirrorEnabled:!!L.mirrorOf }; changed=true;
+      } else if(!L.mirrorOf && it.layers[L.key].mirrorEnabled){
+        it.layers[L.key].mirrorEnabled=false; changed=true;
+      }
+    });
+    return changed;
+  }
+  function migrateLib(){
+    let changed=false;
+    CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>{
+      if(migrateItem(it)) changed=true;
+      // 补商店字段（老 Item 没有 shopTags/price 等）
+      if(!it.shopTags || !it.price || !it.shopOrder){ ensureShopFields(it); changed=true; }
+    }); });
+    return changed;
+  }
+  function loadLib(){
+    try{ const raw=localStorage.getItem(LS.lib); if(raw){ library=JSON.parse(raw); CATEGORIES.forEach(c=>{ if(!library[c.id]) library[c.id]=[]; }); if(migrateLib()) saveLib(); return; } }catch(e){}
+    library={}; CATEGORIES.forEach(c=>library[c.id]=[]); saveLib();
+  }
+  function saveLib(){ try{ localStorage.setItem(LS.lib, JSON.stringify(library)); return true; }catch(e){ autoCompressThen(()=>saveLib()); return false; } }
+  function findItem(catId, itemId){ return (library[catId]||[]).find(x=>x.id===itemId); }
+  function loadOutfits(){ try{ const raw=localStorage.getItem(LS.outfits); if(raw){ outfits=JSON.parse(raw)||[]; return; } }catch(e){} outfits=[]; }
+  function saveOutfits(){ try{ localStorage.setItem(LS.outfits, JSON.stringify(outfits)); }catch(e){} }
+  /* ===== 套装库 ===== */
+  function newSet(name){
+    const itemIds={}; CATEGORIES.forEach(c=>itemIds[c.id]=null);
+    const s={ id:'set_'+uid(), name:name||('套装'+(outfitSets.length+1)), thumbnail:null, itemIds };
+    ensureShopFields(s); return s;
+  }
+  function loadSets(){
+    try{ const raw=localStorage.getItem(LS.sets); if(raw){
+      outfitSets=(JSON.parse(raw)||[]).map(s=>{ ensureShopFields(s); if(!s.itemIds) s.itemIds={}; return s; }); return; } }catch(e){}
+    outfitSets=[];
+  }
+  function saveSets(){ try{ localStorage.setItem(LS.sets, JSON.stringify(outfitSets)); return true; }catch(e){ toast('⚠️ 套装保存失败：本地空间不足'); return false; } }
+  function findSet(id){ return outfitSets.find(s=>s.id===id); }
+  function currentSet(){ return findSet(currentSetId); }
+  /* 套装展开的子 Item 列表（顺序按 CATEGORIES，Q11 购买时用） */
+  function setItemList(s){ const arr=[]; if(!s||!s.itemIds) return arr; CATEGORIES.forEach(c=>{ const iid=s.itemIds[c.id]; if(iid) arr.push({cat:c.id, itemId:iid}); }); return arr; }
+  function loadAnimCfg(){
+    const def={ waveArm:'armR', waveBase:-60, waveSwing:20, waveSpeed:1, walkPhase:0 };
+    try{ const raw=localStorage.getItem(LS.anim); if(raw){ return Object.assign(def, JSON.parse(raw)); } }catch(e){}
+    return def;
+  }
+  function saveAnimCfg(){ try{ localStorage.setItem(LS.anim, JSON.stringify(animCfg)); }catch(e){} }
+
+  /* ====== 协作：导出 / 导入（多人产出服装） ====== */
+  const EXPORT_TYPE='chibi_outfit_pack', EXPORT_VER=1;
+  function collectAllItems(){ const arr=[]; CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>arr.push(it)); }); return arr; }
+  function itemThumb(it){
+    const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return null;
+    const firstL=cat.layers[0]; const sub=it.layers[firstL.key];
+    return (sub && sub.composed) ? sub.composed.dataUrl : (sub && sub.pieces && sub.pieces[0] ? sub.pieces[0].imgSrc : null);
+  }
+  function closeOvl(ovl){ if(ovl && ovl.parentNode) ovl.parentNode.removeChild(ovl); }
+  function downloadJSON(obj, name){
+    const blob=new Blob([JSON.stringify(obj)], {type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1200);
+  }
+  function uniqueName(base, existing){ if(!existing.includes(base)) return base; let i=2; while(existing.includes(base+' '+i)) i++; return base+' '+i; }
+
+  /* —— 导出：勾选要导出的 Item —— */
+  function openExportPanel(){
+    const items=collectAllItems();
+    if(items.length===0){ toast('还没有可导出的 Item，先做几件衣服/头发吧'); return; }
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📤 导出服装素材</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'
+      +'<div class="xp-tools"><input type="text" id="xpAuthor" placeholder="作者名（可选，导入重名时用作后缀）"><button class="btn tiny" data-x="all">全选</button><button class="btn tiny" data-x="none">全不选</button></div>'
+      +'<div id="xpList"></div></div>'
+      +'<div class="ovl-foot"><span class="sel-count" id="xpCount"></span><button class="btn" data-x="close">取消</button><button class="btn primary" id="xpDo">导出 JSON</button></div>'
+      +'</div>';
+    document.body.appendChild(ovl);
+    const list=ovl.querySelector('#xpList');
+    CATEGORIES.forEach(cat=>{
+      const arr=library[cat.id]||[]; if(arr.length===0) return;
+      const head=document.createElement('div'); head.className='xp-cathead';
+      head.textContent=cat.em+' '+cat.label;
+      const cnt=document.createElement('span'); cnt.className='cnt'; cnt.textContent=arr.length+' 件'; head.appendChild(cnt);
+      list.appendChild(head);
+      arr.forEach(it=>{
+        const src=itemThumb(it);
+        const row=document.createElement('label'); row.className='xp-item';
+        row.innerHTML='<input type="checkbox" data-id="'+it.id+'" checked><div class="xp-th">'+(src?'<img src="'+src+'">':cat.em)+'</div><div class="xp-meta"><div class="nm"></div><div class="cat"></div></div>';
+        row.querySelector('.nm').textContent=it.name;
+        row.querySelector('.cat').textContent=cat.label;
+        list.appendChild(row);
+      });
+    });
+    const cbs=ovl.querySelectorAll('.xp-item input[type=checkbox]');
+    const refresh=()=>{ ovl.querySelector('#xpCount').textContent='已选 '+ovl.querySelectorAll('.xp-item input:checked').length+' 件'; };
+    refresh();
+    cbs.forEach(cb=>cb.addEventListener('change', refresh));
+    ovl.querySelector('[data-x=all]').onclick=()=>{ cbs.forEach(cb=>cb.checked=true); refresh(); };
+    ovl.querySelector('[data-x=none]').onclick=()=>{ cbs.forEach(cb=>cb.checked=false); refresh(); };
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    ovl.querySelector('#xpDo').onclick=()=>{
+      const ids=[...ovl.querySelectorAll('.xp-item input:checked')].map(cb=>cb.dataset.id);
+      if(ids.length===0){ toast('至少勾选一件'); return; }
+      const author=(ovl.querySelector('#xpAuthor').value||'').trim();
+      const out={ type:EXPORT_TYPE, version:EXPORT_VER, author, exportedAt:new Date().toISOString(), items:[] };
+      ids.forEach(id=>{
+        for(const cat of CATEGORIES){ const it=(library[cat.id]||[]).find(x=>x.id===id); if(it){ out.items.push(JSON.parse(JSON.stringify(it))); break; } }
+      });
+      const stamp=new Date().toISOString().slice(0,10);
+      downloadJSON(out, '换装素材_'+(author||'未署名')+'_'+out.items.length+'件_'+stamp+'.json');
+      closeOvl(ovl);
+      toast('已导出 '+out.items.length+' 件');
+    };
+  }
+
+  /* —— 导入：批量合并 —— */
+  function openImportPicker(){
+    const fi=document.createElement('input'); fi.type='file'; fi.accept='.json,application/json'; fi.multiple=true;
+    fi.onchange=e=>{ const fs=e.target.files; if(fs&&fs.length) handleImportFiles(fs); };
+    fi.click();
+  }
+  function handleImportFiles(files){
+    const pending=[], errors=[];
+    let loaded=0;
+    Array.from(files).forEach(f=>{
+      const rd=new FileReader();
+      rd.onload=ev=>{
+        try{
+          const obj=JSON.parse(ev.target.result);
+          if(obj && obj.type===EXPORT_TYPE && Array.isArray(obj.items)){
+            const author=(obj.author||'').trim();
+            obj.items.forEach(it=>{ if(it && it.category && CAT_MAP[it.category] && it.layers){ migrateItem(it); pending.push({item:it, author, source:f.name}); } });
+          } else errors.push(f.name+'：不是有效的服装包');
+        }catch(err){ errors.push(f.name+'：解析失败'); }
+        loaded++;
+        if(loaded===files.length) showImportPreview(pending, errors);
+      };
+      rd.readAsText(f);
+    });
+  }
+  function showImportPreview(pending, errors){
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    let body='';
+    if(errors.length) body+='<div class="imp-err">⚠ '+errors.join(' · ')+'</div>';
+    if(pending.length===0){
+      body+='<div style="text-align:center;color:var(--sub);padding:20px;">没有可导入的素材</div>';
+    } else {
+      body+='<div class="xp-cathead">待导入 '+pending.length+' 件<span class="cnt">重名将自动加作者后缀</span></div>';
+      pending.forEach(p=>{
+        const cat=CAT_MAP[p.item.category]; const src=itemThumb(p.item);
+        body+='<div class="xp-item" style="cursor:default"><div class="xp-th">'+(src?'<img src="'+src+'">':cat.em)+'</div><div class="xp-meta"><div class="nm"></div><div class="cat"></div></div></div>';
+      });
+    }
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📥 批量导入</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'+body+'</div>'
+      +'<div class="ovl-foot"><button class="btn" data-x="close">取消</button><button class="btn primary" id="impDo"'+(pending.length===0?' disabled':'')+'>导入 '+pending.length+' 件</button></div>'
+      +'</div>';
+    const metas=ovl.querySelectorAll('.xp-item .nm');
+    const cats=ovl.querySelectorAll('.xp-item .cat');
+    pending.forEach((p,i)=>{ if(metas[i]) metas[i].textContent=p.item.name; if(cats[i]) cats[i].textContent=CAT_MAP[p.item.category].label+(p.author?' · 作者 '+p.author:''); });
+    document.body.appendChild(ovl);
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    const impDo=ovl.querySelector('#impDo');
+    if(impDo) impDo.onclick=()=>{ doImport(pending); closeOvl(ovl); };
+  }
+  function doImport(pending){
+    let added=0, renamed=0;
+    pending.forEach(p=>{
+      const it=JSON.parse(JSON.stringify(p.item));
+      const catId=it.category;
+      if(!library[catId]) library[catId]=[];
+      const existingNames=library[catId].map(x=>x.name);
+      let name=it.name||'未命名';
+      if(existingNames.includes(name)){
+        const cand=p.author ? name+'（'+p.author+'）' : name+'（导入）';
+        name=uniqueName(cand, existingNames);
+        it.name=name; renamed++;
+      }
+      it.id=catId+'_'+uid();
+      const cat=CAT_MAP[catId];
+      migrateItem(it);
+      cat.layers.forEach(L=>{
+        const s=it.layers[L.key]; if(!s) return;
+        s.composed=null;
+        if(!Array.isArray(s.pieces)) s.pieces=[];
+        s.pieces.forEach(pc=>{ pc._img=undefined; });
+      });
+      library[catId].push(it);
+      added++;
+    });
+    saveLib();
+    renderCatCol(); renderRightPanel(); updateTopMeta(); stageMgrs.cloth.render();
+    toast('已导入 '+added+' 件'+(renamed?('（'+renamed+' 件自动改名）'):''));
+  }
+  const _btnExport=$('btnExport'); if(_btnExport) _btnExport.onclick=openExportPanel;
+  const _btnImport=$('btnImport'); if(_btnImport) _btnImport.onclick=openImportPicker;
+
+  function saveBody(){
+    try{ const d={}; PART_DEFS.forEach(p=>{ const pt=parts[p.key]; d[p.key]={x:pt.x,y:pt.y,w:pt.w,h:pt.h,rot:pt.rot,flipH:pt.flipH,jointPct:pt.jointPct?{...pt.jointPct}:null,imgSrc:pt.img?pt.img.src:null}; });
+      localStorage.setItem(LS.body, JSON.stringify(d)); return true;
+    }catch(e){
+      // 图片 base64 太大把 localStorage(5MB) 撑爆：自动压缩所有已存图后重试
+      autoCompressThen(()=>saveBody());
+      return false;
+    }
+  }
+  function loadBody(){
+    try{
+      let raw=localStorage.getItem(LS.body);
+      if(!raw){
+        // 数据迁移 v3 → v4：旧数据 jointPct.x 存"视觉位置"（成对互补），新数据存"物理本地"（成对相等，flipH 负责翻转）
+        // flipH=true 的部件需反换算：新.x = 1 - 旧.x（幂等，重复迁移无害）
+        const oldRaw=localStorage.getItem(LS.bodyOld);
+        if(!oldRaw) return false;
+        const d0=JSON.parse(oldRaw);
+        PART_DEFS.forEach(p=>{ const s=d0[p.key]; if(s && s.jointPct && s.flipH) s.jointPct.x=1-s.jointPct.x; });
+        raw=JSON.stringify(d0);
+      }
+      const d=JSON.parse(raw);
+      PART_DEFS.forEach(p=>{ const s=d[p.key]; if(!s) return; const pt=parts[p.key];
+        pt.x=s.x;pt.y=s.y;pt.w=s.w;pt.h=s.h;pt.rot=s.rot;pt.flipH=s.flipH;pt.jointPct=s.jointPct;
+        if(s.imgSrc){ const img=new Image(); img.src=s.imgSrc; pt.img=img; } });
+      return true;
+    }catch(e){ return false; }
+  }
+
+  // 视觉锚点：关节在"最终显示画面"中的比例位置（0~1，相对图片左上角）
+  // 图片被 flipH 水平翻转后，本地 jointPct.x 在视觉上变成 1-jointPct.x，这里统一换算
+  function visAnchorX(p){ return (p.flipH && p.jointPct) ? (1-p.jointPct.x) : (p.jointPct?p.jointPct.x:0.5); }
+  function visAnchorY(p){ return (p.jointPct?p.jointPct.y:0); }
+  // 把视觉比例 vx 写回本地 jointPct（考虑 flipH 反换算）
+  function setVisAnchorX(p, vx){ if(!p.jointPct) return; p.jointPct.x = p.flipH ? (1-vx) : vx; }
+
+  function applyBodyEl(el, key, animOffsetDeg){
+    const p=parts[key], def=PART_DEFS.find(d=>d.key===key);
+    el.style.left=p.x+'px'; el.style.top=p.y+'px';
+    el.style.width=p.w+'px'; el.style.height=p.h+'px';
+    // 外层 transform-origin 必须落在"视觉关节"上（翻转后锚点比例是 1-jx），否则旋转中心错位
+    if(def.hasJoint && p.jointPct) el.style.transformOrigin=`${visAnchorX(p)*p.w}px ${visAnchorY(p)*p.h}px`;
+    else el.style.transformOrigin='center center';
+    // 外层只负责绕关节旋转；flipH 时视觉旋转方向取反（镜像坐标系）
+    const _r = p.rot + (animOffsetDeg||0);
+    el.style.transform = `rotate(${p.flipH ? -_r : _r}deg)`;
+    // 内层只负责绕中心水平翻转，避免 scaleX(-1) 绕非中心点翻转导致图片整体平移
+    const wrap = el.querySelector('.flip-wrap');
+    if(wrap) wrap.style.transform = p.flipH ? 'scaleX(-1)' : 'none';
+  }
+  function buildBodyEl(stage, key, opacity){
+    const p=parts[key]; if(!p.img) return null;
+    const el=document.createElement('div'); el.className='layer-el'; el.style.zIndex=BODY_Z[key];
+    el.dataset.kind='body'; el.dataset.key=key;
+    if(opacity!=null) el.style.opacity=opacity;
+    const wrap=document.createElement('div'); wrap.className='flip-wrap';
+    const img=document.createElement('img'); img.src=p.img.src; img.draggable=false; wrap.appendChild(img);
+    el.appendChild(wrap);
+    // 只在素体工坊显示把手（衣橱预览/服装工坊里的素体不用）
+    if(stage.id==='stage-body'){
+      const sc=document.createElement('div'); sc.className='handle scale'; el.appendChild(sc);
+      const ro=document.createElement('div'); ro.className='handle rotate'; el.appendChild(ro);
+    }
+    stage.appendChild(el); applyBodyEl(el, key); return el;
+  }
+
+  function composeSubLayer(pieces, box){
+    if(!pieces || pieces.length===0) return null;
+    const W=Math.max(80, Math.round(box.w*3)), H=Math.max(80, Math.round(box.h*3));
+    const cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+    const ctx=cvs.getContext('2d');
+    const scale=W/box.w;
+    pieces.forEach(pc=>{
+      const cx=W/2 + pc.ox*scale, cy=H/2 + pc.oy*scale;
+      const w=pc.w*scale, h=pc.h*scale;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(pc.rot*Math.PI/180);
+      if(pc.flipH) ctx.scale(-1,1);
+      const img=pc._img || (pc._img=(()=>{const i=new Image(); i.src=pc.imgSrc; return i;})());
+      if(img.complete && img.naturalWidth) ctx.drawImage(img, -w/2, -h/2, w, h);
+      else { ctx.fillStyle='rgba(160,150,190,.5)'; ctx.fillRect(-w/2,-h/2,w,h); }
+      ctx.restore();
+    });
+    const data=ctx.getImageData(0,0,W,H).data;
+    let minX=W, minY=H, maxX=0, maxY=0, found=false;
+    for(let y=0;y<H;y++){ for(let x=0;x<W;x++){
+      const a=data[(y*W+x)*4+3];
+      if(a>8){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; found=true; }
+    }}
+    if(!found) return null;
+    const pad=2; minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad); maxX=Math.min(W-1,maxX+pad); maxY=Math.min(H-1,maxY+pad);
+    const cw=maxX-minX+1, ch=maxY-minY+1;
+    const sz=Math.max(cw,ch);
+    const finalSz=Math.min(sz, Math.round(Math.max(box.w,box.h)*2));
+    const out=document.createElement('canvas'); out.width=finalSz; out.height=finalSz;
+    out.getContext('2d').drawImage(cvs, minX-(sz-cw)/2, minY-(sz-ch)/2, sz, sz, 0,0, finalSz, finalSz);
+    return { dataUrl:out.toDataURL('image/png'), boxW:box.w, boxH:box.h };
+  }
+
+  /* 上传即裁剪：去掉 PNG 四周透明边，返回 {dataUrl,width,height,changed}
+     threshold=alpha 判定阈值(>阈值视为有内容)，pad=内容四周保留的像素 */
+  function trimTransparent(img, threshold, pad){
+    threshold = threshold==null ? 8 : threshold;
+    pad = pad==null ? 0 : pad;
+    const w=img.naturalWidth, h=img.naturalHeight;
+    if(!w || !h) return { dataUrl:img.src, width:w, height:h, changed:false };
+    const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
+    const ctx=cvs.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    let data;
+    try{ data=ctx.getImageData(0,0,w,h).data; }
+    catch(e){ return { dataUrl:img.src, width:w, height:h, changed:false }; }
+    let minX=w, minY=h, maxX=0, maxY=0, found=false;
+    for(let y=0;y<h;y++){
+      const row=y*w*4;
+      for(let x=0;x<w;x++){
+        if(data[row+x*4+3]>threshold){
+          if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; found=true;
+        }
+      }
+    }
+    if(!found) return { dataUrl:img.src, width:w, height:h, changed:false };  // 全透明，退回原图
+    minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad);
+    maxX=Math.min(w-1,maxX+pad); maxY=Math.min(h-1,maxY+pad);
+    const cw=maxX-minX+1, ch=maxY-minY+1;
+    if(cw===w && ch===h) return { dataUrl:img.src, width:w, height:h, changed:false };  // 无透明边，无需裁
+    const out=document.createElement('canvas'); out.width=cw; out.height=ch;
+    out.getContext('2d').drawImage(cvs, minX, minY, cw, ch, 0, 0, cw, ch);
+    return { dataUrl:out.toDataURL('image/png'), width:cw, height:ch, changed:true };
+  }
+
+  /* 上传图片统一处理：裁透明边 + 缩图（最长边 > MAX_IMG_DIM 等比缩小），
+     防止高清原图 base64 撑爆 localStorage（5MB 上限）。三步合一：读图→裁边→缩图 */
+  const MAX_IMG_DIM=1024;   // 舞台 300px / slot 最大 130px，1024 已 ~2x 高清冗余
+  function processImage(img, rawDataUrl){
+    const iw=img.naturalWidth, ih=img.naturalHeight;
+    if(!iw || !ih) return { dataUrl:rawDataUrl||img.src, width:iw, height:ih };
+    const cvs=document.createElement('canvas'); cvs.width=iw; cvs.height=ih;
+    const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0);
+    let data;
+    try{ data=ctx.getImageData(0,0,iw,ih).data; }
+    catch(e){ return { dataUrl:rawDataUrl||img.src, width:iw, height:ih }; }
+    // 1) 裁透明边（默认开）
+    let sx=0, sy=0, sw=iw, sh=ih;
+    if(autoTrim){
+      let minX=iw, minY=ih, maxX=0, maxY=0, found=false;
+      for(let y=0;y<ih;y++){ const row=y*iw*4;
+        for(let x=0;x<iw;x++){ if(data[row+x*4+3]>8){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; found=true; } } }
+      if(found){ sx=Math.max(0,minX); sy=Math.max(0,minY); sw=Math.min(iw,maxX)-sx+1; sh=Math.min(ih,maxY)-sy+1; }
+    }
+    // 2) 缩图：最长边 > MAX_IMG_DIM 等比缩小
+    let dw=sw, dh=sh;
+    const max=Math.max(sw,sh);
+    if(max>MAX_IMG_DIM){ const s=MAX_IMG_DIM/max; dw=Math.max(1,Math.round(sw*s)); dh=Math.max(1,Math.round(sh*s)); }
+    const out=document.createElement('canvas'); out.width=dw; out.height=dh;
+    const octx=out.getContext('2d'); octx.imageSmoothingEnabled=true; octx.imageSmoothingQuality='high';
+    octx.drawImage(cvs, sx, sy, sw, sh, 0, 0, dw, dh);
+    return { dataUrl:out.toDataURL('image/png'), width:dw, height:dh };
+  }
+
+  /* ====== 保存失败自动压缩：把 localStorage 里所有已存大图整体瘦身，再重试保存 ====== */
+  function compressDataUrl(dataUrl, maxDim){
+    return new Promise(resolve=>{
+      if(!dataUrl || !dataUrl.startsWith('data:')){ resolve(dataUrl); return; }
+      const img=new Image();
+      img.onload=()=>{
+        const iw=img.naturalWidth||1, ih=img.naturalHeight||1;
+        const max=Math.max(iw,ih);
+        if(max<=maxDim){ resolve(dataUrl); return; }
+        const s=maxDim/max;
+        const dw=Math.max(1,Math.round(iw*s)), dh=Math.max(1,Math.round(ih*s));
+        const c=document.createElement('canvas'); c.width=dw; c.height=dh;
+        const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+        ctx.drawImage(img,0,0,dw,dh);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror=()=>resolve(dataUrl);
+      img.src=dataUrl;
+    });
+  }
+  function compressAllImages(maxDim){
+    // 收集 [src, setter] 任务，同一 src 只压一次（写回所有引用）
+    const map=new Map();
+    const add=(src,set)=>{ if(!src || !src.startsWith('data:')) return; if(!map.has(src)) map.set(src,[]); map.get(src).push(set); };
+    PART_DEFS.forEach(p=>{ const pt=parts[p.key]; if(pt && pt.img) add(pt.img.src, s=>{ pt.img.src=s; }); });
+    CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>{
+      if(!it || !it.layers) return;
+      Object.keys(it.layers).forEach(k=>{
+        const sub=it.layers[k]; if(!sub) return;
+        (sub.pieces||[]).forEach(pc=>{ add(pc.imgSrc, s=>{ pc.imgSrc=s; pc._img=null; }); });
+        if(sub.composed && sub.composed.dataUrl) add(sub.composed.dataUrl, s=>{ sub.composed.dataUrl=s; });
+      });
+    }); });
+    const entries=[...map.entries()];
+    const run=i=> i>=entries.length ? Promise.resolve() : compressDataUrl(entries[i][0], maxDim).then(ns=>{ entries[i][1].forEach(set=>set(ns)); return run(i+1); });
+    return run(0);
+  }
+  let _autoCompress=false;
+  function autoCompressThen(retry){
+    if(_autoCompress) return;   // 防重入：压缩进行中不再叠加触发
+    _autoCompress=true;
+    toast('⚠️ 存储不足，自动压缩图片中…');
+    const refresh=()=>{ try{ stageMgrs.body.render(); stageMgrs.cloth.render(); stageMgrs.wb.render(); }catch(e){} };
+    compressAllImages(512).then(()=>{
+      if(retry()){ _autoCompress=false; refresh(); toast('✅ 已自动压缩图片并保存'); }
+      else compressAllImages(256).then(()=>{
+        _autoCompress=false; refresh();
+        if(retry()) toast('✅ 已二次压缩并保存'); else toast('⚠️ 压缩后仍超限，请「📤 导出 JSON」备份后清理数据');
+      });
+    });
+  }
+
+  function drawItemLayers(stage, item, editingSubKey){
+    const cat=CAT_MAP[item.category];
+    cat.layers.forEach(L=>{
+      const sub=item.layers[L.key]; if(!sub) return;
+      if(editingSubKey===L.key){ drawPiecesLive(stage, cat.id, L, sub); return; }
+      if(L.mirrorOf && sub.mirrorEnabled){
+        const src=item.layers[L.mirrorOf]; if(!src) return;
+        if(src.composed) drawComposed(stage, cat.id, L, src.composed, true);
+        else if(src.pieces && src.pieces.length){
+          const box=SLOT_BOX[cat.id+'/'+L.mirrorOf];
+          const tmp=composeSubLayer(src.pieces, box); if(tmp) drawComposed(stage, cat.id, L, tmp, true);
+        }
+        return;
+      }
+      if(sub.composed) drawComposed(stage, cat.id, L, sub.composed, false);
+      else if(sub.pieces && sub.pieces.length) drawPiecesLive(stage, cat.id, L, sub);
+    });
+  }
+  function drawComposed(stage, catId, L, composed, mirror){
+    const anchors=getAnchors(); const a=anchors[L.anchor]; if(!a) return;
+    const box=SLOT_BOX[catId+'/'+L.key];
+    const el=document.createElement('div'); el.className='layer-el'; el.style.zIndex=L.z;
+    el.style.left=(a.x - box.w/2 + box.ox)+'px'; el.style.top=(a.y - box.h/2 + box.oy)+'px';
+    el.style.width=box.w+'px'; el.style.height=box.h+'px';
+    el.dataset.source='composed'; el.dataset.subKey=L.key;  // 拖拽覆盖用标识
+    // 记录挂接点 + 旋转中心（anchor 点相对元素左上角的偏移），供动画跟随旋转使用
+    el.dataset.anchor=L.anchor; el.dataset.mirror=mirror?'1':'0';
+    el.dataset.ox=(box.w/2 - box.ox); el.dataset.oy=(box.h/2 - box.oy);
+    // 镜像用内层 wrap 绕中心翻转，外层负责绕 anchor 旋转，避免 scaleX 绕非中心点导致平移
+    const wrap=document.createElement('div'); wrap.className='flip-wrap';
+    if(mirror) wrap.style.transform='scaleX(-1)';
+    const img=document.createElement('img'); img.src=composed.dataUrl; img.draggable=false; wrap.appendChild(img);
+    el.appendChild(wrap);
+    stage.appendChild(el);
+  }
+  function drawPiecesLive(stage, catId, L, sub){
+    const anchors=getAnchors(); const a=anchors[L.anchor]; if(!a) return;
+    const box=SLOT_BOX[catId+'/'+L.key];
+    const wrap=document.createElement('div'); wrap.className='layer-el'; wrap.style.zIndex=L.z;
+    wrap.style.left=(a.x - box.w/2 + box.ox)+'px'; wrap.style.top=(a.y - box.h/2 + box.oy)+'px';
+    wrap.style.width=box.w+'px'; wrap.style.height=box.h+'px';
+    wrap.style.pointerEvents='none';
+    wrap.dataset.anchor=L.anchor; wrap.dataset.mirror='0';
+    wrap.dataset.ox=(box.w/2 - box.ox); wrap.dataset.oy=(box.h/2 - box.oy);
+    sub.pieces.forEach(pc=>{
+      const p=document.createElement('div');
+      p.style.position='absolute'; p.style.pointerEvents='auto'; p.style.cursor='move';
+      p.style.left=(box.w/2 + pc.ox - pc.w/2)+'px'; p.style.top=(box.h/2 + pc.oy - pc.h/2)+'px';
+      p.style.width=pc.w+'px'; p.style.height=pc.h+'px';
+      p.style.transformOrigin='center center';
+      p.style.transform=`rotate(${pc.rot}deg)${pc.flipH?' scaleX(-1)':''}`;
+      p.dataset.pieceId=pc.id;
+      if(pc.id===currentPieceId){
+        p.classList.add('piece-sel');
+        [['nw','corner','pc-hnw'],['ne','corner','pc-hne'],['sw','corner','pc-hsw'],['se','corner','pc-hse'],
+         ['n','edge','pc-hn'],['s','edge','pc-hs'],['w','edge','pc-hw'],['e','edge','pc-he']]
+        .forEach(h=>{ const d=document.createElement('div'); d.className='pc-h '+h[1]+' '+h[2]; d.dataset.dir=h[0]; d.title=(h[0].length===2?'自由缩放（Shift 等比）':'单边拉伸'); p.appendChild(d); });
+        const rh=document.createElement('div'); rh.className='pc-h rot pc-hrot'; rh.dataset.dir='rot'; rh.title='旋转（Shift 吸附 15°）'; p.appendChild(rh);
+      }
+      const img=document.createElement('img'); img.src=pc.imgSrc; img.draggable=false;
+      img.style.width='100%'; img.style.height='100%'; img.style.objectFit='contain'; img.style.pointerEvents='none';
+      p.appendChild(img);
+      wrap.appendChild(p);
+    });
+    stage.appendChild(wrap);
+  }
+
+  function drawSubLayerSlots(stage, item){
+    const cat=CAT_MAP[item.category]; const anchors=getAnchors();
+    cat.layers.forEach(L=>{
+      const sub=item.layers[L.key]; if(!sub) return;
+      if(L.mirrorOf && sub.mirrorEnabled) return;
+      const hasContent=(sub.pieces && sub.pieces.length) || sub.composed;
+      const isEditing=currentSubKey===L.key;
+      if(hasContent && !isEditing) return;
+      const a=anchors[L.anchor]; if(!a) return;
+      const box=SLOT_BOX[cat.id+'/'+L.key]; if(!box) return;
+      const slot=document.createElement('div'); slot.className='sublayer-slot'+(isEditing?' on':'');
+      slot.style.left=(a.x - box.w/2 + box.ox)+'px'; slot.style.top=(a.y - box.h/2 + box.oy)+'px';
+      slot.style.width=box.w+'px'; slot.style.height=box.h+'px'; slot.style.zIndex=L.z;
+      slot.dataset.subKey=L.key;
+      slot.innerHTML=`<span class="slot-label" data-page-node-id="CGz3awxnxWIwUEMMevBXTS">${L.name}</span><span class="slot-hint" data-page-node-id="9XZDsKiYlXFobIohO27D4g">拖 PNG 上传</span>`;
+      stage.appendChild(slot);
+    });
+  }
+
+  function makeStage(stageEl, mode){
+    function render(){
+      stageEl.innerHTML='';
+      if(mode==='body'){ PART_DEFS.forEach(d=>buildBodyEl(stageEl, d.key)); }
+      else if(mode==='cloth'){ const op=showBodyInCloth?1:0.18; PART_DEFS.forEach(d=>buildBodyEl(stageEl, d.key, op)); }
+      else if(mode==='wb'){ PART_DEFS.forEach(d=>buildBodyEl(stageEl, d.key)); }
+
+      if(mode==='cloth' && currentItemId){
+        const it=findItem(currentCat, currentItemId);
+        if(it){ drawItemLayers(stageEl, it, currentSubKey); drawSubLayerSlots(stageEl, it); }
+      } else if(mode==='wb'){
+        CATEGORIES.forEach(c=>{
+          const iid=currentOutfit[c.id]; if(!iid) return;
+          const it=findItem(c.id, iid); if(!it) return;
+          drawItemLayers(stageEl, it, null);
+        });
+      }
+
+      if(mode==='body'){
+        // 中线参考线（body 舞台专属）
+        const mid=document.createElement('div'); mid.className='mid-line'; mid.id='midLine-'+mode;
+        stageEl.appendChild(mid);
+        // 防御性对齐：symLink 开的时候，保证成对关节严格对称（哪怕之前 drift 过）
+        if(symLink) enforceJointSymmetry();
+        PART_DEFS.forEach(d=>{ if(!d.hasJoint) return; const p=parts[d.key]; if(!p.img) return;
+          const dot=document.createElement('div'); dot.className='joint-dot'; dot.dataset.key=d.key;
+          dot.style.left=(p.x+visAnchorX(p)*p.w)+'px'; dot.style.top=(p.y+visAnchorY(p)*p.h)+'px';
+          stageEl.appendChild(dot);
+        });
+        stageEl.querySelectorAll('.layer-el[data-kind="body"]').forEach(el=>{
+          if(el.dataset.key===currentPart) el.classList.add('selected');
+        });
+      }
+      applyAnim(0);
+    }
+
+    function applyAnim(t){
+      const off={};
+      if(animMode){
+        const cyc=Math.sin(t*Math.PI*2);
+        if(animMode==='walk'){
+          const ph=animCfg.walkPhase*Math.PI/180;          // 相位错开（0~180°）：0=两腿同步一起摆，180=完全交替（剪刀腿）
+          const cycL=Math.sin(t*Math.PI*2);
+          const cycR=Math.sin(t*Math.PI*2 + ph);
+          off.armL=-cyc*20; off.armR=cyc*20;
+          off.legL=cycL*22; off.legR=-cycR*22;
+        }
+        else if(animMode==='wave'){ off[animCfg.waveArm]=animCfg.waveBase-Math.abs(cyc)*animCfg.waveSwing; }
+      }
+      // 素体动画对所有舞台生效（服装工坊/衣橱预览里的素体同样摆动），关节红点只在素体工坊刷新
+      stageEl.querySelectorAll('.layer-el[data-kind="body"]').forEach(el=>applyBodyEl(el, el.dataset.key, off[el.dataset.key]||0));
+      // 服装层跟随关节旋转：挂接在 arm/leg 上的袖子/手套/手把件/袜/鞋/裤腿跟着摆，头/躯干挂接的不动
+      stageEl.querySelectorAll('.layer-el[data-anchor]').forEach(el=>{
+        const joint=ANCHOR_JOINT[el.dataset.anchor];
+        const deg=joint ? (off[joint]||0) : 0;
+        const mirror=el.dataset.mirror==='1';
+        el.style.transformOrigin=`${el.dataset.ox||0}px ${el.dataset.oy||0}px`;
+        el.style.transform=`rotate(${mirror?-deg:deg}deg)`;
+      });
+      if(mode==='body') updateJoints();
+    }
+    function updateJoints(){
+      stageEl.querySelectorAll('.joint-dot').forEach(dot=>{
+        const p=parts[dot.dataset.key];
+        dot.style.left=(p.x+visAnchorX(p)*p.w)+'px'; dot.style.top=(p.y+visAnchorY(p)*p.h)+'px';
+      });
+    }
+
+    let drag=null;
+    function down(e){
+      if(e.cancelable) e.preventDefault();
+      const p=getXY(e); const t=e.target;
+      const rect=stageEl.getBoundingClientRect(); const sc=STAGE_W/rect.width;
+      if(mode==='body'){
+        const j=t.closest && t.closest('.joint-dot');
+        if(j){ drag={mode:'joint', key:j.dataset.key, sc}; return; }
+        const h=t.closest && t.closest('.handle');
+        const b=t.closest && t.closest('.layer-el[data-kind="body"]');
+        if(h && b){
+          currentPart=b.dataset.key;
+          const pt=parts[currentPart]; const rect2=stageEl.getBoundingClientRect();
+          // 中心点：有关节用关节，否则元素中心
+          const def=PART_DEFS.find(d=>d.key===currentPart);
+          let cx,cy;
+          if(def && def.hasJoint && pt.jointPct){ cx=pt.x+visAnchorX(pt)*pt.w; cy=pt.y+visAnchorY(pt)*pt.h; }
+          else { cx=pt.x+pt.w/2; cy=pt.y+pt.h/2; }
+          if(h.classList.contains('scale')){
+            drag={mode:'scale', kind:'body', key:currentPart, sc, sx:p.x, sy:p.y, ow:pt.w, oh:pt.h};
+          } else {
+            const a0=Math.atan2((p.y-rect2.top)*sc-cy,(p.x-rect2.left)*sc-cx);
+            drag={mode:'rotate', kind:'body', key:currentPart, sc, cx, cy, a0, r0:pt.rot};
+          }
+          render(); refreshPartsGrid(); $('curPartTag').textContent=(PART_DEFS.find(d=>d.key===currentPart)||{}).label||'';
+          return;
+        }
+        if(b){ currentPart=b.dataset.key;
+          drag={mode:'move', kind:'body', key:currentPart, sc, sx:p.x, sy:p.y, ox:parts[currentPart].x, oy:parts[currentPart].y};
+          render(); refreshPartsGrid(); $('curPartTag').textContent=(PART_DEFS.find(d=>d.key===currentPart)||{}).label||'';
+        }
+        return;
+      }
+      if(mode==='cloth' && currentItemId && currentSubKey){
+        const hEl=t.closest && t.closest('.pc-h');
+        const pe=t.closest && t.closest('[data-piece-id]');
+        if(hEl && pe){
+          const pid=pe.dataset.pieceId;
+          const it=findItem(currentCat, currentItemId); const sub=it.layers[currentSubKey];
+          const pc=sub.pieces.find(x=>x.id===pid); if(!pc) return;
+          currentPieceId=pid;
+          const dir=hEl.dataset.dir;
+          if(dir==='rot'){
+            const pr=pe.getBoundingClientRect();
+            const cx=(pr.left+pr.width/2-rect.left)*sc, cy=(pr.top+pr.height/2-rect.top)*sc;
+            const a0=Math.atan2((p.y-rect.top)*sc-cy,(p.x-rect.left)*sc-cx);
+            drag={mode:'pcRot', kind:'piece', pc, sc, cx, cy, a0, r0:pc.rot||0};
+          } else {
+            drag={mode:'pcScale', kind:'piece', pc, sc, sx:p.x, sy:p.y, dir,
+                  ow:pc.w, oh:pc.h, oox:pc.ox, ooy:pc.oy, rot:pc.rot||0, flip:!!pc.flipH};
+          }
+          renderRightPanel(); render();
+          return;
+        }
+        if(pe){
+          const pid=pe.dataset.pieceId;
+          const it=findItem(currentCat, currentItemId); const sub=it.layers[currentSubKey];
+          const pc=sub.pieces.find(x=>x.id===pid); if(!pc) return;
+          currentPieceId=pid;
+          drag={mode:'move', kind:'piece', pc, sc, sx:p.x, sy:p.y, ox:pc.ox, oy:pc.oy};
+          renderRightPanel(); render();
+        }
+        return;
+      }
+    }
+    // 把 srcKey 的形态镜像到 dstKey（位置相对舞台中线 x 镜像；rot/flipH 取反；尺寸/关节同步）
+    function mirrorTo(srcKey, dstKey){
+      const s=parts[srcKey], d=parts[dstKey]; if(!s||!d) return;
+      d.w=s.w; d.h=s.h; d.rot=s.rot; d.flipH=!s.flipH;
+      if(s.jointPct && d.jointPct) d.jointPct={x:s.jointPct.x, y:s.jointPct.y};
+      const cx=s.x+s.w/2; d.x=(STAGE_W-cx)-d.w/2; d.y=s.y;
+    }
+    function move(e){
+      if(!drag) return; if(e.cancelable) e.preventDefault();
+      const p=getXY(e); const dx=(p.x-drag.sx)*drag.sc, dy=(p.y-drag.sy)*drag.sc;
+      if(drag.mode==='joint'){
+        const rect=stageEl.getBoundingClientRect(); const sc=STAGE_W/rect.width;
+        const pth=parts[drag.key]; const wx=(p.x-rect.left)*sc, wy=(p.y-rect.top)*sc;
+        const vx=(wx-pth.x)/pth.w, vy=(wy-pth.y)/pth.h;
+        setVisAnchorX(pth, vx); pth.jointPct.y=vy;
+        if(mode==='body' && symLink && !shiftHeld){
+          const mk=MIRROR_PAIR[drag.key];
+          if(mk && parts[mk] && parts[mk].jointPct){ setVisAnchorX(parts[mk], 1-vx); parts[mk].jointPct.y=vy; }
+        }
+        render();
+      } else if(drag.mode==='move' && drag.kind==='body'){
+        const key=drag.key; const pt=parts[key];
+        let nx=drag.ox+dx, ny=drag.oy+dy;
+        let snapped=false;
+        if(mode==='body' && snapMid && !shiftHeld && CENTER_PARTS[key]){
+          const cx=nx+pt.w/2, mid=STAGE_W/2;
+          if(Math.abs(cx-mid)<=SNAP_PX){ nx=mid-pt.w/2; snapped=true; }
+        }
+        pt.x=nx; pt.y=ny;
+        if(mode==='body' && symLink && !shiftHeld){
+          const mk=MIRROR_PAIR[key]; if(mk && parts[mk]) mirrorTo(key, mk);
+        }
+        const ml=stageEl.querySelector('.mid-line'); if(ml) ml.classList.toggle('snap', snapped);
+        render();
+      } else if(drag.mode==='scale' && drag.kind==='body'){
+        const key=drag.key; const pt=parts[key];
+        // 不等比缩放：宽跟 dx，高跟 dy，各自独立
+        pt.w=Math.max(10, drag.ow+dx);
+        pt.h=Math.max(10, drag.oh+dy);
+        if(mode==='body' && symLink && !shiftHeld){
+          const mk=MIRROR_PAIR[key]; if(mk && parts[mk]) mirrorTo(key, mk);
+        }
+        render();
+      } else if(drag.mode==='rotate' && drag.kind==='body'){
+        const rect=stageEl.getBoundingClientRect(); const sc=STAGE_W/rect.width;
+        const a=Math.atan2((p.y-rect.top)*sc-drag.cy,(p.x-rect.left)*sc-drag.cx);
+        parts[drag.key].rot=drag.r0+(a-drag.a0)*180/Math.PI;
+        if(mode==='body' && symLink && !shiftHeld){
+          const mk=MIRROR_PAIR[drag.key]; if(mk && parts[mk]) mirrorTo(drag.key, mk);
+        }
+        render();
+      } else if(drag.mode==='pcScale'){
+        const pc=drag.pc;
+        const th=(pc.rot||0)*Math.PI/180, co=Math.cos(th), si=Math.sin(th);
+        let lx = dx*co + dy*si;                 // 屏幕位移 → 素材局部（反旋转）
+        let ly = -dx*si + dy*co;
+        if(pc.flipH) lx = -lx;                  // 水平镜像时局部 x 也要反
+        const sxD = drag.dir.indexOf('e')>=0 ? 1 : (drag.dir.indexOf('w')>=0 ? -1 : 0);
+        const syD = drag.dir.indexOf('s')>=0 ? 1 : (drag.dir.indexOf('n')>=0 ? -1 : 0);
+        let nw=drag.ow, nh=drag.oh;
+        if(drag.dir.length===2 && shiftHeld){   // 角点 + Shift：等比
+          const kW=(drag.ow+sxD*lx)/drag.ow, kH=(drag.oh+syD*ly)/drag.oh;
+          const k=Math.max(0.08,(kW+kH)/2);
+          nw=drag.ow*k; nh=drag.oh*k;
+        } else {                                // 默认自由：宽高各自独立
+          if(sxD) nw=drag.ow+sxD*lx;
+          if(syD) nh=drag.oh+syD*ly;
+        }
+        nw=Math.max(6,nw); nh=Math.max(6,nh);
+        let mx=sxD*(nw-drag.ow)/2, my=syD*(nh-drag.oh)/2;   // 以对角/对边为锚点，中心跟着移动
+        if(pc.flipH) mx=-mx;
+        pc.w=nw; pc.h=nh;
+        pc.ox=drag.oox + (mx*co - my*si);
+        pc.oy=drag.ooy + (mx*si + my*co);
+        const it=findItem(currentCat, currentItemId); if(it) it.layers[currentSubKey].composed=null;
+        render();
+      } else if(drag.mode==='pcRot'){
+        const pc=drag.pc; const rect2=stageEl.getBoundingClientRect();
+        const a=Math.atan2((p.y-rect2.top)*drag.sc-drag.cy,(p.x-rect2.left)*drag.sc-drag.cx);
+        let deg=drag.r0+(a-drag.a0)*180/Math.PI;
+        if(shiftHeld) deg=Math.round(deg/15)*15;
+        pc.rot=deg;
+        const it=findItem(currentCat, currentItemId); if(it) it.layers[currentSubKey].composed=null;
+        render();
+      } else if(drag.mode==='move' && drag.kind==='piece'){
+        drag.pc.ox=drag.ox+dx; drag.pc.oy=drag.oy+dy;
+        const it=findItem(currentCat, currentItemId); if(it) it.layers[currentSubKey].composed=null;
+        render();
+      }
+    }
+    function up(){
+      if(!drag) return;
+      // 松手清除中线高亮
+      const ml=stageEl.querySelector('.mid-line'); if(ml) ml.classList.remove('snap');
+      drag=null; saveBody(); saveLib();
+    }
+    stageEl.addEventListener('mousedown', down);
+    stageEl.addEventListener('touchstart', down, {passive:false});
+    document.addEventListener('mousemove', move);
+    document.addEventListener('touchmove', move, {passive:false});
+    document.addEventListener('mouseup', up);
+    document.addEventListener('touchend', up);
+
+    if(mode==='cloth'){
+      stageEl.addEventListener('dragover', e=>{
+        e.preventDefault();
+        const slot=e.target.closest && e.target.closest('.sublayer-slot');
+        const layerEl=e.target.closest && e.target.closest('.layer-el[data-source="composed"]');
+        if(slot) slot.classList.add('drag-hover');
+        else if(layerEl) layerEl.classList.add('drag-hover');
+      });
+      stageEl.addEventListener('dragleave', e=>{
+        const slot=e.target.closest && e.target.closest('.sublayer-slot');
+        const layerEl=e.target.closest && e.target.closest('.layer-el[data-source="composed"]');
+        if(slot) slot.classList.remove('drag-hover');
+        else if(layerEl) layerEl.classList.remove('drag-hover');
+      });
+      stageEl.addEventListener('drop', e=>{
+        e.preventDefault();
+        const slot=e.target.closest && e.target.closest('.sublayer-slot');
+        const layerEl=e.target.closest && e.target.closest('.layer-el[data-source="composed"]');
+        const files=e.dataTransfer && e.dataTransfer.files;
+        if(slot){ slot.classList.remove('drag-hover'); if(files && files.length) handleFiles(files, slot.dataset.subKey); return; }
+        if(layerEl && files && files.length){
+          layerEl.classList.remove('drag-hover');
+          const subKey=layerEl.dataset.subKey;
+          replaceClothImage(subKey, files[0]);
+        }
+      });
+      stageEl.addEventListener('click', e=>{
+        const s=e.target.closest && e.target.closest('.sublayer-slot');
+        if(s){
+          const k=s.dataset.subKey;
+          if(currentSubKey!==k){ currentSubKey=k; currentPieceId=null; renderRightPanel(); render(); }
+          else openPicker(k);
+        }
+      });
+    }
+    if(mode==='body'){
+      /* 素体零件拖拽覆盖：拖 PNG 到 .layer-el 上替换该零件的图 */
+      stageEl.addEventListener('dragover', e=>{
+        e.preventDefault();
+        const le=e.target.closest && e.target.closest('.layer-el[data-kind="body"]');
+        if(le) le.classList.add('drag-hover');
+      });
+      stageEl.addEventListener('dragleave', e=>{
+        const le=e.target.closest && e.target.closest('.layer-el[data-kind="body"]');
+        if(le) le.classList.remove('drag-hover');
+      });
+      stageEl.addEventListener('drop', e=>{
+        e.preventDefault();
+        const le=e.target.closest && e.target.closest('.layer-el[data-kind="body"]');
+        const files=e.dataTransfer && e.dataTransfer.files;
+        if(le && files && files.length){
+          le.classList.remove('drag-hover');
+          replaceBodyImage(le.dataset.key, files[0]);
+        }
+      });
+    }
+
+    return { render, applyAnim };
+  }
+  const stageMgrs={ body:makeStage(stageBody,'body'), cloth:makeStage(stageCloth,'cloth'), wb:makeStage(stageWb,'wb') };
+
+  function openPicker(subKey){
+    const fi=$('fileInput'); fi.onchange=(e)=>{ const fs=e.target.files; if(fs && fs.length) handleFiles(fs, subKey); fi.value=''; }; fi.click();
+  }
+  /* 拖拽覆盖：替换素体零件 parts[key] 的图片；保持原 w/h/jointPct/位置/镜像不变，仅换图 */
+  function replaceBodyImage(key, file){
+    const p=parts[key]; if(!p){ toast('未选中零件'); return; }
+    readImageFile(file, t=>{
+      if(!t){ toast('读图失败，请用 PNG 文件'); return; }
+      const img=new Image();
+      img.onload=()=>{
+        p.img=img;                                    // 只换图，不动位置/尺寸/关节/镜像
+        stageMgrs.body.render(); refreshPartsGrid();  // 无论保存是否成功，先让画面立即更新
+        if(saveBody()) toast(`已覆盖「${(file.name||key).replace(/\.[^.]+$/,'')}」`);
+        else toast('已换图，但保存失败（存储不足，已自动压缩重试）');
+      };
+      img.onerror=()=>toast('图片解码失败');
+      img.src=t.dataUrl;
+    });
+  }
+  /* 拖拽覆盖：替换当前 subKey 下的素材；有 currentPieceId 则覆盖该 piece，没有则追加新 piece 作为第一个 */
+  function replaceClothImage(subKey, file){
+    if(!currentItemId){ toast('请先新建或选中 Item'); return; }
+    const it=findItem(currentCat, currentItemId); if(!it) return;
+    const cat=CAT_MAP[it.category]; const L=cat.layers.find(x=>x.key===subKey); if(!L) return;
+    const box=SLOT_BOX[cat.id+'/'+L.key];
+    readImageFile(file, t=>{
+      if(!t){ toast('读图失败，请用 PNG 文件'); return; }
+      const ratio=t.width/t.height;
+      let w=box.w*0.85, h=w/ratio;
+      if(h>box.h*0.85){ h=box.h*0.85; w=h*ratio; }
+      const sub=it.layers[subKey];
+      if(sub.pieces && sub.pieces.length>0 && currentPieceId){
+        // 覆盖当前选中的 piece，保持其 ox/oy/w/h/rot/flipH，仅换图
+        const pc=sub.pieces.find(x=>x.id===currentPieceId);
+        if(pc){ pc.imgSrc=t.dataUrl; pc.name=(file.name||'素材').replace(/\.[^.]+$/,''); }
+        else { sub.pieces.unshift({id:'p_'+uid(),name:(file.name||'素材').replace(/\.[^.]+$/,''),imgSrc:t.dataUrl,ox:0,oy:0,w,h,rot:0,flipH:false}); }
+      } else {
+        sub.pieces.unshift({id:'p_'+uid(),name:(file.name||'素材').replace(/\.[^.]+$/,''),imgSrc:t.dataUrl,ox:0,oy:0,w,h,rot:0,flipH:false});
+      }
+      sub.composed=null;
+      saveLib(); renderRightPanel(); stageMgrs.cloth.render(); toast(`已覆盖「${(file.name||subKey).replace(/\.[^.]+$/,'')}」`);
+    });
+  }
+  /* 通用：读文件 → 转 base64 → 加载 Image → 裁边 → 回调 {dataUrl, width, height}；拖拽和 picker 共用 */
+  function readImageFile(file, cb){
+    if(!file || !file.type || !file.type.startsWith('image/')){ cb(null); return; }
+    const rd=new FileReader();
+    rd.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const t = processImage(img, ev.target.result);
+        cb(t);
+      };
+      img.onerror=()=>cb(null);
+      img.src=ev.target.result;
+    };
+    rd.onerror=()=>cb(null);
+    rd.readAsDataURL(file);
+  }
+  function handleFiles(files, subKey){
+    if(!currentItemId){ toast('请先新建或选中 Item'); return; }
+    const it=findItem(currentCat, currentItemId); if(!it) return;
+    const cat=CAT_MAP[it.category]; const L=cat.layers.find(x=>x.key===subKey); if(!L) return;
+    const box=SLOT_BOX[cat.id+'/'+L.key];
+    let done=0, total=0;
+    Array.from(files).forEach(f=>{ if(f.type.startsWith('image/')) total++; });
+    if(total===0){ toast('请选 PNG 图片'); return; }
+    Array.from(files).forEach(f=>{
+      if(!f.type.startsWith('image/')) return;
+      const rd=new FileReader();
+      rd.onload=ev=>{
+        const img=new Image();
+        img.onload=()=>{
+          // 上传即裁剪：自动裁掉 PNG 四周透明边，素材占比小时更省事
+          const t = processImage(img, ev.target.result);
+          const ratio=t.width/t.height;
+          let w=box.w*0.85, h=w/ratio;
+          if(h>box.h*0.85){ h=box.h*0.85; w=h*ratio; }
+          const pc={ id:'p_'+uid(), name:(f.name||'素材').replace(/\.[^.]+$/,''), imgSrc:t.dataUrl, ox:0, oy:0, w, h, rot:0, flipH:false };
+          it.layers[subKey].pieces.push(pc);
+          it.layers[subKey].composed=null;
+          currentSubKey=subKey; currentPieceId=pc.id;
+          done++;
+          if(done===total){
+            saveLib(); renderRightPanel(); stageMgrs.cloth.render(); toast(`已加入 ${total} 张`);
+          }
+        };
+        img.src=ev.target.result;
+      };
+      rd.readAsDataURL(f);
+    });
+  }
+
+  /* ====== 左栏：11 类分类 ====== */
+  function renderCatCol(){
+    const c=$('catCol'); c.innerHTML='';
+    CATEGORIES.forEach(cat=>{
+      const btn=document.createElement('button'); btn.className='cat-btn'+(currentCat===cat.id?' on':'');
+      btn.innerHTML=`<span class="em">${cat.em}</span><span>${cat.label}</span><span class="cnt">${(library[cat.id]||[]).length}</span>`;
+      btn.onclick=()=>{ currentCat=cat.id; currentItemId=null; currentSubKey=null; currentPieceId=null; renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); };
+      c.appendChild(btn);
+    });
+    // 已保存 Item 列表
+    const div=document.createElement('div'); div.className='item-list-mini';
+    const t=document.createElement('div'); t.className='item-list-mini-title'; t.textContent=CAT_MAP[currentCat].label+' · 已保存';
+    div.appendChild(t);
+    const list=library[currentCat]||[];
+    if(list.length===0){
+      const em=document.createElement('div'); em.style.cssText='padding:8px; font-size:11px; color:var(--hint); text-align:center;'; em.textContent='还没有制作';
+      div.appendChild(em);
+    } else {
+      list.forEach(it=>{
+        const b=document.createElement('div'); b.className='mini-item'+(currentItemId===it.id?' on':'');
+        const cat=CAT_MAP[it.category];
+        const firstL=cat.layers[0]; const firstSub=it.layers[firstL.key];
+        const src=firstSub && firstSub.composed ? firstSub.composed.dataUrl : (firstSub && firstSub.pieces[0] ? firstSub.pieces[0].imgSrc : null);
+        b.innerHTML=`<div class="th">${src?`<img src="${src}">`:cat.em}</div><span class="nm">${it.name}</span>`;
+        b.onclick=()=>{ currentItemId=it.id; currentSubKey=cat.layers[0].key; currentPieceId=null; renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); };
+        div.appendChild(b);
+      });
+    }
+    c.appendChild(div);
+    // 新建按钮
+    const add=document.createElement('button'); add.className='btn primary'; add.style.marginTop='8px';
+    add.innerHTML='＋ 新建'+CAT_MAP[currentCat].label;
+    add.onclick=()=>{
+      const it=newItem(currentCat);
+      library[currentCat].push(it); saveLib();
+      currentItemId=it.id; currentSubKey=CAT_MAP[currentCat].layers[0].key; currentPieceId=null;
+      renderCatCol(); renderRightPanel(); stageMgrs.cloth.render();
+      toast('已新建 '+it.name);
+    };
+    c.appendChild(add);
+  }
+
+  /* ====== 右栏：编辑面板 ====== */
+  function renderRightPanel(){
+    const c=$('editCol'); c.innerHTML='';
+    if(!currentItemId){
+      const em=document.createElement('div'); em.className='edit-empty';
+      em.innerHTML='<div class="big">🎨</div><div><b>选左边分类</b><br>再点已有 Item 或 ＋新建</div>';
+      c.appendChild(em);
+      $('stageTitle').textContent='服装工坊 · 空舞台';
+      $('clothTag').textContent='纯素体';
+      $('clothHint').innerHTML='点左边分类 → 新建 / 选 Item → 拖 PNG 到虚线框';
+      return;
+    }
+    const it=findItem(currentCat, currentItemId); if(!it) return;
+    const cat=CAT_MAP[currentCat];
+
+    // 卡片：Item 元信息
+    const meta=document.createElement('div'); meta.className='card';
+    meta.style.padding='14px 16px';
+    const head=document.createElement('div'); head.className='card-head'; head.style.marginBottom='10px';
+    head.innerHTML=`<div><h2 style="font-size:14px;">${cat.em} ${cat.label}</h2><div class="card-sub">Item · ${cat.layers.length} 子图层</div></div>
+      <button class="btn tiny danger" id="btnDelItem">🗑 删</button>`;
+    meta.appendChild(head);
+    const inp=document.createElement('input'); inp.type='text'; inp.className='item-name-input'; inp.value=it.name;
+    inp.oninput=()=>{ it.name=inp.value; };
+    inp.onchange=()=>{ saveLib(); renderCatCol(); };
+    meta.appendChild(inp);
+    // 保存按钮
+    const btns=document.createElement('div'); btns.className='btn-row'; btns.style.marginTop='10px';
+    btns.innerHTML=`<button class="btn primary small" id="btnSaveItem">💾 保存合成</button>
+      <button class="btn violet small" id="btnTryOn">👗 试穿</button>`;
+    meta.appendChild(btns);
+    c.appendChild(meta);
+
+    // 子图层 tabs
+    const subCard=document.createElement('div'); subCard.className='card'; subCard.style.padding='14px 16px'; subCard.style.flex='0 0 auto';
+    subCard.innerHTML=`<div class="card-head" style="margin-bottom:8px;"><div><h2 style="font-size:14px;">子图层</h2><div class="card-sub">切换编辑不同部件</div></div></div>`;
+    const stabs=document.createElement('div'); stabs.className='sub-tabs';
+    cat.layers.forEach(L=>{
+      const sub=it.layers[L.key];
+      const mirroring=L.mirrorOf && sub.mirrorEnabled;
+      const b=document.createElement('button'); b.className='sub-tab'+(currentSubKey===L.key?' on':'');
+      b.innerHTML=`${L.name} <span class="zn">z${L.z}</span>${mirroring?'<span class="mirror-tag">镜像</span>':''}`;
+      b.onclick=()=>{ currentSubKey=L.key; currentPieceId=null; renderRightPanel(); stageMgrs.cloth.render(); };
+      stabs.appendChild(b);
+    });
+    subCard.appendChild(stabs);
+    c.appendChild(subCard);
+
+    // 当前子层 · 镜像开关 + Piece 列表
+    const subEd=document.createElement('div'); subEd.className='card'; subEd.style.flex='1'; subEd.style.padding='14px 16px'; subEd.style.overflow='hidden'; subEd.style.minHeight='0';
+    const L=cat.layers.find(x=>x.key===currentSubKey) || cat.layers[0];
+    const sub=it.layers[L.key];
+    const subHead=document.createElement('div'); subHead.className='card-head'; subHead.style.marginBottom='8px';
+    subHead.innerHTML=`<div><h2 style="font-size:14px;">${L.name}</h2><div class="card-sub">拼接图层 · 从下往上叠</div></div>
+      <span class="badge ${sub.composed?'mint':'neutral'}">${sub.composed?'已合成':(sub.pieces.length+' 片')}</span>`;
+    subEd.appendChild(subHead);
+
+    if(L.mirrorOf){
+      const mr=document.createElement('div'); mr.className='mirror-row';
+      mr.innerHTML=`<label><input type="checkbox" id="chkMirror" ${sub.mirrorEnabled?'checked':''}> 镜像自「${cat.layers.find(x=>x.key===L.mirrorOf).name}」</label>`;
+      subEd.appendChild(mr);
+    }
+
+    const pl=document.createElement('div'); pl.className='piece-list';
+    if(L.mirrorOf && sub.mirrorEnabled){
+      const em=document.createElement('div'); em.style.cssText='padding:16px; font-size:12px; color:var(--hint); text-align:center;'; em.textContent='当前启用镜像，无需独立素材';
+      pl.appendChild(em);
+    } else if(sub.pieces.length===0){
+      const em=document.createElement('div'); em.style.cssText='padding:16px; font-size:12px; color:var(--hint); text-align:center;'; em.textContent='还没有素材，拖 PNG 到舞台虚线框 →';
+      pl.appendChild(em);
+    } else {
+      // 顶=最上层，反序显示
+      const reversed=sub.pieces.slice().reverse();
+      reversed.forEach((pc,ri)=>{
+        const idx=sub.pieces.length-1-ri;
+        const pe=document.createElement('div'); pe.className='piece'+(currentPieceId===pc.id?' on':'');
+        pe.innerHTML=`<div class="th"><img src="${pc.imgSrc}"></div>
+          <span class="nm">${pc.name||'素材'}</span>
+          <div class="ops">
+            <button title="上移">▲</button><button title="下移">▼</button>
+            <button title="重命名">✎</button><button title="删除">🗑</button>
+          </div>`;
+        pe.onclick=(e)=>{ if(e.target.tagName==='BUTTON') return; currentPieceId=pc.id; renderRightPanel(); stageMgrs.cloth.render(); };
+        const [bUp,bDn,bRn,bDel]=pe.querySelectorAll('button');
+        bUp.onclick=(e)=>{ e.stopPropagation(); if(idx<sub.pieces.length-1){ const t=sub.pieces[idx]; sub.pieces[idx]=sub.pieces[idx+1]; sub.pieces[idx+1]=t; sub.composed=null; saveLib(); renderRightPanel(); stageMgrs.cloth.render(); } };
+        bDn.onclick=(e)=>{ e.stopPropagation(); if(idx>0){ const t=sub.pieces[idx]; sub.pieces[idx]=sub.pieces[idx-1]; sub.pieces[idx-1]=t; sub.composed=null; saveLib(); renderRightPanel(); stageMgrs.cloth.render(); } };
+        bRn.onclick=(e)=>{ e.stopPropagation(); const n=prompt('素材名', pc.name); if(n!=null){ pc.name=n.trim()||pc.name; saveLib(); renderRightPanel(); } };
+        bDel.onclick=(e)=>{ e.stopPropagation(); if(!confirm('删除「'+pc.name+'」？')) return; sub.pieces.splice(idx,1); sub.composed=null; if(currentPieceId===pc.id) currentPieceId=null; saveLib(); renderRightPanel(); stageMgrs.cloth.render(); };
+        pl.appendChild(pe);
+      });
+    }
+    subEd.appendChild(pl);
+
+    if(!(L.mirrorOf && sub.mirrorEnabled)){
+      // 拖拽提示 + Piece 属性调整
+      const dh=document.createElement('div'); dh.className='drop-hint';
+      dh.innerHTML='🖼 拖 PNG 到这里 / 点选文件';
+      dh.onclick=()=>openPicker(L.key);
+      dh.addEventListener('dragover', e=>{ e.preventDefault(); dh.classList.add('drag-hover'); });
+      dh.addEventListener('dragleave', ()=>dh.classList.remove('drag-hover'));
+      dh.addEventListener('drop', e=>{ e.preventDefault(); dh.classList.remove('drag-hover'); const fs=e.dataTransfer.files; if(fs && fs.length) handleFiles(fs, L.key); });
+      subEd.appendChild(dh);
+
+      // 当前选中 Piece 的属性
+      if(currentPieceId){
+        const pc=sub.pieces.find(x=>x.id===currentPieceId);
+        if(pc){
+          const box=SLOT_BOX[cat.id+'/'+L.key];
+          const pw=document.createElement('div'); pw.style.marginTop='8px'; pw.style.padding='10px 12px'; pw.style.background='var(--pink-tint)'; pw.style.borderRadius='10px';
+          pw.innerHTML=`<div style="font-size:11px; font-weight:800; color:var(--pink); margin-bottom:6px;">🎯 ${pc.name}</div>
+            <div class="field"><label>宽</label><input type="range" id="pcW" min="6" max="${Math.round(box.w*2)}" value="${Math.round(pc.w)}"><span class="v" id="pcWv">${Math.round(pc.w)}</span></div>
+            <div class="field"><label>高</label><input type="range" id="pcH" min="6" max="${Math.round(box.h*2)}" value="${Math.round(pc.h)}"><span class="v" id="pcHv">${Math.round(pc.h)}</span></div>
+            <div class="field"><label>旋转</label><input type="range" id="pcR" min="-180" max="180" value="${Math.round(pc.rot)}"><span class="v" id="pcRv">${Math.round(pc.rot)}°</span></div>
+            <div class="field"><label>横移</label><input type="range" id="pcX" min="${-Math.round(box.w*1.2)}" max="${Math.round(box.w*1.2)}" value="${Math.round(pc.ox)}"><span class="v" id="pcXv">${Math.round(pc.ox)}</span></div>
+            <div class="field"><label>纵移</label><input type="range" id="pcY" min="${-Math.round(box.h*1.2)}" max="${Math.round(box.h*1.2)}" value="${Math.round(pc.oy)}"><span class="v" id="pcYv">${Math.round(pc.oy)}</span></div>
+            <label style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--sub); margin-top:6px; cursor:pointer;"><input type="checkbox" id="pcLock" ${pcLockRatio?'checked':''}> 🔒 锁定宽高比（滑块联动）</label>
+            <div style="display:flex; gap:5px; margin-top:6px;">
+              <button class="btn tiny" id="pcFlip">↔ 镜像</button>
+              <button class="btn tiny" id="pcReset">↺ 归位</button>
+            </div>`;
+          subEd.appendChild(pw);
+          const ratio=pc.h/pc.w;
+          const wSlider=pw.querySelector('#pcW'), hSlider=pw.querySelector('#pcH'), rSlider=pw.querySelector('#pcR');
+          const xSlider=pw.querySelector('#pcX'), ySlider=pw.querySelector('#pcY');
+          const touch=()=>{ sub.composed=null; stageMgrs.cloth.render(); };
+          const setW=(v)=>{ pc.w=Math.max(6,v); wSlider.value=Math.round(pc.w); pw.querySelector('#pcWv').textContent=Math.round(pc.w); };
+          const setH=(v)=>{ pc.h=Math.max(6,v); hSlider.value=Math.round(pc.h); pw.querySelector('#pcHv').textContent=Math.round(pc.h); };
+          wSlider.oninput=()=>{ setW(+wSlider.value); if(pcLockRatio) setH(pc.w*ratio); touch(); };
+          hSlider.oninput=()=>{ setH(+hSlider.value); if(pcLockRatio) setW(pc.h/ratio); touch(); };
+          rSlider.oninput=()=>{ pc.rot=+rSlider.value; pw.querySelector('#pcRv').textContent=Math.round(pc.rot)+'°'; touch(); };
+          xSlider.oninput=()=>{ pc.ox=+xSlider.value; pw.querySelector('#pcXv').textContent=Math.round(pc.ox); touch(); };
+          ySlider.oninput=()=>{ pc.oy=+ySlider.value; pw.querySelector('#pcYv').textContent=Math.round(pc.oy); touch(); };
+          pw.querySelector('#pcLock').onchange=e=>{ pcLockRatio=e.target.checked; };
+          [wSlider,hSlider,rSlider,xSlider,ySlider].forEach(s=>{ s.onchange=()=>saveLib(); });
+          pw.querySelector('#pcFlip').onclick=()=>{ pc.flipH=!pc.flipH; sub.composed=null; saveLib(); stageMgrs.cloth.render(); };
+          pw.querySelector('#pcReset').onclick=()=>{ pc.ox=0; pc.oy=0; pc.rot=0; sub.composed=null; saveLib(); renderRightPanel(); stageMgrs.cloth.render(); };
+        }
+      }
+    }
+
+    c.appendChild(subEd);
+
+    // 绑定
+    $('btnDelItem').onclick=()=>{
+      if(!confirm('删除 Item「'+it.name+'」？')) return;
+      library[currentCat]=library[currentCat].filter(x=>x.id!==it.id);
+      // 同步移出穿搭
+      if(currentOutfit[currentCat]===it.id) currentOutfit[currentCat]=null;
+      currentItemId=null; currentSubKey=null; currentPieceId=null;
+      saveLib(); renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); updateTopMeta();
+      toast('已删除');
+    };
+    $('btnSaveItem').onclick=()=>{
+      // 合成所有子层
+      const cat2=CAT_MAP[it.category];
+      cat2.layers.forEach(LL=>{
+        const s=it.layers[LL.key];
+        if(LL.mirrorOf && s.mirrorEnabled){ s.composed=null; return; }
+        if(!s.pieces || s.pieces.length===0){ s.composed=null; return; }
+        s.composed = composeSubLayer(s.pieces, SLOT_BOX[cat2.id+'/'+LL.key]);
+      });
+      saveLib(); renderRightPanel(); stageMgrs.cloth.render(); renderCatCol(); updateTopMeta();
+      toast('已合成保存 ✓');
+    };
+    $('btnTryOn').onclick=()=>{
+      // 保存并试穿到当前穿搭
+      const cat2=CAT_MAP[it.category];
+      cat2.layers.forEach(LL=>{
+        const s=it.layers[LL.key];
+        if(LL.mirrorOf && s.mirrorEnabled){ s.composed=null; return; }
+        if(s.pieces && s.pieces.length) s.composed = composeSubLayer(s.pieces, SLOT_BOX[cat2.id+'/'+LL.key]);
+      });
+      currentOutfit[currentCat]=it.id;
+      saveLib(); toast('已试穿 → 衣橱预览');
+    };
+    const chk=document.getElementById('chkMirror');
+    if(chk){
+      chk.onchange=()=>{
+        sub.mirrorEnabled=chk.checked;
+        sub.composed=null;
+        saveLib(); renderRightPanel(); stageMgrs.cloth.render();
+        toast(chk.checked?'已启用镜像':'已解锁独立编辑');
+      };
+    }
+
+    $('stageTitle').textContent=cat.label+' · '+it.name;
+    $('clothTag').textContent=cat.label.toUpperCase();
+    $('clothHint').innerHTML=`当前编辑 <b>${cat.label} · ${L.name}</b>${sub.composed?' (已合成)':''} · 拖素材<b>移动</b> · 拖<b>紫角/青边</b>自由缩放（Shift 等比） · 拖<b>黄点</b>旋转`;
+  }
+
+  /* ====== 素体工坊 ====== */
+  function refreshPartsGrid(){
+    const g=$('partsGrid'); g.innerHTML='';
+    PART_DEFS.forEach(d=>{
+      const p=parts[d.key];
+      const div=document.createElement('div'); div.className='part-slot'+(currentPart===d.key?' on':'');
+      div.dataset.key=d.key;
+      const thumb=p.img?`<img src="${p.img.src}">`:'<span style="color:#ccc;font-size:22px">+</span>';
+      div.innerHTML=`<div class="thumb">${thumb}</div><div class="name">${d.label}</div>`;
+      div.onclick=()=>{ currentPart=d.key; refreshPartsGrid(); stageMgrs.body.render(); $('curPartTag').textContent=d.label; };
+      // 拖拽覆盖：把 PNG 拖到零件缩略图格子，无论该零件当前有没有图都直接覆盖
+      div.addEventListener('dragover', e=>{ e.preventDefault(); div.classList.add('drag-hover'); });
+      div.addEventListener('dragleave', ()=>div.classList.remove('drag-hover'));
+      div.addEventListener('drop', e=>{
+        e.preventDefault(); div.classList.remove('drag-hover');
+        const files=e.dataTransfer && e.dataTransfer.files;
+        if(files && files.length){ currentPart=d.key; replaceBodyImage(d.key, files[0]); }
+      });
+      g.appendChild(div);
+    });
+  }
+
+  /* ====== 衣橱预览 ====== */
+  /* 视角过滤：管理员 = 全部；玩家 = 只看已拥有 */
+  function wbOwned(){
+    if(wbView!=='player') return null;
+    const p=demoProfile(); if(!p) return {};      // 没档案 → 视为一件都没有
+    const s={};
+    (p.ownedItems||[]).forEach(o=>{ if(o && o.itemId) s[o.itemId]=1; });
+    return s;
+  }
+  function renderWbCat(){
+    const c=$('wbCat'); c.innerHTML='';
+    const own=wbOwned();
+    CATEGORIES.forEach(cat=>{
+      const all=library[cat.id]||[];
+      const list= own ? all.filter(it=>own[it.id]) : all;
+      const b=document.createElement('button'); b.className=currentCat===cat.id?'on':'';
+      b.innerHTML=`<span class="em">${cat.em}</span><span>${cat.label}</span><span class="cnt">${list.length}${own&&all.length!==list.length?'/'+all.length:''}</span>`;
+      b.onclick=()=>{ currentCat=cat.id; renderWbCat(); renderWbItems(); };
+      c.appendChild(b);
+    });
+  }
+  function renderWbItems(){
+    const g=$('wbItems'); g.innerHTML='';
+    const own=wbOwned();
+    const all=library[currentCat]||[];
+    const list= own ? all.filter(it=>own[it.id]) : all;
+    const off=document.createElement('div'); off.className='wb-off'; off.textContent='✖ 不穿本类';
+    off.onclick=()=>{ currentOutfit[currentCat]=null; renderWbItems(); stageMgrs.wb.render(); };
+    g.appendChild(off);
+    if(list.length===0){
+      const em=document.createElement('div'); em.style.gridColumn='1/-1'; em.style.textAlign='center'; em.style.padding='20px'; em.style.color='var(--hint)'; em.style.fontSize='12px';
+      em.textContent = own ? '玩家视角：这个分类还没有已购买的服装' : '还没制作，去服装工坊做几件吧';
+      g.appendChild(em); return;
+    }
+    list.forEach(it=>{
+      const cat=CAT_MAP[it.category];
+      const firstL=cat.layers[0]; const firstSub=it.layers[firstL.key];
+      const src=firstSub && firstSub.composed ? firstSub.composed.dataUrl : (firstSub && firstSub.pieces[0] ? firstSub.pieces[0].imgSrc : null);
+      const d=document.createElement('div'); d.className='wb-item'+(currentOutfit[currentCat]===it.id?' on':'');
+      d.innerHTML=`<div class="th">${src?`<img src="${src}">`:'<span style="font-size:20px">'+cat.em+'</span>'}</div><div class="nm">${esc(it.name)}</div><div class="equip-check">${currentOutfit[currentCat]===it.id?'✓':''}</div>`;
+      d.onclick=()=>{ currentOutfit[currentCat]=it.id; renderWbItems(); stageMgrs.wb.render(); };
+      g.appendChild(d);
+    });
+  }
+  /* 穿搭下拉：管理员 = 本地穿搭方案；玩家 = 已购套装 */
+  function wbOwnedSets(){
+    const p=demoProfile(); if(!p) return [];
+    const owned=(p.ownedOutfits||[]).map(o=> (o&&(o.outfitId||o.setId||o.itemId)) ).filter(Boolean);
+    return outfitSets.filter(s=>owned.indexOf(s.id)>=0);
+  }
+  function renderWbOutfits(){
+    const s=$('wbOutfitSel'); s.innerHTML='';
+    if(wbView==='player'){
+      const sets=wbOwnedSets();
+      if(sets.length===0){ const o=document.createElement('option'); o.textContent='— 玩家未拥有套装 —'; o.disabled=true; s.appendChild(o); return; }
+      sets.forEach(x=>{ const op=document.createElement('option'); op.value=x.id; op.textContent='👗 '+x.name; s.appendChild(op); });
+      return;
+    }
+    if(outfits.length===0){ const o=document.createElement('option'); o.textContent='— 无保存的穿搭 —'; o.disabled=true; s.appendChild(o); return; }
+    outfits.forEach((o,i)=>{ const op=document.createElement('option'); op.value=i; op.textContent=o.name; s.appendChild(op); });
+  }
+
+  /* ====== 页面切换 ====== */
+  function switchPage(name){
+    document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.page===name));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    $('page-'+name).classList.add('on');
+    // 不再切页就停动画：走路/挥手跨页面持续，服装工坊、衣橱预览都能看到素体摆动
+    if(name==='body'){ stageMgrs.body.render(); refreshPartsGrid(); }
+    else if(name==='cloth'){ renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); }
+    else if(name==='wb'){ renderWbCat(); renderWbItems(); renderWbOutfits(); stageMgrs.wb.render(); syncWbViewBtn(); }
+    else if(name==='set'){ renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); }
+    else if(name==='shop'){ renderShopZones(); renderShopCards(); renderShopEditor(); }
+    updateTopMeta();
+  }
+  $('tabs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) switchPage(b.dataset.page); });
+
+  function updateTopMeta(){
+    const total=Object.values(library).reduce((n,arr)=>n+arr.length,0);
+    const isFile = location.protocol==='file:';
+    const src = isFile ? '📁 FILE 仓库' : ('🖥 '+(location.host||'HTTP')+' 仓库');
+    const warn = window.__storageFallback ? ' <b style="color:#e05252">存储不可用！</b>' : '';
+    $('topMeta').innerHTML=`Item 总数 <b>${total}</b> · 穿搭 <b>${outfits.length}</b> · <span title="数据存放位置：file:// 与 localhost 是两个互不相通的仓库">${src}</span>${warn}`;
+  }
+  /* 返回中枢 / 数据备份 */
+  (function(){
+    const back=$('btnHubBack'); if(back) back.onclick=()=>{ location.href='index.html?hub=1'; };
+    const bk=$('btnBackup'); if(bk) bk.onclick=()=>{ location.href='数据备份与迁移.html'; };
+  })();
+
+  /* ====== 动画 ====== */
+  function animLoop(){ if(!animMode){ animRaf=null; return; } animT+=0.02*(animMode==='wave'?animCfg.waveSpeed:1); stageMgrs.body.applyAnim(animT); stageMgrs.cloth.applyAnim(animT); stageMgrs.wb.applyAnim(animT); animRaf=requestAnimationFrame(animLoop); }
+  function setAnim(m){ animMode=m; animT=0; if(m && !animRaf) animLoop(); if(!m){ stageMgrs.body.applyAnim(0); stageMgrs.cloth.applyAnim(0); stageMgrs.wb.applyAnim(0); } }
+
+  /* ====== 素体工坊按钮 ====== */
+  $('bSaveBody').onclick=()=>{ if(saveBody()) toast('💾 底膜已保存 ✓'); };
+  $('bDemo').onclick=()=>{ generateDemo(); saveBody(); stageMgrs.body.render(); refreshPartsGrid(); toast('已生成示例小人 ✨'); };
+  $('bUpBody').onclick=()=>{
+    const fi=$('fileInput');
+    fi.onchange=(e)=>{ const f=e.target.files[0]; if(!f)return;
+      const rd=new FileReader();
+      rd.onload=ev=>{ const img=new Image();
+        img.onload=()=>{
+          const t = processImage(img, ev.target.result);
+          const tImg=new Image();
+          tImg.onload=()=>{ const p=parts[currentPart]; p.img=tImg; p.h=p.w*(t.height/t.width); saveBody(); stageMgrs.body.render(); refreshPartsGrid(); toast('已上传 ✓'); };
+          tImg.src=t.dataUrl;
+        };
+        img.src=ev.target.result; };
+      rd.readAsDataURL(f); fi.value=''; };
+    fi.click();
+  };
+  $('bFlipBody').onclick=()=>{ const p=parts[currentPart]; if(p){
+    // 翻转素材时保持"视觉关节"不动（关节还连在身体的同一个点上），只翻图片本体
+    if(p.jointPct){ const vx=visAnchorX(p); p.flipH=!p.flipH; setVisAnchorX(p, vx); }
+    else p.flipH=!p.flipH;
+    saveBody(); stageMgrs.body.render();
+  } };
+  $('bResetBody').onclick=()=>{ if(!confirm('重置素体？')) return;
+    localStorage.removeItem(LS.body); generateDemo(); stageMgrs.body.render(); refreshPartsGrid(); toast('已重置'); };
+
+  // 中线吸附 / 左右对称 / 整体镜像
+  $('bSnapMid').onclick=()=>{ snapMid=!snapMid; $('bSnapMid').classList.toggle('on', snapMid); toast(snapMid?'📏 中线吸附 开':'📏 中线吸附 关'); };
+  // 关节严格对称对齐（兜底）：保证成对部件 (armL/armR, legL/legR) 的 joint.x 严格互补
+  // 用于 render 末尾的"开 symLink 即对称"、拖动联动不一致、Shift 误触等场景的兜底
+  // 注意：只在不严格互补时补正，保留用户已经手动设好的对称偏好
+  function enforceJointSymmetry(){
+    const primaryKeys=['armL','legL'];
+    primaryKeys.forEach(k=>{
+      const a=parts[k], b=parts[MIRROR_PAIR[k]]; if(!a||!b||!a.jointPct||!b.jointPct) return;
+      // 视觉互补检查：成对部件在最终画面里的关节 x 比例应关于中线对称（视觉和=1）
+      const va=visAnchorX(a), vb=visAnchorX(b);
+      if(Math.abs(va + vb - 1) < 1e-6) return; // 已视觉对称，跳过
+      // 取两侧视觉 x 平均，让两侧到中线 (0.5) 距离严格相等
+      const vAvg=(va + vb)/2;
+      const yAvg=(a.jointPct.y + b.jointPct.y)/2;
+      setVisAnchorX(a, vAvg); a.jointPct.y=yAvg;
+      setVisAnchorX(b, 1-vAvg); b.jointPct.y=yAvg;
+    });
+  }
+
+  $('bSymLink').onclick=()=>{
+    symLink=!symLink; $('bSymLink').classList.toggle('on', symLink);
+    if(symLink){
+      // 开启时做一次"全部成对部位"位置+关节严格对齐（不互补才补，保留用户已设的对称）
+      const primaryKeys=['armL','legL'];
+      primaryKeys.forEach(k=>{
+        const a=parts[k], b=parts[MIRROR_PAIR[k]]; if(!a||!b) return;
+        if(a.jointPct&&b.jointPct){
+          const va=visAnchorX(a), vb=visAnchorX(b);
+          if(Math.abs(va+vb-1)>=1e-6){
+            const vAvg=(va+vb)/2;
+            const yAvg=(a.jointPct.y+b.jointPct.y)/2;
+            setVisAnchorX(a, vAvg); a.jointPct.y=yAvg;
+            setVisAnchorX(b, 1-vAvg); b.jointPct.y=yAvg;
+          }
+        }
+        // 位置无论关节状况如何都镜像同步：a 的中点 -> 中线另一侧 = b 的中点
+        const acx=a.x+a.w/2;
+        b.x=(STAGE_W-acx)-b.w/2;
+        b.y=a.y;
+        b.w=a.w; b.h=a.h;
+      });
+      saveBody(); stageMgrs.body.render();
+      toast('🪞 左右对称 · 已强制对齐');
+    } else toast('🪞 左右对称 关');
+  };
+  $('bMirrorAll').onclick=()=>{
+    // 整体镜像：把每个零件相对舞台中线 x 翻转；成对零件互换数据
+    const snap={}; PART_DEFS.forEach(d=>{ const p=parts[d.key]; snap[d.key]={x:p.x,y:p.y,w:p.w,h:p.h,rot:p.rot,flipH:p.flipH,jointPct:p.jointPct?{...p.jointPct}:null}; });
+    PART_DEFS.forEach(d=>{
+      const srcKey=MIRROR_PAIR[d.key]||d.key;
+      const s=snap[srcKey]; const dst=parts[d.key];
+      dst.w=s.w; dst.h=s.h; dst.rot=s.rot; dst.flipH=!s.flipH;
+      if(s.jointPct && dst.jointPct) dst.jointPct={x:s.jointPct.x, y:s.jointPct.y};
+      const cx=s.x+s.w/2; dst.x=(STAGE_W-cx)-dst.w/2; dst.y=s.y;
+    });
+    saveBody(); stageMgrs.body.render(); toast('⇋ 整体镜像');
+  };
+  // 动画开关统一入口：切换播放/停止，并同步素体工坊按钮 + 全局浮动条的高亮状态
+  function toggleAnim(mode){
+    if(animMode===mode) setAnim(null); else setAnim(mode);
+    syncAnimBtns();
+    toast(animMode ? (mode==='walk'?'走路中 🚶':'挥手中 👋') : '已停止');
+  }
+  function syncAnimBtns(){
+    $('bWalk').classList.toggle('on', animMode==='walk');
+    $('bWave').classList.toggle('on', animMode==='wave');
+    $('fabWalk').classList.toggle('on', animMode==='walk');
+    $('fabWave').classList.toggle('on', animMode==='wave');
+  }
+  $('bWalk').onclick=()=>toggleAnim('walk');
+  $('bWave').onclick=()=>toggleAnim('wave');
+  $('bStop').onclick=()=>{ setAnim(null); syncAnimBtns(); toast('已停止'); };
+  $('fabWalk').onclick=()=>toggleAnim('walk');
+  $('fabWave').onclick=()=>toggleAnim('wave');
+  $('fabStop').onclick=()=>{ setAnim(null); syncAnimBtns(); toast('已停止'); };
+
+  // 挥手参数面板：素材朝向不定，角度范围/手臂/速度交给陛下自控（持久化到本地）
+  (function initWaveCfg(){
+    const w=id=>document.getElementById(id);
+    const sync=()=>{
+      w('waveArmR').classList.toggle('on', animCfg.waveArm==='armR');
+      w('waveArmL').classList.toggle('on', animCfg.waveArm==='armL');
+      w('waveBase').value=animCfg.waveBase; w('waveBaseV').textContent=animCfg.waveBase+'°';
+      w('waveSwing').value=animCfg.waveSwing; w('waveSwingV').textContent=animCfg.waveSwing+'°';
+      w('waveSpeed').value=animCfg.waveSpeed; w('waveSpeedV').textContent=animCfg.waveSpeed.toFixed(1)+'×';
+      w('walkPhase').value=animCfg.walkPhase; w('walkPhaseV').textContent=animCfg.walkPhase+'°';
+    };
+    w('waveArmR').onclick=()=>{ animCfg.waveArm='armR'; saveAnimCfg(); sync(); };
+    w('waveArmL').onclick=()=>{ animCfg.waveArm='armL'; saveAnimCfg(); sync(); };
+    w('waveBase').oninput=e=>{ animCfg.waveBase=+e.target.value; w('waveBaseV').textContent=animCfg.waveBase+'°'; saveAnimCfg(); };
+    w('waveSwing').oninput=e=>{ animCfg.waveSwing=+e.target.value; w('waveSwingV').textContent=animCfg.waveSwing+'°'; saveAnimCfg(); };
+    w('waveSpeed').oninput=e=>{ animCfg.waveSpeed=+e.target.value; w('waveSpeedV').textContent=animCfg.waveSpeed.toFixed(1)+'×'; saveAnimCfg(); };
+    w('walkPhase').oninput=e=>{ animCfg.walkPhase=+e.target.value; w('walkPhaseV').textContent=animCfg.walkPhase+'°'; saveAnimCfg(); };
+    sync();
+  })();
+
+  $('btnToggleBody').onclick=()=>{ showBodyInCloth=!showBodyInCloth; stageMgrs.cloth.render(); $('btnToggleBody').textContent=showBodyInCloth?'👁 素体显示':'🚫 素体隐藏'; };
+
+  /* ====== 衣橱预览：穿搭方案 ====== */
+  $('wbLoad').onclick=()=>{
+    const v=$('wbOutfitSel').value; if(v===''||v==null) return;
+    if(wbView==='player'){
+      const s=findSet(v); if(!s) return;
+      currentOutfit={...s.itemIds}; renderWbItems(); stageMgrs.wb.render(); toast('已试穿套装「'+s.name+'」'); return;
+    }
+    const o=outfits[v]; if(!o) return; currentOutfit={...o.sel}; renderWbItems(); stageMgrs.wb.render(); toast('已加载 '+o.name);
+  };
+  $('wbSave').onclick=()=>{
+    if(wbView==='player'){ toast('玩家视角只读，切回管理员视角才能保存'); return; }
+    const i=$('wbOutfitSel').value; if(i===''||i==null||!outfits[i]){ $('wbSaveAs').click(); return; } outfits[i].sel={...currentOutfit}; saveOutfits(); toast('已更新');
+  };
+  $('wbSaveAs').onclick=()=>{
+    if(wbView==='player'){ toast('玩家视角只读，切回管理员视角才能另存'); return; }
+    const n=prompt('穿搭方案名', '搭配'+(outfits.length+1)); if(!n) return; outfits.push({name:n.trim(), sel:{...currentOutfit}}); saveOutfits(); renderWbOutfits(); $('wbOutfitSel').value=outfits.length-1; toast('已另存 '+n); updateTopMeta();
+  };
+  $('wbDel').onclick=()=>{
+    if(wbView==='player'){ toast('玩家视角只读，切回管理员视角才能删除'); return; }
+    const i=$('wbOutfitSel').value; if(i===''||i==null) return; if(!confirm('删除方案「'+outfits[i].name+'」？')) return; outfits.splice(i,1); saveOutfits(); renderWbOutfits(); updateTopMeta(); toast('已删除');
+  };
+  $('wbViewBtn').onclick=()=>{
+    wbView = (wbView==='admin') ? 'player' : 'admin';
+    renderWbCat(); renderWbItems(); renderWbOutfits(); syncWbViewBtn();
+    toast(wbView==='admin' ? '管理员视角：显示全部服装' : '玩家视角：只显示已购买服装');
+  };
+
+  /* ====== 背景切换器 ====== */
+  const BG_PRESETS=[
+    {name:'暖金',   color:'#f3eef9'},
+    {name:'象牙',   color:'#faf8f0'},
+    {name:'蜜桃',   color:'#fef0e8'},
+    {name:'薄荷',   color:'#eef6f0'},
+    {name:'淡蓝',   color:'#eef2f8'},
+    {name:'浅紫',   color:'#f3eef8'},
+    {name:'烟灰',   color:'#eeeae6'},
+    {name:'纯白',   color:'#ffffff'},
+    {name:'夜幕',   color:'#3a3350'},
+    {name:'深棕',   color:'#3a2a1a'},
+  ];
+  (function initBgSwitcher(){
+    const panel=$('bgPanel'), btn=$('btnBgSwitcher');
+    const colorsWrap=$('bgColors');
+    // 渲染预设色块
+    BG_PRESETS.forEach(p=>{
+      const dot=document.createElement('div');
+      dot.title=p.name;
+      dot.style.cssText=`width:28px; height:28px; border-radius:8px; border:2px solid var(--line); cursor:pointer; transition:.15s; background:${p.color};`;
+      dot.addEventListener('mouseenter',()=>dot.style.borderColor='var(--pink)');
+      dot.addEventListener('mouseleave',()=>dot.style.borderColor='var(--line)');
+      dot.onclick=()=>{ applyBgColor(p.color); };
+      colorsWrap.appendChild(dot);
+    });
+    // 开关面板
+    btn.onclick=(e)=>{ e.stopPropagation(); panel.style.display=panel.style.display==='none'?'block':'none'; };
+    document.addEventListener('click',e=>{ if(!$('bgSwitcherWrap').contains(e.target)) panel.style.display='none'; });
+    // 自定义颜色
+    $('btnApplyColor').onclick=()=>{ applyBgColor($('bgCustomColor').value); };
+    // 上传背景图
+    $('btnBgUpload').onclick=()=>$('bgFileInput').click();
+    $('bgFileInput').onchange=(e)=>{
+      const f=e.target.files[0]; if(!f) return;
+      const rd=new FileReader();
+      rd.onload=ev=>{
+        document.body.style.background=`url("${ev.target.result}") center/cover no-repeat fixed`;
+        try{ localStorage.setItem('engine_bg', JSON.stringify({type:'image', data:ev.target.result})); }catch(ex){}
+        toast('背景图已设置 🖼');
+      };
+      rd.readAsDataURL(f);
+      $('bgFileInput').value='';
+    };
+    // 恢复默认
+    $('btnBgReset').onclick=()=>{
+      document.body.style.background='';
+      localStorage.removeItem('engine_bg');
+      toast('已恢复默认背景');
+    };
+    // 加载已保存背景
+    try{
+      const saved=JSON.parse(localStorage.getItem('engine_bg'));
+      if(saved){
+        if(saved.type==='color') applyBgColor(saved.data, true);
+        else if(saved.type==='image') document.body.style.background=`url("${saved.data}") center/cover no-repeat fixed`;
+      }
+    }catch(ex){}
+  })();
+  function applyBgColor(c, silent){
+    document.body.style.background=c;
+    // 深色背景自动切换文字色
+    const r=parseInt(c.slice(1,3),16), g=parseInt(c.slice(3,5),16), b=parseInt(c.slice(5,7),16);
+    const lum=(r*299+g*587+b*114)/1000;
+    if(lum<128){ document.body.style.color='#f0e8d0'; } else { document.body.style.color=''; }
+    try{ localStorage.setItem('engine_bg', JSON.stringify({type:'color', data:c})); }catch(ex){}
+    if(!silent) toast('背景已切换 ✨');
+  }
+
+  /* ====== 主题切换 ====== */
+  const THEMES=[
+    {id:'purple', name:'浅紫',   c:'#a78cd9'},
+    {id:'pink',   name:'樱花粉', c:'#e88bb0'},
+    {id:'mint',   name:'薄荷绿', c:'#7cc4ad'},
+    {id:'sky',    name:'天空蓝', c:'#7fafe0'},
+    {id:'gold',   name:'暖金',   c:'#c9a96e'},
+    {id:'dark',   name:'深紫',   c:'#b49ae0'},
+  ];
+  const LS_THEME='engine_theme';
+  function renderThemeSwatches(){
+    const cur=(localStorage.getItem(LS_THEME)||'purple');
+    const wrap=$('themeSwatches'); if(!wrap) return;
+    wrap.innerHTML='';
+    THEMES.forEach(t=>{
+      const on=cur===t.id;
+      const cell=document.createElement('button');
+      cell.title=t.name;
+      cell.style.cssText=`position:relative; border:2px solid ${on?'var(--pink)':'var(--line)'}; border-radius:12px; padding:8px 4px; cursor:pointer; background:var(--paper2); display:flex; flex-direction:column; align-items:center; gap:5px; transition:.15s;`;
+      cell.innerHTML=`<span style="width:26px;height:26px;border-radius:50%;background:${t.c};box-shadow:inset 0 0 0 2px rgba(255,255,255,.4);display:inline-block;"></span><span style="font-size:11px;font-weight:700;color:var(--ink);">${t.name}</span>`;
+      cell.onclick=()=>{ applyTheme(t.id); };
+      wrap.appendChild(cell);
+    });
+  }
+  function applyTheme(id, silent){
+    if(id && id!=='purple') document.documentElement.setAttribute('data-theme', id);
+    else document.documentElement.removeAttribute('data-theme');
+    try{ localStorage.setItem(LS_THEME, id||'purple'); }catch(e){}
+    renderThemeSwatches();
+    if(!silent) toast('已切换「'+(THEMES.find(t=>t.id===id)||THEMES[0]).name+'」主题 🎨');
+  }
+  (function initThemeSwitcher(){
+    const panel=$('themePanel'), btn=$('btnThemeSwitcher');
+    btn.onclick=(e)=>{ e.stopPropagation(); panel.style.display=panel.style.display==='none'?'block':'none'; };
+    document.addEventListener('click',e=>{ if(!$('themeSwitcherWrap').contains(e.target)) panel.style.display='none'; });
+    applyTheme(localStorage.getItem(LS_THEME)||'purple', true);
+  })();
+  (function initAutoTrim(){
+    const btn=$('btnAutoTrim'); if(!btn) return;
+    const sync=()=>{ btn.classList.toggle('on', autoTrim); };
+    btn.onclick=()=>{
+      autoTrim=!autoTrim;
+      try{ localStorage.setItem(LS.trim, autoTrim?'1':'0'); }catch(e){}
+      sync();
+      toast(autoTrim ? '✂️ 自动裁边 开（上传即裁掉透明边）' : '✂️ 自动裁边 关（保留原始透明边）');
+    };
+    sync();
+  })();
+
+  /* ================= 套装编辑页 ================= */
+  const stageSet=document.getElementById('stage-set');
+  stageMgrs.set=makeStage(stageSet,'wb');   // 复用衣橱渲染逻辑（mode='wb' 读 currentOutfit）
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+  function renderSetList(){
+    const el=$('setList'); el.innerHTML='';
+    if(outfitSets.length===0){ el.innerHTML='<div style="padding:16px;text-align:center;color:var(--hint);font-size:12px;">还没有套装，点「＋ 新建」</div>'; return; }
+    outfitSets.forEach(s=>{
+      const d=document.createElement('div'); d.className='li'+(s.id===currentSetId?' on':'');
+      d.innerHTML=`<span style="flex-shrink:0;">${s.thumbnail?`<img src="${s.thumbnail}" style="width:22px;height:28px;object-fit:contain;border-radius:4px;background:#fff;">`:'👗'}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.name)}</span>`;
+      d.onclick=()=>{ currentSetId=s.id; renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); };
+      el.appendChild(d);
+    });
+  }
+  function renderSetSlots(){
+    const s=currentSet(); const box=$('setSlots'); box.innerHTML='';
+    if(!s){ box.innerHTML='<div style="padding:18px;text-align:center;color:var(--hint);font-size:12px;">先新建或选一个套装</div>'; $('setSlotCount').textContent=''; return; }
+    CATEGORIES.forEach(c=>{
+      const row=document.createElement('div'); row.className='set-slot';
+      const lb=document.createElement('label'); lb.textContent=c.em+' '+c.label;
+      const sel=document.createElement('select');
+      const o0=document.createElement('option'); o0.value=''; o0.textContent='— 无 —'; sel.appendChild(o0);
+      (library[c.id]||[]).forEach(it=>{ const o=document.createElement('option'); o.value=it.id; o.textContent=it.name; if(s.itemIds[c.id]===it.id) o.selected=true; sel.appendChild(o); });
+      sel.onchange=()=>{ s.itemIds[c.id]=sel.value||null; renderSetStage(); updateSlotCount(); };
+      row.appendChild(lb); row.appendChild(sel); box.appendChild(row);
+    });
+    updateSlotCount();
+  }
+  function updateSlotCount(){ const s=currentSet(); if(!s){ $('setSlotCount').textContent=''; return; } $('setSlotCount').textContent=setItemList(s).length+' / '+CATEGORIES.length+' 部位'; }
+  function fillSetForm(){
+    const s=currentSet(); if(!s) return;
+    $('setName').value=s.name||'';
+    $('setPriceCoin').value=s.price.coin==null?'':s.price.coin;
+    $('setPriceDiamond').value=s.price.diamond==null?'':s.price.diamond;
+    $('setPricePearl').value=s.price.pearl==null?'':s.price.pearl;
+    $('setLimFrom').value=s.limitedFrom?String(s.limitedFrom).slice(0,10):'';
+    $('setLimTo').value=s.limitedTo?String(s.limitedTo).slice(0,10):'';
+    renderSetTags();
+  }
+  function renderSetTags(){
+    const s=currentSet(); const box=$('setTags'); box.innerHTML='';
+    SHOP_ZONES.forEach(z=>{
+      const sp=document.createElement('span'); sp.textContent=z.em+' '+z.name;
+      if(s && (s.shopTags||[]).indexOf(z.id)>=0) sp.classList.add('on');
+      sp.onclick=()=>{ if(!s) return; const i=s.shopTags.indexOf(z.id); if(i>=0) s.shopTags.splice(i,1); else s.shopTags.push(z.id); renderSetTags(); };
+      box.appendChild(sp);
+    });
+  }
+  function renderSetStage(){
+    const s=currentSet();
+    if(!s){ stageSet.innerHTML=''; return; }
+    const bak=currentOutfit; currentOutfit=s.itemIds||{};
+    stageMgrs.set.render();
+    currentOutfit=bak;   // 不污染衣橱
+  }
+  function loadImgAsync(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; }); }
+  /* 套装快照：按层序把素体+各部位合成图绘制到 500×800 WebP（Q7） */
+  async function captureSetThumb(){
+    const s=currentSet(); if(!s) return null;
+    const W=500,H=800;
+    const c=document.createElement('canvas'); c.width=W; c.height=H;
+    const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high';
+    const sw=stageSet.offsetWidth||300, sh=stageSet.offsetHeight||480;
+    const kx=W/sw, ky=H/sh;
+    const anchors=getAnchors();
+    const layers=[];
+    PART_DEFS.forEach(d=>{ const p=parts[d.key]; if(p&&p.img&&p.img.src) layers.push({ z:BODY_Z[d.key]||5, kind:'part', p }); });
+    CATEGORIES.forEach(cat=>{
+      const iid=s.itemIds[cat.id]; if(!iid) return;
+      const it=findItem(cat.id, iid); if(!it) return;
+      cat.layers.forEach(L=>{
+        const sub=it.layers[L.key]; if(!sub) return;
+        const src = sub.composed ? sub.composed.dataUrl : ((sub.pieces&&sub.pieces.length)?sub.pieces[0].imgSrc:null);
+        if(!src) return;
+        const box=SLOT_BOX[cat.id+'/'+L.key]; if(!box) return;
+        const a=anchors[L.anchor]; if(!a) return;
+        layers.push({ z:L.z, kind:'cloth', src, x:a.x-box.w/2+box.ox, y:a.y-box.h/2+box.oy, w:box.w, h:box.h, mirror: !!(L.mirrorOf && sub.mirrorEnabled) });
+      });
+    });
+    layers.sort((a,b)=>a.z-b.z);
+    for(const L of layers){
+      if(L.kind==='part'){
+        const im=await loadImgAsync(L.p.img.src); if(!im) continue;
+        ctx.save();
+        ctx.translate((L.p.x+L.p.w/2)*kx,(L.p.y+L.p.h/2)*ky);
+        ctx.rotate((L.p.rot||0)*Math.PI/180);
+        if(L.p.flipH) ctx.scale(-1,1);
+        ctx.drawImage(im,-L.p.w*kx/2,-L.p.h*ky/2,L.p.w*kx,L.p.h*ky);
+        ctx.restore();
+      } else {
+        const im=await loadImgAsync(L.src); if(!im) continue;
+        ctx.save();
+        if(L.mirror){ ctx.translate((L.x+L.w)*kx,0); ctx.scale(-1,1); }
+        ctx.drawImage(im,L.x*kx,L.y*ky,L.w*kx,L.h*ky);
+        ctx.restore();
+      }
+    }
+    try{ return c.toDataURL('image/webp',0.82); }catch(e){ return c.toDataURL('image/png'); }
+  }
+  $('setNew').onclick=()=>{ const s=newSet(); outfitSets.push(s); currentSetId=s.id; saveSets(); renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); updateTopMeta(); toast('已新建套装'); };
+  $('setDel').onclick=()=>{ const s=currentSet(); if(!s) return; if(!confirm('删除套装「'+s.name+'」？')) return;
+    outfitSets=outfitSets.filter(x=>x.id!==s.id); currentSetId=outfitSets.length?outfitSets[0].id:null;
+    saveSets(); renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); updateTopMeta(); toast('已删除'); };
+  $('setName').oninput=()=>{ const s=currentSet(); if(!s) return; s.name=$('setName').value; const li=$('setList').querySelector('.li.on'); if(li) li.lastChild.textContent=s.name; };
+  $('setPriceCoin').onchange=()=>{ const s=currentSet(); if(s) s.price.coin=$('setPriceCoin').value===''?null:+$('setPriceCoin').value; };
+  $('setPriceDiamond').onchange=()=>{ const s=currentSet(); if(s) s.price.diamond=$('setPriceDiamond').value===''?null:+$('setPriceDiamond').value; };
+  $('setPricePearl').onchange=()=>{ const s=currentSet(); if(s) s.price.pearl=$('setPricePearl').value===''?null:+$('setPricePearl').value; };
+  $('setLimFrom').onchange=()=>{ const s=currentSet(); if(s) s.limitedFrom=$('setLimFrom').value?new Date($('setLimFrom').value).toISOString():null; };
+  $('setLimTo').onchange=()=>{ const s=currentSet(); if(s) s.limitedTo=$('setLimTo').value?new Date($('setLimTo').value+'T23:59:59').toISOString():null; };
+  $('setSave').onclick=async ()=>{
+    const s=currentSet(); if(!s){ toast('先新建或选一个套装'); return; }
+    s.name=$('setName').value.trim()||s.name;
+    toast('生成快照中…');
+    const th=await captureSetThumb();
+    if(th) s.thumbnail=th;
+    if(saveSets()) toast('💾 套装已保存 ✓');
+    renderSetList(); renderSetStage(); updateTopMeta();
+  };
+
+  /* ================= 商店编辑页 ================= */
+  let shopZone='common', shopSelId=null;
+  function shopEntries(){
+    const arr=[];
+    if(shopZone==='outfit'){
+      outfitSets.forEach(s=>{ if((s.shopTags||[]).indexOf('outfit')>=0) arr.push({kind:'set', id:s.id, name:s.name, thumb:s.thumbnail, obj:s}); });
+    } else {
+      CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>{ if((it.shopTags||[]).indexOf(shopZone)>=0) arr.push({kind:'item', id:it.id, name:it.name, thumb:itemThumb(it), obj:it}); }); });
+    }
+    arr.sort((a,b)=>((a.obj.shopOrder&&a.obj.shopOrder[shopZone])||0)-((b.obj.shopOrder&&b.obj.shopOrder[shopZone])||0));
+    return arr;
+  }
+  function persistShop(){ saveLib(); saveSets(); }
+  function renumberShop(list){ (list||shopEntries()).forEach((x,i)=>{ x.obj.shopOrder[shopZone]=i; }); persistShop(); }
+  function priceBadges(price){
+    if(!price) return '<b style="opacity:.5;">未定价</b>';
+    const s=CURRENCIES.filter(c=>price[c.k]!=null&&price[c.k]!=='').map(c=>'<b>'+c.em+price[c.k]+'</b>').join('');
+    return s||'<b style="opacity:.5;">未定价</b>';
+  }
+  function renderShopZones(){
+    const box=$('shopZones'); box.innerHTML='';
+    SHOP_ZONES.forEach(z=>{
+      const b=document.createElement('div'); b.className='shop-zone'+(z.id===shopZone?' on':''); b.textContent=z.em+' '+z.name;
+      b.onclick=()=>{ shopZone=z.id; shopSelId=null; renderShopZones(); renderShopCards(); renderShopEditor(); };
+      box.appendChild(b);
+    });
+  }
+  function renderShopCards(){
+    const box=$('shopCards'); box.innerHTML='';
+    const list=shopEntries();
+    $('shopCount').textContent='本区 '+list.length+' 件 · 拖拽调序';
+    if(!list.length){ box.innerHTML='<div class="shop-empty-tip">本区还没有商品，点「＋ 添加到本区」</div>'; return; }
+    list.forEach((x,i)=>{
+      const d=document.createElement('div'); d.className='shop-c'+(x.id===shopSelId?' on':''); d.draggable=true;
+      const lim=(x.obj.limitedFrom||x.obj.limitedTo)?'<div class="lim">限时</div>':'';
+      d.innerHTML='<div class="ord">'+(i+1)+'</div>'+lim+
+        '<div class="th">'+(x.thumb?'<img src="'+x.thumb+'">':'<span style="font-size:30px;opacity:.4;">'+(x.kind==='set'?'👗':'🧥')+'</span>')+'</div>'+
+        '<div class="nm">'+esc(x.name)+'</div><div class="pr">'+priceBadges(x.obj.price)+'</div>';
+      d.onclick=()=>{ shopSelId=x.id; renderShopCards(); renderShopEditor(); };
+      d.ondragstart=e=>{ e.dataTransfer.setData('text/plain',String(i)); d.style.opacity='.4'; };
+      d.ondragend=()=>{ d.style.opacity=''; };
+      d.ondragover=e=>e.preventDefault();
+      d.ondrop=e=>{ e.preventDefault(); const f=parseInt(e.dataTransfer.getData('text/plain'),10); if(isNaN(f)||f===i) return; moveShopItem(f,i); };
+      box.appendChild(d);
+    });
+  }
+  function moveShopItem(from,to){
+    const list=shopEntries();
+    if(from<0||from>=list.length||to<0||to>=list.length) return;
+    const m=list.splice(from,1)[0]; list.splice(to,0,m);
+    renumberShop(list); renderShopCards();
+  }
+  function renderShopEditor(){
+    const box=$('shopEditor');
+    if(!shopSelId){ box.innerHTML='<div style="text-align:center;color:var(--hint);font-size:12px;padding:24px 0;">点左边卡片开始编辑</div>'; return; }
+    const x=shopEntries().find(y=>y.id===shopSelId);
+    if(!x){ box.innerHTML='<div style="text-align:center;color:var(--hint);font-size:12px;padding:24px 0;">该商品已移除</div>'; return; }
+    const o=x.obj; const idx=shopEntries().findIndex(y=>y.id===shopSelId);
+    box.innerHTML='';
+    const hd=document.createElement('div'); hd.className='hd'; hd.textContent=(x.kind==='set'?'👗 ':'🧥 ')+x.name; box.appendChild(hd);
+    const mt=document.createElement('div'); mt.className='meta'; mt.textContent='ID '+x.id; box.appendChild(mt);
+    if(x.thumb){ const im=document.createElement('img'); im.src=x.thumb; im.style.cssText='width:100%;max-height:150px;object-fit:contain;background:var(--paper2);border-radius:12px;margin:6px 0;'; box.appendChild(im); }
+    const mkLabel=t=>{ const d=document.createElement('div'); d.className='fl'; d.style.cssText='font-size:12px;font-weight:700;color:var(--sub);margin-top:4px;'; d.textContent=t; return d; };
+    box.appendChild(mkLabel('定价（可填 1~3 种货币）'));
+    CURRENCIES.forEach(c=>{
+      const row=document.createElement('div'); row.className='price-row';
+      const ic=document.createElement('i'); ic.textContent=c.em;
+      const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.placeholder=c.nm;
+      inp.value=(o.price&&o.price[c.k]!=null)?o.price[c.k]:'';
+      inp.onchange=()=>{ const v=inp.value===''?null:+inp.value; o.price[c.k]=(v==null||isNaN(v))?null:v; persistShop(); renderShopCards(); };
+      row.appendChild(ic); row.appendChild(inp); box.appendChild(row);
+    });
+    box.appendChild(mkLabel('限时区间（选填）'));
+    const lr=document.createElement('div'); lr.className='limit-row';
+    const f1=document.createElement('input'); f1.type='date'; f1.value=o.limitedFrom?String(o.limitedFrom).slice(0,10):'';
+    const f2=document.createElement('input'); f2.type='date'; f2.value=o.limitedTo?String(o.limitedTo).slice(0,10):'';
+    const onLim=()=>{ o.limitedFrom=f1.value?new Date(f1.value).toISOString():null; o.limitedTo=f2.value?new Date(f2.value+'T23:59:59').toISOString():null; persistShop(); renderShopCards(); };
+    f1.onchange=onLim; f2.onchange=onLim;
+    lr.appendChild(f1); lr.appendChild(f2); box.appendChild(lr);
+    const br=document.createElement('div'); br.className='btn-row';
+    const bUp=document.createElement('button'); bUp.className='btn small'; bUp.textContent='↑ 上移'; bUp.onclick=()=>{ if(idx>0){ shopSelId=shopSelId; moveShopItem(idx,idx-1); } };
+    const bDn=document.createElement('button'); bDn.className='btn small'; bDn.textContent='↓ 下移'; bDn.onclick=()=>{ moveShopItem(idx,idx+1); };
+    const bRm=document.createElement('button'); bRm.className='btn small danger'; bRm.textContent='✕ 从本区移除';
+    bRm.onclick=()=>{ const i=o.shopTags.indexOf(shopZone); if(i>=0) o.shopTags.splice(i,1); o.shopOrder[shopZone]=0; shopSelId=null; persistShop(); renderShopCards(); renderShopEditor(); toast('已移除'); };
+    br.appendChild(bUp); br.appendChild(bDn); box.appendChild(br);
+    box.appendChild(bRm);
+  }
+  function openShopAdd(){
+    const mask=document.createElement('div'); mask.className='pick-mask';
+    const panel=document.createElement('div'); panel.className='pick-panel';
+    const has={}; shopEntries().forEach(x=>has[x.id]=1);
+    const cand=[];
+    if(shopZone==='outfit'){ outfitSets.forEach(s=>{ if(!has[s.id]) cand.push({id:s.id,name:s.name,thumb:s.thumbnail,obj:s}); }); }
+    else { CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>{ if(!has[it.id]) cand.push({id:it.id,name:it.name,thumb:itemThumb(it),obj:it}); }); }); }
+    const t=document.createElement('div'); t.style.cssText='font-size:16px;font-weight:800;color:var(--ink);'; t.textContent='添加到「'+ZONE_MAP[shopZone].name+'」区'; panel.appendChild(t);
+    const st=document.createElement('div'); st.style.cssText='font-size:12px;color:var(--sub);margin-top:3px;'; st.textContent='勾选要上架的（'+cand.length+' 个可上架）'; panel.appendChild(st);
+    const list=document.createElement('div'); list.className='pick-list';
+    const sel=new Set();
+    cand.forEach(x=>{
+      const d=document.createElement('div'); d.className='pick-i';
+      d.innerHTML='<div class="th">'+(x.thumb?'<img src="'+x.thumb+'">':'<span style="font-size:26px;opacity:.4;">📦</span>')+'</div><div class="nm2">'+esc(x.name)+'</div>';
+      d.onclick=()=>{ if(sel.has(x.id)){ sel.delete(x.id); d.classList.remove('on'); } else { sel.add(x.id); d.classList.add('on'); } };
+      list.appendChild(d);
+    });
+    panel.appendChild(list);
+    const br=document.createElement('div'); br.style.cssText='display:flex;gap:10px;margin-top:12px;';
+    const ok=document.createElement('button'); ok.className='btn primary'; ok.style.cssText='flex:1;justify-content:center;'; ok.textContent='确认上架';
+    const cc=document.createElement('button'); cc.className='btn'; cc.style.cssText='flex:1;justify-content:center;'; cc.textContent='取消';
+    ok.onclick=()=>{
+      const list2=shopEntries(); let max=0; list2.forEach(x=>{ const v=x.obj.shopOrder[shopZone]||0; if(v>max) max=v; });
+      cand.forEach((x,i)=>{ if(!sel.has(x.id)) return; if(x.obj.shopTags.indexOf(shopZone)<0) x.obj.shopTags.push(shopZone); x.obj.shopOrder[shopZone]=max+1+i; });
+      persistShop(); document.body.removeChild(mask); renderShopCards(); toast('已上架 '+sel.size+' 件');
+    };
+    cc.onclick=()=>document.body.removeChild(mask);
+    br.appendChild(ok); br.appendChild(cc); panel.appendChild(br);
+    mask.onclick=e=>{ if(e.target===mask) document.body.removeChild(mask); };
+    mask.appendChild(panel); document.body.appendChild(mask);
+  }
+  $('shopAdd').onclick=openShopAdd;
+  $('shopRefresh').onclick=()=>{ renderShopCards(); renderShopEditor(); toast('已刷新'); };
+
+  /* ================= 衣橱预览双视角 ================= */
+  /* 玩家档案：优先当前登录账号的，其次 demo 兜底 */
+  function profileKey(){
+    let cur=null; try{ cur=localStorage.getItem('game_current_user'); }catch(e){}
+    return cur ? ('player_profile_'+cur) : 'player_profile_demo';
+  }
+  function demoProfile(){
+    try{
+      let raw=localStorage.getItem(profileKey());
+      if(!raw) raw=localStorage.getItem('player_profile_demo');   // 兼容老 key
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return null;
+  }
+  function ownedSet(){
+    const p=demoProfile(); if(!p||!p.ownedItems) return null;
+    const s={}; (p.ownedItems||[]).forEach(o=>{ if(o&&o.itemId) s[o.itemId]=1; }); return s;
+  }
+  /* 同步视角按钮 + 顶部提示条 */
+  function syncWbViewBtn(){
+    const b=$('wbViewBtn'), tip=$('wbViewTip'); if(!b) return;
+    const isP = wbView==='player';
+    b.textContent = isP ? '🎮 玩家视角' : '👁 管理员视角';
+    b.className  = 'btn small ' + (isP ? 'mint' : 'violet');
+    if(!isP){ tip.classList.remove('on'); tip.innerHTML=''; return; }
+    const p=demoProfile();
+    const n = p ? (p.ownedItems||[]).length : 0;
+    const ns = p ? (p.ownedOutfits||[]).length : 0;
+    tip.classList.add('on');
+    tip.innerHTML = p
+      ? `🎮 <b>玩家视角</b>：只显示已购买的 <b>${n}</b> 件服装 + <b>${ns}</b> 套套装。档案 <code>${esc(profileKey())}</code>（游戏里买完东西回来刷新即可）。切回管理员视角可看全部。`
+      : `⚠️ <b>玩家视角</b>：本机还没找到玩家档案 <code>${esc(profileKey())}</code>。请先在游戏里登录一次（或购买任意服装），现在按“一件都没买”预览。`;
+  }
+
+  /* ====== 初始化 ====== */
+  loadLib(); loadOutfits(); loadSets();
+  if(!loadBody()) generateDemo();
+  CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
+  stageMgrs.body.render(); refreshPartsGrid();
+  updateTopMeta();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="zwq8j5ACAVmFczJLncaKjK">
+<head data-page-node-id="caAOowunGZGjzdCa9ODxRf">
+<meta charset="UTF-8" data-page-node-id="pVmLN3plJhFpQvscGX2pOc">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="2oP4ICh0zdWVu6r9J8vj68">
+<title>塔罗编辑引擎 · Tarot Editor</title>
+<style>
+:root{
+  --ink:#2d2540; --sub:#8c82a3; --hint:#c0b6cf;
+  --line:#ebe0f0; --line2:#f6edf7;
+  --paper:#ffffff; --paper2:#faf5fb;
+  --bg1:#fbf3f0; --bg2:#f0e5f7; --bg3:#e8def5;
+  --pink:#ff6b9d; --pink-tint:#ffe6f0;
+  --violet:#8b6fd8; --violet-tint:#efe8fa;
+  --gold:#d4a24a; --gold-tint:#f9edd3;
+  --mint:#5ac8a8; --danger:#d94a4a;
+  --shadow-sm:0 4px 14px rgba(140,110,160,.10);
+  --shadow-md:0 10px 30px rgba(140,110,160,.16);
+  --shadow-lg:0 20px 50px rgba(140,110,160,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  background:radial-gradient(1200px 800px at 15% -10%, #fff1f8 0%, transparent 60%),
+             radial-gradient(1000px 700px at 100% 100%, #ede0f9 0%, transparent 55%),
+             linear-gradient(135deg,var(--bg1) 0%, var(--bg2) 70%, var(--bg3) 100%);
+  color:var(--ink); font-family:"Nunito","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-weight:500; min-height:100vh; display:flex; flex-direction:column;
+}
+button{font-family:inherit;}
+
+/* 顶栏 */
+header{
+  padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:18px;
+  position:sticky; top:0; z-index:30;
+  background:rgba(255,255,255,.55); backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.6);
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand .logo{
+  width:34px; height:34px; border-radius:12px;
+  background:linear-gradient(135deg,var(--violet) 0%, var(--pink) 100%);
+  display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px;
+  box-shadow:0 6px 16px rgba(139,111,216,.35);
+}
+.brand h1{font-size:16px; font-weight:800;}
+.brand .sub{font-size:11px; color:var(--sub); margin-top:1px;}
+.tabs{display:flex; gap:6px; background:rgba(255,255,255,.72); padding:6px; border-radius:999px; box-shadow:var(--shadow-sm); border:1px solid var(--line);}
+.tabs button{
+  padding:9px 20px; border-radius:999px; border:0; background:transparent; color:var(--sub);
+  font-size:14px; font-weight:700; cursor:pointer; transition:all .18s; display:flex; align-items:center; gap:6px;
+}
+.tabs button:hover{color:var(--ink);}
+.tabs button.on{background:linear-gradient(135deg,var(--violet),var(--pink)); color:#fff; box-shadow:0 6px 18px rgba(139,111,216,.35);}
+.top-meta{font-size:12px; color:var(--sub);}
+.top-meta b{color:var(--ink);}
+
+/* 页面容器 */
+.page{flex:1; display:none; padding:18px; overflow:hidden;}
+.page.on{display:flex;}
+
+/* 通用布局：editor-layout(左列表+中舞台+右图层面板) */
+.editor-layout{width:min(1400px,100%); margin:0 auto; display:grid; grid-template-columns:220px 1fr 300px; gap:16px; height:100%;}
+.editor-layout.no-left{grid-template-columns:1fr 300px;}
+@media(max-width:1100px){ .editor-layout{grid-template-columns:200px 1fr 260px;} }
+
+.card{background:var(--paper); border-radius:20px; box-shadow:var(--shadow-md); padding:18px; display:flex; flex-direction:column; overflow:hidden;}
+.card h2{font-size:17px; font-weight:800;}
+.card h2 .accent{background:linear-gradient(135deg,var(--violet),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.card .card-sub{font-size:12px; color:var(--sub); margin-top:2px;}
+.card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.badge{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700;}
+.badge.pink{background:var(--pink-tint); color:var(--pink);}
+.badge.violet{background:var(--violet-tint); color:var(--violet);}
+.badge.gold{background:var(--gold-tint); color:var(--gold);}
+
+/* 舞台 */
+.stage-wrap{
+  flex:1; display:flex; align-items:center; justify-content:center; padding:16px; position:relative;
+  background:linear-gradient(180deg,#fff 0%, #f8f0fa 100%);
+  border-radius:16px; border:1px solid var(--line2); min-height:0;
+}
+.stage{
+  position:relative; width:375px; height:600px; flex-shrink:0;
+  background:
+    repeating-conic-gradient(rgba(240,220,240,.4) 0% 25%, rgba(230,210,235,.4) 0% 50%) 0 0 / 20px 20px;
+  border:1px solid var(--line); border-radius:14px; overflow:hidden;
+  touch-action:none; user-select:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);
+}
+.stage-tag{
+  position:absolute; top:10px; left:10px; padding:4px 10px; border-radius:999px;
+  background:rgba(255,255,255,.9); font-size:10px; font-weight:700; color:var(--violet); letter-spacing:.5px;
+  box-shadow:var(--shadow-sm); z-index:100; pointer-events:none;
+}
+.stage-hint{
+  position:absolute; bottom:10px; left:12px; right:12px; padding:6px 10px; border-radius:10px;
+  background:rgba(255,255,255,.86); backdrop-filter:blur(6px);
+  font-size:11px; color:var(--sub); text-align:center; z-index:100; pointer-events:none;
+}
+.stage-hint b{color:var(--ink);}
+
+/* Layer element */
+.layer{position:absolute; transform-origin:center center; touch-action:none; cursor:move;}
+.layer img{width:100%; height:100%; display:block; pointer-events:none; object-fit:fill;}
+.layer.selected{outline:2px dashed var(--pink); outline-offset:2px;}
+.layer.hidden-l{display:none;}
+.handle{
+  position:absolute; width:16px; height:16px; border-radius:50%; border:2px solid #fff;
+  z-index:12; cursor:pointer; touch-action:none; transform:translate(-50%,-50%); display:none;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+.layer.selected:not(.locked) .handle{display:block;}
+.handle.scale{background:var(--violet); right:-8px; bottom:-8px; cursor:nwse-resize; transform:translate(50%,50%);}
+.handle.rotate{background:var(--gold); right:-8px; top:-8px; cursor:grab; transform:translate(50%,-50%);}
+
+/* 花边覆盖层，纯展示不交互 */
+.frame-overlay{position:absolute; inset:0; pointer-events:none; z-index:9999;}
+.frame-overlay img{position:absolute;}
+
+/* 左列表通用 */
+.list-scroll{flex:1; overflow-y:auto; padding-right:4px;}
+.list-scroll::-webkit-scrollbar{width:6px;}
+.list-scroll::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+
+.list-item{
+  padding:8px 10px; margin-bottom:4px; border-radius:10px; cursor:pointer;
+  background:var(--paper2); font-size:12px; color:var(--ink); font-weight:600;
+  display:flex; align-items:center; gap:8px; transition:.15s;
+  border:2px solid transparent;
+}
+.list-item:hover{background:var(--pink-tint);}
+.list-item.on{background:linear-gradient(135deg,var(--violet-tint),var(--pink-tint)); border-color:var(--pink);}
+.list-item .idx{font-size:10px; color:var(--sub); min-width:22px; font-family:ui-monospace,monospace;}
+.list-item.on .idx{color:var(--pink);}
+.list-item .st{margin-left:auto; font-size:14px;}
+
+.group-title{font-size:11px; font-weight:800; color:var(--sub); letter-spacing:.5px; text-transform:uppercase; padding:8px 10px 4px;}
+
+/* 右侧图层面板 */
+.layer-panel{display:flex; flex-direction:column; gap:10px;}
+.layer-list{flex:1; overflow-y:auto; padding-right:4px; min-height:120px;}
+.lyr{
+  padding:8px 10px; margin-bottom:4px; border-radius:10px;
+  background:var(--paper2); font-size:12px; display:flex; align-items:center; gap:6px;
+  cursor:pointer; border:2px solid transparent; transition:.15s;
+  user-select:none;
+}
+.lyr:hover{background:var(--pink-tint);}
+.lyr.on{border-color:var(--pink); background:linear-gradient(135deg,var(--pink-tint),var(--violet-tint));}
+.lyr.dragging{opacity:.4;}
+.lyr .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.lyr .name input{width:100%; padding:2px 4px; font-size:12px; border:1px solid var(--pink); border-radius:4px; font-family:inherit;}
+.lyr .thumb{width:24px; height:36px; border-radius:4px; background:#fff; box-shadow:inset 0 0 0 1px var(--line); flex-shrink:0; overflow:hidden;}
+.lyr .thumb img{width:100%; height:100%; object-fit:contain;}
+.lyr .icon-btn{width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:4px; cursor:pointer; font-size:12px; color:var(--sub);}
+.lyr .icon-btn:hover{background:#fff; color:var(--ink);}
+.lyr.locked .thumb{opacity:.5;}
+.lyr.locked .name{color:var(--hint);}
+
+.field-grid{display:grid; grid-template-columns:60px 1fr; gap:8px 10px; align-items:center;}
+.field-grid label{font-size:11px; color:var(--sub); font-weight:700;}
+.field-grid input, .field-grid textarea, .field-grid select{
+  width:100%; padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:#fff;
+  font-size:12px; color:var(--ink); font-family:inherit;
+}
+.field-grid textarea{resize:vertical; min-height:60px;}
+.field-grid input:focus, .field-grid textarea:focus, .field-grid select:focus{outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pink-tint);}
+
+.slider-row{display:flex; align-items:center; gap:8px; font-size:11px;}
+.slider-row input[type=range]{flex:1;}
+.slider-row .v{min-width:36px; text-align:right; color:var(--sub); font-family:ui-monospace,monospace;}
+
+/* 按钮 */
+.btn{
+  padding:8px 14px; border-radius:10px; border:1px solid var(--line);
+  background:#fff; color:var(--ink); font-size:12px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px; transition:.15s; white-space:nowrap;
+}
+.btn:hover{border-color:var(--pink); background:var(--pink-tint);}
+.btn:active{transform:scale(.96);}
+.btn.primary{background:linear-gradient(135deg,var(--violet),var(--pink)); border-color:transparent; color:#fff;}
+.btn.violet{background:var(--violet-tint); border-color:transparent; color:var(--violet);}
+.btn.gold{background:var(--gold-tint); border-color:transparent; color:var(--gold);}
+.btn.mint{background:#e5f5ee; border-color:transparent; color:#2f8a67;}
+.btn.danger{background:#fbecec; border-color:#f2c9c9; color:var(--danger);}
+.btn.small{padding:5px 10px; font-size:11px; border-radius:8px;}
+.btn.on{background:linear-gradient(135deg,var(--violet),var(--pink)); border-color:transparent; color:#fff;}
+.btn-row{display:flex; gap:6px; flex-wrap:wrap;}
+
+/* 拖入区 */
+.drop{
+  border:2px dashed var(--line); border-radius:10px; padding:14px 8px;
+  text-align:center; font-size:12px; color:var(--sub); cursor:pointer; transition:.15s;
+  background:var(--paper2);
+}
+.drop:hover, .drop.over{background:var(--pink-tint); border-color:var(--pink); color:var(--pink);}
+
+/* 预览网格 */
+.grid-preview{
+  flex:1; overflow-y:auto; padding:6px;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;
+}
+.grid-card{
+  aspect-ratio:5/8; border-radius:12px; overflow:hidden; position:relative;
+  background:linear-gradient(135deg,#3d2c56,#5b3f78); box-shadow:var(--shadow-sm); cursor:pointer;
+  border:2px solid transparent; transition:.18s;
+}
+.grid-card:hover{transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--pink);}
+.grid-card img{width:100%; height:100%; object-fit:cover;}
+.grid-card .caption{
+  position:absolute; bottom:0; left:0; right:0; padding:6px 8px;
+  background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);
+  color:#fff; font-size:11px; font-weight:700;
+}
+.grid-card .badge-done{position:absolute; top:6px; right:6px; background:var(--mint); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; font-weight:800;}
+.grid-card .badge-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:11px;}
+
+#toast{
+  position:fixed; left:50%; top:22px; transform:translateX(-50%) translateY(-80px);
+  z-index:9999; background:rgba(50,40,68,.95); color:#fff; padding:10px 22px; border-radius:999px;
+  font-size:13px; font-weight:600; transition:transform .3s; pointer-events:none; box-shadow:var(--shadow-md);
+}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+input[type=range]{-webkit-appearance:none; height:4px; border-radius:4px; background:var(--line); outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--pink); cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:14px; height:14px; border:0; border-radius:50%; background:var(--pink); cursor:pointer;}
+
+.hidden{display:none !important;}
+.divider{height:1px; background:var(--line); margin:10px 0;}
+</style>
+</head>
+<body data-page-node-id="bwGIGHFEDqTl3i1OKEKBJ9">
+<header data-page-node-id="QkgGpD4oNcwQ3Sp5XwnMKH">
+  <div class="brand" data-page-node-id="8sDtAZSEYPAVtmQkPvN2Xn">
+    <div class="logo" data-page-node-id="Nqy914fWi19CVjWIMKBz96">✦</div>
+    <div data-page-node-id="xsqFwvTSDKjqsmIEvDdZc4">
+      <h1 data-page-node-id="UnYxF3i3ZHBeGO4YsuKehp">塔罗编辑引擎</h1>
+      <div class="sub" data-page-node-id="476YXtyZTVCAFbNUe83Y7J">Tarot Editor · 79 张定制</div>
+    </div>
+  </div>
+  <div class="tabs" id="tabs" data-page-node-id="0MuRfN42hjBEITnpiWAaFY">
+    <button data-page="back" class="on" data-page-node-id="ZGcUzDIjoYzsrg4CiR028R">🎴 牌背</button>
+    <button data-page="frame" data-page-node-id="oEPh2RVO0ucjFyUfM7pC17">🎨 花边库</button>
+    <button data-page="card" data-page-node-id="ACkPdnQgQ76Wr1banNC0oi">📇 牌面</button>
+    <button data-page="preview" data-page-node-id="cnaQxMtdZkkQELSnEGe6Ju">👁 预览</button>
+  </div>
+  <div class="top-meta" id="topMeta" data-page-node-id="9bDNAAAU9FMBSIYH4lj5lA"></div>
+  <button class="hub-back" id="btn-hub-back" style="padding:9px 18px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid var(--line);color:var(--ink);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:var(--shadow-sm);">← 返回中枢</button>
+</header>
+
+<!-- 页面 1：牌背 -->
+<div class="page on" id="page-back" data-page-node-id="cJKAOHDghBHk7HnYrsMUS2">
+  <div class="editor-layout no-left" data-page-node-id="romE2iUYomZ5BCTsggRA3I">
+    <div class="card" data-page-node-id="RNTszRFB75VJ2TtdBNwFGB">
+      <div class="card-head" data-page-node-id="Y5AKlJ6OoEHLciScsGmTtM">
+        <div data-page-node-id="tKKhREYrAcGdeljIKrMcq0">
+          <h2 data-page-node-id="GpXgZRA4eFw0p5EOmRtQQ4">🎴 <span class="accent" data-page-node-id="l0X5jrVi9u7wLAI7uGgUFl">牌背编辑</span></h2>
+          <div class="card-sub" data-page-node-id="4iExZJljCVyyRvzBkZSw7Y">全 79 张共用一张牌背 · 建议对称构图</div>
+        </div>
+        <span class="badge violet" data-page-node-id="wRJhC77ESVFcrYP6z6CIEK">500 × 800</span>
+      </div>
+      <div class="stage-wrap" data-page-node-id="B7omdoEzAgpXnsMzq5kNEn">
+        <span class="stage-tag" data-page-node-id="C32Xc1k33aPNkzID8wP3Xc">CARD BACK</span>
+        <div class="stage" id="stage-back" data-page-node-id="rs7AJJXEPePjhHHCfrmsul"></div>
+        <div class="stage-hint" data-page-node-id="CRCahHJ8eLD46XebHCJUQF">拖<b data-page-node-id="hIfPFTyYiMiPCXOjQnOYHE">图层</b>本体移动 · <b data-page-node-id="hRmlAFaSrAi4kK3O4xddnq">紫点</b>缩放 · <b data-page-node-id="uqe3gfCaJ3Jz7tosTZyoCt">金点</b>旋转 · 右栏可调整层级和显隐</div>
+      </div>
+    </div>
+    <div class="layer-panel card" id="panel-back" data-page-node-id="Z60AMv1WPnGfrTvVdRExL1"></div>
+  </div>
+</div>
+
+<!-- 页面 2：花边库 -->
+<div class="page" id="page-frame" data-page-node-id="CXtueDCX10aMA0e5uGBdNg">
+  <div class="editor-layout" data-page-node-id="Q5coZ309C1U5eFelqR6jcX">
+    <div class="card" data-page-node-id="5o6ASjCILCBOZI65auKCHD">
+      <div class="card-head" data-page-node-id="G3urdAyCluEM02BJjt0QS1">
+        <div data-page-node-id="14MXJK5QHKE95mhfvplHAI"><h2 data-page-node-id="uj0gyYIqsObFGlKZQelygd">🎨 <span class="accent" data-page-node-id="QHcf4XgKgibsZz6dnB7dKU">花边模板池</span></h2><div class="card-sub" data-page-node-id="e4UkDcD0ywJ514Qz0c0z1F">复用给 N 张牌</div></div>
+      </div>
+      <button class="btn primary" id="btn-newFrame" data-page-node-id="wzh1FWG9owCINsA7OObxUx">＋ 新建模板</button>
+      <div class="divider" data-page-node-id="cIDLTWzUTpcUPPhTfqky4q"></div>
+      <div class="list-scroll" id="frameList" data-page-node-id="t25ALcnciLZlfQhP3WYIlF"></div>
+    </div>
+    <div class="card" data-page-node-id="f4GPvE0uL508bvFkhU1Yzw">
+      <div class="card-head" data-page-node-id="HaLfowyzmtNRCgahTxsQGE">
+        <div data-page-node-id="z8LoLa0CGr7TjKgK9h2l0K">
+          <h2 id="frameTitle" data-page-node-id="26XZYy3W5jMgoVer5xVVuk">选择或新建模板</h2>
+          <div class="card-sub" id="frameSub" data-page-node-id="1TELVoGhOkcDoQinKyjAVW">花边压在牌面主图之上 · 建议镂空中央</div>
+        </div>
+        <span class="badge gold" data-page-node-id="5BJiQfnlnhRWn44ZSZsIP2">FRAME</span>
+      </div>
+      <div class="stage-wrap" data-page-node-id="OOyF8cPwWLk7tLqmA8kw4m">
+        <span class="stage-tag" data-page-node-id="q4AC9VcxrUngsD2cAxJtaz">FRAME TEMPLATE</span>
+        <div class="stage" id="stage-frame" data-page-node-id="oKUUHpGVmj7Xxo8AMxDKyn"></div>
+        <div class="stage-hint" data-page-node-id="1ZyBpjAR05paEPNq0XKGau">花边模板 · 建议只画<b data-page-node-id="HM8jjy8JzBaNsWoZrSPhAQ">四周边框</b>，中央留空给牌面主图</div>
+      </div>
+    </div>
+    <div class="layer-panel card" id="panel-frame" data-page-node-id="RBG74kgUSyG0ceY8VTPaWo"></div>
+  </div>
+</div>
+
+<!-- 页面 3：牌面 -->
+<div class="page" id="page-card" data-page-node-id="MBb6E3kTKRlqvlCpDS6oxe">
+  <div class="editor-layout" data-page-node-id="ZgMaf5CazkzsicuC7TeDQ6">
+    <div class="card" data-page-node-id="PrtFGA6gqSYXeiE8YaltNC">
+      <div class="card-head" data-page-node-id="sCQD13fBu6WTRkDbzeBVT3">
+        <div data-page-node-id="5ce93MM3M4ynhGwv9FR5cz"><h2 data-page-node-id="4a1jhLGvnAyNLOUO6ZZNR4">📇 <span class="accent" data-page-node-id="Tnezrh9Gf06iImssU9g1GY">79 张牌</span></h2><div class="card-sub" id="cardListSub" data-page-node-id="DmQbuxiA6TDvznhLMn6FF3">选一张编辑</div></div>
+      </div>
+      <div class="list-scroll" id="cardList" data-page-node-id="RBXQSOzR2ItXqkHJEj35fm"></div>
+    </div>
+    <div class="card" data-page-node-id="bLlwElWxTKaZL2v1jm6QZd">
+      <div class="card-head" data-page-node-id="DnwAsCYJ766WIXLVcNuwMY">
+        <div data-page-node-id="0u3X9D3znCio9SzcarbIKb">
+          <h2 id="cardTitle" data-page-node-id="DlKSSAEJEob8T6TssyCpE3">选择一张牌</h2>
+          <div class="card-sub" id="cardSub" data-page-node-id="6yTjArDLCB1DtGHchfMtya">牌面主图在下，花边压顶</div>
+        </div>
+        <span class="badge pink" id="cardBadge" data-page-node-id="stPnOfBVZHdu2WNkAXZzQw">未选</span>
+      </div>
+      <div class="stage-wrap" data-page-node-id="3AVYTF78ZqoUanqqrVFERA">
+        <span class="stage-tag" data-page-node-id="3Bowkw3vvkhDbtWpazKfhE">CARD FACE</span>
+        <div class="stage" id="stage-card" data-page-node-id="W4JDGXc3mkNsl0DSq9Emt0"></div>
+        <div class="stage-hint" data-page-node-id="dPUKGhit4MooRrniERWV81">牌面主图在下，<b data-page-node-id="n6FuvCaXNciZGtZA14k42v">花边模板</b>压顶预览 · 右栏可换花边</div>
+      </div>
+    </div>
+    <div class="layer-panel card" id="panel-card" data-page-node-id="n9yq3R4oaO7TnDwSAF3tJZ"></div>
+  </div>
+</div>
+
+<!-- 页面 4：预览 -->
+<div class="page" id="page-preview" data-page-node-id="qXqiZaF5MieuOEW5HcKQIl">
+  <div class="card" style="width:min(1400px,100%); margin:0 auto;" data-page-node-id="GuNWyaDyEx4AYb9JhYS5FW">
+    <div class="card-head" data-page-node-id="BtdHvDi20EBsvOrbVEWBqr">
+      <div data-page-node-id="xgu5jwnz6Pb4iV8OVMkw4B"><h2 data-page-node-id="lrc8RiOqTdD0EsEleEMWD3">👁 <span class="accent" data-page-node-id="xuG30sPwHgamXcxBDFYmQK">全套预览</span></h2><div class="card-sub" id="previewSub" data-page-node-id="4pcqion9jlWXa46FmJWt3D">已完成的牌显示合成图，未完成的显示牌背 · 点击进入编辑</div></div>
+      <div class="btn-row" data-page-node-id="ue69WCsU20pr2dAFA49opv">
+        <button class="btn violet" id="btn-exportZip" data-page-node-id="675BzWYVmdZ4Vm70V07tmF">📦 导出 ZIP（含 79 张 WebP + JSON）</button>
+        <button class="btn mint" id="btn-exportJson" data-page-node-id="lncLtSAstOAR99Iahqz3Ag">💾 只导出 JSON 元数据</button>
+        <button class="btn" id="btn-reload" data-page-node-id="jWpAw3c1lmfllAdQaMgKpz">↻ 刷新</button>
+      </div>
+    </div>
+    <div class="grid-preview" id="grid-preview" data-page-node-id="wY9kjR0Ra9Qpv0Zon3M6gJ"></div>
+  </div>
+</div>
+
+<div id="toast" data-page-node-id="DWDADOVrnZEABH1JmcbIWn"></div>
+<input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0" data-page-node-id="wElCxgAM87kBxCCBU8FBYr">
+
+<script>
+(function(){
+'use strict';
+
+/* ============== 管理员权限守卫 ============== */
+if(sessionStorage.getItem('adminLogin')!=='true'){ location.replace('index.html'); return; }
+
+/* ============== 常量 ============== */
+const STAGE_W = 500, STAGE_H = 800;     // 逻辑尺寸（1x 输出对齐）
+const OUT_1X = {w:500,h:800};
+const OUT_2X = {w:1000,h:1600};
+const WEBP_Q = 0.88;
+const DB_NAME = 'tarot_editor_v1', DB_STORE = 'blobs', DB_META = 'meta';
+
+/* ============== 79 张牌数据（对齐 index.html） ============== */
+const MAJOR_ARCANA = [
+  {id:'m0',  name:'愚者',      en:'The Fool',           icon:'🌱'},
+  {id:'m1',  name:'魔术师',    en:'The Magician',       icon:'✨'},
+  {id:'m2',  name:'女祭司',    en:'The High Priestess', icon:'🌙'},
+  {id:'m3',  name:'皇后',      en:'The Empress',        icon:'🌹'},
+  {id:'m4',  name:'皇帝',      en:'The Emperor',        icon:'👑'},
+  {id:'m5',  name:'教皇',      en:'The Hierophant',     icon:'📜'},
+  {id:'m6',  name:'恋人',      en:'The Lovers',         icon:'💞'},
+  {id:'m7',  name:'战车',      en:'The Chariot',        icon:'🛡️'},
+  {id:'m8',  name:'力量',      en:'Strength',           icon:'🦁'},
+  {id:'m9',  name:'隐者',      en:'The Hermit',         icon:'🏮'},
+  {id:'m10', name:'命运之轮',  en:'Wheel of Fortune',   icon:'☸️'},
+  {id:'m11', name:'正义',      en:'Justice',            icon:'⚖️'},
+  {id:'m12', name:'倒吊人',    en:'The Hanged Man',     icon:'🙃'},
+  {id:'m13', name:'死神',      en:'Death',              icon:'💀'},
+  {id:'m14', name:'节制',      en:'Temperance',         icon:'🏺'},
+  {id:'m15', name:'恶魔',      en:'The Devil',          icon:'😈'},
+  {id:'m16', name:'高塔',      en:'The Tower',          icon:'🗼'},
+  {id:'m17', name:'星星',      en:'The Star',           icon:'⭐'},
+  {id:'m18', name:'月亮',      en:'The Moon',           icon:'🌕'},
+  {id:'m19', name:'太阳',      en:'The Sun',            icon:'☀️'},
+  {id:'m20', name:'审判',      en:'Judgement',          icon:'🎺'},
+  {id:'m21', name:'世界',      en:'The World',          icon:'🌍'},
+];
+const SUITS = [
+  {suit:'wands',     name:'权杖', el:'火', icon:'🔥'},
+  {suit:'cups',      name:'圣杯', el:'水', icon:'💧'},
+  {suit:'swords',    name:'宝剑', el:'风', icon:'⚔️'},
+  {suit:'pentacles', name:'星币', el:'土', icon:'🪙'},
+];
+const RANKS = [
+  {key:'ace', name:'Ace', cn:'首牌'}, {key:'2',name:'2',cn:'二'}, {key:'3',name:'3',cn:'三'},
+  {key:'4',name:'4',cn:'四'}, {key:'5',name:'5',cn:'五'}, {key:'6',name:'6',cn:'六'},
+  {key:'7',name:'7',cn:'七'}, {key:'8',name:'8',cn:'八'}, {key:'9',name:'9',cn:'九'},
+  {key:'10',name:'10',cn:'十'}, {key:'page',name:'Page',cn:'侍从'},
+  {key:'knight',name:'Knight',cn:'骑士'}, {key:'queen',name:'Queen',cn:'王后'},
+  {key:'king',name:'King',cn:'国王'},
+];
+const ALL_CARDS = (() => {
+  const arr = MAJOR_ARCANA.slice();
+  SUITS.forEach(s => RANKS.forEach(r => {
+    arr.push({id:'s'+s.suit+'_'+r.key, name:s.name+'·'+r.cn, en:s.name+' '+r.name, icon:s.icon, suit:s.suit});
+  }));
+  return arr; // 22+56=78，加牌背单独存
+})();
+
+/* ============== 默认解说词库（韦特塔罗关键词整理，可自由改写） ============== */
+const DEFAULT_LORE = {
+  // ===== 大阿卡纳 22 张 =====
+  m0:  { upright:'新的开始 · 自由 · 冒险 · 纯真 · 无限可能',
+         reversed:'鲁莽 · 幼稚 · 逃避 · 盲目 · 风险失控',
+         desc:'愚者是零，是一切的起点。他背着行囊在悬崖边纵身跃入未知，不问结果，只凭信念。抽到这张牌时，宇宙在提醒你：放下计算，向前一步就是新世界。' },
+  m1:  { upright:'意志 · 创造 · 主动 · 沟通 · 天赋觉醒',
+         reversed:'欺骗 · 滥用能力 · 意图不纯 · 三分钟热度',
+         desc:'魔术师面前摆着四元素工具：他既是艺术家也是执行者。抽到这张牌意味着你已具备所有条件，缺的只是那句"我要开始了"。' },
+  m2:  { upright:'直觉 · 潜意识 · 秘密 · 静观 · 内在智慧',
+         reversed:'压抑 · 秘密外泄 · 忽视直觉 · 信息封锁',
+         desc:'女祭司坐在两根柱子之间，掌管所有未说出口的真相。此刻不必开口，答案会在梦中或某个瞬间浮现。' },
+  m3:  { upright:'丰饶 · 母性 · 创造力 · 自然 · 感官愉悦',
+         reversed:'依赖 · 停滞 · 过度保护 · 创造力堵塞',
+         desc:'皇后是大地母亲，麦穗与河流环绕着她。抽到这张牌，代表你正处于滋养与孕育之中——无论是关系、作品还是一颗新种子。' },
+  m4:  { upright:'权威 · 秩序 · 稳定 · 责任 · 结构',
+         reversed:'专制 · 僵化 · 控制欲 · 拒绝改变',
+         desc:'皇帝坐在山巅的宝座上，用规则守护他建立的一切。抽到这张牌，是叫你把混乱收纳成秩序，为自己订下清晰的边界。' },
+  m5:  { upright:'传统 · 信仰 · 教导 · 规范 · 精神导师',
+         reversed:'守旧 · 教条 · 挑战权威 · 反叛',
+         desc:'教皇是通往神圣的桥梁，也是既有体系的化身。抽到这张牌时，可能有人来指点你，也可能是你被要求扮演那位指点者。' },
+  m6:  { upright:'爱情 · 结合 · 抉择 · 价值观一致 · 灵魂共振',
+         reversed:'失衡 · 分歧 · 错误的选择 · 关系动摇',
+         desc:'恋人不只是浪漫，更是一次关于"你要成为谁"的重大抉择。天使见证之下，你的选择将定义未来的轨道。' },
+  m7:  { upright:'胜利 · 意志 · 前进 · 掌控 · 冲破阻碍',
+         reversed:'失控 · 固执己见 · 方向偏离 · 力量耗尽',
+         desc:'战车由黑白双狮拉动，靠意志力驾驭矛盾的方向。抽到这张牌，代表你终于跨上了那辆早该出发的车。' },
+  m8:  { upright:'勇气 · 温柔的力量 · 自律 · 内在坚定',
+         reversed:'软弱 · 自我怀疑 · 情绪失控 · 逃避挑战',
+         desc:'少女徒手安抚狮子，力量的极致不是压制而是温柔。真正的强，是能与内心的猛兽和平共处。' },
+  m9:  { upright:'内省 · 独处 · 智慧 · 灵性指引 · 灯塔',
+         reversed:'孤僻 · 迷失 · 拒绝求助 · 与世隔绝',
+         desc:'隐者提着灯站在雪山之巅，光只照亮脚下一小片路。抽到这张牌，说明现在需要独处，答案在你自己里。' },
+  m10: { upright:'转机 · 命运的循环 · 意外收获 · 时机成熟',
+         reversed:'厄运 · 停滞 · 循环困境 · 时机未到',
+         desc:'命运之轮永不停转，你所处的低谷或巅峰都只是一段弧线。此刻若感觉一切在推着你走，那就顺势而行。' },
+  m11: { upright:'公平 · 因果 · 理性判断 · 契约 · 平衡',
+         reversed:'偏袒 · 不公 · 逃避责任 · 道德模糊',
+         desc:'正义手持天秤与利剑，冰冷但绝对公允。种因得果，此时不适合钻空子，也不必怕吃亏——一切都会被称量。' },
+  m12: { upright:'换位思考 · 主动牺牲 · 停顿 · 视角翻转',
+         reversed:'徒劳的坚持 · 固执 · 无谓的牺牲 · 卡住',
+         desc:'倒吊人自愿悬挂于树，从颠倒的世界看清正立时看不见的真相。抽到这张牌，暂停也是一种前进。' },
+  m13: { upright:'终结 · 转化 · 重生 · 断舍离 · 蜕变',
+         reversed:'抗拒改变 · 停滞不前 · 拖延告别',
+         desc:'死神并不带走生命，只清扫已经死去的部分。旧的皮蜕下来，新的皮才能长出来——这是最温柔的告别。' },
+  m14: { upright:'平衡 · 调和 · 耐心 · 融合 · 中庸之道',
+         reversed:'失衡 · 过度 · 缺乏耐心 · 矛盾激化',
+         desc:'天使将水在两杯之间来回倾倒，不多不少刚刚好。此刻的关键词是"调"——调温度、调步调、调心情。' },
+  m15: { upright:'欲望 · 束缚 · 沉溺 · 物质诱惑 · 阴影面',
+         reversed:'解脱 · 觉醒 · 挣脱枷锁 · 拒绝诱惑',
+         desc:'恶魔脚下的锁链其实很松，被囚禁的只是不愿意抬头看一眼的自己。承认欲望，就是解开锁链的第一步。' },
+  m16: { upright:'剧变 · 崩塌 · 顿悟 · 意外事件 · 真相揭露',
+         reversed:'拖延崩塌 · 避免灾难 · 内在崩溃',
+         desc:'高塔被闪电劈中，虚假的地基一瞬瓦解。看似毁灭的时刻，其实是最诚实的重建起点。' },
+  m17: { upright:'希望 · 疗愈 · 灵感 · 平静 · 未来可期',
+         reversed:'失望 · 迷茫 · 灵感枯竭 · 信念动摇',
+         desc:'星星倾泻清泉滋养大地，最坏的时刻之后就是这样一份宁静的许愿。相信光，光就会来。' },
+  m18: { upright:'幻象 · 潜意识 · 焦虑 · 不明真相 · 直觉浮现',
+         reversed:'真相浮现 · 迷雾散去 · 情绪释放',
+         desc:'月亮下万物都是自己的影子，真假难分。抽到这张牌，别急着做决定，先让自己安稳走过这段夜路。' },
+  m19: { upright:'喜悦 · 成功 · 活力 · 明朗 · 纯粹快乐',
+         reversed:'短暂受挫 · 光芒被遮 · 快乐延迟',
+         desc:'太阳照耀之下，孩子骑着白马奔向新的一天。这是塔罗里最明亮的祝福，你值得毫无负担地开心一次。' },
+  m20: { upright:'觉醒 · 宽恕 · 重生 · 召唤 · 更高使命',
+         reversed:'悔恨 · 自责 · 抗拒觉醒 · 沉溺过去',
+         desc:'审判的号角吹响，过去的自己从棺木中站起。此刻你不必为旧账赎罪，只需承认它、然后向前走。' },
+  m21: { upright:'圆满 · 成就 · 完成 · 整合 · 抵达终点',
+         reversed:'未竟 · 差临门一脚 · 循环重来',
+         desc:'世界之舞在四元素的见证下终于合一，一个循环走到终点也是新循环的起点。恭喜你走到了这里。' },
+};
+
+/* 小阿卡纳生成模板（4 花色元素 × 14 阶段含义） */
+(function(){
+  const SUIT_META = {
+    wands:     { name:'权杖', el:'火', domain:'行动·激情·事业·创造力' },
+    cups:      { name:'圣杯', el:'水', domain:'情感·爱情·直觉·关系' },
+    swords:    { name:'宝剑', el:'风', domain:'思想·沟通·冲突·决断' },
+    pentacles: { name:'星币', el:'土', domain:'财富·物质·工作·健康' },
+  };
+  const RANK_META = {
+    ace:    { up:'纯粹的能量 · 全新的开始 · 灵感闪现',        rv:'能量受阻 · 起步困难 · 灵感耗尽' },
+    '2':    { up:'平衡 · 选择 · 双方合作 · 联合',              rv:'失衡 · 犹豫不决 · 关系失衡' },
+    '3':    { up:'成长 · 初步成果 · 团队协作 · 展望',          rv:'合作破裂 · 计划受挫 · 目光短浅' },
+    '4':    { up:'稳定 · 结构建立 · 休整 · 沉淀',              rv:'僵化 · 停滞不前 · 过度守成' },
+    '5':    { up:'挑战 · 冲突 · 失衡 · 短暂低谷',              rv:'冲突缓解 · 走出低谷 · 重整旗鼓' },
+    '6':    { up:'和谐 · 给予与接受 · 阶段性胜利',             rv:'施受失衡 · 依赖 · 骄傲自满' },
+    '7':    { up:'评估 · 反思 · 抉择 · 独自面对',              rv:'迟疑 · 逃避评估 · 计划偏差' },
+    '8':    { up:'加速 · 掌握技能 · 快速行动 · 移动',          rv:'延误 · 停顿 · 技术生疏' },
+    '9':    { up:'接近完成 · 满足 · 独立支撑',                 rv:'力不从心 · 满足感缺失 · 孤立' },
+    '10':   { up:'圆满 · 一个阶段的终点 · 沉重的完成',         rv:'负担过重 · 疲惫收尾 · 未圆满' },
+    page:   { up:'年轻能量 · 学习 · 信使 · 好奇心',            rv:'不成熟 · 拖延 · 信息偏差' },
+    knight: { up:'追求 · 冲劲 · 行动派 · 全速前进',            rv:'鲁莽 · 半途而废 · 方向偏离' },
+    queen:  { up:'内在成熟 · 包容 · 领域的滋养者',             rv:'情绪化 · 掌控欲过强 · 内耗' },
+    king:   { up:'精通 · 权威 · 稳定的领导力',                 rv:'固执 · 权力滥用 · 家长式压迫' },
+  };
+  const SUIT_FLAVOR = {
+    wands:     '在事业与激情的层面',
+    cups:      '在情感与关系的层面',
+    swords:    '在思想与沟通的层面',
+    pentacles: '在物质与工作的层面',
+  };
+  const RANK_STORY = {
+    ace:'一颗新的种子悄然降临，抓住它就抓住了新篇章的钥匙。',
+    '2':'两股力量摆在你面前，如何选、如何拿捏，是这张牌要问你的。',
+    '3':'第一批果实已经露出枝头，是时候和同伴一起看看这份小小的成绩。',
+    '4':'你需要一段稳定期，把混乱的东西归位、把已有的东西守好。',
+    '5':'眼下会有一些不适，但这份不适正是让你看清什么才重要的机会。',
+    '6':'一切正走回和谐的轨道，别忘了在得到的同时也回馈出去。',
+    '7':'退一步，好好评估手里的牌。这不是行动的时刻，是判断的时刻。',
+    '8':'风向已顺，脚下能迈多快就迈多快，别再犹豫。',
+    '9':'终点已在望，独自撑住这最后一段路，你比想象中更强。',
+    '10':'一个阶段真正到达了顶点，卸下重担也是这张牌想告诉你的。',
+    page:'像新入门的学徒一样对世界保持好奇，也许信使会带来意外的讯息。',
+    knight:'骑士全速向目标奔去，热情是他最强的燃料，也是最大的隐患。',
+    queen:'王后已把她的领域经营得成熟安稳，你也可以像她一样滋养身边的人。',
+    king:'到达王的境界，意味着从容驾驭这一花色的全部——克制、精通、担当。',
+  };
+  ['wands','cups','swords','pentacles'].forEach(suit => {
+    ['ace','2','3','4','5','6','7','8','9','10','page','knight','queen','king'].forEach(rk => {
+      const id = 's'+suit+'_'+rk;
+      const sm = SUIT_META[suit], rm = RANK_META[rk];
+      DEFAULT_LORE[id] = {
+        upright: rm.up + ' · ' + sm.domain.split('·')[0],
+        reversed: rm.rv,
+        desc: sm.name + '（' + sm.el + '元素）' + SUIT_FLAVOR[suit] + '，' + RANK_STORY[rk],
+      };
+    });
+  });
+})();
+
+/* ============== IndexedDB 封装 ============== */
+let dbP = null;
+function db(){
+  if(dbP) return dbP;
+  dbP = new Promise((res, rej)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains(DB_STORE)) d.createObjectStore(DB_STORE);
+      if(!d.objectStoreNames.contains(DB_META)) d.createObjectStore(DB_META);
+    };
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = e => rej(e);
+  });
+  return dbP;
+}
+async function dbSet(store, key, val){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const tx = d.transaction(store, 'readwrite');
+    tx.objectStore(store).put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = e => rej(e);
+  });
+}
+async function dbGet(store, key){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const tx = d.transaction(store, 'readonly');
+    const r = tx.objectStore(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = e => rej(e);
+  });
+}
+async function dbDel(store, key){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const tx = d.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror = e => rej(e);
+  });
+}
+
+/* ============== 状态 ============== */
+const state = {
+  currentPage: 'back',
+  back: null,           // {layers:[{id,name,src,x,y,w,h,rot,flipH,opacity,visible,locked}]}
+  frames: {},           // id -> {id,name,layers:[]}
+  currentFrameId: null,
+  cards: {},            // cardId -> {name,en,upright,reversed,desc,frameId,layers:[]}
+  currentCardId: null,
+  // 每页选中的图层
+  selLayer: { back:null, frame:null, card:null },
+};
+
+const $ = id => document.getElementById(id);
+const toastEl = $('toast');
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove('show'), 1800); }
+
+/* ============== 工具 ============== */
+function uid(){ return 'l_'+Date.now().toString(36)+'_'+Math.floor(Math.random()*1e6).toString(36); }
+function getXY(ev){
+  if(ev.touches&&ev.touches[0]) return {x:ev.touches[0].clientX, y:ev.touches[0].clientY};
+  if(ev.changedTouches&&ev.changedTouches[0]) return {x:ev.changedTouches[0].clientX, y:ev.changedTouches[0].clientY};
+  return {x:ev.clientX, y:ev.clientY};
+}
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+/* ============== 图片压缩：高清 -> 500×800 WebP ============== */
+// 找 alpha bbox → 缩放贴合到 STAGE_W × STAGE_H → WebP
+async function compressToWebP(dataUrl, outW, outH, quality=WEBP_Q){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    img.onload = () => {
+      // Step1: 用原图分辨率画到 offscreen 分析 alpha
+      const ow = img.naturalWidth, oh = img.naturalHeight;
+      const scale = Math.min(1, 2000 / Math.max(ow, oh)); // 太大先缩到 2000 分析
+      const sw = Math.round(ow*scale), sh = Math.round(oh*scale);
+      const oc = document.createElement('canvas'); oc.width = sw; oc.height = sh;
+      const octx = oc.getContext('2d');
+      octx.drawImage(img, 0, 0, sw, sh);
+      const data = octx.getImageData(0, 0, sw, sh).data;
+      let minX=sw,minY=sh,maxX=0,maxY=0, hasAlpha=false;
+      for(let y=0;y<sh;y++){
+        for(let x=0;x<sw;x++){
+          if(data[(y*sw+x)*4+3] > 8){
+            if(x<minX)minX=x; if(x>maxX)maxX=x;
+            if(y<minY)minY=y; if(y>maxY)maxY=y;
+            hasAlpha = true;
+          }
+        }
+      }
+      // 无 alpha（例如 JPG）：整张都算内容
+      if(!hasAlpha || minX>=maxX || minY>=maxY){ minX=0; minY=0; maxX=sw-1; maxY=sh-1; }
+      const bw = maxX-minX+1, bh = maxY-minY+1;
+      // 反算回原图尺寸
+      const invS = 1/scale;
+      const rx = minX*invS, ry = minY*invS, rw = bw*invS, rh = bh*invS;
+      // Step2: 按短边 fit 到目标（保比例）
+      const rr = rw/rh, tr = outW/outH;
+      let dw, dh;
+      if(rr > tr){ dw = outW; dh = outW/rr; } else { dh = outH; dw = outH*rr; }
+      const dx = (outW-dw)/2, dy = (outH-dh)/2;
+      const out = document.createElement('canvas'); out.width = outW; out.height = outH;
+      const octx2 = out.getContext('2d');
+      octx2.imageSmoothingQuality = 'high';
+      octx2.drawImage(img, rx, ry, rw, rh, dx, dy, dw, dh);
+      out.toBlob(b => {
+        const r = new FileReader();
+        r.onload = () => res({dataUrl:r.result, w:outW, h:outH, size:b.size});
+        r.readAsDataURL(b);
+      }, 'image/webp', quality);
+    };
+    img.onerror = rej;
+    img.src = dataUrl;
+  });
+}
+
+// 图层合成：把当前 layers 数组按顺序合成一张 WebP
+async function composeLayers(layers, outW, outH, quality=WEBP_Q){
+  const c = document.createElement('canvas'); c.width = outW; c.height = outH;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  // layers[0] 在最上面，倒序绘制（先画底层）
+  const arr = layers.slice().reverse();
+  for(const L of arr){
+    if(!L.visible || !L.src) continue;
+    const img = await new Promise((res, rej) => {
+      const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = L.src;
+    });
+    ctx.save();
+    ctx.globalAlpha = L.opacity != null ? L.opacity : 1;
+    // 舞台是 STAGE_W × STAGE_H，输出是 outW × outH，等比缩放
+    const kx = outW / STAGE_W, ky = outH / STAGE_H;
+    const cx = (L.x + L.w/2) * kx, cy = (L.y + L.h/2) * ky;
+    ctx.translate(cx, cy);
+    ctx.rotate((L.rot||0) * Math.PI / 180);
+    if(L.flipH) ctx.scale(-1, 1);
+    ctx.drawImage(img, -L.w*kx/2, -L.h*ky/2, L.w*kx, L.h*ky);
+    ctx.restore();
+  }
+  return new Promise(res => {
+    c.toBlob(b => {
+      if(!b){ res(null); return; }
+      const r = new FileReader();
+      r.onload = () => res({dataUrl:r.result, size:b.size, w:outW, h:outH});
+      r.readAsDataURL(b);
+    }, 'image/webp', quality);
+  });
+}
+
+/* ============== 存/取 ============== */
+async function saveAll(){
+  await dbSet(DB_META, 'back', state.back);
+  await dbSet(DB_META, 'frames', state.frames);
+  await dbSet(DB_META, 'cards', state.cards);
+  updateMeta();
+}
+async function loadAll(){
+  const b = await dbGet(DB_META, 'back');
+  const f = await dbGet(DB_META, 'frames');
+  const c = await dbGet(DB_META, 'cards');
+  if(b) state.back = b; else state.back = { layers: [] };
+  if(f) state.frames = f; else state.frames = {};
+  if(c) state.cards = c;
+  // 补齐 79 张牌数据结构
+  ALL_CARDS.forEach(cd => {
+    const dl = DEFAULT_LORE[cd.id] || {upright:'', reversed:'', desc:''};
+    if(!state.cards[cd.id]){
+      state.cards[cd.id] = {
+        id: cd.id, name: cd.name, en: cd.en,
+        upright: dl.upright, reversed: dl.reversed, desc: dl.desc,
+        frameId: null, layers: []
+      };
+    } else {
+      // 补默认字段
+      const c2 = state.cards[cd.id];
+      c2.name = c2.name || cd.name;
+      c2.en = c2.en || cd.en;
+      if(!c2.upright) c2.upright = dl.upright;
+      if(!c2.reversed) c2.reversed = dl.reversed;
+      if(!c2.desc) c2.desc = dl.desc;
+      if(!c2.layers) c2.layers = [];
+    }
+  });
+  // 若有任何字段被填充，落库一次
+  await dbSet(DB_META, 'cards', state.cards);
+}
+
+/* ============== 通用图层编辑器 ============== */
+// getLayers: () => 当前页 layers 数组的引用
+// getSelId / setSelId
+// afterChange: 数据变化后回调（重绘 + 保存）
+function makeEditor(stageEl, getLayers, getSelId, setSelId, afterChange, extra){
+  extra = extra || {};
+
+  function renderStage(){
+    // 清掉 layer 元素（保留 tag/hint/frame-overlay）
+    Array.from(stageEl.querySelectorAll('.layer, .frame-overlay')).forEach(el => el.remove());
+    // 底层：extra.underlay?
+    if(extra.underlay) extra.underlay(stageEl);
+    // 图层：数组顺序 0=最上层，倒序渲染让下标 0 在最上
+    const layers = getLayers();
+    const selId = getSelId();
+    for(let i = layers.length-1; i >= 0; i--){
+      const L = layers[i];
+      const el = document.createElement('div');
+      el.className = 'layer' + (L.visible===false ? ' hidden-l' : '') + (L.locked ? ' locked' : '') + (L.id===selId ? ' selected' : '');
+      el.dataset.id = L.id;
+      el.style.left = L.x + 'px'; el.style.top = L.y + 'px';
+      el.style.width = L.w + 'px'; el.style.height = L.h + 'px';
+      el.style.transform = `rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''}`;
+      el.style.opacity = L.opacity != null ? L.opacity : 1;
+      el.style.zIndex = layers.length - i;   // 数组前面的元素叠得更高
+      if(L.src){
+        const img = document.createElement('img'); img.src = L.src; img.draggable = false;
+        el.appendChild(img);
+      } else {
+        el.style.background = 'rgba(139,111,216,.2)';
+      }
+      if(L.id === selId && !L.locked){
+        const s = document.createElement('div'); s.className = 'handle scale'; el.appendChild(s);
+        const r = document.createElement('div'); r.className = 'handle rotate'; el.appendChild(r);
+      }
+      stageEl.appendChild(el);
+    }
+    // 顶层：extra.overlay?（花边压顶）
+    if(extra.overlay) extra.overlay(stageEl);
+  }
+
+  // 拖拽事件委托
+  let drag = null;
+  stageEl.addEventListener('mousedown', down);
+  stageEl.addEventListener('touchstart', down, {passive:false});
+  document.addEventListener('mousemove', move);
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('mouseup', up);
+  document.addEventListener('touchend', up);
+
+  function down(e){
+    const target = e.target;
+    const handle = target.closest && target.closest('.handle');
+    const layerEl = target.closest && target.closest('.layer');
+    if(!layerEl) return;
+    if(e.cancelable) e.preventDefault();
+    const rect = stageEl.getBoundingClientRect();
+    const sc = STAGE_W / rect.width;
+    const p = getXY(e);
+    const layers = getLayers();
+    const id = layerEl.dataset.id;
+    const L = layers.find(x => x.id === id);
+    if(!L || L.locked) return;
+    setSelId(id);
+    renderStage();
+    afterChange && afterChange({selChanged:true});
+
+    if(handle){
+      if(handle.classList.contains('scale')){
+        drag = {mode:'scale', L, sc, sx:p.x, sy:p.y, ow:L.w, oh:L.h, ratio:L.h/L.w};
+      } else {
+        const cx = L.x + L.w/2, cy = L.y + L.h/2;
+        const a0 = Math.atan2((p.y-rect.top)*sc - cy, (p.x-rect.left)*sc - cx);
+        drag = {mode:'rotate', L, sc, cx, cy, a0, r0:L.rot||0};
+      }
+    } else {
+      drag = {mode:'move', L, sc, sx:p.x, sy:p.y, ox:L.x, oy:L.y};
+    }
+  }
+  function move(e){
+    if(!drag) return; if(e.cancelable) e.preventDefault();
+    const p = getXY(e);
+    if(drag.mode === 'move'){
+      drag.L.x = drag.ox + (p.x - drag.sx) * drag.sc;
+      drag.L.y = drag.oy + (p.y - drag.sy) * drag.sc;
+    } else if(drag.mode === 'scale'){
+      const dx = (p.x - drag.sx) * drag.sc;
+      const dy = (p.y - drag.sy) * drag.sc;
+      drag.L.w = Math.max(10, drag.ow + dx);
+      drag.L.h = Math.max(10, drag.oh + dy);
+    } else if(drag.mode === 'rotate'){
+      const rect = stageEl.getBoundingClientRect();
+      const sc = STAGE_W / rect.width;
+      const a = Math.atan2((p.y - rect.top)*sc - drag.cy, (p.x - rect.left)*sc - drag.cx);
+      drag.L.rot = drag.r0 + (a - drag.a0) * 180 / Math.PI;
+    }
+    renderStage();
+    afterChange && afterChange({liveDrag:true});
+  }
+  function up(){
+    if(!drag) return;
+    drag = null;
+    afterChange && afterChange({end:true});
+  }
+
+  // Drop upload
+  stageEl.addEventListener('dragover', e => { e.preventDefault(); stageEl.style.background = ''; });
+  stageEl.addEventListener('drop', async e => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if(files.length) await addFilesAsLayers(files, getLayers, setSelId, afterChange);
+  });
+
+  return { renderStage };
+}
+
+async function addFilesAsLayers(files, getLayers, setSelId, afterChange){
+  toast('压缩中… ' + files.length + ' 张');
+  for(const f of files){
+    const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+    const c = await compressToWebP(dataUrl, OUT_1X.w, OUT_1X.h, WEBP_Q);
+    // 存到 layers
+    const img = new Image(); img.src = c.dataUrl;
+    await new Promise(res => { img.onload = res; });
+    // 初始尺寸：不超舞台 80%
+    const ar = img.naturalWidth / img.naturalHeight;
+    let w = STAGE_W, h = w / ar;
+    if(h > STAGE_H){ h = STAGE_H; w = h * ar; }
+    const L = {
+      id: uid(),
+      name: (f.name||'图层').replace(/\.[^.]+$/, '').slice(0, 20),
+      src: c.dataUrl,
+      x: (STAGE_W - w) / 2, y: (STAGE_H - h) / 2,
+      w, h, rot: 0, flipH: false, opacity: 1, visible: true, locked: false,
+    };
+    const layers = getLayers();
+    layers.unshift(L);  // 新加的放最上层
+    setSelId(L.id);
+  }
+  toast('已添加 ' + files.length + ' 层');
+  afterChange && afterChange({end:true});
+}
+
+/* ============== 图层面板 UI ============== */
+function renderLayerPanel(panelEl, ctx){
+  // ctx = { title, getLayers, getSelId, setSelId, afterChange, extras: [] }
+  panelEl.innerHTML = '';
+  const layers = ctx.getLayers();
+  const selId = ctx.getSelId();
+
+  panelEl.innerHTML = `
+    <div class="card-head">
+      <div><h2 style="font-size:15px;">🎯 图层</h2><div class="card-sub">${layers.length} 层 · 上=顶层</div></div>
+    </div>
+    <div class="btn-row" style="margin-bottom:10px;">
+      <button class="btn primary small" id="__addLayer">＋ 上传图</button>
+      ${ctx.extras && ctx.extras.headerBtns || ''}
+    </div>
+    <div class="drop" id="__dropLayer">拖 PNG/JPG 到这里 <br><small>（可多选，自动压缩到 500×800 WebP）</small></div>
+    <div class="divider"></div>
+    <div class="layer-list" id="__layerList"></div>
+    ${ctx.extras && ctx.extras.footer || ''}
+  `;
+
+  const listEl = panelEl.querySelector('#__layerList');
+  if(!layers.length){
+    listEl.innerHTML = '<div style="color:var(--hint);font-size:12px;text-align:center;padding:16px;">还没有图层<br>拖图或点上传</div>';
+  } else {
+    layers.forEach((L, idx) => {
+      const div = document.createElement('div');
+      div.className = 'lyr' + (L.id===selId?' on':'') + (L.locked?' locked':'');
+      div.draggable = !L.locked;
+      div.dataset.id = L.id;
+      div.innerHTML = `
+        <span class="icon-btn" data-op="vis" title="显隐">${L.visible!==false?'👁':'⚫'}</span>
+        <div class="thumb">${L.src?`<img src="${L.src}">`:''}</div>
+        <div class="name" title="${escapeHtml(L.name)}">${escapeHtml(L.name)}</div>
+        <span class="icon-btn" data-op="rename" title="改名">✎</span>
+        <span class="icon-btn" data-op="lock" title="锁">${L.locked?'🔒':'🔓'}</span>
+        <span class="icon-btn" data-op="del" title="删除">🗑</span>
+      `;
+      div.onclick = e => {
+        if(e.target.closest('.icon-btn')) return;
+        ctx.setSelId(L.id); ctx.afterChange({selChanged:true});
+      };
+      div.querySelectorAll('.icon-btn').forEach(btn => {
+        btn.onclick = e => {
+          e.stopPropagation();
+          const op = btn.dataset.op;
+          if(op === 'vis'){ L.visible = L.visible === false; ctx.afterChange({end:true}); }
+          else if(op === 'lock'){ L.locked = !L.locked; ctx.afterChange({end:true}); }
+          else if(op === 'del'){
+            if(confirm('删除图层 "' + L.name + '"?')){
+              const arr = ctx.getLayers();
+              const i = arr.findIndex(x => x.id === L.id);
+              if(i >= 0) arr.splice(i, 1);
+              if(ctx.getSelId() === L.id) ctx.setSelId(arr[0] ? arr[0].id : null);
+              ctx.afterChange({end:true});
+            }
+          } else if(op === 'rename'){
+            const nameEl = div.querySelector('.name');
+            const old = L.name;
+            nameEl.innerHTML = `<input value="${escapeHtml(old)}">`;
+            const inp = nameEl.querySelector('input');
+            inp.focus(); inp.select();
+            const save = () => { L.name = (inp.value || '未命名').slice(0, 30); ctx.afterChange({end:true}); };
+            inp.onblur = save;
+            inp.onkeydown = e => { if(e.key==='Enter') save(); if(e.key==='Escape'){ L.name = old; ctx.afterChange({end:true}); } };
+          }
+        };
+      });
+      // 拖拽排序
+      div.ondragstart = e => {
+        div.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', L.id);
+      };
+      div.ondragend = () => div.classList.remove('dragging');
+      div.ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+      div.ondrop = e => {
+        e.preventDefault();
+        const dragId = e.dataTransfer.getData('text/plain');
+        if(!dragId || dragId === L.id) return;
+        const arr = ctx.getLayers();
+        const from = arr.findIndex(x => x.id === dragId);
+        const to = arr.findIndex(x => x.id === L.id);
+        if(from < 0 || to < 0) return;
+        const [moved] = arr.splice(from, 1);
+        arr.splice(to, 0, moved);
+        ctx.afterChange({end:true});
+      };
+      listEl.appendChild(div);
+    });
+  }
+
+  panelEl.querySelector('#__addLayer').onclick = () => {
+    const fi = $('fileInput');
+    fi.onchange = async e => {
+      const files = Array.from(e.target.files);
+      fi.value = '';
+      if(!files.length) return;
+      await addFilesAsLayers(files, ctx.getLayers, ctx.setSelId, ctx.afterChange);
+    };
+    fi.click();
+  };
+  const drop = panelEl.querySelector('#__dropLayer');
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = async e => {
+    e.preventDefault(); drop.classList.remove('over');
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+    if(files.length) await addFilesAsLayers(files, ctx.getLayers, ctx.setSelId, ctx.afterChange);
+  };
+
+  // 选中层的属性
+  const sel = layers.find(x => x.id === selId);
+  if(sel && !sel.locked){
+    const props = document.createElement('div');
+    props.style.marginTop = '10px'; props.style.paddingTop = '10px'; props.style.borderTop = '1px solid var(--line)';
+    props.innerHTML = `
+      <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:8px;">🎯 当前图层：${escapeHtml(sel.name)}</div>
+      <div class="slider-row"><label style="min-width:32px;font-size:11px;">缩放</label>
+        <input type="range" id="__scale" min="0.1" max="3" step="0.01" value="${(sel.w/STAGE_W).toFixed(2)}">
+        <span class="v" id="__scaleV">${(sel.w/STAGE_W).toFixed(2)}x</span></div>
+      <div class="slider-row" style="margin-top:6px;"><label style="min-width:32px;font-size:11px;">旋转</label>
+        <input type="range" id="__rot" min="-180" max="180" step="1" value="${sel.rot||0}">
+        <span class="v" id="__rotV">${Math.round(sel.rot||0)}°</span></div>
+      <div class="slider-row" style="margin-top:6px;"><label style="min-width:32px;font-size:11px;">不透明</label>
+        <input type="range" id="__op" min="0" max="1" step="0.02" value="${sel.opacity!=null?sel.opacity:1}">
+        <span class="v" id="__opV">${Math.round((sel.opacity!=null?sel.opacity:1)*100)}%</span></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn small" id="__flip">↔ 镜像</button>
+        <button class="btn small" id="__center">◎ 居中</button>
+        <button class="btn small" id="__reset">↺ 复位</button>
+      </div>`;
+    panelEl.appendChild(props);
+    const scaleI = props.querySelector('#__scale'), scaleV = props.querySelector('#__scaleV');
+    scaleI.oninput = () => {
+      const k = parseFloat(scaleI.value);
+      const cx = sel.x + sel.w/2, cy = sel.y + sel.h/2;
+      const ratio = sel.h/sel.w;
+      sel.w = STAGE_W * k; sel.h = sel.w * ratio;
+      sel.x = cx - sel.w/2; sel.y = cy - sel.h/2;
+      scaleV.textContent = k.toFixed(2)+'x';
+      ctx.afterChange({liveDrag:true});
+    };
+    const rotI = props.querySelector('#__rot'), rotV = props.querySelector('#__rotV');
+    rotI.oninput = () => { sel.rot = parseFloat(rotI.value); rotV.textContent = Math.round(sel.rot)+'°'; ctx.afterChange({liveDrag:true}); };
+    const opI = props.querySelector('#__op'), opV = props.querySelector('#__opV');
+    opI.oninput = () => { sel.opacity = parseFloat(opI.value); opV.textContent = Math.round(sel.opacity*100)+'%'; ctx.afterChange({liveDrag:true}); };
+    props.querySelector('#__flip').onclick = () => { sel.flipH = !sel.flipH; ctx.afterChange({end:true}); };
+    props.querySelector('#__center').onclick = () => { sel.x = (STAGE_W-sel.w)/2; sel.y = (STAGE_H-sel.h)/2; ctx.afterChange({end:true}); };
+    props.querySelector('#__reset').onclick = () => { sel.rot = 0; sel.flipH = false; sel.opacity = 1; ctx.afterChange({end:true}); };
+  }
+}
+
+/* ============== 页面 1：牌背 ============== */
+let editorBack;
+function initBack(){
+  editorBack = makeEditor(
+    $('stage-back'),
+    () => state.back.layers,
+    () => state.selLayer.back,
+    id => state.selLayer.back = id,
+    ({end}) => { editorBack.renderStage(); renderBackPanel(); if(end) saveAll(); }
+  );
+  editorBack.renderStage();
+  renderBackPanel();
+}
+function renderBackPanel(){
+  renderLayerPanel($('panel-back'), {
+    title: '牌背图层',
+    getLayers: () => state.back.layers,
+    getSelId: () => state.selLayer.back,
+    setSelId: id => state.selLayer.back = id,
+    afterChange: ({end, selChanged}) => { editorBack.renderStage(); if(selChanged) renderBackPanel(); if(end){ renderBackPanel(); saveAll(); } },
+    extras: {
+      footer: `<div class="divider"></div><button class="btn mint small" id="__saveBack">💾 保存合成图（供游戏用）</button>`
+    }
+  });
+  const b = $('panel-back').querySelector('#__saveBack');
+  if(b) b.onclick = async () => {
+    toast('合成中…');
+    const c1 = await composeLayers(state.back.layers, OUT_1X.w, OUT_1X.h, WEBP_Q);
+    const c2 = await composeLayers(state.back.layers, OUT_2X.w, OUT_2X.h, WEBP_Q);
+    state.back.composed = c1 ? c1.dataUrl : null;
+    state.back.composed2x = c2 ? c2.dataUrl : null;
+    await saveAll();
+    toast('已合成 · 1x '+(c1?Math.round(c1.size/1024):'-')+'KB · 2x '+(c2?Math.round(c2.size/1024):'-')+'KB');
+  };
+}
+
+/* ============== 页面 2：花边模板 ============== */
+let editorFrame;
+function initFrame(){
+  editorFrame = makeEditor(
+    $('stage-frame'),
+    () => (state.frames[state.currentFrameId] || {layers:[]}).layers,
+    () => state.selLayer.frame,
+    id => state.selLayer.frame = id,
+    ({end}) => { editorFrame.renderStage(); renderFramePanel(); if(end) saveAll(); }
+  );
+  renderFrameList();
+  editorFrame.renderStage();
+  renderFramePanel();
+
+  $('btn-newFrame').onclick = () => {
+    const id = 'frame_' + Date.now().toString(36);
+    const name = prompt('新花边模板名称：', '模板 ' + (Object.keys(state.frames).length+1));
+    if(!name) return;
+    state.frames[id] = { id, name, layers: [] };
+    state.currentFrameId = id;
+    state.selLayer.frame = null;
+    saveAll(); renderFrameList(); editorFrame.renderStage(); renderFramePanel();
+  };
+}
+function renderFrameList(){
+  const list = $('frameList');
+  list.innerHTML = '';
+  const ids = Object.keys(state.frames);
+  if(!ids.length){ list.innerHTML = '<div style="color:var(--hint);font-size:12px;padding:20px 8px;text-align:center;">还没有花边模板<br>点上方"＋新建"</div>'; return; }
+  ids.forEach(id => {
+    const f = state.frames[id];
+    const d = document.createElement('div');
+    d.className = 'list-item' + (id===state.currentFrameId?' on':'');
+    d.innerHTML = `<span class="idx">🎨</span><span>${escapeHtml(f.name)}</span><span class="st">${f.layers.length}层</span>`;
+    d.onclick = () => {
+      state.currentFrameId = id; state.selLayer.frame = null;
+      renderFrameList(); editorFrame.renderStage(); renderFramePanel();
+      $('frameTitle').textContent = f.name;
+    };
+    list.appendChild(d);
+  });
+}
+function renderFramePanel(){
+  const f = state.frames[state.currentFrameId];
+  if(!f){
+    $('panel-frame').innerHTML = '<div style="padding:20px;text-align:center;color:var(--hint);font-size:12px;">先选一个模板 或 新建</div>';
+    return;
+  }
+  $('frameTitle').textContent = f.name;
+  renderLayerPanel($('panel-frame'), {
+    title: '花边图层',
+    getLayers: () => f.layers,
+    getSelId: () => state.selLayer.frame,
+    setSelId: id => state.selLayer.frame = id,
+    afterChange: ({end, selChanged}) => {
+      editorFrame.renderStage();
+      if(selChanged) renderFramePanel();
+      if(end){ renderFramePanel(); saveAll(); }
+    },
+    extras: {
+      footer: `
+        <div class="divider"></div>
+        <div class="field-grid">
+          <label>模板名</label>
+          <input id="__frameName" value="${escapeHtml(f.name)}">
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn mint small" id="__frameSave">💾 保存合成</button>
+          <button class="btn danger small" id="__frameDel">🗑 删除模板</button>
+        </div>`
+    }
+  });
+  const nameI = $('panel-frame').querySelector('#__frameName');
+  if(nameI){
+    nameI.onchange = () => { f.name = nameI.value || '未命名'; saveAll(); renderFrameList(); $('frameTitle').textContent = f.name; };
+  }
+  const saveB = $('panel-frame').querySelector('#__frameSave');
+  if(saveB) saveB.onclick = async () => {
+    toast('合成中…');
+    const c1 = await composeLayers(f.layers, OUT_1X.w, OUT_1X.h, WEBP_Q);
+    const c2 = await composeLayers(f.layers, OUT_2X.w, OUT_2X.h, WEBP_Q);
+    f.composed = c1 ? c1.dataUrl : null;
+    f.composed2x = c2 ? c2.dataUrl : null;
+    await saveAll();
+    toast('模板已合成 · 1x '+(c1?Math.round(c1.size/1024):'-')+'KB');
+  };
+  const delB = $('panel-frame').querySelector('#__frameDel');
+  if(delB) delB.onclick = () => {
+    if(!confirm('删除模板 "'+f.name+'"？引用它的牌会变成"无花边"。')) return;
+    delete state.frames[state.currentFrameId];
+    // 清理引用
+    Object.values(state.cards).forEach(c => { if(c.frameId === state.currentFrameId) c.frameId = null; });
+    state.currentFrameId = Object.keys(state.frames)[0] || null;
+    saveAll(); renderFrameList(); editorFrame.renderStage(); renderFramePanel();
+  };
+}
+
+/* ============== 页面 3：牌面 ============== */
+let editorCard;
+function initCard(){
+  editorCard = makeEditor(
+    $('stage-card'),
+    () => (state.cards[state.currentCardId] || {layers:[]}).layers,
+    () => state.selLayer.card,
+    id => state.selLayer.card = id,
+    ({end}) => { editorCard.renderStage(); renderCardPanel(); if(end) saveAll(); },
+    {
+      overlay: (stage) => {
+        // 顶层贴花边预览
+        const c = state.cards[state.currentCardId];
+        if(!c || !c.frameId) return;
+        const f = state.frames[c.frameId]; if(!f) return;
+        const ov = document.createElement('div');
+        ov.className = 'frame-overlay';
+        // 用 composed 优先，否则实时叠层
+        if(f.composed){
+          const im = document.createElement('img');
+          im.src = f.composed; im.style.width='100%'; im.style.height='100%'; im.style.left='0'; im.style.top='0';
+          im.style.position='absolute'; im.style.objectFit='fill';
+          ov.appendChild(im);
+        } else {
+          // 逐层叠
+          const arr = f.layers.slice().reverse();
+          arr.forEach(L => {
+            if(L.visible === false || !L.src) return;
+            const im = document.createElement('img'); im.src = L.src;
+            im.style.position = 'absolute';
+            im.style.left = L.x + 'px'; im.style.top = L.y + 'px';
+            im.style.width = L.w + 'px'; im.style.height = L.h + 'px';
+            im.style.transform = `rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''}`;
+            im.style.transformOrigin = 'center center';
+            im.style.opacity = L.opacity != null ? L.opacity : 1;
+            ov.appendChild(im);
+          });
+        }
+        stage.appendChild(ov);
+      }
+    }
+  );
+  renderCardList();
+  editorCard.renderStage();
+  renderCardPanel();
+}
+function renderCardList(){
+  const list = $('cardList');
+  list.innerHTML = '';
+  // 分组标题
+  function group(title){ const d = document.createElement('div'); d.className = 'group-title'; d.textContent = title; list.appendChild(d); }
+  function item(cd, tag){
+    const c = state.cards[cd.id] || {};
+    const done = (c.layers && c.layers.length) ? '✅' : '';
+    const d = document.createElement('div');
+    d.className = 'list-item' + (cd.id===state.currentCardId?' on':'');
+    d.innerHTML = `<span class="idx">${tag}</span><span>${escapeHtml(cd.name)}</span><span class="st">${done}</span>`;
+    d.onclick = () => {
+      state.currentCardId = cd.id; state.selLayer.card = null;
+      renderCardList(); editorCard.renderStage(); renderCardPanel();
+    };
+    list.appendChild(d);
+  }
+  group('大阿卡纳 22');
+  MAJOR_ARCANA.forEach((cd, i) => item(cd, i));
+  SUITS.forEach(s => {
+    group(s.icon + ' ' + s.name);
+    RANKS.forEach((r, i) => {
+      const cd = ALL_CARDS.find(x => x.id === 's'+s.suit+'_'+r.key);
+      item(cd, r.name);
+    });
+  });
+}
+function renderCardPanel(){
+  const c = state.cards[state.currentCardId];
+  if(!c){
+    $('panel-card').innerHTML = '<div style="padding:20px;text-align:center;color:var(--hint);font-size:12px;">从左边选一张牌</div>';
+    $('cardTitle').textContent = '选择一张牌';
+    $('cardBadge').textContent = '未选';
+    return;
+  }
+  $('cardTitle').textContent = c.name + ' · ' + c.en;
+  $('cardBadge').textContent = c.id;
+  $('cardSub').textContent = '牌面主图在下 · 花边模板：' + (c.frameId ? (state.frames[c.frameId]?.name || '?') : '（未选）');
+
+  const frameOptions = ['<option value="">— 无花边 —</option>']
+    .concat(Object.values(state.frames).map(f => `<option value="${f.id}" ${c.frameId===f.id?'selected':''}>${escapeHtml(f.name)}</option>`))
+    .join('');
+
+  renderLayerPanel($('panel-card'), {
+    getLayers: () => c.layers,
+    getSelId: () => state.selLayer.card,
+    setSelId: id => state.selLayer.card = id,
+    afterChange: ({end, selChanged}) => {
+      editorCard.renderStage();
+      if(selChanged) renderCardPanel();
+      if(end){ renderCardPanel(); renderCardList(); saveAll(); }
+    },
+    extras: {
+      footer: `
+        <div class="divider"></div>
+        <div class="field-grid">
+          <label>花边</label><select id="__cardFrame">${frameOptions}</select>
+          <label>牌名</label><input id="__cardName" value="${escapeHtml(c.name)}">
+          <label>英文</label><input id="__cardEn" value="${escapeHtml(c.en)}">
+          <label>正位</label><textarea id="__cardUp" rows="2">${escapeHtml(c.upright||'')}</textarea>
+          <label>逆位</label><textarea id="__cardRev" rows="2">${escapeHtml(c.reversed||'')}</textarea>
+          <label>解说</label><textarea id="__cardDesc" rows="3">${escapeHtml(c.desc||'')}</textarea>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn mint small" id="__cardSave">💾 保存合成图</button>
+          <button class="btn small" id="__cardResetLore" title="用韦特塔罗默认关键词覆盖当前正位/逆位/解说">↺ 还原默认解说</button>
+        </div>`
+    }
+  });
+  const p = $('panel-card');
+  const bind = (sel, key) => { const el = p.querySelector(sel); if(el) el.onchange = () => { c[key] = el.value; saveAll(); if(sel==='#__cardName') renderCardList(); if(sel==='#__cardFrame') editorCard.renderStage(); $('cardSub').textContent = '牌面主图在下 · 花边模板：'+(c.frameId?(state.frames[c.frameId]?.name||'?'):'（未选）'); }; };
+  bind('#__cardFrame','frameId'); bind('#__cardName','name'); bind('#__cardEn','en');
+  bind('#__cardUp','upright'); bind('#__cardRev','reversed'); bind('#__cardDesc','desc');
+  const saveB = p.querySelector('#__cardSave');
+  if(saveB) saveB.onclick = async () => {
+    toast('合成中…');
+    // 主图先合成
+    const mainLayers = c.layers;
+    // 顶层加花边（如果有）
+    const frameLayers = c.frameId && state.frames[c.frameId] ? state.frames[c.frameId].layers : [];
+    // 合起来（花边在上）
+    const merged = frameLayers.concat(mainLayers);
+    const c1 = await composeLayers(merged, OUT_1X.w, OUT_1X.h, WEBP_Q);
+    const c2 = await composeLayers(merged, OUT_2X.w, OUT_2X.h, WEBP_Q);
+    c.composed = c1 ? c1.dataUrl : null;
+    c.composed2x = c2 ? c2.dataUrl : null;
+    await saveAll();
+    toast('已合成 · 1x '+(c1?Math.round(c1.size/1024):'-')+'KB');
+    renderPreviewGrid();
+  };
+  const resetB = p.querySelector('#__cardResetLore');
+  if(resetB) resetB.onclick = async () => {
+    const dl = DEFAULT_LORE[c.id];
+    if(!dl){ toast('没有该牌的默认解说'); return; }
+    if(!confirm('用默认关键词覆盖当前正位/逆位/解说？')) return;
+    c.upright = dl.upright; c.reversed = dl.reversed; c.desc = dl.desc;
+    await saveAll(); renderCardPanel(); toast('已还原默认解说');
+  };
+}
+
+/* ============== 页面 4：预览 ============== */
+function renderPreviewGrid(){
+  const g = $('grid-preview');
+  g.innerHTML = '';
+  // 牌背单独一张
+  const gcBack = document.createElement('div'); gcBack.className='grid-card';
+  gcBack.innerHTML = state.back.composed ? `<img src="${state.back.composed}"><div class="caption">🎴 牌背</div>` : `<div class="badge-empty">牌背未做</div><div class="caption" style="color:#fff;">🎴 牌背</div>`;
+  gcBack.onclick = () => switchPage('back');
+  g.appendChild(gcBack);
+  let done = 0;
+  ALL_CARDS.forEach(cd => {
+    const c = state.cards[cd.id];
+    const gc = document.createElement('div'); gc.className = 'grid-card';
+    if(c && c.composed){
+      done++;
+      gc.innerHTML = `<img src="${c.composed}"><div class="badge-done">✓</div><div class="caption">${escapeHtml(cd.name)}</div>`;
+    } else if(c && c.layers.length){
+      gc.innerHTML = `<div class="badge-empty">${escapeHtml(cd.name)}<br>未合成</div><div class="caption">${escapeHtml(cd.name)}</div>`;
+    } else {
+      gc.innerHTML = state.back.composed
+        ? `<img src="${state.back.composed}"><div class="caption">${escapeHtml(cd.name)}</div>`
+        : `<div class="badge-empty">${escapeHtml(cd.name)}</div><div class="caption">${escapeHtml(cd.name)}</div>`;
+    }
+    gc.onclick = () => { state.currentCardId = cd.id; state.selLayer.card = null; switchPage('card'); };
+    g.appendChild(gc);
+  });
+  $('previewSub').textContent = `已合成 ${done} / 78 张 · 点卡片进入编辑`;
+}
+
+/* ============== 导出 zip ============== */
+async function exportZip(){
+  toast('准备中…');
+  // 简单 store zip（无压缩，因为 WebP 本身已经压缩过）
+  const files = [];
+  // meta.json
+  const meta = { back:{name:'card back'}, frames:{}, cards:{} };
+  Object.values(state.frames).forEach(f => { meta.frames[f.id] = { name:f.name }; });
+  ALL_CARDS.forEach(cd => {
+    const c = state.cards[cd.id]; if(!c) return;
+    meta.cards[cd.id] = { name:c.name, en:c.en, upright:c.upright, reversed:c.reversed, desc:c.desc, frameId:c.frameId, done: !!c.composed };
+  });
+  files.push({ name:'meta.json', data: new TextEncoder().encode(JSON.stringify(meta, null, 2)) });
+  // 牌背
+  if(state.back.composed) files.push({ name:'back.webp', data: dataUrlToU8(state.back.composed) });
+  if(state.back.composed2x) files.push({ name:'back@2x.webp', data: dataUrlToU8(state.back.composed2x) });
+  // 79 张
+  ALL_CARDS.forEach(cd => {
+    const c = state.cards[cd.id];
+    if(c && c.composed) files.push({ name:'cards/'+cd.id+'.webp', data: dataUrlToU8(c.composed) });
+    if(c && c.composed2x) files.push({ name:'cards/'+cd.id+'@2x.webp', data: dataUrlToU8(c.composed2x) });
+  });
+  // 花边合成
+  Object.values(state.frames).forEach(f => {
+    if(f.composed) files.push({ name:'frames/'+f.id+'.webp', data: dataUrlToU8(f.composed) });
+    if(f.composed2x) files.push({ name:'frames/'+f.id+'@2x.webp', data: dataUrlToU8(f.composed2x) });
+  });
+  const zip = buildZip(files);
+  const blob = new Blob([zip], {type:'application/zip'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'tarot_assets_'+Date.now()+'.zip'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  toast('已导出 · '+files.length+' 个文件');
+}
+function dataUrlToU8(dataUrl){
+  const base64 = dataUrl.split(',')[1];
+  const bin = atob(base64);
+  const u8 = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+// 简单 store zip（no compression, CRC32 计算）
+function crc32(u8){
+  let c, t = crc32.tab;
+  if(!t){
+    t = crc32.tab = new Uint32Array(256);
+    for(let n=0;n<256;n++){ c=n; for(let k=0;k<8;k++) c = c & 1 ? 0xEDB88320 ^ (c>>>1) : c>>>1; t[n]=c; }
+  }
+  c = 0xFFFFFFFF;
+  for(let i=0;i<u8.length;i++) c = t[(c^u8[i])&0xFF] ^ (c>>>8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function buildZip(files){
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  const enc = new TextEncoder();
+  for(const f of files){
+    const nameBytes = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const size = f.data.length;
+    // local header
+    const h = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(h.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true);         // version
+    dv.setUint16(6, 0, true);          // flags
+    dv.setUint16(8, 0, true);          // method 0=store
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0, true); // time/date
+    dv.setUint32(14, crc, true);
+    dv.setUint32(18, size, true);
+    dv.setUint32(22, size, true);
+    dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true);
+    h.set(nameBytes, 30);
+    chunks.push(h); chunks.push(f.data);
+    // central directory entry
+    const c = new Uint8Array(46 + nameBytes.length);
+    const dc = new DataView(c.buffer);
+    dc.setUint32(0, 0x02014b50, true);
+    dc.setUint16(4, 20, true); dc.setUint16(6, 20, true);
+    dc.setUint16(8, 0, true); dc.setUint16(10, 0, true);
+    dc.setUint16(12, 0, true); dc.setUint16(14, 0, true);
+    dc.setUint32(16, crc, true);
+    dc.setUint32(20, size, true); dc.setUint32(24, size, true);
+    dc.setUint16(28, nameBytes.length, true);
+    dc.setUint16(30, 0, true); dc.setUint16(32, 0, true);
+    dc.setUint16(34, 0, true); dc.setUint16(36, 0, true);
+    dc.setUint32(38, 0, true);
+    dc.setUint32(42, offset, true);
+    c.set(nameBytes, 46);
+    central.push(c);
+    offset += h.length + f.data.length;
+  }
+  const cdStart = offset;
+  let cdLen = 0;
+  central.forEach(c => { chunks.push(c); cdLen += c.length; offset += c.length; });
+  // end of central directory
+  const end = new Uint8Array(22);
+  const de = new DataView(end.buffer);
+  de.setUint32(0, 0x06054b50, true);
+  de.setUint16(4, 0, true); de.setUint16(6, 0, true);
+  de.setUint16(8, files.length, true); de.setUint16(10, files.length, true);
+  de.setUint32(12, cdLen, true); de.setUint32(16, cdStart, true);
+  de.setUint16(20, 0, true);
+  chunks.push(end);
+  // 合并
+  let total = 0; chunks.forEach(c => total += c.length);
+  const out = new Uint8Array(total);
+  let p = 0; chunks.forEach(c => { out.set(c, p); p += c.length; });
+  return out;
+}
+function exportJson(){
+  const meta = { back:{ done: !!state.back.composed }, frames:{}, cards:{} };
+  Object.values(state.frames).forEach(f => { meta.frames[f.id] = { name:f.name, done: !!f.composed }; });
+  ALL_CARDS.forEach(cd => {
+    const c = state.cards[cd.id]; if(!c) return;
+    meta.cards[cd.id] = { name:c.name, en:c.en, upright:c.upright, reversed:c.reversed, desc:c.desc, frameId:c.frameId, done: !!c.composed };
+  });
+  const blob = new Blob([JSON.stringify(meta, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='tarot_meta.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  toast('元数据已导出');
+}
+
+/* ============== 顶部 tab 切换 ============== */
+function switchPage(name){
+  state.currentPage = name;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.page === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  $('page-' + name).classList.add('on');
+  if(name === 'back') editorBack.renderStage();
+  if(name === 'frame') editorFrame && editorFrame.renderStage();
+  if(name === 'card') editorCard && editorCard.renderStage();
+  if(name === 'preview') renderPreviewGrid();
+  updateMeta();
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if(b) switchPage(b.dataset.page); });
+
+function updateMeta(){
+  const framesN = Object.keys(state.frames).length;
+  const cardsDone = ALL_CARDS.filter(cd => state.cards[cd.id] && state.cards[cd.id].composed).length;
+  $('topMeta').innerHTML = `牌背 <b>${state.back.composed?'✓':'○'}</b> · 花边模板 <b>${framesN}</b> · 完成牌 <b>${cardsDone}</b>/78`;
+}
+
+/* ============== 导出按钮 ============== */
+$('btn-exportZip').onclick = exportZip;
+$('btn-exportJson').onclick = exportJson;
+$('btn-reload').onclick = () => renderPreviewGrid();
+$('btn-hub-back').onclick = () => { location.href = 'index.html?hub=1'; };
+
+/* ============== 启动 ============== */
+(async function boot(){
+  await loadAll();
+  // 默认选第一张牌 & 第一个花边
+  state.currentCardId = ALL_CARDS[0].id;
+  state.currentFrameId = Object.keys(state.frames)[0] || null;
+  initBack(); initFrame(); initCard();
+  updateMeta();
+})().catch(err => { console.error(err); toast('启动失败：'+err.message); });
+
+})();
+</script>
+</body>
+</html>

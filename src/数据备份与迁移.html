@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数据备份与迁移 · Q版换装小游戏</title>
+<style>
+  :root{
+    --bg:#f7f5fb; --card:#ffffff; --line:#e8e3f2; --txt:#2f2a3a; --sub:#8a8296;
+    --accent:#a78cd9; --ok:#3fa87a; --warn:#e0913a; --bad:#d9534f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:26px 20px 60px; background:var(--bg); color:var(--txt);
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif; font-size:14px; line-height:1.7;}
+  .wrap{max-width:940px; margin:0 auto;}
+  h1{font-size:24px; margin:0 0 4px; font-weight:800; letter-spacing:.5px;}
+  .lead{color:var(--sub); font-size:13px; margin:0 0 20px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px 22px; margin-bottom:16px;}
+  .card h2{font-size:16px; margin:0 0 12px; font-weight:800; display:flex; align-items:center; gap:8px;}
+  .card h2 .n{display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff;
+    font-size:12px; align-items:center; justify-content:center; font-weight:800;}
+
+  /* 来源徽章 */
+  .origin-box{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:16px 18px; border-radius:14px; border:2px solid var(--line); background:#fbfaff;}
+  .origin-box.file{border-color:var(--warn); background:#fff8ee;}
+  .origin-box.http{border-color:var(--ok); background:#f0faf5;}
+  .big-ico{font-size:34px; line-height:1;}
+  .origin-name{font-size:20px; font-weight:900; letter-spacing:.5px;}
+  .origin-sub{font-size:12px; color:var(--sub);}
+  .pill{display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:800;
+    background:rgba(167,140,217,.14); color:var(--accent); margin-left:6px;}
+  .pill.warn{background:rgba(224,145,58,.16); color:var(--warn);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--sub); font-weight:700; font-size:12px;}
+  td.k{font-family:ui-monospace,Consolas,Menlo,monospace; font-size:12px; color:var(--accent); white-space:nowrap;}
+  .tag{display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:800;}
+  .tag.has{background:rgba(63,168,122,.14); color:var(--ok);}
+  .tag.none{background:#f2f0f5; color:#a9a3b3;}
+  .sz{color:var(--sub); font-size:12px; white-space:nowrap;}
+
+  .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  button{font-family:inherit; font-size:14px; font-weight:800; padding:11px 20px; border-radius:11px;
+    border:1px solid var(--line); background:#fff; color:var(--txt); cursor:pointer; transition:.15s;}
+  button:hover{transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,0,0,.08);}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.go{background:var(--ok); border-color:var(--ok); color:#fff;}
+  button.danger{background:#fff; border-color:#f0c2c0; color:var(--bad);}
+  button:disabled{opacity:.45; cursor:not-allowed; transform:none; box-shadow:none;}
+
+  .note{background:#fbfaff; border-left:3px solid var(--accent); padding:11px 14px; border-radius:0 10px 10px 0;
+    font-size:13px; margin:12px 0 0; color:#5c5568;}
+  .note b{color:var(--txt);}
+  .note.bad{background:#fff6f6; border-left-color:var(--bad);}
+  .note.ok{background:#f2fbf7; border-left-color:var(--ok);}
+  code{background:#f3f1f8; padding:1px 6px; border-radius:5px; font-size:12px;
+    font-family:ui-monospace,Consolas,Menlo,monospace;}
+
+  #msg{margin-top:14px; font-size:13px; font-weight:700; min-height:20px;}
+  #msg.ok{color:var(--ok);} #msg.bad{color:var(--bad);} #msg.warn{color:var(--warn);}
+  .hint{font-size:12px; color:var(--sub); margin-top:8px;}
+  .steps{counter-reset:s; margin:0; padding-left:0; list-style:none;}
+  .steps li{counter-increment:s; position:relative; padding-left:32px; margin-bottom:10px; font-size:13px;}
+  .steps li::before{content:counter(s); position:absolute; left:0; top:1px; width:22px; height:22px;
+    border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:800;
+    display:flex; align-items:center; justify-content:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💾 数据备份与迁移</h1>
+  <p class="lead">素体底膜 / 服装库 / 套装 / 地图 / 账号 —— 一键导出成文件，再在另一个打开方式里导入。</p>
+
+  <!-- 1. 当前来源 -->
+  <div class="card">
+    <h2><span class="n">1</span>你现在在哪间“仓库”</h2>
+    <div class="origin-box" id="originBox">
+      <div class="big-ico" id="originIco">📁</div>
+      <div>
+        <div class="origin-name" id="originName">检测中…</div>
+        <div class="origin-sub" id="originSub"></div>
+      </div>
+    </div>
+    <div class="note" id="originNote"></div>
+  </div>
+
+  <!-- 2. 数据清单 -->
+  <div class="card">
+    <h2><span class="n">2</span>这间仓库里有什么</h2>
+    <table>
+      <thead><tr><th style="width:230px">存储键</th><th>内容</th><th style="width:96px">大小</th><th style="width:70px">状态</th></tr></thead>
+      <tbody id="keyTable"></tbody>
+    </table>
+    <div class="btns">
+      <button class="primary" id="btnExport">📤 导出全部为 JSON 文件</button>
+      <button id="btnReload">🔄 重新扫描</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <!-- 3. 导入 -->
+  <div class="card">
+    <h2><span class="n">3</span>把备份搬进来</h2>
+    <p style="margin:0 0 12px; color:var(--sub); font-size:13px;">
+      选一个之前导出的 <code>.json</code> 备份文件，写入<b>当前这间仓库</b>。同名的键会被覆盖。
+    </p>
+    <div class="btns">
+      <button class="go" id="btnImport">📥 选择备份文件并导入</button>
+      <button class="danger" id="btnClear">🗑 清空当前仓库的游戏数据</button>
+    </div>
+    <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+    <div class="hint">也可以直接把 <code>.json</code> 备份文件<b>拖到本页面</b>。导入完成后请刷新页面 / 重新打开引擎，数据才会生效。</div>
+    <div id="dropZone" style="margin-top:12px; padding:18px; border:2px dashed var(--line); border-radius:14px; text-align:center; color:var(--sub); font-size:14px; transition:.15s;">
+      📂 把备份文件拖到这里
+    </div>
+  </div>
+
+  <!-- 4. 说明 -->
+  <div class="card">
+    <h2><span class="n">?</span>为什么数据会“消失”</h2>
+    <div class="note bad">
+      浏览器把 <code>file://</code>（双击打开）和 <code>http://localhost:8080</code>（启动服务器打开）当成
+      <b>两个完全隔离的仓库</b>。在 A 仓库里存的东西，B 仓库永远读不到 —— <b>但数据并没有丢</b>，
+      只是换了个地方存着。
+    </div>
+    <ol class="steps" style="margin-top:16px">
+      <li>回到<b>原来那个打开方式</b>（比如直接双击本文件），打开本页。</li>
+      <li>确认顶部显示的是数据所在的那个仓库，然后点<b>「📤 导出全部为 JSON 文件」</b>。</li>
+      <li>换成<b>新的打开方式</b>（比如 <code>start-server.bat</code>），再打开本页。</li>
+      <li>点<b>「📥 选择备份文件并导入」</b>，选刚才那个 JSON。</li>
+      <li>重新打开引擎 —— 素体、服装、地图、账号全部回来了。</li>
+    </ol>
+    <div class="note ok">
+      <b>建议：</b>挑一种打开方式固定用下去。想要塔罗牌显示真图、以及以后部署到网上，就用
+      <code>start-server.bat</code>；只用 <code>file://</code> 的话塔罗会退成 emoji 兜底。
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 存储兜底 ============ */
+const _MEM = Object.create(null);
+function _mkStore(real){
+  try{ const k='__probe__'; real.setItem(k,'1'); real.removeItem(k); return real; }
+  catch(e){
+    window.__storageFallback = true;
+    return { getItem:k=>(k in _MEM?_MEM[k]:null), setItem:(k,v)=>{_MEM[k]=String(v);},
+             removeItem:k=>{delete _MEM[k];}, clear:()=>{for(const k in _MEM) delete _MEM[k];},
+             key:()=>null, get length(){return Object.keys(_MEM).length;} };
+  }
+}
+const localStorage = _mkStore(window.localStorage);
+
+/* ============ 键清单 ============ */
+const KNOWN = [
+  ['engine_body_v4',       '素体底膜（素体工坊保存的零件与关节）'],
+  ['engine_body_v3',       '素体底膜 · 旧版本（迁移用）'],
+  ['engine_lib_v3',        '服装库 Item（服装工坊做的所有衣服）'],
+  ['engine_outfits_v3',    '穿搭方案（衣橱里另存的搭配）'],
+  ['engine_outfitsets_v1', '套装库（套装编辑页）'],
+  ['engine_anim_cfg',      '动画配置（挥手/走路参数）'],
+  ['engine_auto_trim',     '自动裁边设置'],
+  ['game_maps',            '地图数据（地图编辑引擎）'],
+  ['game_accounts',        '游戏账号（昵称/等级/装扮/货币）'],
+];
+const PREFIX = ['engine_','game_','player_profile_','tarot_'];
+
+function $(id){ return document.getElementById(id); }
+function bytes(n){
+  if(n<1024) return n+' B';
+  if(n<1024*1024) return (n/1024).toFixed(1)+' KB';
+  return (n/1024/1024).toFixed(2)+' MB';
+}
+function say(t, cls){
+  const m=$('msg'); m.textContent=t||''; m.className=cls||'';
+}
+
+/* ============ 1. 来源识别 ============ */
+function originInfo(){
+  const p = location.protocol;   // 'file:' | 'http:' | 'https:'
+  if(p==='file:')  return { kind:'file', ico:'📁', name:'本地文件 file://',
+    sub:'双击 HTML 直接打开 · 与 localhost 不互通', cls:'file' };
+  if(p==='https:') return { kind:'http', ico:'🌐', name:'网站 '+location.host,
+    sub:'已部署到线上 · 与本地 file:// 不互通', cls:'http' };
+  return { kind:'http', ico:'🖥', name:'本地服务器 '+location.host,
+    sub:'start-server.bat 启动 · 与 file:// 不互通', cls:'http' };
+}
+function renderOrigin(){
+  const o = originInfo();
+  const box=$('originBox'); box.className='origin-box '+o.cls;
+  $('originIco').textContent=o.ico;
+  $('originName').innerHTML = o.name + '<span class="pill '+(o.kind==='file'?'warn':'')+'">'+
+    (o.kind==='file'?'FILE 仓库':'HTTP 仓库')+'</span>' +
+    (window.__storageFallback?'<span class="pill warn">存储不可用！</span>':'');
+  $('originSub').textContent = o.sub + ' · 完整地址：' + location.href;
+  $('originNote').innerHTML = window.__storageFallback
+    ? '<b>⚠️ 当前浏览器禁用了本地存储</b>，数据只会存在内存里，刷新即丢。请检查浏览器的 Cookie / 站点数据设置。'
+    : (o.kind==='file'
+      ? '你现在在 <b>FILE 仓库</b>。若之前是用 <code>start-server.bat</code> 存的数据，需要去那边导出再搬过来。'
+      : '你现在在 <b>HTTP 仓库</b>。若之前是双击 HTML 存的素体和服装，需要回到 <code>file://</code> 打开本页导出，再搬到这里。');
+}
+
+/* ============ 2. 数据清单 ============ */
+function collectKeys(){
+  const set = new Set(KNOWN.map(k=>k[0]));
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && PREFIX.some(p=>k.indexOf(p)===0)) set.add(k);
+    }
+  }catch(e){}
+  return [...set];
+}
+function renderTable(){
+  const tb=$('keyTable'); tb.innerHTML='';
+  const knownMap = Object.fromEntries(KNOWN);
+  let total=0, hasCount=0;
+  collectKeys().forEach(k=>{
+    let v=null, size=0;
+    try{ v = localStorage.getItem(k); }catch(e){}
+    if(v!=null){ size = v.length*2; total+=size; hasCount++; }
+    const tr=document.createElement('tr');
+    tr.innerHTML =
+      '<td class="k">'+k+'</td>'+
+      '<td>'+(knownMap[k]||'（自定义数据）')+'</td>'+
+      '<td class="sz">'+(v!=null?bytes(size):'—')+'</td>'+
+      '<td><span class="tag '+(v!=null?'has':'none')+'">'+(v!=null?'有':'空')+'</span></td>';
+    tb.appendChild(tr);
+  });
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td colspan="2" style="font-weight:800">合计 '+hasCount+' 项有数据</td>'+
+    '<td class="sz" style="font-weight:800">'+bytes(total)+'</td><td></td>';
+  tb.appendChild(tr);
+  $('btnExport').disabled = (hasCount===0);
+}
+
+/* ============ 3. 导出 ============ */
+$('btnExport').onclick = ()=>{
+  const data={}; let n=0;
+  collectKeys().forEach(k=>{ const v=localStorage.getItem(k); if(v!=null){ data[k]=v; n++; } });
+  if(n===0){ say('当前仓库没有任何数据可导出','warn'); return; }
+  const payload = {
+    _meta:{ app:'q版换装小游戏', ver:1, exportedAt:new Date().toISOString(),
+            origin:location.origin, protocol:location.protocol, href:location.href },
+    data
+  };
+  const json = JSON.stringify(payload);
+  const d = new Date(), p=(x)=>String(x).padStart(2,'0');
+  const stamp = d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());
+  const tag = location.protocol==='file:' ? 'file' : (location.host||'http').replace(/[^\w.-]/g,'_');
+  const name = '换装游戏备份_'+tag+'_'+stamp+'.json';
+  try{
+    const blob = new Blob([json], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    say('✅ 已导出 '+n+' 项（'+bytes(json.length*2)+'）→ '+name, 'ok');
+  }catch(e){
+    say('导出失败：'+e.message, 'bad');
+  }
+};
+
+/* ============ 4. 导入 ============ */
+$('btnImport').onclick = ()=> $('fileInput').click();
+function handleFile(f){
+  const rd = new FileReader();
+  rd.onload = ev=>{
+    let obj;
+    try{ obj = JSON.parse(ev.target.result); }
+    catch(err){ say('❌ 这不是有效的 JSON 文件：'+err.message, 'bad'); return; }
+    const data = obj && obj.data;
+    if(!data || typeof data!=='object'){ say('❌ 文件里没有 data 字段，可能选错了文件','bad'); return; }
+    const keys = Object.keys(data);
+    if(keys.length===0){ say('❌ 备份里没有数据','bad'); return; }
+    const from = obj._meta ? ('（来自 '+(obj._meta.protocol||'?')+' '+(obj._meta.exportedAt?obj._meta.exportedAt.slice(0,10):'')+'）') : '';
+    if(!confirm('即将写入 '+keys.length+' 项数据 '+from+'，同名键会被覆盖。确定吗？')) return;
+    let ok=0; const fail=[];
+    keys.forEach(k=>{
+      try{ localStorage.setItem(k, data[k]); ok++; }
+      catch(err){ fail.push(k+'（'+(err.name==='QuotaExceededError'?'空间不足':err.name)+'）'); }
+    });
+    if(fail.length){
+      say('⚠️ 成功 '+ok+' 项，失败 '+fail.length+' 项：'+fail.join('、'), 'warn');
+    }else{
+      say('✅ 已导入 '+ok+' 项数据，刷新引擎即可看到', 'ok');
+    }
+    renderTable();
+  };
+  rd.readAsText(f);
+}
+$('fileInput').onchange = (e)=>{
+  const f = e.target.files && e.target.files[0];
+  if(f) handleFile(f);
+  e.target.value='';
+};
+
+/* ============ 5. 清空 ============ */
+$('btnClear').onclick = ()=>{
+  const keys = collectKeys().filter(k=>localStorage.getItem(k)!=null);
+  if(keys.length===0){ say('当前仓库本来就是空的','warn'); return; }
+  if(!confirm('确定清空当前仓库里这 '+keys.length+' 项游戏数据？此操作不可撤销，建议先导出备份！')) return;
+  if(!confirm('再确认一次：真的要删掉 '+keys.length+' 项吗？')) return;
+  keys.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  say('已清空 '+keys.length+' 项','ok');
+  renderTable();
+};
+
+/* ============ 6. 拖拽导入 ============ */
+(function(){
+  const dz=$('dropZone'); if(!dz) return;
+  const hi=()=>{ dz.style.borderColor='var(--accent)'; dz.style.background='rgba(167,140,217,.08)'; };
+  const lo=()=>{ dz.style.borderColor=''; dz.style.background=''; };
+  ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev, e=>{ e.preventDefault(); hi(); }));
+  ['dragleave','drop'].forEach(ev=>document.addEventListener(ev, e=>{ e.preventDefault(); lo(); }));
+  document.addEventListener('drop', e=>{
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(!f) return;
+    if(!/\.json$/i.test(f.name)){ say('❌ 请拖入 .json 备份文件','bad'); return; }
+    handleFile(f);
+  });
+})();
+
+$('btnReload').onclick = ()=>{ renderOrigin(); renderTable(); say('已重新扫描',''); };
+
+renderOrigin();
+renderTable();
+</script>
+</body>
+</html>
