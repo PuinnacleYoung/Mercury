@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Q版换装小游戏 · Mercury</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#a78cd9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="换装">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <style>
   :root{
     --bg1:#1b1630; --bg2:#2a1f45; --card:rgba(255,255,255,.07);
@@ -106,5 +114,7 @@
     仓库：<a href="https://github.com/PuinnacleYoung/Mercury">github.com/PuinnacleYoung/Mercury</a>
   </footer>
 </div>
+<!-- PWA 安装引导（装到桌面去页签） -->
+<script src="./pwa-install.js" defer></script>
 </body>
 </html>

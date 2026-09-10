@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>数据备份与迁移 · Q版换装小游戏</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#a78cd9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="换装">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <style>
   :root{
     --bg:#f7f5fb; --card:#ffffff; --line:#e8e3f2; --txt:#2f2a3a; --sub:#8a8296;
@@ -328,5 +336,7 @@ $('btnReload').onclick = ()=>{ renderOrigin(); renderTable(); say('已重新扫�
 renderOrigin();
 renderTable();
 </script>
+<!-- PWA 安装引导（装到桌面去页签） -->
+<script src="./pwa-install.js" defer></script>
 </body>
 </html>

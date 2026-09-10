@@ -1,0 +1,18 @@
+{
+  "name": "Q版换装工坊",
+  "short_name": "换装",
+  "description": "纯前端 Q 版换装小游戏，含素材/塔罗/地图/备份四款编辑引擎",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#a78cd9",
+  "background_color": "#f3eef9",
+  "lang": "zh-CN",
+  "categories": ["games", "lifestyle"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
