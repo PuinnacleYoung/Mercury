@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="zh-CN" data-page-node-id="ByVspcGkA05QzSgH1zWKE9">
+<head data-page-node-id="tLL0Fny3TUxCzY30aFN6al">
+<meta charset="UTF-8" data-page-node-id="ohypBxAUs8JVs0nbSJ2t92">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="KQP3O9g5MUWBDfjJI4iOpM">
 <title>地图编辑引擎 · 拾光·澈屿</title>
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./responsive.css">
-<meta name="theme-color" content="#a78cd9">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="换装">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest" data-page-node-id="8IMynGQhBZpjLhLzWa2K7Z">
+<link rel="stylesheet" href="./responsive.css" data-page-node-id="n2hu1BCaAjUdQFEQ4ZYJ8l">
+<meta name="theme-color" content="#a78cd9" data-page-node-id="KNiGCVUDkoWHM5OlpQAt2V">
+<meta name="mobile-web-app-capable" content="yes" data-page-node-id="CK0R4VUCSf1taCC3BxtGx1">
+<meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="rvMKsu6Q1BDIdiePvT5tSE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" data-page-node-id="3z8rBIN1tRgTImO48BxYIJ">
+<meta name="apple-mobile-web-app-title" content="换装" data-page-node-id="BomBb6Dvkj1z9mfRw5xgTo">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" data-page-node-id="EZnyGyGgNBZ73HIwFdOypN">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" data-page-node-id="mbJOOhaz8GCQJ2tLbyZAGG">
 <style>
   :root{
     --bg:#16121f; --bg2:#241b38;
@@ -89,6 +89,9 @@
   .pill.mint{background:linear-gradient(135deg,#2fb8a2,#37c8b0);border-color:transparent;color:#04322c;box-shadow:0 4px 12px rgba(55,200,176,.28);}
   .pill.danger{background:var(--danger);border-color:transparent;color:#fff;}
   .pill.on{outline:2px solid var(--gold);outline-offset:2px;}
+  .pill[disabled],.pill.is-disabled{opacity:.42;cursor:not-allowed;pointer-events:none;filter:grayscale(.4);}
+  .pill-tip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;color:#3a2c05;background:linear-gradient(135deg,#ffd58a,#ffb15c);border:1px solid rgba(140,80,20,.35);box-shadow:0 3px 10px rgba(255,160,60,.18);white-space:nowrap;}
+  .pill-tip.mint{color:#04322c;background:linear-gradient(135deg,#a8e8da,#7fd6c2);border-color:rgba(15,90,80,.3);box-shadow:0 3px 10px rgba(55,200,176,.18);}
   .stage{flex:0 0 auto;width:100%;aspect-ratio:16/9;max-height:62vh;position:relative;border-radius:14px;border:2px dashed rgba(139,92,246,.45);overflow:hidden;background-size:cover;background-position:center;min-height:260px;}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
   .stage-hint{text-align:center;font-size:11px;color:var(--sub);margin-top:8px;}
@@ -152,165 +155,192 @@
   #toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);background:rgba(42,33,64,.96);border:1px solid var(--line);color:var(--ink);padding:12px 22px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:.25s;z-index:200;}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .warn{color:var(--gold);font-size:11px;line-height:1.7;margin-top:6px;}
+
+  /* ===== 行走区画笔 ===== */
+  .wk-mask{position:fixed;inset:0;background:rgba(8,5,16,.78);z-index:400;display:flex;align-items:center;justify-content:center;padding:18px;}
+  .wk-panel{width:min(980px,100%);max-height:96vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.6);}
+  .wk-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .wk-head h2{font-size:18px;font-weight:900;color:var(--ink);flex:1;}
+  .wk-tip{font-size:12px;font-weight:700;color:var(--gold);background:rgba(240,180,80,.12);border:1px solid rgba(240,180,80,.35);border-radius:10px;padding:9px 12px;line-height:1.6;margin-bottom:12px;}
+  .wk-tip b{color:var(--ink);}
+  .wk-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .wk-pill{padding:8px 15px;border-radius:999px;border:1px solid var(--line);background:var(--paper2);color:var(--sub);font-size:13px;font-weight:800;cursor:pointer;transition:.16s;}
+  .wk-pill:hover{color:var(--ink);}
+  .wk-pill.on{background:var(--accent);color:#fff;border-color:transparent;}
+  .wk-pill.mint.on{background:var(--mint);color:#0d2b22;}
+  .wk-slider{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--sub);}
+  .wk-slider input[type=range]{width:150px;accent-color:var(--accent);}
+  .wk-slider b{color:var(--ink);min-width:34px;text-align:right;}
+  .wk-canvas-wrap{position:relative;border-radius:14px;overflow:hidden;border:2px solid var(--line);background:#0e0a18;line-height:0;}
+  .wk-canvas-wrap canvas{width:100%;display:block;touch-action:none;cursor:crosshair;}
+  .wk-foot{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .wk-foot .sp{flex:1;}
+  .wk-foot button{padding:11px 18px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;border:none;}
+  .wk-cancel{background:rgba(255,255,255,.07);border:1px solid var(--line)!important;color:var(--sub);}
+  .wk-save{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+  .wk-clear{background:rgba(255,90,90,.16);border:1px solid rgba(255,90,90,.4)!important;color:#ffb3b3;}
+  .wk-pct{font-size:12px;font-weight:800;color:var(--sub);}
 </style>
 </head>
-<body>
+<body data-page-node-id="QQz0soQ2LAm2ljrQCyZquT">
 
-<header>
-  <div class="logo">🗺️</div>
-  <div>
-    <h1>地图编辑引擎 <span style="font-size:12px;color:var(--gold);">v2</span></h1>
-    <div class="sub">地图 / 面板 / 触发区 · 游戏自动读取</div>
+<header data-page-node-id="cNHZSmPYgWEiN2VGgPTdnp">
+  <div class="logo" data-page-node-id="5I8pEjrASGHejWQcEIJwIp">🗺️</div>
+  <div data-page-node-id="FMj2sCkJO82SXFTMaDa5VJ">
+    <h1 data-page-node-id="EDbg7hc6eWk8o8xPRZrqQE">地图编辑引擎 <span style="font-size:12px;color:var(--gold);" data-page-node-id="lot5GMaFO7OELeCxJl29mF">v2</span></h1>
+    <div class="sub" data-page-node-id="FXN1DNCFUXjLJVytxRmimG">地图 / 面板 / 触发区 · 游戏自动读取</div>
   </div>
-  <div class="spacer"></div>
-  <button class="top-btn" id="btn-hub-back" title="返回引擎中枢">← 返回中枢</button>
-  <button class="top-btn" id="btn-backup" title="导出 / 导入数据备份">💾 备份</button>
-  <button class="top-btn" id="btn-import">📥 导入 JSON</button>
-  <button class="top-btn primary" id="btn-export">📤 导出 JSON</button>
+  <div class="spacer" data-page-node-id="IbGtUlQhjrYfTSegX0iKCK"></div>
+  <button class="top-btn" id="btn-hub-back" title="返回引擎中枢" data-page-node-id="AEaICtdAfFNzdNp1i8xRtP">← 返回中枢</button>
+  <button class="top-btn" id="btn-backup" title="导出 / 导入数据备份" data-page-node-id="zdQ5rcvwgruEd1m9DAttu1">💾 备份</button>
+  <button class="top-btn" id="btn-import" data-page-node-id="u1o9ppCYmFbJvhlp5UoARp">📥 导入 JSON</button>
+  <button class="top-btn primary" id="btn-export" data-page-node-id="9AszpIAShT8E1MuqmQXCgu">📤 导出 JSON</button>
 </header>
 
-<main>
+<main data-page-node-id="p35bpXClUxienxPCrKEEFZ">
   <!-- 左：节点树 -->
-  <aside class="panel tree-panel">
-    <div class="tree-head">
-      <h2>🗂️ 地图 / 组件</h2>
-      <div class="hint">🗺️ 地图＝可进入的场景<br>🧩 面板＝点开是衣橱/塔罗等界面</div>
-      <div class="add-row">
-        <button class="add-map" id="me-add-map">＋ 地图</button>
-        <button class="add-panel" id="me-add-panel">＋ 面板</button>
+  <aside class="panel tree-panel" data-page-node-id="zH4bVCKECBkgoWi931e4li">
+    <div class="tree-head" data-page-node-id="gj6YGZL6jB7tKT0K1jmNvg">
+      <h2 data-page-node-id="Ft7cL6aPpD6LyEa4BoHLN5">🗂️ 地图 / 组件</h2>
+      <div class="hint" data-page-node-id="Jjfdpb5lRQVI62lnjmzmHQ">🗺️ 地图＝可进入的场景<br data-page-node-id="R2CoDqfMaVXZzfEuQJ31J7">🧩 面板＝点开是衣橱/塔罗等界面</div>
+      <div class="add-row" data-page-node-id="W5RKsGkHTC3d2Z5uw56vMZ">
+        <button class="add-map" id="me-add-map" data-page-node-id="gaRqCdaqNC7jAYmD5pjvlQ">＋ 地图</button>
+        <button class="add-panel" id="me-add-panel" data-page-node-id="BiT0FPt1DRkrRoU8RYVJuX">＋ 面板</button>
       </div>
     </div>
-    <div class="tree" id="map-tree"></div>
-    <div class="tree-foot">💡 点节点切换编辑对象<br>触发区负责「走过去就传送 / 开面板」</div>
+    <div class="tree" id="map-tree" data-page-node-id="YQVVFdgmpHWNDjZItONW7V"></div>
+    <div class="tree-foot" data-page-node-id="8dqiCYdc3B9HuCa8BuSOHo">💡 点节点切换编辑对象<br data-page-node-id="awHx3dh3cUZPB6TjAveTJR">触发区负责「走过去就传送 / 开面板」</div>
   </aside>
 
   <!-- 中：画布 -->
-  <section class="panel canvas-wrap">
-    <div class="canvas-head" id="canvas-head">
-      <input class="name-input" id="me-map-name" placeholder="名称">
-      <label class="pill" id="me-bg-pill">🖼 上传背景<input type="file" id="me-bg-file" accept="image/*"></label>
-      <button class="pill grad" id="me-add-tile">＋ 建筑地块</button>
-      <button class="pill gold" id="me-add-trigger">＋ 传送门</button>
-      <button class="pill mint" id="me-add-spawn">＋ 入口点</button>
-      <button class="pill" id="me-set-root">⭐ 设为主地图</button>
-      <button class="pill danger" id="me-del-map">🗑 删除</button>
-      <button class="pill on" id="me-safe-toggle" title="16:9 画布里，只有中央 3/4 能放东西；外圈留给 UI">🛡 安全区</button>
-      <button class="pill" id="me-safe-fit" title="把这张地图里跑到外面的东西，一键收回中央 3/4">🧲 收回</button>
+  <section class="panel canvas-wrap" data-page-node-id="yKGICVo7Koa6bLCdiEiS0H">
+    <div class="canvas-head" id="canvas-head" data-page-node-id="jzn4zGlF2zBt3Uyx4Fp2XC">
+      <input class="name-input" id="me-map-name" placeholder="名称" data-page-node-id="aOC1RVxrP156MzUQB9c77Y">
+      <label class="pill" id="me-bg-pill" data-page-node-id="beuOjAKdiqMLMzHq9YBv1w">🖼 上传背景<input type="file" id="me-bg-file" accept="image/*" data-page-node-id="KalzlMvrYxAwWima5UVUU8"></label>
+      <button class="pill grad" id="me-add-tile" data-page-node-id="2IurPbY8wRFxhOagnQHkdp">＋ 建筑地块</button>
+      <button class="pill gold" id="me-add-trigger" data-page-node-id="MGq0bn1WO6kVy3objXg3ny">＋ 传送门</button>
+      <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 入口点</button>
+      <button class="pill" id="me-walk" data-page-node-id="me-walk">🚶 行走区</button>
+      <span class="pill-tip hidden" id="me-leaf-tip"></span>
+      <button class="pill" id="me-set-root" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">⭐ 设为主地图</button>
+      <button class="pill danger" id="me-del-map" data-page-node-id="qMJ1TSPloIVgyobacdE8tF">🗑 删除</button>
+      <button class="pill on" id="me-safe-toggle" title="16:9 画布里，只有中央 3/4 能放东西；外圈留给 UI" data-page-node-id="Ehzi3jr32qgXjk43HqBVuY">🛡 安全区</button>
+      <button class="pill" id="me-safe-fit" title="把这张地图里跑到外面的东西，一键收回中央 3/4" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
     </div>
-    <div class="stage" id="edit-stage"></div>
-    <div class="stage-hint" id="stage-hint">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
+    <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG"></div>
+    <div class="stage-hint" id="stage-hint" data-page-node-id="Tkn2HszHOqsoJQwO1Cmp2B">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
   </section>
 
   <!-- 右：属性 -->
-  <aside class="panel props-panel">
-    <div class="props-empty" id="me-props-empty">点击画布中的元素进行配置</div>
+  <aside class="panel props-panel" data-page-node-id="XC75MXgQSu17qxilkc0K3U">
+    <div class="props-empty" id="me-props-empty" data-page-node-id="n6tQn7GEMwUh5YZp6Vsp5S">点击画布中的元素进行配置</div>
 
     <!-- 地图属性 -->
-    <div class="props-tile hidden" id="p-map">
-      <h3>🗺️ 地图设置</h3>
-      <label>名称<input type="text" id="mp-name"></label>
-      <label>上级节点<select id="mp-parent"></select></label>
-      <div class="sec-title">玩法开关</div>
-      <div class="chk-row"><input type="checkbox" id="mp-worldmap"><span>在此地图可按「世界地图」传送</span></div>
-      <div class="chk-row"><input type="checkbox" id="mp-teleout"><span>允许从此处传送去别处</span></div>
-      <div class="warn" id="mp-tip"></div>
+    <div class="props-tile hidden" id="p-map" data-page-node-id="h0HLTUlvxuWLNtIPh88Tma">
+      <h3 data-page-node-id="6U2eC0ZdDiWuHhveZbtsC8">🗺️ 地图设置</h3>
+      <label data-page-node-id="bzZuHU9DuiSV2VLc2nLk0p">名称<input type="text" id="mp-name" data-page-node-id="Am1OvYveMHr0k3F7rx4nnc"></label>
+      <label data-page-node-id="kT2cwkcWO1lzPVvO96cplZ">上级节点<select id="mp-parent" data-page-node-id="W1CXk7GiIGA6McfMU88ACq"></select></label>
+      <div class="sec-title" data-page-node-id="DUtmAbkfezKOcHevb7E93p">玩法开关</div>
+      <div class="chk-row" data-page-node-id="N4lCHYouwMDfsO29kCPyKv"><input type="checkbox" id="mp-worldmap" data-page-node-id="Wn3tlC5cfFf7lgJO7bBz66"><span data-page-node-id="wP4vFIXSHNwMDl2mGpQtSj">在此地图可按「世界地图」传送</span></div>
+      <div class="chk-row" data-page-node-id="1Ez8FzMH2bLpPQIxiz0VHb"><input type="checkbox" id="mp-teleout" data-page-node-id="ueRssjXmL3MtZ1oNX7CD1v"><span data-page-node-id="9viIY4bLnTJVyhafcdSNDN">允许从此处传送去别处</span></div>
+      <div class="warn" id="mp-tip" data-page-node-id="gneGE6j5k2ECXmqb7FLzsz"></div>
     </div>
 
     <!-- 面板属性 -->
-    <div class="props-tile hidden" id="p-panel">
-      <h3>🧩 组件设置</h3>
-      <label>名称<input type="text" id="pn-name"></label>
-      <label>上级节点<select id="pn-parent"></select></label>
-      <label>打开的内容<select id="pn-kind"></select></label>
-      <div class="warn">面板类组件不是地图：角色在游戏里点/走到它，直接打开对应界面（如衣橱、塔罗），不会切场景。</div>
-      <button class="del-tile" id="pn-del">🗑 删除组件</button>
+    <div class="props-tile hidden" id="p-panel" data-page-node-id="FCLlffpnEX3GPXRokePU9t">
+      <h3 data-page-node-id="IvqVWFQ2djA2ZvbocF1tlJ">🧩 组件设置</h3>
+      <label data-page-node-id="X8RsLGPMYIBOUhfxrCXqU6">名称<input type="text" id="pn-name" data-page-node-id="W1dhcGDBpkR5yVnpQKg4ei"></label>
+      <label data-page-node-id="VtbIButVlk5ZqqQWFJOFYY">上级节点<select id="pn-parent" data-page-node-id="wyTAEj5uMqaVa61J3Kqfzh"></select></label>
+      <label data-page-node-id="B0VfHlCplYLa4KceKIK1pR">打开的内容<select id="pn-kind" data-page-node-id="eBwE16mKRrBclkGHB7H0XM"></select></label>
+      <div class="warn" data-page-node-id="gaBIBDLgrSJY4R3ipRElH6">面板类组件不是地图：角色在游戏里点/走到它，直接打开对应界面（如衣橱、塔罗），不会切场景。</div>
+      <button class="del-tile" id="pn-del" data-page-node-id="xn5i6pW2qkty6CsxGiza1j">🗑 删除组件</button>
     </div>
 
     <!-- 地块属性（建筑＝一张 PNG + 自带触发） -->
-    <div class="props-tile hidden" id="p-tile">
-      <h3>🏛️ 地块配置（建筑）</h3>
-      <label>名称<input type="text" id="tl-name"></label>
-      <div class="sec-title">贴图 · 地块本身就是一张 PNG</div>
-      <div class="ph-preview" id="tl-ph-preview"></div>
-      <div class="ph-grid" id="tl-ph-grid"></div>
-      <label>换成自己的 PNG<input type="file" id="tl-file" accept="image/*"></label>
-      <div class="sec-title">点它 / 走近它 → 做什么</div>
-      <label>行为<select id="tl-action">
-        <option value="none">什么都不做（纯装饰）</option>
-        <option value="teleport">前往另一张地图</option>
-        <option value="panel">打开一个界面（衣橱 / 塔罗…）</option>
+    <div class="props-tile hidden" id="p-tile" data-page-node-id="0HF05hrYdm1xdJUzBEnHCA">
+      <h3 data-page-node-id="pg3X41feyHiZnfYtIyHlSZ">🏛️ 地块配置（建筑）</h3>
+      <label data-page-node-id="u6ksLkic1EiEqH2OXCeTY6">名称<input type="text" id="tl-name" data-page-node-id="XD0zalEzEBLI9dirp1RWtZ"></label>
+      <div class="sec-title" data-page-node-id="Hjoe5wZB8l6aDkbnAFHeXp">贴图 · 地块本身就是一张 PNG</div>
+      <div class="ph-preview" id="tl-ph-preview" data-page-node-id="rMiY9CyXvdIdfTeoEJmVWO"></div>
+      <div class="ph-grid" id="tl-ph-grid" data-page-node-id="OdzYqnkjC3yEbxU1B2VxdC"></div>
+      <label data-page-node-id="8xktwqhu9ule9UGjTFJXBj">换成自己的 PNG<input type="file" id="tl-file" accept="image/*" data-page-node-id="tPZ4UBCjoNqQAG1f7FifLY"></label>
+      <div class="sec-title" data-page-node-id="GSBtqwxTyEgdOgY1r81FO2">点它 / 走近它 → 做什么</div>
+      <label data-page-node-id="nx2SHDFD0Vj9nq7EnvHX9L">行为<select id="tl-action" data-page-node-id="0WMTYILTAh9HnoLj9Mgf8u">
+        <option value="none" data-page-node-id="0a1n73H63YrivB9bYDk4om">什么都不做（纯装饰）</option>
+        <option value="teleport" data-page-node-id="WopvGidB4aCewYLEtEO7Wz">前往另一张地图</option>
+        <option value="panel" data-page-node-id="hTIvZVotIpWu3h35zmN2cG">打开一个界面（衣橱 / 塔罗…）</option>
       </select></label>
-      <div id="tl-tele-box" class="hidden">
-        <label>目标地图<select id="tl-map"></select></label>
-        <label>落在对方的哪个入口<select id="tl-spawn"></select></label>
+      <div id="tl-tele-box" class="hidden" data-page-node-id="dn9HuyUuS8Rhr54wEgi6iu">
+        <label data-page-node-id="IlrHen5LwbkJAyDkB9gnaH">目标地图<select id="tl-map" data-page-node-id="rbJ2D1JXU6U3xqGTA8W3gy"></select></label>
+        <label data-page-node-id="L74OCEWx71ZUPLINfUpqXV">落在对方的哪个入口<select id="tl-spawn" data-page-node-id="2pjtJKRQcWmwgNAtb7hA4P"></select></label>
       </div>
-      <div id="tl-panel-box" class="hidden">
-        <label>打开的界面<select id="tl-panel"></select></label>
+      <div id="tl-panel-box" class="hidden" data-page-node-id="EGWoSw6spB6mNDBg5CDioo">
+        <label data-page-node-id="zqm11NQX5ZcJ8sXGQeVctP">打开的界面<select id="tl-panel" data-page-node-id="dc5WDMXFwiuSJzurxEuAXj"></select></label>
       </div>
-      <label>触发方式<select id="tl-mode">
-        <option value="click">点一下才触发</option>
-        <option value="auto">走上去自动触发</option>
+      <label data-page-node-id="EPHgXN8cHFUUL9nSRCkW0f">触发方式<select id="tl-mode" data-page-node-id="QvE869c5Pyrhviw9223d6M">
+        <option value="click" data-page-node-id="uUlUpXzd7Uco0yTcHhtRwt">点一下才触发</option>
+        <option value="auto" data-page-node-id="GkZFNaNjeqIy5yumjDfFPI">走上去自动触发</option>
       </select></label>
-      <label>提示语<input type="text" id="tl-tip" placeholder="例：推开木门，进去看看吧"></label>
-      <label>备用图标（没贴图时才显示）<input type="text" id="tl-icon"></label>
-      <button class="del-tile" id="tl-del">🗑 删除地块</button>
+      <label data-page-node-id="y4yHTqkfhE77dN548tFIdY">提示语<input type="text" id="tl-tip" placeholder="例：推开木门，进去看看吧" data-page-node-id="wHEWKeYotsxALBJnjFtYaC"></label>
+      <label data-page-node-id="X56vWS7ZFyJTw3kP20d8QY">备用图标（没贴图时才显示）<input type="text" id="tl-icon" data-page-node-id="44gxugtct6cryxmuvJLsGF"></label>
+      <button class="del-tile" id="tl-del" data-page-node-id="YNe7S9IFG2xJRTHRQtaRMW">🗑 删除地块</button>
     </div>
 
     <!-- 传送门属性（地图 ↔ 地图，单独一类） -->
-    <div class="props-tile hidden" id="p-trigger">
-      <h3>🚪 传送门配置（地图之间切换）</h3>
-      <label>名称<input type="text" id="tg-name"></label>
-      <label>图标<input type="text" id="tg-icon"></label>
-      <label>行为<select id="tg-action">
-        <option value="teleport">传送到另一张地图</option>
-        <option value="none">先留空（还没接好）</option>
+    <div class="props-tile hidden" id="p-trigger" data-page-node-id="mfk6yw0OYu4gnLRcSrjpsE">
+      <h3 data-page-node-id="F0ym2EKBCXvFqXKotdtcyM">🚪 传送门配置（地图之间切换）</h3>
+      <label data-page-node-id="ZBVSbtXr6MamMKt74De9PQ">名称<input type="text" id="tg-name" data-page-node-id="7bOik0t0dkcfoRiKEwElrT"></label>
+      <label data-page-node-id="0MrqfHOCBv96viRQiWGf41">图标<input type="text" id="tg-icon" data-page-node-id="YLTOvzEmtOMi9GFi1npLA3"></label>
+      <label data-page-node-id="Q7Q3uegDcUpyFCGG36BSdX">行为<select id="tg-action" data-page-node-id="XfwvpEQLbmy03MnLD05unT">
+        <option value="teleport" data-page-node-id="HBeAICEwZ78w8ueYZAz4XK">传送到另一张地图</option>
+        <option value="none" data-page-node-id="tqsjsU0RZq09qwD9NI7dOj">先留空（还没接好）</option>
       </select></label>
 
-      <div id="tg-tele-box">
-        <div class="sec-title">传送设置</div>
-        <label>目标地图<select id="tg-map"></select></label>
-        <label>落地在对方的哪个入口<select id="tg-spawn"></select></label>
-        <div class="chk-row"><input type="checkbox" id="tg-bi"><span>双向（自动在对方生成返回点）</span></div>
-        <label>返回点名称<input type="text" id="tg-back-name" placeholder="返回"></label>
+      <div id="tg-tele-box" data-page-node-id="YlbvRZjFTNgZr4CHdk5lXn">
+        <div class="sec-title" data-page-node-id="yF26Do6DcjsoVwnWuNNGC4">传送设置</div>
+        <label data-page-node-id="Mvy2aglxgFfwQy2wchPyWb">目标地图<select id="tg-map" data-page-node-id="MfIUDNUvhOnR9FQsROpIMA"></select></label>
+        <label data-page-node-id="DPtLEQ9FRsUJVrWkVRO62i">落地在对方的哪个入口<select id="tg-spawn" data-page-node-id="n7OPrnjeEmekwiQnuBwQq5"></select></label>
+        <div class="chk-row" data-page-node-id="n2yBW6V1S0nLm0eJAwTk7R"><input type="checkbox" id="tg-bi" data-page-node-id="b3v1zQd3UNaBCRqHYoYWKF"><span data-page-node-id="O6R8QpsdIMe1h3MGrxS5h8">双向（自动在对方生成返回点）</span></div>
+        <label data-page-node-id="awS5Ab39z9hpnDWWMLjMz5">返回点名称<input type="text" id="tg-back-name" placeholder="返回" data-page-node-id="Kjo68tTIXBkpP4xFkiSt8p"></label>
       </div>
 
-      <div id="tg-panel-box">
-        <div class="sec-title">面板设置</div>
-        <label>打开哪个界面<select id="tg-panel"></select></label>
+      <div id="tg-panel-box" data-page-node-id="d4vyAsCE3IhAlbJOCqxITE">
+        <div class="sec-title" data-page-node-id="qtYlqEvxtFVoSxFCJL419R">面板设置</div>
+        <label data-page-node-id="ZCpfaXSUeReNP6PCw01UlO">打开哪个界面<select id="tg-panel" data-page-node-id="7yPCriekrMIeJ3OigGR0ZJ"></select></label>
       </div>
 
-      <div class="sec-title">触发方式</div>
-      <label>怎么触发<select id="tg-mode">
-        <option value="auto">走上去立刻触发</option>
-        <option value="confirm">走上去先问一次</option>
+      <div class="sec-title" data-page-node-id="Ex2jgrtBgmYnypGvXNT9cn">触发方式</div>
+      <label data-page-node-id="UBa9dKYYzoJaPtYTYtcTSu">怎么触发<select id="tg-mode" data-page-node-id="VVvplD55Cu0jplTs16Gc6F">
+        <option value="auto" data-page-node-id="l8zQsc703HQKFNxtG54UHw">走上去立刻触发</option>
+        <option value="confirm" data-page-node-id="ME9R94gB3u6bW1hyBrGvLp">走上去先问一次</option>
       </select></label>
-      <label>提示文字<input type="text" id="tg-tip" placeholder="例如：进入图书馆"></label>
-      <button class="del-tile" id="tg-del">🗑 删除触发区</button>
+      <label data-page-node-id="ElNKPZnc6Go4G31VdbpHhg">提示文字<input type="text" id="tg-tip" placeholder="例如：进入图书馆" data-page-node-id="KAZV5d0VPgxFkU7bCDtMaR"></label>
+      <button class="del-tile" id="tg-del" data-page-node-id="NNrNmgw1uPyK7WaYFEEkuB">🗑 删除触发区</button>
     </div>
 
     <!-- 入口点属性 -->
-    <div class="props-tile hidden" id="p-spawn">
-      <h3>🚩 入口点配置</h3>
-      <label>名称<input type="text" id="sp-name"></label>
-      <div class="warn">入口点是「传送落地坐标」。别处的触发区可以指定落到这个点上。</div>
-      <button class="del-tile" id="sp-del">🗑 删除入口点</button>
+    <div class="props-tile hidden" id="p-spawn" data-page-node-id="P2NGhWs9KrwQWfatGVZjP9">
+      <h3 data-page-node-id="WAOBE2i938BZqSC23PTYn3">🚩 入口点配置</h3>
+      <label data-page-node-id="4fhFGnqWPZLFicqR2EqDf3">名称<input type="text" id="sp-name" data-page-node-id="wYjQB5XepzVGz4Fvc6Md4X"></label>
+      <div class="warn" data-page-node-id="y4bHIe6dK3a5UWifO05cBk">入口点是「传送落地坐标」。别处的触发区可以指定落到这个点上。</div>
+      <button class="del-tile" id="sp-del" data-page-node-id="2gMbyY492udggiKvxJ2FqY">🗑 删除入口点</button>
     </div>
   </aside>
 </main>
 
-<div class="mini-modal hidden" id="mini-modal">
-  <div class="mini-card">
-    <div class="mini-title" id="mini-title">输入名称</div>
-    <input id="mini-input" placeholder="请输入名称" maxlength="12">
-    <div class="mini-btns">
-      <button id="mini-cancel">取消</button>
-      <button id="mini-ok">确定</button>
+<div class="mini-modal hidden" id="mini-modal" data-page-node-id="7UVCVseUoI3YbBvgr1dqlB">
+  <div class="mini-card" data-page-node-id="hMGAn55rTvEeyk2fCd7L94">
+    <div class="mini-title" id="mini-title" data-page-node-id="IpUE0Qt93Lcqmg4i5zVSM6">输入名称</div>
+    <input id="mini-input" placeholder="请输入名称" maxlength="12" data-page-node-id="YfOWkPaHvkHxDbHUJdaHGQ">
+    <div class="mini-btns" data-page-node-id="jYuq9JTHywOV7FFJm5Y4pi">
+      <button id="mini-cancel" data-page-node-id="iuneuAg9VCxqmCsi6XpBXW">取消</button>
+      <button id="mini-ok" data-page-node-id="6VsDVnj3lpDBNhY4oeWcLU">确定</button>
     </div>
   </div>
 </div>
 
-<input type="file" id="import-file" accept="application/json,.json" style="display:none">
-<div id="toast"></div>
+<input type="file" id="import-file" accept="application/json,.json" style="display:none" data-page-node-id="NRR93MGGjSYjAGjklGYGFw">
+<div id="toast" data-page-node-id="wFCi2AXn62Cu7jqoV2TR6D"></div>
 
 <script src="./map-placeholders.js"></script>
 <script>
@@ -508,6 +538,39 @@ function ensureMaps(){
 }
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
 
+/* =========================================================
+   父节点 vs 叶子关卡
+   —— 父节点：map.nodes 里挂了「建筑地块（kind=tile）」，是『中国/美国/学校』这种
+   —— 叶子关卡：没挂 tile，是玩家点开地块之后能走的那一层（图书馆/我的小屋/服装店…）
+   —— 行走区 / 传送门 / 入口点：只有叶子关卡才允许加（避免在父节点上铺绿色步行道）
+   ========================================================= */
+function hasChildTiles(map){
+  return !!map && map.type!=='panel' && (map.nodes||[]).some(n=>n && n.kind==='tile');
+}
+function isLeafMap(map){
+  return !!map && map.type!=='panel' && !hasChildTiles(map);
+}
+function updateCanvasForLeaf(map){
+  const tip = $('me-leaf-tip'); if(!tip) return;
+  const leaf = isLeafMap(map);
+  ['me-add-trigger','me-add-spawn','me-walk'].forEach(id=>{
+    const el = $(id); if(!el) return;
+    el.classList.toggle('is-disabled', !leaf);
+    el.setAttribute('aria-disabled', leaf?'false':'true');
+  });
+  if(!map){ tip.classList.add('hidden'); return; }
+  if(map.type==='panel'){ tip.classList.add('hidden'); return; }
+  if(leaf){
+    tip.className = 'pill-tip mint';
+    tip.textContent = '🍃 叶子关卡 · 可以加传送门 / 入口点 / 行走区';
+  }else{
+    tip.className = 'pill-tip';
+    const n = (map.nodes||[]).filter(x=>x && x.kind==='tile').length;
+    tip.textContent = '🗂 父节点 · 挂着 '+n+' 个子地块 · 行走/传送请到叶子关卡';
+  }
+  tip.classList.remove('hidden');
+}
+
 /* ================= 双向触发区配对 ================= */
 function syncPair(d, srcMap, trg){
   const need = trg.bidirectional && trg.action==='teleport' && trg.targetMap && d.maps[trg.targetMap];
@@ -642,6 +705,7 @@ function renderEditor(){
     if(n.kind==='trigger') stage.appendChild(buildTriggerEl(d, map, n));
     else stage.appendChild(buildTileEl(d, map, n));
   });
+  updateCanvasForLeaf(map);
   (map.spawns||[]).forEach(s=> stage.appendChild(buildSpawnEl(map, s)));
   if(window.SafeArea && SafeArea.layer) stage.appendChild(SafeArea.layer());
 
@@ -781,8 +845,13 @@ function renderProps(){
       $('mp-worldmap').checked = !!map.allowWorldMap;
       $('mp-teleout').checked  = !!map.allowTeleportOut;
       $('mp-tip').innerHTML = map.id===d.root
-        ? '⭐ 这是主地图：进入游戏默认站在这里。'
-        : '主地图目前是「'+escapeHtml((d.maps[d.root]||{}).name||'?')+'」，可在工具条点「⭐ 设为主地图」更换。';
+        ? (isLeafMap(map)
+            ? '⭐ 这是主地图：进入游戏默认站在这里。'
+            : '<b style="color:#a04020">⚠ 这是个挂着子地块的「父节点」，不建议当主地图</b> · 一开局角色应该站在能走的叶子关卡（像图书馆/我的小屋那种），<a href="#" id="mp-pick-leaf" style="color:var(--accent);font-weight:900">点这里挑一个子关卡当主地图 →</a>')
+        : ('主地图目前是「'+escapeHtml((d.maps[d.root]||{}).name||'?')+'」'
+           + (isLeafMap(d.maps[d.root]) ? '（🍃 叶子关卡，对的）' : '（⚠ 它是父节点，建议改成叶子关卡）')
+           + '，可在工具条点「⭐ 设为主地图」更换。');
+      const pickLeaf=$('mp-pick-leaf'); if(pickLeaf){ pickLeaf.onclick=(e)=>{ e.preventDefault(); const opts=Object.values(d.maps).filter(m=>m.type!=='panel' && isLeafMap(m) && m.id!==map.id); if(!opts.length){ toast('没有可用的叶子关卡 · 先去建一张空的地图'); return; } askName('选哪个叶子关卡当主地图？（输入名字）', txt=>{ const m=opts.find(x=>x.name===txt) || opts.find(x=>x.name.indexOf(txt)>=0) || opts[0]; d.root=m.id; saveMapsData(d); buildTree(); renderEditor(); renderProps(); toast('已把「'+m.name+'」设为主地图'); }); }; }
       $('mp-name').oninput = ()=>{ map.name=$('mp-name').value; saveMapsData(d); buildTree(); $('me-map-name').value=map.name; };
       $('mp-parent').onchange = ()=>{ map.parent=$('mp-parent').value||null; saveMapsData(d); buildTree(); };
       $('mp-worldmap').onchange = ()=>{ map.allowWorldMap=$('mp-worldmap').checked; saveMapsData(d); };
@@ -979,26 +1048,31 @@ $('me-bg-file').onchange = e=>{
   pickImage(e, url=>{ map.bg=url; saveMapsData(ensureMaps()); renderEditor(); });
 };
 $('me-add-tile').onclick = ()=>{
-  const map=curMap(); if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
+  const d=ensureMaps(); const map=d.maps[editState.nodeId];
+  if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
   if(!map.nodes) map.nodes=[];
   const t = mkTile('新建筑','🏛️',null,0.5,0.45,0.16,0.16,null);
   map.nodes.push(t); editState.sel={kind:'tile', id:t.id};
-  saveMapsData(ensureMaps()); buildTree(); renderEditor(); renderProps();
+  saveMapsData(d); buildTree(); renderEditor(); renderProps();
 };
 $('me-add-trigger').onclick = ()=>{
-  const map=curMap(); if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
+  const d=ensureMaps(); const map=d.maps[editState.nodeId];
+  if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
+  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），传送门请加到叶子关卡里'); return; }
   if(!map.nodes) map.nodes=[];
   const g = mkTrigger('新触发区', 0.5, 0.72, 0.14, 0.1, { action:'teleport', triggerMode:'auto' });
   map.nodes.push(g); editState.sel={kind:'trigger', id:g.id};
-  saveMapsData(ensureMaps()); buildTree(); renderEditor(); renderProps();
+  saveMapsData(d); buildTree(); renderEditor(); renderProps();
   toast('已添加触发区 · 在右侧选它通向哪里');
 };
 $('me-add-spawn').onclick = ()=>{
-  const map=curMap(); if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
+  const d=ensureMaps(); const map=d.maps[editState.nodeId];
+  if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
+  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），入口点请加到叶子关卡里'); return; }
   if(!map.spawns) map.spawns=[];
   const s = mkSpawn('入口'+(map.spawns.length+1), 0.5, 0.8);
   map.spawns.push(s); editState.sel={kind:'spawn', id:s.id};
-  saveMapsData(ensureMaps()); buildTree(); renderEditor(); renderProps();
+  saveMapsData(d); buildTree(); renderEditor(); renderProps();
 };
 $('me-safe-toggle').onclick = ()=>{
   const on = SafeArea.toggle();
@@ -1022,6 +1096,169 @@ $('me-set-root').onclick = ()=>{
   d.root = map.id; saveMapsData(d); buildTree(); renderProps();
   toast('已把「'+map.name+'」设为进入游戏的主地图');
 };
+
+/* =========================================================
+   行走区画笔：给「可走的最底层关卡」直接刷出能走的范围
+   —— 跟背景图绑定（同一张 16:9 底图，cover 对齐）
+   —— mask 分辨率 192×108，白色 = 可走，透明 = 不可走
+   —— 没划定 = 全图可走（不限制）
+   ========================================================= */
+const WK_W=192, WK_H=108;
+function walkPctOf(mask){
+  try{
+    const g=mask.getContext('2d').getImageData(0,0,WK_W,WK_H).data;
+    let n=0; for(let i=3;i<g.length;i+=4) if(g[i]>128) n++;
+    return n/(WK_W*WK_H)*100;
+  }catch(e){ return 0; }
+}
+function openWalkEditor(){
+  const d=ensureMaps();
+  const map=d.maps[editState.nodeId];
+  if(!map){ toast('先在左边选一张地图'); return; }
+  if(map.type==='panel'){ toast('组件不是地图，没有行走区'); return; }
+  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），行走区只能画在叶子关卡里'); return; }
+
+  const wrap=document.createElement('div'); wrap.className='wk-mask';
+  wrap.innerHTML='<div class="wk-panel">'
+    +'<div class="wk-head"><h2>🚶 行走区 · <span id="wk-name"></span></h2><button class="wk-pill" id="wk-x">✕</button></div>'
+    +'<div class="wk-tip">在这张底图上<b>刷出绿色</b>＝能走的地方，其余地方角色走不过去。'
+    +'推荐用法：先点「<b>🧽 全部可走</b>」把整张图刷满，再用<b>橡皮</b>擦掉湖面 / 墙 / 花坛。<br>'
+    +'<b>没划定</b>＝整张图都能走（游戏里不限制）。</div>'
+    +'<div class="wk-bar">'
+    +'<button class="wk-pill on" id="wk-brush">🖌 画笔（可走）</button>'
+    +'<button class="wk-pill" id="wk-erase">🧽 橡皮（不可走）</button>'
+    +'<span class="wk-slider">笔刷 <input type="range" id="wk-size" min="4" max="90" value="30"><b id="wk-size-v">30</b></span>'
+    +'<button class="wk-pill" id="wk-fill">🧽 全部可走</button>'
+    +'<button class="wk-pill" id="wk-empty">🚫 全部不可走</button>'
+    +'<button class="wk-pill" id="wk-invert">🔁 反转</button>'
+    +'</div>'
+    +'<div class="wk-canvas-wrap"><canvas id="wk-canvas" width="960" height="540"></canvas></div>'
+    +'<div class="wk-foot"><span class="wk-pct" id="wk-pct"></span><span class="sp"></span>'
+    +'<button class="wk-clear" id="wk-clear">🗑 清除行走区</button>'
+    +'<button class="wk-cancel" id="wk-cancel">取消</button>'
+    +'<button class="wk-save" id="wk-save">💾 保存</button></div>'
+    +'</div>';
+  document.body.appendChild(wrap);
+  const Q=id=>wrap.querySelector('#'+id);
+
+  const disp=Q('wk-canvas'), dctx=disp.getContext('2d');
+  const DW=disp.width, DH=disp.height;
+  const mask=document.createElement('canvas'); mask.width=WK_W; mask.height=WK_H;
+  const mctx=mask.getContext('2d');
+  const tmpA=document.createElement('canvas'); tmpA.width=DW; tmpA.height=DH;
+  const tmpB=document.createElement('canvas'); tmpB.width=DW; tmpB.height=DH;
+  const actx=tmpA.getContext('2d'), bctx=tmpB.getContext('2d');
+  let tool='brush', brush=30, bgImg=null, drawing=false, lastPt=null;
+
+  Q('wk-name').textContent=map.name||'未命名';
+  if(map.bg){ bgImg=new Image(); bgImg.onload=()=>redraw(); bgImg.src=map.bg; }
+  if(map.walk && map.walk.data){
+    const im=new Image();
+    im.onload=()=>{ mctx.clearRect(0,0,WK_W,WK_H); mctx.drawImage(im,0,0,WK_W,WK_H); redraw(); };
+    im.src=map.walk.data;
+  }
+
+  function drawCoverTo(ctx, img, W, H){
+    const ir=(img.naturalWidth||1)/(img.naturalHeight||1), sr=W/H;
+    let dw=W, dh=H, dx=0, dy=0;
+    if(ir>sr){ dh=H; dw=H*ir; dx=(W-dw)/2; } else { dw=W; dh=W/ir; dy=(H-dh)/2; }
+    ctx.drawImage(img,dx,dy,dw,dh);
+  }
+  function redraw(){
+    dctx.clearRect(0,0,DW,DH);
+    if(bgImg && bgImg.complete && bgImg.naturalWidth) drawCoverTo(dctx,bgImg,DW,DH);
+    else {
+      const g=dctx.createLinearGradient(0,0,0,DH);
+      g.addColorStop(0, map.bgColor||'#a9c9e8');
+      g.addColorStop(1, darken(map.bgColor||'#a9c9e8', .32));
+      dctx.fillStyle=g; dctx.fillRect(0,0,DW,DH);
+    }
+    /* 不可走 = 暗色蒙版挖掉可走部分 */
+    actx.clearRect(0,0,DW,DH);
+    actx.globalCompositeOperation='source-over';
+    actx.fillStyle='rgba(10,6,20,.62)'; actx.fillRect(0,0,DW,DH);
+    actx.globalCompositeOperation='destination-out';
+    actx.drawImage(mask,0,0,DW,DH);
+    actx.globalCompositeOperation='source-over';
+    dctx.drawImage(tmpA,0,0);
+    /* 可走 = 绿色 */
+    bctx.clearRect(0,0,DW,DH);
+    bctx.globalCompositeOperation='source-over';
+    bctx.drawImage(mask,0,0,DW,DH);
+    bctx.globalCompositeOperation='source-in';
+    bctx.fillStyle='rgba(60,230,150,.28)'; bctx.fillRect(0,0,DW,DH);
+    bctx.globalCompositeOperation='source-over';
+    dctx.drawImage(tmpB,0,0);
+    /* 16:9 参考网格 */
+    dctx.strokeStyle='rgba(255,255,255,.10)'; dctx.lineWidth=1;
+    for(let i=1;i<6;i++){ const x=DW/6*i; dctx.beginPath(); dctx.moveTo(x,0); dctx.lineTo(x,DH); dctx.stroke(); }
+    for(let j=1;j<3;j++){ const y=DH/3*j; dctx.beginPath(); dctx.moveTo(0,y); dctx.lineTo(DW,y); dctx.stroke(); }
+  }
+  function updatePct(){
+    const p=walkPctOf(mask);
+    Q('wk-pct').textContent = p<0.1 ? '⚠ 还没刷任何可走区（保存后＝不限制，全图可走）' : ('可走面积约 '+p.toFixed(1)+'%');
+  }
+  function toMask(e){
+    const r=disp.getBoundingClientRect();
+    const nx=(e.clientX-r.left)/r.width, ny=(e.clientY-r.top)/r.height;
+    return { x:Math.max(0,Math.min(1,nx))*WK_W, y:Math.max(0,Math.min(1,ny))*WK_H };
+  }
+  function paint(pt){
+    const r=Math.max(1, brush*WK_W/DW);
+    mctx.save();
+    mctx.lineCap='round'; mctx.lineJoin='round'; mctx.lineWidth=r*2;
+    if(tool==='brush'){ mctx.globalCompositeOperation='source-over'; mctx.strokeStyle='#ffffff'; }
+    else { mctx.globalCompositeOperation='destination-out'; mctx.strokeStyle='rgba(0,0,0,1)'; }
+    mctx.beginPath();
+    if(lastPt){ mctx.moveTo(lastPt.x,lastPt.y); mctx.lineTo(pt.x,pt.y); }
+    else { mctx.moveTo(pt.x,pt.y); mctx.lineTo(pt.x+0.01,pt.y); }
+    mctx.stroke(); mctx.restore();
+    lastPt=pt; redraw();
+  }
+  disp.addEventListener('pointerdown', e=>{
+    drawing=true; lastPt=null; disp.setPointerCapture(e.pointerId);
+    paint(toMask(e)); e.preventDefault();
+  });
+  disp.addEventListener('pointermove', e=>{ if(!drawing) return; paint(toMask(e)); });
+  const endDraw=()=>{ if(!drawing) return; drawing=false; lastPt=null; updatePct(); };
+  disp.addEventListener('pointerup', endDraw);
+  disp.addEventListener('pointercancel', endDraw);
+  disp.addEventListener('pointerleave', endDraw);
+
+  const setTool=t=>{
+    tool=t;
+    Q('wk-brush').classList.toggle('on', t==='brush');
+    Q('wk-erase').classList.toggle('on', t==='erase');
+  };
+  Q('wk-brush').onclick=()=>setTool('brush');
+  Q('wk-erase').onclick=()=>setTool('erase');
+  Q('wk-size').oninput=()=>{ brush=+Q('wk-size').value; Q('wk-size-v').textContent=brush; };
+  Q('wk-fill').onclick =()=>{ mctx.save(); mctx.globalCompositeOperation='source-over'; mctx.fillStyle='#fff'; mctx.fillRect(0,0,WK_W,WK_H); mctx.restore(); redraw(); updatePct(); toast('整张图都可以走了'); };
+  Q('wk-empty').onclick=()=>{ mctx.clearRect(0,0,WK_W,WK_H); redraw(); updatePct(); toast('已清空，现在用画笔刷出可走区'); };
+  Q('wk-invert').onclick=()=>{
+    const t=document.createElement('canvas'); t.width=WK_W; t.height=WK_H;
+    const tc=t.getContext('2d');
+    tc.fillStyle='#fff'; tc.fillRect(0,0,WK_W,WK_H);
+    tc.globalCompositeOperation='destination-out'; tc.drawImage(mask,0,0);
+    mctx.clearRect(0,0,WK_W,WK_H);
+    mctx.globalCompositeOperation='source-over'; mctx.drawImage(t,0,0);
+    redraw(); updatePct(); toast('已反转');
+  };
+  Q('wk-clear').onclick=()=>{ mctx.clearRect(0,0,WK_W,WK_H); redraw(); updatePct(); toast('已清空，点「💾 保存」后＝不限制'); };
+  const close=()=>{ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); };
+  Q('wk-x').onclick=close; Q('wk-cancel').onclick=close;
+  wrap.addEventListener('click', e=>{ if(e.target===wrap) close(); });
+  Q('wk-save').onclick=()=>{
+    const p=walkPctOf(mask);
+    if(p<0.1){ delete map.walk; saveMapsData(d); renderEditor(); renderProps(); toast('已清除行走区（全图可走）'); close(); return; }
+    map.walk={ w:WK_W, h:WK_H, data:mask.toDataURL('image/png') };
+    saveMapsData(d); renderEditor(); renderProps();
+    toast('💾 行走区已保存 · 可走 '+p.toFixed(1)+'%');
+    close();
+  };
+  redraw(); updatePct();
+}
+$('me-walk').onclick = openWalkEditor;
 $('me-del-map').onclick = ()=>delNode(editState.nodeId);
 
 function delNode(id){

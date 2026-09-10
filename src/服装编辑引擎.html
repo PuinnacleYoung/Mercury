@@ -347,8 +347,8 @@
   .shop-zone{padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:var(--paper2); font-size:13px; font-weight:800; cursor:pointer; transition:.16s; color:var(--sub);}
   .shop-zone:hover{color:var(--ink);}
   .shop-zone.on{background:var(--accent); color:#fff; border-color:transparent;}
-  .shop-bar{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
-  .shop-bar .cnt{font-size:12px; color:var(--sub); font-weight:700; flex:1;}
+  .shop-bar{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+  .shop-bar .cnt{font-size:12px; color:var(--sub); font-weight:700; flex:1; min-width:80px;}
   .shop-cards{flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:12px; align-content:start; min-height:0; padding-right:4px;}
   .shop-c{position:relative; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--paper2); cursor:pointer; transition:.16s; display:flex; flex-direction:column;}
   .shop-c:hover{transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:var(--accent);}
@@ -557,6 +557,8 @@
         <div class="set-list-btns" data-page-node-id="setListBtns00000001">
           <button class="btn small mint" id="setNew" data-page-node-id="setNew0000000000001">＋ 新建</button>
           <button class="btn small danger" id="setDel" data-page-node-id="setDel0000000000001">删除</button>
+          <button class="btn small" id="setExport" title="把勾选的套装导出成 JSON（可连带带上它依赖的时装）">📤 导出套装</button>
+          <button class="btn small violet" id="setImport" title="导入朋友的套装 JSON，缺的时装会自动补进本地库">📥 导入套装</button>
         </div>
       </div>
       <div class="card" data-page-node-id="setMid000000000000001">
@@ -1037,7 +1039,10 @@ const sessionStorage = _mkStore(window.sessionStorage);
     });
     saveLib();
     renderCatCol(); renderRightPanel(); updateTopMeta(); stageMgrs.cloth.render();
-    toast('已导入 '+added+' 件'+(renamed?('（'+renamed+' 件自动改名）'):''));
+    /* 时序兜底：之前导入的套装缺这几件时装 —— 现在时装到了，自动接上 */
+    let fixed=0; try{ fixed=reconcilePending(); }catch(e){}
+    if(fixed){ try{ renderSetList(); renderSetSlots(); }catch(e){} }
+    toast('已导入 '+added+' 件'+(renamed?('（'+renamed+' 件自动改名）'):'')+(fixed?(' · 🔗 顺手接上 '+fixed+' 处套装缺件'):''));
   }
   const _btnExport=$('btnExport'); if(_btnExport) _btnExport.onclick=openExportPanel;
   const _btnImport=$('btnImport'); if(_btnImport) _btnImport.onclick=openImportPicker;
@@ -2429,7 +2434,8 @@ const sessionStorage = _mkStore(window.sessionStorage);
 
   function renderSetList(){
     const el=$('setList'); el.innerHTML='';
-    if(outfitSets.length===0){ el.innerHTML='<div style="padding:16px;text-align:center;color:var(--hint);font-size:12px;">还没有套装，点「＋ 新建」</div>'; return; }
+    if(outfitSets.length===0){ el.innerHTML='<div style="padding:16px;text-align:center;color:var(--hint);font-size:12px;">还没有套装，点「＋ 新建」</div>'; try{ renderPendingTip(el); }catch(e){} return; }
+    try{ renderPendingTip(el); }catch(e){}
     outfitSets.forEach(s=>{
       const d=document.createElement('div'); d.className='li'+(s.id===currentSetId?' on':'');
       d.innerHTML=`<span style="flex-shrink:0;">${s.thumbnail?`<img src="${s.thumbnail}" style="width:22px;height:28px;object-fit:contain;border-radius:4px;background:#fff;">`:'👗'}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.name)}</span>`;
@@ -2663,6 +2669,472 @@ const sessionStorage = _mkStore(window.sessionStorage);
   $('shopAdd').onclick=openShopAdd;
   $('shopRefresh').onclick=()=>{ renderShopCards(); renderShopEditor(); toast('已刷新'); };
 
+  /* =========================================================
+     套装 / 商店 导入导出（含「依赖自动检索补全」）
+     —— 导入的套装引用了本地没有的时装时，按
+        ① 包里自带的时装数据 → ② 本地同名检索 → ③ 标记缺失
+        三级自动补链，尽量不让套装"空部件"
+     ========================================================= */
+  const SET_PACK='chibi_outfit_set_pack', SHOP_PACK='chibi_shop_pack', PACK_APP='q版换装小游戏';
+  const OPT_STYLE='display:flex;align-items:center;gap:8px;padding:10px 2px 4px;font-size:12px;color:var(--sub);font-weight:800;cursor:pointer;';
+
+  function norm(s){ return String(s==null?'':s).trim(); }
+  function stampName(prefix, mid){
+    const d=new Date(), p=n=>String(n).padStart(2,'0');
+    return prefix+'_'+(mid||'')+'_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.json';
+  }
+  function pickJSONFile(cb){
+    const fi=document.createElement('input'); fi.type='file'; fi.accept='.json,application/json'; fi.multiple=true;
+    fi.onchange=e=>{
+      const fs=e.target.files; if(!fs||!fs.length) return;
+      const objs=[]; let n=0;
+      Array.from(fs).forEach(f=>{
+        const rd=new FileReader();
+        rd.onload=ev=>{
+          try{ objs.push({name:f.name, data:JSON.parse(ev.target.result)}); }
+          catch(err){ objs.push({name:f.name, data:null}); }
+          if(++n===fs.length) cb(objs);
+        };
+        rd.readAsText(f);
+      });
+    };
+    fi.click();
+  }
+  /* 套装引用列表 + 名字索引（写进导出包，供对方按名字检索） */
+  function setRefs(s){ const a=[]; CATEGORIES.forEach(c=>{ const iid=s&&s.itemIds?s.itemIds[c.id]:null; if(iid) a.push({cat:c.id, itemId:iid}); }); return a; }
+  function setItemNames(s){
+    const m={};
+    CATEGORIES.forEach(c=>{
+      const iid=s&&s.itemIds?s.itemIds[c.id]:null; if(!iid) return;
+      const hit=findItemAnywhere(iid); if(hit) m[c.id]=hit.item.name;
+    });
+    return m;
+  }
+  function findItemAnywhere(itemId){
+    for(const c of CATEGORIES){ const it=(library[c.id]||[]).find(x=>x.id===itemId); if(it) return {cat:c.id, item:it}; }
+    return null;
+  }
+  function findItemByCatName(catId, name){
+    const nm=norm(name); if(!nm) return null;
+    return (library[catId]||[]).find(x=>norm(x.name)===nm) || null;
+  }
+  /* —— 依赖计划（只读）：算出包里每件时装/套装最终落在本地的 id —— */
+  function buildDepPlan(deps){
+    const plan={ items:[], sets:[], idMap:{} };
+    if(!deps) return plan;
+    const ids=new Set(), names={};
+    CATEGORIES.forEach(c=>(library[c.id]||[]).forEach(it=>{ ids.add(it.id); names[c.id+'|'+norm(it.name)]=it.id; }));
+    (deps.items||[]).forEach(raw=>{
+      const catId=raw.category||raw._cat; if(!catId||!CAT_MAP[catId]) return;
+      let mode='add', id=raw.id;
+      if(ids.has(raw.id)){ mode='have'; id=raw.id; }
+      else { const l=names[catId+'|'+norm(raw.name)]; if(l){ mode='have'; id=l; } }
+      if(mode==='add'){ ids.add(id); names[catId+'|'+norm(raw.name)]=id; }
+      plan.items.push({raw, catId, mode, id}); plan.idMap[raw.id]=id;
+    });
+    (deps.sets||[]).forEach(raw=>{
+      let mode='add', id=raw.id;
+      if(ids.has(raw.id)) mode='have';
+      else { const l=outfitSets.find(x=>x.id===raw.id) || outfitSets.find(x=>norm(x.name)===norm(raw.name)); if(l){ mode='have'; id=l.id; } }
+      if(mode==='add') ids.add(id);
+      plan.sets.push({raw, mode, id}); plan.idMap[raw.id]=id;
+    });
+    return plan;
+  }
+  function applyDepPlan(plan){
+    let addedItems=0, addedSets=0;
+    plan.items.forEach(p=>{
+      if(p.mode!=='add') return;
+      const it=JSON.parse(JSON.stringify(p.raw)); it.id=p.id; it.category=p.catId;
+      migrateItem(it); ensureShopFields(it);
+      if(!library[p.catId]) library[p.catId]=[];
+      library[p.catId].push(it); addedItems++;
+    });
+    plan.sets.forEach(p=>{
+      if(p.mode!=='add') return;
+      const s=JSON.parse(JSON.stringify(p.raw)); s.id=p.id; if(!s.itemIds) s.itemIds={};
+      ensureShopFields(s); outfitSets.push(s); addedSets++;
+    });
+    return {addedItems, addedSets};
+  }
+  /* 只读检索表：本地库 + 依赖计划里「将存在」的东西 */
+  function lookupWith(plan){
+    const ids=new Set(), names={};
+    CATEGORIES.forEach(c=>(library[c.id]||[]).forEach(it=>{ ids.add(it.id); names[c.id+'|'+norm(it.name)]=it.id; }));
+    (plan?plan.items:[]).forEach(p=>{ ids.add(p.id); names[p.catId+'|'+norm(p.raw.name)]=p.id; });
+    (plan?plan.sets:[]).forEach(p=>{ ids.add(p.id); });
+    return { has:id=>ids.has(id), byName:(cat,nm)=>names[cat+'|'+norm(nm)]||null };
+  }
+  /* 解析一个套装的部件引用：能补就补，补不了置空并记 missing */
+  function resolveSetRefs(s, plan, L, missing){
+    let relinked=0;
+    if(!s.itemIds) s.itemIds={};
+    CATEGORIES.forEach(c=>{
+      const iid=s.itemIds[c.id]; if(!iid) return;
+      if(L.has(iid)) return;
+      const mapped=plan?plan.idMap[iid]:null;
+      if(mapped && L.has(mapped)){ s.itemIds[c.id]=mapped; relinked++; return; }
+      const nm=s.itemNames?s.itemNames[c.id]:null;
+      const alt=nm?L.byName(c.id,nm):null;
+      if(alt){ s.itemIds[c.id]=alt; relinked++; return; }
+      missing.push({ setId:s.id, set:norm(s.name)||'未命名套装', cat:c.id, catLabel:c.label, itemId:iid, name:nm||'（未知时装）' });
+      s.itemIds[c.id]=null;
+    });
+    return relinked;
+  }
+
+  /* —— 待补齐登记表：这次缺的时装，等你以后导入时装包时自动接上 —— */
+  const LS_PENDING='engine_set_pending_v1';
+  let pendingRefs=[];
+  function loadPending(){ try{ pendingRefs=JSON.parse(localStorage.getItem(LS_PENDING)||'[]')||[]; }catch(e){ pendingRefs=[]; } }
+  function savePending(){ try{ localStorage.setItem(LS_PENDING, JSON.stringify(pendingRefs)); }catch(e){} }
+  function registerPending(list){
+    if(!list||!list.length) return;
+    list.forEach(m=>{
+      const i=pendingRefs.findIndex(p=>p.setId===m.setId && p.cat===m.cat);
+      const rec={ setId:m.setId, set:m.set, cat:m.cat, catLabel:m.catLabel, itemId:m.itemId, name:m.name };
+      if(i>=0) pendingRefs[i]=rec; else pendingRefs.push(rec);
+    });
+    savePending();
+  }
+  /* 拿当前本地库回填待补齐项：先按 id、再按「分类 + 名字」检索。返回接上了几处 */
+  function reconcilePending(){
+    if(!pendingRefs.length) return 0;
+    let fixed=0; const keep=[];
+    pendingRefs.forEach(p=>{
+      const s=outfitSets.find(x=>x.id===p.setId);
+      if(!s) return;                                   // 套装已被删除 → 丢掉这条
+      if(s.itemIds&&s.itemIds[p.cat]) return;          // 已经有东西了 → 丢掉
+      if(p.itemId && findItemAnywhere(p.itemId)){ s.itemIds[p.cat]=p.itemId; fixed++; return; }
+      const byName=findItemByCatName(p.cat, p.name);
+      if(byName){ s.itemIds[p.cat]=byName.id; fixed++; return; }
+      keep.push(p);
+    });
+    pendingRefs=keep; savePending();
+    if(fixed) saveSets();
+    return fixed;
+  }
+  function renderPendingTip(el){
+    if(!pendingRefs.length) return;
+    const w=document.createElement('div');
+    w.className='li'; w.style.cssText='background:#fff4e0;border-color:#f0b357;color:#8a5a00;font-size:11px;font-weight:800;cursor:pointer;line-height:1.35;';
+    w.innerHTML='⚠ '+pendingRefs.length+' 处时装还没补齐<br><span style="font-weight:600;opacity:.8;">导入对应时装包后会自动接上（点这里手动重试）</span>';
+    w.onclick=()=>{
+      const n=reconcilePending();
+      toast(n?('🔗 自动接上 '+n+' 处'):'还是没找到，先去「服装工坊」导入对应的时装包');
+      renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage();
+    };
+    el.appendChild(w);
+  }
+
+  /* ————————— 导出套装 ————————— */
+  function openSetExport(){
+    if(outfitSets.length===0){ toast('还没有套装，先新建几套'); return; }
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📤 导出套装</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'
+      +'<div class="xp-tools"><input type="text" id="seAuthor" placeholder="作者名（可选）"><button class="btn tiny" data-x="all">全选</button><button class="btn tiny" data-x="none">全不选</button></div>'
+      +'<div id="seList"></div>'
+      +'<label style="'+OPT_STYLE+'"><input type="checkbox" id="seDeps" checked> 📦 连带带上套装用到的时装（推荐：朋友没导过也能直接用）</label>'
+      +'</div>'
+      +'<div class="ovl-foot"><span class="sel-count" id="seCount"></span><button class="btn" data-x="close">取消</button><button class="btn primary" id="seDo">导出 JSON</button></div>'
+      +'</div>';
+    document.body.appendChild(ovl);
+    const list=ovl.querySelector('#seList');
+    outfitSets.forEach(s=>{
+      const n=setRefs(s).length;
+      const row=document.createElement('label'); row.className='xp-item';
+      row.innerHTML='<input type="checkbox" data-id="'+s.id+'" checked><div class="xp-th">'+(s.thumbnail?'<img src="'+s.thumbnail+'">':'👗')+'</div><div class="xp-meta"><div class="nm"></div><div class="cat"></div></div>';
+      row.querySelector('.nm').textContent=s.name;
+      row.querySelector('.cat').textContent=n+' / '+CATEGORIES.length+' 部位';
+      list.appendChild(row);
+    });
+    const cbs=ovl.querySelectorAll('.xp-item input[type=checkbox]');
+    const refresh=()=>{ ovl.querySelector('#seCount').textContent='已选 '+ovl.querySelectorAll('.xp-item input:checked').length+' 套'; };
+    refresh();
+    cbs.forEach(cb=>cb.addEventListener('change', refresh));
+    ovl.querySelector('[data-x=all]').onclick=()=>{ cbs.forEach(cb=>cb.checked=true); refresh(); };
+    ovl.querySelector('[data-x=none]').onclick=()=>{ cbs.forEach(cb=>cb.checked=false); refresh(); };
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    ovl.querySelector('#seDo').onclick=()=>{
+      const ids=[...ovl.querySelectorAll('.xp-item input:checked')].map(cb=>cb.dataset.id);
+      if(ids.length===0){ toast('至少勾选一套'); return; }
+      const author=(ovl.querySelector('#seAuthor').value||'').trim();
+      const withDeps=!!ovl.querySelector('#seDeps').checked;
+      const sets=outfitSets.filter(s=>ids.indexOf(s.id)>=0).map(s=>{
+        const o=JSON.parse(JSON.stringify(s)); o.itemNames=setItemNames(s); return o;
+      });
+      const deps={items:[]};
+      if(withDeps){
+        const seen={};
+        sets.forEach(s=>setRefs(s).forEach(r=>{
+          if(seen[r.itemId]) return; seen[r.itemId]=1;
+          const hit=findItemAnywhere(r.itemId); if(hit) deps.items.push(JSON.parse(JSON.stringify(hit.item)));
+        }));
+      }
+      const out={ app:PACK_APP, type:SET_PACK, version:1, author, exportedAt:new Date().toISOString(), sets, deps };
+      downloadJSON(out, stampName('套装', (author||'未署名')+'_'+sets.length+'套'));
+      closeOvl(ovl);
+      toast('已导出 '+sets.length+' 套'+(withDeps?(' · 带 '+deps.items.length+' 件时装'):''));
+    };
+  }
+
+  /* ————————— 导入套装 ————————— */
+  function collectSetsFromFile(d){
+    if(!d) return [];
+    if(Array.isArray(d)) return d.filter(x=>x&&x.itemIds);
+    if(Array.isArray(d.sets)) return d.sets.filter(x=>x&&x.itemIds);
+    if(Array.isArray(d.outfitSets)) return d.outfitSets.filter(x=>x&&x.itemIds);
+    if(d.itemIds) return [d];
+    return [];
+  }
+  function importSetPacks(objs){
+    let sets=[], deps={items:[],sets:[]}, bad=[];
+    objs.forEach(o=>{
+      if(!o.data){ bad.push(o.name+'：解析失败'); return; }
+      const ss=collectSetsFromFile(o.data);
+      if(!ss.length){ bad.push(o.name+'：不是套装文件'); return; }
+      sets=sets.concat(ss.map(s=>JSON.parse(JSON.stringify(s))));
+      if(o.data.deps){ deps.items=deps.items.concat(o.data.deps.items||[]); deps.sets=deps.sets.concat(o.data.deps.sets||[]); }
+    });
+    if(!sets.length){ toast(bad.length?('❌ '+bad.join(' · ')):'没有可导入的套装'); return; }
+    /* 干跑：算清楚会补进多少时装、还有多少真缺 */
+    const plan=buildDepPlan(deps);
+    const L=lookupWith(plan);
+    const probe=sets.map(s=>JSON.parse(JSON.stringify(s)));
+    const missing=[];
+    probe.forEach(s=>resolveSetRefs(s, plan, L, missing));
+    showSetImportPreview(sets, deps, plan, missing, bad);
+  }
+  function showSetImportPreview(sets, deps, plan, missing, bad){
+    const addItems=plan.items.filter(p=>p.mode==='add').length;
+    const addSets=plan.sets.filter(p=>p.mode==='add').length;
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    let body='';
+    if(bad.length) body+='<div class="imp-err">⚠ '+esc(bad.join(' · '))+'</div>';
+    body+='<div class="xp-cathead">待导入 '+sets.length+' 套<span class="cnt">自动补齐 '+addItems+' 件时装'+(addSets?(' · '+addSets+' 套被引用套装'):'')+'</span></div>';
+    sets.forEach(s=>{
+      body+='<div class="xp-item" style="cursor:default"><div class="xp-th">'+(s.thumbnail?'<img src="'+s.thumbnail+'">':'👗')+'</div><div class="xp-meta"><div class="nm">'+esc(s.name||'未命名套装')+'</div><div class="cat">'+setRefs(s).length+' 部位</div></div></div>';
+    });
+    if(missing.length){
+      body+='<div class="imp-err" style="margin-top:10px;">⚠ 有 '+missing.length+' 处时装本地找不到（包里也没带），导入后这些部位会留空：<br>'
+        + missing.slice(0,12).map(m=>'· '+esc(m.set)+' 的「'+esc(m.cat)+'」：'+esc(m.name)).join('<br>')
+        + (missing.length>12?('<br>… 还有 '+(missing.length-12)+' 处'):'') + '</div>';
+    }
+    body+='<label style="'+OPT_STYLE+'"><input type="checkbox" id="siOver" checked> 🔁 同名/同 ID 的套装直接覆盖更新（不勾则另存为新套装）</label>';
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📥 导入套装</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'+body+'</div>'
+      +'<div class="ovl-foot"><button class="btn" data-x="close">取消</button><button class="btn primary" id="siDo">导入 '+sets.length+' 套</button></div>'
+      +'</div>';
+    document.body.appendChild(ovl);
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    ovl.querySelector('#siDo').onclick=()=>{
+      const overwrite=!!ovl.querySelector('#siOver').checked;
+      closeOvl(ovl);
+      doImportSets(sets, deps, overwrite);
+    };
+  }
+  function doImportSets(sets, deps, overwrite){
+    const added=applyDepPlan(buildDepPlan(deps));
+    const L=lookupWith(null);
+    let addedSets=0, updated=0, relinked=0; const missing=[];
+    sets.forEach(raw=>{
+      const s=JSON.parse(JSON.stringify(raw));
+      if(!s.itemIds) s.itemIds={};
+      relinked+=resolveSetRefs(s, null, L, missing);
+      ensureShopFields(s);
+      const byId=outfitSets.find(x=>x.id===s.id);
+      const byName=outfitSets.find(x=>norm(x.name)===norm(s.name));
+      let finalId=s.id;
+      if(byId && overwrite){ Object.assign(byId, s); updated++; }
+      else if(!byId && byName && overwrite){ s.id=byName.id; Object.assign(byName, s); updated++; finalId=byName.id; }
+      else { if(byId||byName) s.name=uniqueName(norm(s.name)||'套装', outfitSets.map(x=>x.name)); outfitSets.push(s); addedSets++; }
+      missing.forEach(m=>{ if(m.setId===raw.id) m.setId=finalId; });
+    });
+    /* 顺手回填以前登记过、这次刚好补齐的缺件 */
+    const later=reconcilePending();
+    registerPending(missing);
+    saveLib(); saveSets();
+    renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); updateTopMeta();
+    let msg='📥 导入 '+addedSets+' 套'+(updated?(' · 更新 '+updated+' 套'):'');
+    if(added.addedItems) msg+=' · 自动补进 '+added.addedItems+' 件时装';
+    if(relinked) msg+=' · 重连 '+relinked+' 处';
+    if(later) msg+=' · 🔗 接上旧账 '+later+' 处';
+    if(missing.length) msg+=' · ⚠ '+missing.length+' 处待补齐';
+    toast(msg);
+  }
+
+  /* ————————— 导出商店 ————————— */
+  function openShopExport(){
+    const cnt={}; SHOP_ZONES.forEach(z=>cnt[z.id]=shopEntriesOf(z.id).length);
+    const total=SHOP_ZONES.reduce((a,z)=>a+cnt[z.id],0);
+    if(total===0){ toast('五个区都还是空的，先上架点东西'); return; }
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📤 导出商店</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'
+      +'<div class="xp-tools"><input type="text" id="shAuthor" placeholder="作者名（可选）"><button class="btn tiny" data-x="all">全选</button><button class="btn tiny" data-x="none">全不选</button></div>'
+      +'<div id="shList"></div>'
+      +'<label style="'+OPT_STYLE+'"><input type="checkbox" id="shDeps" checked> 📦 连带带上商品的本体（推荐：朋友没这些时装/套装也能直接上架）</label>'
+      +'</div>'
+      +'<div class="ovl-foot"><span class="sel-count" id="shCount"></span><button class="btn" data-x="close">取消</button><button class="btn primary" id="shDo">导出 JSON</button></div>'
+      +'</div>';
+    document.body.appendChild(ovl);
+    const list=ovl.querySelector('#shList');
+    SHOP_ZONES.forEach(z=>{
+      const row=document.createElement('label'); row.className='xp-item';
+      row.innerHTML='<input type="checkbox" data-id="'+z.id+'"'+(cnt[z.id]?' checked':'')+(cnt[z.id]?'':' disabled')+'><div class="xp-th" style="font-size:22px;">'+z.em+'</div><div class="xp-meta"><div class="nm">'+z.name+'区</div><div class="cat">'+cnt[z.id]+' 件</div></div>';
+      list.appendChild(row);
+    });
+    const cbs=ovl.querySelectorAll('.xp-item input[type=checkbox]');
+    const refresh=()=>{
+      let n=0; [...ovl.querySelectorAll('.xp-item input:checked')].forEach(cb=>n+=cnt[cb.dataset.id]);
+      ovl.querySelector('#shCount').textContent='已选 '+n+' 件商品';
+    };
+    refresh();
+    cbs.forEach(cb=>cb.addEventListener('change', refresh));
+    ovl.querySelector('[data-x=all]').onclick=()=>{ cbs.forEach(cb=>{ if(!cb.disabled) cb.checked=true; }); refresh(); };
+    ovl.querySelector('[data-x=none]').onclick=()=>{ cbs.forEach(cb=>cb.checked=false); refresh(); };
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    ovl.querySelector('#shDo').onclick=()=>{
+      const zids=[...ovl.querySelectorAll('.xp-item input:checked')].map(cb=>cb.dataset.id);
+      if(!zids.length){ toast('至少勾一个区'); return; }
+      const author=(ovl.querySelector('#shAuthor').value||'').trim();
+      const withDeps=!!ovl.querySelector('#shDeps').checked;
+      const zones={}, deps={items:[],sets:[]}; const seenI={}, seenS={};
+      zids.forEach(zid=>{
+        zones[zid]=shopEntriesOf(zid).map((x,i)=>{
+          const e={ kind:x.kind, id:x.id, name:norm(x.obj.name), price:JSON.parse(JSON.stringify(x.obj.price||{})), limitedFrom:x.obj.limitedFrom||null, limitedTo:x.obj.limitedTo||null, order:i };
+          if(x.kind!=='set') e.cat=x.obj.category;
+          if(withDeps){
+            if(x.kind==='set'){ if(!seenS[x.id]){ seenS[x.id]=1; deps.sets.push(JSON.parse(JSON.stringify(x.obj))); }
+              setRefs(x.obj).forEach(r=>{ if(seenI[r.itemId])return; seenI[r.itemId]=1; const hit=findItemAnywhere(r.itemId); if(hit) deps.items.push(JSON.parse(JSON.stringify(hit.item))); });
+            } else if(!seenI[x.id]){ seenI[x.id]=1; deps.items.push(JSON.parse(JSON.stringify(x.obj))); }
+          }
+          return e;
+        });
+      });
+      let n=0; Object.keys(zones).forEach(k=>n+=zones[k].length);
+      const out={ app:PACK_APP, type:SHOP_PACK, version:1, author, exportedAt:new Date().toISOString(), zones, deps };
+      downloadJSON(out, stampName('商店', (author||'未署名')+'_'+n+'件'));
+      closeOvl(ovl);
+      toast('已导出 '+n+' 件商品'+(withDeps?(' · 带 '+(deps.items.length+deps.sets.length)+' 个本体'):''));
+    };
+  }
+  /* 取某个区的货架（不依赖当前选中区） */
+  function shopEntriesOf(zid){
+    const arr=[];
+    if(zid==='outfit'){ outfitSets.forEach(s=>{ if((s.shopTags||[]).indexOf('outfit')>=0) arr.push({kind:'set', id:s.id, name:s.name, obj:s}); }); }
+    else { CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>{ if((it.shopTags||[]).indexOf(zid)>=0) arr.push({kind:'item', id:it.id, name:it.name, obj:it}); }); }); }
+    arr.sort((a,b)=>((a.obj.shopOrder&&a.obj.shopOrder[zid])||0)-((b.obj.shopOrder&&b.obj.shopOrder[zid])||0));
+    return arr;
+  }
+
+  /* ————————— 导入商店 ————————— */
+  function importShopPacks(objs){
+    const zones={}; let deps={items:[],sets:[]}, bad=[], any=false;
+    objs.forEach(o=>{
+      if(!o.data){ bad.push(o.name+'：解析失败'); return; }
+      const z=o.data.zones||o.data.shop||null;
+      if(!z || typeof z!=='object'){ bad.push(o.name+'：不是商店文件'); return; }
+      any=true;
+      Object.keys(z).forEach(k=>{ if(!ZONE_MAP[k]) return; if(!zones[k]) zones[k]=[]; zones[k]=zones[k].concat(z[k]||[]); });
+      if(o.data.deps){ deps.items=deps.items.concat(o.data.deps.items||[]); deps.sets=deps.sets.concat(o.data.deps.sets||[]); }
+    });
+    if(!any){ toast(bad.length?('❌ '+bad.join(' · ')):'没有可导入的商店数据'); return; }
+    const plan=buildDepPlan(deps);
+    const L=lookupWith(plan);
+    const missing=[];
+    Object.keys(zones).forEach(zid=>{
+      (zones[zid]||[]).forEach(e=>{
+        const mapped=(plan&&plan.idMap[e.id])||e.id;
+        let ok=false;
+        if(e.kind==='set'){ ok=L.has(mapped) || !!(e.name&&outfitSets.some(x=>norm(x.name)===norm(e.name))); }
+        else { ok=L.has(mapped) || !!(e.cat&&e.name&&L.byName(e.cat,e.name)); }
+        if(!ok) missing.push({ zone:ZONE_MAP[zid].name, name:e.name||e.id });
+      });
+    });
+    showShopImportPreview(zones, deps, plan, missing, bad);
+  }
+  function showShopImportPreview(zones, deps, plan, missing, bad){
+    let n=0; Object.keys(zones).forEach(k=>n+=zones[k].length);
+    const addItems=plan.items.filter(p=>p.mode==='add').length;
+    const addSets=plan.sets.filter(p=>p.mode==='add').length;
+    const ovl=document.createElement('div'); ovl.className='ovl';
+    let body='';
+    if(bad.length) body+='<div class="imp-err">⚠ '+esc(bad.join(' · '))+'</div>';
+    Object.keys(zones).forEach(k=>{
+      if(!(zones[k]||[]).length) return;
+      body+='<div class="xp-cathead">'+ZONE_MAP[k].em+' '+ZONE_MAP[k].name+' 区<span class="cnt">'+zones[k].length+' 件</span></div>';
+    });
+    body+='<div class="xp-cathead">依赖<span class="cnt">自动补进 '+addItems+' 件时装 · '+addSets+' 套套装</span></div>';
+    if(missing.length){
+      body+='<div class="imp-err" style="margin-top:10px;">⚠ 有 '+missing.length+' 件商品本地找不到（包里也没带本体），会跳过：<br>'
+        + missing.slice(0,12).map(m=>'· '+esc(m.zone)+'区：'+esc(m.name)).join('<br>')
+        + (missing.length>12?('<br>… 还有 '+(missing.length-12)+' 件'):'') + '</div>';
+    }
+    body+='<label style="'+OPT_STYLE+'"><input type="checkbox" id="siPrice" checked> 💰 同时覆盖定价与限时（不勾则只调整上架和顺序）</label>';
+    ovl.innerHTML='<div class="ovl-panel">'
+      +'<div class="ovl-head"><h2>📥 导入商店</h2><button class="btn tiny" data-x="close">✕</button></div>'
+      +'<div class="ovl-body">'+body+'</div>'
+      +'<div class="ovl-foot"><button class="btn" data-x="close">取消</button><button class="btn primary" id="shDo2">导入 '+n+' 件</button></div>'
+      +'</div>';
+    document.body.appendChild(ovl);
+    ovl.querySelectorAll('[data-x=close]').forEach(b=>b.onclick=()=>closeOvl(ovl));
+    ovl.addEventListener('click', e=>{ if(e.target===ovl) closeOvl(ovl); });
+    ovl.querySelector('#shDo2').onclick=()=>{
+      const withPrice=!!ovl.querySelector('#siPrice').checked;
+      closeOvl(ovl);
+      doImportShop(zones, deps, withPrice);
+    };
+  }
+  function doImportShop(zones, deps, withPrice){
+    const plan=buildDepPlan(deps);
+    const added=applyDepPlan(plan);
+    /* 依赖里新补进来的套装，也要把它的部件引用解析一遍 */
+    plan.sets.forEach(p=>{ if(p.mode!=='add') return; const s=outfitSets.find(x=>x.id===p.id); if(s) resolveSetRefs(s, plan, lookupWith(plan), []); });
+    let applied=0; const missing=[];
+    Object.keys(zones).forEach(zid=>{
+      (zones[zid]||[]).forEach((e,i)=>{
+        let obj=null;
+        const mapped=plan.idMap[e.id]||e.id;
+        if(e.kind==='set'){
+          obj=outfitSets.find(x=>x.id===mapped) || (e.name?outfitSets.find(x=>norm(x.name)===norm(e.name)):null);
+        } else {
+          const hit=findItemAnywhere(mapped); obj=hit?hit.item:null;
+          if(!obj && e.cat && e.name) obj=findItemByCatName(e.cat, e.name);
+        }
+        if(!obj){ missing.push(e.name||e.id); return; }
+        ensureShopFields(obj);
+        if(obj.shopTags.indexOf(zid)<0) obj.shopTags.push(zid);
+        if(withPrice){
+          if(e.price) obj.price=Object.assign({}, obj.price, e.price);
+          if(e.limitedFrom!==undefined) obj.limitedFrom=e.limitedFrom||null;
+          if(e.limitedTo!==undefined) obj.limitedTo=e.limitedTo||null;
+        }
+        obj.shopOrder[zid]=(e.order!=null?e.order:i);
+        applied++;
+      });
+    });
+    persistShop();
+    renderShopZones(); renderShopCards(); renderShopEditor(); updateTopMeta();
+    let msg='📥 上架 '+applied+' 件';
+    if(added.addedItems) msg+=' · 自动补进 '+added.addedItems+' 件时装';
+    if(added.addedSets) msg+=' · '+added.addedSets+' 套套装';
+    if(missing.length) msg+=' · ⚠ '+missing.length+' 件缺本体';
+    toast(msg);
+  }
+
+  $('setExport').onclick=openSetExport;
+  $('setImport').onclick=()=>{ pickJSONFile(importSetPacks); };
+  $('shopExport').onclick=openShopExport;
+  $('shopImport').onclick=()=>{ pickJSONFile(importShopPacks); };
+
   /* ================= 衣橱预览双视角 ================= */
   /* 玩家档案：优先当前登录账号的，其次 demo 兜底 */
   function profileKey(){
@@ -2717,6 +3189,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
 
   /* ====== 初始化 ====== */
   loadLib(); loadOutfits(); loadSets();
+  try{ loadPending(); reconcilePending(); }catch(e){}   // 上次缺的时装，这次可能已经在了
   if(!loadBody()){ if(!applyBuiltinTemplate()) generateDemo(); }
   CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
   stageMgrs.body.render(); refreshPartsGrid();

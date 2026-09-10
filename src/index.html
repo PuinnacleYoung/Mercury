@@ -1092,6 +1092,7 @@ input{font-family:inherit;outline:none;}
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
 <script src="./body-template.js"></script>
+<script src="./legacy-body-v4.js"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
 <script src="./map-placeholders.js"></script>
 <script>
@@ -1563,10 +1564,22 @@ function loadEngineBody(){
 }
 /* 本地一个素体都没存过 → 直接把「内置初始素体模板」装上当主角，
    这样一进游戏就是个能看的小人，而不是火柴人。
-   配色优先继承旧存档里那个角色（黑短发 / 红 T 恤 / 牛仔裤 / 小白鞋）。 */
+   配色优先继承旧存档里那个角色（黑短发 / 红 T 恤 / 牛仔裤 / 小白鞋）。
+   ⚑ 陛下的「自己调好的那个素体」：本机有 LegacyBodyV4 时，优先用它（带真实贴图）。 */
 function ensureBody(){
   if(engine.bodyReady) return false;
   try{ if(localStorage.getItem(ENG_LS.body)) return false; }catch(e){}
+  /* ① 优先：陛下旧版真实素体（legacy-body-v4.js）—— 带真实贴图 */
+  if(window.LegacyBodyV4 && LegacyBodyV4.build){
+    try{
+      const parts = LegacyBodyV4.build();
+      try{ localStorage.setItem(ENG_LS.body, JSON.stringify(parts)); }catch(e){}
+      hydrateBody(parts);
+      engine.builtin = 'legacy-v4';
+      return engine.bodyReady;
+    }catch(e){}
+  }
+  /* ② 兜底：程序生成的 BodyTemplate 小人 */
   if(!window.BodyTemplate || !window.BodyTemplate.build) return false;
   try{
     let pal = null;
@@ -1592,8 +1605,14 @@ function loadEngineSets(){
 }
 function loadEngineAnim(){
   const def = { waveArm:'armR', waveBase:-60, waveSwing:20, waveSpeed:1, walkPhase:0 };
-  try{ const raw=localStorage.getItem(ENG_LS.anim); engine.animCfg = raw ? Object.assign(def, JSON.parse(raw)) : def; }
-  catch(e){ engine.animCfg = def; }
+  try{
+    const raw=localStorage.getItem(ENG_LS.anim);
+    /* 陛下的「挥手动效」参数：LegacyBodyV4 自带一份（"waveBase":39,"waveSwing":35），
+       本地没存时用它当兜底。 */
+    const legacy = (window.LegacyBodyV4 && LegacyBodyV4.anim) || null;
+    engine.animCfg = raw ? Object.assign(def, JSON.parse(raw))
+                        : (legacy ? Object.assign(def, legacy) : def);
+  }catch(e){ engine.animCfg = def; }
 }
 function refreshEngineData(){ loadEngineBody(); loadEngineLib(); loadEngineSets(); loadEngineAnim(); engine._composed.clear(); }
 function engineAvailable(){ return engine.bodyReady; }
