@@ -315,9 +315,15 @@ footer{text-align:center;color:var(--sub);font-size:12.5px;padding:26px 0 0;}
     <li>编辑器里看到的画板比例 = 玩家看到的比例，<b>所见即所得</b>。</li>
     <li>节点位置存百分比，画板多大都不影响最终效果。</li>
   </ul>
-  <h3>6.2 必开「安全框」叠加</h3>
-  <p>编辑时叠加显示安全区边框（虚线橙色 + 绿色实心框），
-    <b>所有地块、触发区、装饰都必须放在绿框以内</b>。这是防止"电脑上好看、手机上点不到"的唯一硬手段。</p>
+  <h3>6.2 必开「安全框」叠加（中央 3/4 可编辑区）</h3>
+  <p>编辑器的画板已经固定 16:9，并且默认叠了两层参考线：</p>
+  <ul>
+    <li><b>绿色虚线框（中央 3/4）</b>＝<b>可编辑区</b>。地块、传送门、入口点<b>只能</b>放这里，拖出去会被自动弹回来。</li>
+    <li><b>橙色实线框（整张画布边缘）</b>＝<b>UI 安全保护区</b>。绿框以外到橙框之间的一圈，专门留给血条/摇杆/返回键/提示条，<b>不能放任何游戏内容</b>。</li>
+    <li>工具条上 <b>🛡 安全区</b> 可以开关参考线；<b>🧲 收回</b> 一键把跑出去的东西全拉回绿框。</li>
+  </ul>
+  <p>为什么是 <b>3/4</b>：以<b>中心点</b>为锚向外平铺，方平板（4:3）、电脑（16:9）、长条手机（21:9）
+    都只做<b>等比缩放</b>，相对位置一格都不变——这样任何设备上 UI 都完整地待在屏幕里，也不会被刘海/圆角/手势条吃掉。</p>
   <h3>6.3 最小尺寸建议</h3>
   <table>
     <thead><tr><th>元素</th><th>最小尺寸（占画布）</th><th>1600×900 下</th><th>理由</th></tr></thead>
@@ -328,12 +334,13 @@ footer{text-align:center;color:var(--sub);font-size:12.5px;padding:26px 0 0;}
       <tr><td>建筑（大厅）</td><td class="num">宽 10% × 高 22%</td><td class="num">160 × 198 px</td><td>手机上约 71px，看得清</td></tr>
     </tbody>
   </table>
-  <h3>6.4 摆位速查</h3>
+  <h3>6.4 摆位速查（按中央 3/4 算）</h3>
   <div class="kv">
-    <span class="k">x 范围</span><span><b>0.06 ~ 0.94</b>（左右各留 6%）</span>
-    <span class="k">y 范围</span><span><b>0.10 ~ 0.90</b>（上下各留 10%）</span>
-    <span class="k">中心点</span><span><code>x:0.5, y:0.5</code></span>
-    <span class="k">六宫格</span><span>x ∈ {0.22, 0.5, 0.78}，y ∈ {0.30, 0.5, 0.70}</span>
+    <span class="k">可编辑 x</span><span><b>0.125 ~ 0.875</b>（左右各留 12.5%）</span>
+    <span class="k">可编辑 y</span><span><b>0.125 ~ 0.875</b>（上下各留 12.5%）</span>
+    <span class="k">中心点</span><span><code>x:0.5, y:0.5</code>（缩放锚点，永远不动）</span>
+    <span class="k">六宫格</span><span>x ∈ {0.25, 0.5, 0.75}，y ∈ {0.34, 0.5, 0.66}</span>
+    <span class="k">入口点</span><span><code>y ≤ 0.85</code>（默认 0.5 / 0.85 仍在框内）</span>
   </div>
 </section>
 
@@ -343,8 +350,8 @@ footer{text-align:center;color:var(--sub);font-size:12.5px;padding:26px 0 0;}
   <div class="rule green" style="font-size:15px">
     <span class="rt">🎯 三句话</span>
     ① 画布永远 <b>16:9</b>，坐标永远 <b>0~1</b>；<br>
-    ② 内容只放中间 <b>88% × 80%</b>，四周是 UI 的地盘；<br>
-    ③ 手机只是<b>把电脑那套整体缩小</b>，布局方向一个都不许改。
+    ② 内容只放<b>中央 3/4</b>（x、y 都是 0.125~0.875），外圈是 UI 安全保护区；<br>
+    ③ 以<b>中心点</b>等比缩放，手机/平板/电脑只是整体放大缩小，布局方向一个都不许改。
   </div>
 </section>
 

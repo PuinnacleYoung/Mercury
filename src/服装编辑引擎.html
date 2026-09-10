@@ -450,6 +450,8 @@
           <div class="card-head" data-page-node-id="4zp0nOX3F2uh0E8HIKD9cR"><div data-page-node-id="zCGuAc0PSUBQWJ76YUW6Dx"><h2 data-page-node-id="F6SNGkhRxzjHG5SmtIl9iR">操作</h2><div class="card-sub" data-page-node-id="dBzDemoy1iRJIs06Yfmamv">上传 / 镜像 / 示例 / 重置 / 动作</div></div></div>
           <div class="btn-row" data-page-node-id="v2Hk4vxnSC9WB0bbRm6QpG">
             <button class="btn primary" id="bSaveBody" title="把当前素体（底膜）的位置/尺寸/关节/镜像保存到本地浏览器">💾 保存底膜</button>
+            <button class="btn mint" id="bExportBody" title="把这套底膜导出成 JSON 文件，发给朋友">📤 导出底膜</button>
+            <button class="btn violet" id="bImportBody" title="导入朋友给的底膜 JSON，立刻应用到素体工坊">📥 导入底膜</button>
             <button class="btn" id="bDemo" data-page-node-id="sSBBAaCpC9eCtGaaPLSBIj">✨ 生成示例</button>
             <button class="btn violet" id="bUpBody" data-page-node-id="87KhQKunmcPgrTQzjZkdKU">🖼 上传零件图</button>
             <button class="btn" id="bFlipBody" data-page-node-id="8JoULItT7PBSp4vda8ls8p">↔ 部件镜像</button>
@@ -611,6 +613,8 @@
   <div id="toast" data-page-node-id="ons7WnFHMUt0mBU6k9ZIUT"></div>
   <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0" data-page-node-id="d4vNxJkB284Da7F22UBsMC">
 
+<!-- 内置初始素体模板：第一次打开（本地没存过素体）就自动铺上，并立刻存档，游戏端才读得到 -->
+<script src="./body-template.js"></script>
 <script data-page-node-id="LFI6IqmhKO9GbGvCxK590t">
 /* ================= 存储兜底（隐私模式 / file:// / 禁 Cookie 时 localStorage 会抛异常） ================= */
 const _MEM_STORE = Object.create(null);
@@ -2077,6 +2081,76 @@ const sessionStorage = _mkStore(window.sessionStorage);
 
   /* ====== 素体工坊按钮 ====== */
   $('bSaveBody').onclick=()=>{ if(saveBody()) toast('💾 底膜已保存 ✓'); };
+
+  /* ====== 底膜导出 / 导入（把这套素体发给朋友 / 用朋友给的底膜） ====== */
+  function bodySnapshot(){
+    const data = { app:'q版换装小游戏', kind:'engine_body', version:4, exportedAt:new Date().toISOString(), parts:{} };
+    PART_DEFS.forEach(p=>{
+      const pt = parts[p.key];
+      data.parts[p.key] = { x:pt.x, y:pt.y, w:pt.w, h:pt.h, rot:pt.rot, flipH:pt.flipH,
+        jointPct: pt.jointPct ? {...pt.jointPct} : null, imgSrc: pt.img ? pt.img.src : null };
+    });
+    try{ data.animCfg = JSON.parse(localStorage.getItem(LS.anim) || 'null') || null; }catch(e){ data.animCfg = null; }
+    return data;
+  }
+  function applyBodySnapshot(src, quiet){
+    const keys = PART_DEFS.map(p=>p.key);
+    const label = k => (PART_DEFS.find(d=>d.key===k)||{}).label || k;
+    const have = keys.filter(k=> src[k] && src[k].imgSrc);
+    if(!have.length){ toast('📥 这份文件里没有可用的零件图'); return false; }
+    if(!quiet && have.length < keys.length){
+      if(!confirm('这份底膜只有：' + have.map(label).join('、') + '\n缺少的零件保持你现在的样子。要导入吗？')) return false;
+    }
+    have.forEach(k=>{
+      const s = src[k], pt = parts[k];
+      pt.x=+s.x||0; pt.y=+s.y||0; pt.w=+s.w||100; pt.h=+s.h||100; pt.rot=+s.rot||0; pt.flipH=!!s.flipH;
+      pt.jointPct = s.jointPct ? {...s.jointPct} : null;
+      const im = new Image(); im.src = s.imgSrc; pt.img = im;
+    });
+    saveBody();
+    return true;
+  }
+  $('bExportBody').onclick=()=>{
+    try{
+      const data = bodySnapshot();
+      const miss = PART_DEFS.filter(p=>!data.parts[p.key].imgSrc).map(p=>p.label);
+      if(miss.length && !confirm('还有零件没配图（' + miss.join('、') + '），导出的底膜会缺件。仍要导出吗？')) return;
+      const d = new Date(), pad = n => String(n).padStart(2,'0');
+      const name = '底膜_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.json';
+      const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+      toast('📤 底膜已导出：' + name);
+    }catch(e){ toast('导出失败：' + ((e && e.message) || e)); }
+  };
+  (function(){
+    const fi = document.createElement('input');
+    fi.type='file'; fi.accept='.json,application/json'; fi.style.display='none';
+    document.body.appendChild(fi);
+    fi.addEventListener('change', ()=>{
+      const f = fi.files && fi.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = ev=>{
+        try{
+          const j = JSON.parse(ev.target.result);
+          const src = (j && j.parts) ? j.parts : (j && (j.head || j.body)) ? j : null;
+          if(!src){ toast('📥 这不像是底膜文件（缺 parts）'); return; }
+          if(applyBodySnapshot(src, false)){
+            if(j && j.animCfg){ try{ localStorage.setItem(LS.anim, JSON.stringify(j.animCfg)); animCfg = j.animCfg; }catch(e){} }
+            currentPart = PART_DEFS[0].key;
+            stageMgrs.body.render(); refreshPartsGrid();
+            try{ $('curPartTag').textContent = PART_DEFS[0].label; }catch(e){}
+            toast('📥 底膜已导入并应用 ✓');
+          }
+        }catch(err){ toast('📥 导入失败：' + ((err && err.message) || err)); }
+        fi.value = '';
+      };
+      rd.readAsText(f);
+    });
+    $('bImportBody').onclick = ()=> fi.click();
+  })();
   $('bDemo').onclick=()=>{ generateDemo(); saveBody(); stageMgrs.body.render(); refreshPartsGrid(); toast('已生成示例小人 ✨'); };
   $('bUpBody').onclick=()=>{
     const fi=$('fileInput');
@@ -2100,7 +2174,9 @@ const sessionStorage = _mkStore(window.sessionStorage);
     saveBody(); stageMgrs.body.render();
   } };
   $('bResetBody').onclick=()=>{ if(!confirm('重置素体？')) return;
-    localStorage.removeItem(LS.body); generateDemo(); stageMgrs.body.render(); refreshPartsGrid(); toast('已重置'); };
+    localStorage.removeItem(LS.body);
+    if(!applyBuiltinTemplate()) generateDemo();
+    stageMgrs.body.render(); refreshPartsGrid(); toast('已重置为初始模板'); };
 
   // 中线吸附 / 左右对称 / 整体镜像
   $('bSnapMid').onclick=()=>{ snapMid=!snapMid; $('bSnapMid').classList.toggle('on', snapMid); toast(snapMid?'📏 中线吸附 开':'📏 中线吸附 关'); };
@@ -2621,9 +2697,27 @@ const sessionStorage = _mkStore(window.sessionStorage);
       : `⚠️ <b>玩家视角</b>：本机还没找到玩家档案 <code>${esc(profileKey())}</code>。请先在游戏里登录一次（或购买任意服装），现在按“一件都没买”预览。`;
   }
 
+  /* 本地一个素体都没存过 → 铺上「内置初始素体模板」并立刻存档。
+     之前只 generateDemo() 不存档，游戏端读不到，就一直是火柴人。 */
+  function applyBuiltinTemplate(){
+    if(!window.BodyTemplate || !BodyTemplate.build) return false;
+    try{
+      const d = BodyTemplate.build();
+      PART_DEFS.forEach(p=>{
+        const s = d[p.key]; if(!s) return;
+        const pt = parts[p.key];
+        pt.x=s.x; pt.y=s.y; pt.w=s.w; pt.h=s.h; pt.rot=s.rot||0; pt.flipH=!!s.flipH;
+        pt.jointPct = s.jointPct ? {...s.jointPct} : null;
+        const img = new Image(); img.src = s.imgSrc; pt.img = img;
+      });
+      saveBody();
+      return true;
+    }catch(e){ return false; }
+  }
+
   /* ====== 初始化 ====== */
   loadLib(); loadOutfits(); loadSets();
-  if(!loadBody()) generateDemo();
+  if(!loadBody()){ if(!applyBuiltinTemplate()) generateDemo(); }
   CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
   stageMgrs.body.render(); refreshPartsGrid();
   updateTopMeta();

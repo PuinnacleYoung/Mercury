@@ -198,12 +198,15 @@ input{font-family:inherit;outline:none;}
 .ui-btn .ico{font-size:22px;line-height:1;}
 .ui-btn.hot{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;}
 
-/* 虚拟摇杆（左下角，王者式） */
-.joystick{position:absolute;left:28px;bottom:28px;z-index:10;width:128px;height:128px;}
+/* 虚拟摇杆（左下偏中一点；在左半屏任意空白处按下会「就地呼出」，抬手归位） */
+.joystick{position:absolute;left:clamp(84px,11vw,140px);bottom:clamp(28px,6vh,48px);z-index:10;width:128px;height:128px;}
+.joystick.float-on{filter:drop-shadow(0 6px 18px rgba(0,0,0,.22));}
+.joystick.float-on .joy-base{background:rgba(255,255,255,.36);}
+.joystick.float-on .joy-ring{border-color:rgba(255,255,255,.7);}
 .joy-base{position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.26);box-shadow:inset 0 0 0 2px rgba(255,255,255,.4),0 6px 22px rgba(0,0,0,.16);touch-action:none;user-select:none;-webkit-user-select:none;}
 .joy-ring{position:absolute;inset:14px;border-radius:50%;border:2px dashed rgba(255,255,255,.45);}
 .joy-knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:linear-gradient(145deg,#fffdfb,#e6ddf4);box-shadow:0 4px 14px rgba(0,0,0,.22),inset 0 -3px 6px rgba(var(--accent-rgb),.25);touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .05s linear;}
-.joy-hint{position:absolute;left:28px;bottom:168px;z-index:10;font-size:12px;color:var(--c-sub);pointer-events:none;}
+.joy-hint{position:absolute;left:clamp(84px,11vw,140px);bottom:calc(clamp(28px,6vh,48px) + 140px);z-index:10;font-size:12px;color:var(--c-sub);pointer-events:none;white-space:nowrap;}
 
 /* 抽屉面板（衣橱/好友） */
 .drawer{position:absolute;top:0;right:0;bottom:0;width:min(420px,86vw);background:rgba(var(--glass-rgb),.6);backdrop-filter:blur(30px) saturate(180%);z-index:20;box-shadow:-10px 0 40px rgba(var(--shadow-rgb),.18),0 0 0 1px rgba(var(--accent-rgb),.1);transform:translateX(105%);transition:transform .28s cubic-bezier(.22,.8,.3,1);display:flex;flex-direction:column;border-left:1px solid rgba(var(--accent-rgb),.15);}
@@ -411,7 +414,8 @@ input{font-family:inherit;outline:none;}
 /* ---------- 地图引擎 v2（运行时：可行走 + 触发区 + 面板） ---------- */
 #map-screen{background:linear-gradient(135deg,var(--c-bg),var(--c-bg2));}
 #map-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.map-topbar{position:absolute;top:14px;left:16px;right:16px;z-index:10;display:flex;align-items:center;gap:12px;}
+.map-topbar{position:absolute;top:14px;left:16px;right:16px;z-index:10;display:flex;align-items:center;gap:12px;justify-content:space-between;pointer-events:none;}
+.map-topbar>*{pointer-events:auto;}
 .map-nav-btn{padding:10px 20px;border-radius:999px;background:rgba(var(--glass-rgb),.74);backdrop-filter:blur(14px);border:1px solid var(--glass-border);color:var(--c-ink);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(var(--shadow-rgb),.14);transition:all .2s;white-space:nowrap;}
 .map-nav-btn:hover{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;}
 .map-nav-btn.world{background:linear-gradient(135deg,#f6c344,#e8a33d);color:#5b3c00;border-color:transparent;}
@@ -428,6 +432,13 @@ input{font-family:inherit;outline:none;}
 .map-modal{width:min(600px,92vw);max-height:82vh;overflow:auto;background:rgba(var(--glass-rgb),.97);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.36);padding:22px 22px 18px;}
 .map-modal h3{font-size:19px;font-weight:800;margin-bottom:2px;color:var(--c-ink);}
 .map-modal .sub{font-size:12px;color:var(--c-sub);margin-bottom:14px;}
+.wm-stage{position:relative;width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);background:#dbe6f3;box-shadow:inset 0 2px 14px rgba(0,0,0,.14);}
+.wm-stage canvas{display:block;width:100%;height:100%;touch-action:manipulation;cursor:pointer;}
+.wm-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+.wm-chip{padding:5px 12px;border-radius:999px;background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);font-size:12px;font-weight:700;color:var(--c-ink);cursor:pointer;font-family:inherit;transition:.16s;}
+.wm-chip:hover{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;}
+.wm-chip.cur{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;}
+.wm-chip.main{box-shadow:0 0 0 2px rgba(240,165,0,.35);}
 .wm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;}
 .wm-card{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;border-radius:14px;background:rgba(var(--glass-rgb),.55);border:1px solid var(--glass-border);cursor:pointer;transition:.18s;font-family:inherit;}
 .wm-card:hover{background:rgba(var(--glass-rgb),.85);transform:translateY(-2px);}
@@ -553,10 +564,10 @@ input{font-family:inherit;outline:none;}
 #game-screen .ui-btn{width:var(--ui-btn-size);height:var(--ui-btn-size);border-radius:calc(18px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
 #game-screen .ui-btn .ico{font-size:calc(22px * var(--ui-scale));}
 
-#game-screen .joystick{left:calc(28px * var(--ui-scale));bottom:calc(28px * var(--ui-scale));width:var(--ui-joy-size);height:var(--ui-joy-size);}
+#game-screen .joystick{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc(clamp(28px,6vh,48px) * var(--ui-scale));width:var(--ui-joy-size);height:var(--ui-joy-size);}
 #game-screen .joy-knob{width:calc(56px * var(--ui-scale));height:calc(56px * var(--ui-scale));margin:calc(-28px * var(--ui-scale)) 0 0 calc(-28px * var(--ui-scale));}
 #game-screen .joy-ring{inset:calc(14px * var(--ui-scale));}
-#game-screen .joy-hint{left:calc(28px * var(--ui-scale));bottom:calc(168px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+#game-screen .joy-hint{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc((clamp(28px,6vh,48px) + 140px) * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
 
 #game-screen .building-pop .bname{font-size:calc(15px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale));}
 #game-screen .building-pop .enter{font-size:calc(14px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));}
@@ -1059,7 +1070,6 @@ input{font-family:inherit;outline:none;}
 
   <div class="map-topbar">
     <button class="map-nav-btn" id="map-back">← 返回</button>
-    <div class="map-crumb" id="map-crumb"></div>
     <button class="map-nav-btn world hidden" id="map-world" title="打开世界地图，直接前往任意地点">🌍 世界地图</button>
   </div>
 
@@ -1080,6 +1090,10 @@ input{font-family:inherit;outline:none;}
   <div class="map-tipbar" id="map-tipbar">走到 🚪 门口即可传送</div>
 </div>
 
+<!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
+<script src="./body-template.js"></script>
+<!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
+<script src="./map-placeholders.js"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -1529,18 +1543,40 @@ function engImg(src){
 }
 function afterEngineReady(cb){ if(_engPending<=0){ cb(); } else { _engReadyCbs.push(cb); } }
 function engVisAnchorX(p){ return (p.flipH && p.jointPct) ? (1-p.jointPct.x) : (p.jointPct?p.jointPct.x:0.5); }
-function loadEngineBody(){
+/* 把一份「六部件序列化数据」灌进引擎（不关心它来自 localStorage 还是内置模板） */
+function hydrateBody(d){
   try{
-    const raw = localStorage.getItem(ENG_LS.body);
-    if(!raw){ engine.parts={}; engine.bodyReady=false; return; }
-    const d = JSON.parse(raw) || {};
     const parts = {};
-    ENG_PART_DEFS.forEach(def=>{ const s=d[def.key]; if(!s) return;
+    ENG_PART_DEFS.forEach(def=>{ const s = d && d[def.key]; if(!s) return;
       parts[def.key] = { x:+s.x||0, y:+s.y||0, w:+s.w||0, h:+s.h||0, rot:+s.rot||0, flipH:!!s.flipH, jointPct:s.jointPct||null, img: engImg(s.imgSrc) };
     });
     engine.parts = parts;
     engine.bodyReady = ENG_PART_DEFS.every(def=> parts[def.key] && parts[def.key].img && parts[def.key].w>0);
   }catch(e){ engine.parts={}; engine.bodyReady=false; }
+}
+function loadEngineBody(){
+  try{
+    const raw = localStorage.getItem(ENG_LS.body);
+    if(!raw){ engine.parts={}; engine.bodyReady=false; return; }
+    hydrateBody(JSON.parse(raw) || {});
+  }catch(e){ engine.parts={}; engine.bodyReady=false; }
+}
+/* 本地一个素体都没存过 → 直接把「内置初始素体模板」装上当主角，
+   这样一进游戏就是个能看的小人，而不是火柴人。
+   配色优先继承旧存档里那个角色（黑短发 / 红 T 恤 / 牛仔裤 / 小白鞋）。 */
+function ensureBody(){
+  if(engine.bodyReady) return false;
+  try{ if(localStorage.getItem(ENG_LS.body)) return false; }catch(e){}
+  if(!window.BodyTemplate || !window.BodyTemplate.build) return false;
+  try{
+    let pal = null;
+    try{ pal = BodyTemplate.paletteFromOutfit(currentUser && currentUser.outfit); }catch(e){}
+    const parts = BodyTemplate.build(pal);
+    try{ localStorage.setItem(ENG_LS.body, JSON.stringify(parts)); }catch(e){}
+    hydrateBody(parts);
+    engine.builtin = true;
+    return engine.bodyReady;
+  }catch(e){ return false; }
 }
 function loadEngineLib(){
   try{
@@ -1799,7 +1835,14 @@ function hintBar(msg, btn){
 }
 function checkCharacterSource(){
   try{
-    if(engine.bodyReady) return false;
+    if(engine.bodyReady){
+      if(engine.builtin){
+        hintBar('主角现在跑的是<b>内置初始素体模板</b>（黑短发 / 红 T 恤 / 牛仔裤 那套）。'
+              + '想换成自己的素材：去服装编辑引擎做好素体与衣服，<b>保存</b>后回来刷新即可自动接管。',
+                { text:'打开服装编辑引擎', href:'服装编辑引擎.html' });
+      }
+      return false;
+    }
     let raw = null;
     try{ raw = localStorage.getItem(ENG_LS.body); }catch(e){}
     let msg;
@@ -1922,6 +1965,7 @@ function afterLandscape(){
   const username = localStorage.getItem(LS_CURRENT);
   if(username && getAccounts()[username]){
     currentUser = getAccounts()[username];
+    ensureBody();                                   // 本地没素体 → 装上内置初始模板
     currentUser.outfit = normalizeOutfit(currentUser.outfit);
     normalizeUser(currentUser);
     if(!currentUser.nickname) showScreen('nickname-screen');
@@ -1993,12 +2037,15 @@ $('auth-submit').onclick = ()=>{
     accounts[u] = {username:u, password:p, nickname:'', element:null, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false};
     saveAccounts(accounts);
     setCurrent(u); currentUser = accounts[u];
+    ensureBody();
+    currentUser.outfit = normalizeOutfit(currentUser.outfit);
     msg.textContent='';
     showScreen('nickname-screen');
     setNickAvatarPreview();
   } else {
     if(!accounts[u] || accounts[u].password!==p){ msg.textContent='账号或密码错误'; return; }
     setCurrent(u); currentUser = accounts[u];
+    ensureBody();                                   // 本地没素体 → 装上内置初始模板
     currentUser.outfit = normalizeOutfit(currentUser.outfit);
     normalizeUser(currentUser);
     msg.textContent='';
@@ -2109,6 +2156,7 @@ let mapRun = {
 };
 
 function enterLobby(){
+  ensureBody();
   showScreen('game-screen');
   const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
   $('hud-nick').textContent = currentUser.nickname;
@@ -2185,6 +2233,82 @@ function bindJoystick(zoneId, knobId, joy){
 }
 bindJoystick('joystick', 'joy-knob', lobby.joy);
 bindJoystick('map-joystick', 'map-joy-knob', mapRun.joy);
+
+/* ---- 就地呼出摇杆 ----
+   陛下要的是：左手按在左半屏「任何空白处」，摇杆就以手指落点为中心长出来，
+   抬手收回原位。所以这里监听整块屏幕：
+     · 点在按钮/气泡/顶栏等 UI 上 → 不抢，照常点按钮
+     · 点在左半屏空白处        → 摇杆挪到手指下，并抑制这一下点击（避免误传送） */
+function enableFloatJoystick(screenId, zoneId, knobId, joy, skipFn){
+  const screen = $(screenId), zone = $(zoneId), knob = $(knobId);
+  if(!screen || !zone || !knob) return;
+  const UI_SEL = 'button,input,select,textarea,a,[data-ui],.map-pop,.map-topbar,.hud,.drawer,.ui-btn,.joy-hint,.modal,.map-modal,.joystick';
+  let id = null, cx = 0, cy = 0, maxR = 36, eatClick = false;
+  function setKnob(dx, dy){ knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; }
+  function apply(x, y){
+    let dx = x - cx, dy = y - cy;
+    const len = Math.hypot(dx, dy);
+    if(len > maxR){ dx = dx/len*maxR; dy = dy/len*maxR; }
+    setKnob(dx, dy);
+    const nl = Math.hypot(dx, dy) / maxR;
+    if(nl < 0.15){ joy.active = false; joy.dx = 0; joy.dy = 0; }
+    else { joy.active = true; joy.dx = dx/maxR; joy.dy = dy/maxR; }
+  }
+  function end(){
+    if(id === null) return;
+    id = null;
+    joy.active = false; joy.dx = 0; joy.dy = 0;
+    setKnob(0, 0);
+    zone.classList.remove('float-on');
+    zone.style.left = ''; zone.style.top = ''; zone.style.bottom = '';
+    eatClick = true;
+    setTimeout(()=>{ eatClick = false; }, 80);
+  }
+  screen.addEventListener('pointerdown', e=>{
+    if(id !== null) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    if(e.target && e.target.closest && e.target.closest(UI_SEL)) return;
+    const r = screen.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    if(x > r.width * 0.55) return;        // 右半屏归按钮和画面，不抢
+    if(y < r.height * 0.20) return;       // 顶部留给顶栏
+    // 按在地图门口 / 大厅建筑上：那是「点一下就进」，不抢，交给原本的点击
+    try{ if(skipFn && skipFn(x, y, r)) return; }catch(_){}
+    const jw = zone.offsetWidth || 128, jh = zone.offsetHeight || 128;
+    const lx = Math.max(6, Math.min(r.width  - jw - 6, x - jw/2));
+    const ly = Math.max(6, Math.min(r.height - jh - 6, y - jh/2));
+    zone.style.left = lx + 'px'; zone.style.top = ly + 'px'; zone.style.bottom = 'auto';
+    zone.classList.add('float-on');
+    cx = r.left + lx + jw/2; cy = r.top + ly + jh/2;
+    maxR = Math.max(20, jw/2 - 28);
+    id = e.pointerId;
+    try{ screen.setPointerCapture(e.pointerId); }catch(_){}
+    apply(e.clientX, e.clientY);
+  });
+  screen.addEventListener('pointermove', e=>{ if(e.pointerId === id) apply(e.clientX, e.clientY); });
+  screen.addEventListener('pointerup',     e=>{ if(e.pointerId === id) end(); });
+  screen.addEventListener('pointercancel', e=>{ if(e.pointerId === id) end(); });
+  // 这一次抬手别被「点一下就传送 / 点一下就进屋」吃掉
+  screen.addEventListener('click', e=>{
+    if(eatClick){ eatClick = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+}
+enableFloatJoystick('game-screen', 'joystick', 'joy-knob', lobby.joy, function(x, y){
+  // 大厅：按在建筑上 → 让原来的「走近/点建筑」生效
+  try{
+    const wx = s2wx(x), wy = s2wy(y);
+    return getBuildingPositions().some(b=> Math.hypot(wx-b.x, wy-b.y) < Math.max(70, Math.max(b.w||0, b.h||0)*0.62));
+  }catch(e){ return false; }
+});
+enableFloatJoystick('map-screen', 'map-joystick', 'map-joy-knob', mapRun.joy, function(x, y){
+  // 地图：按在门口/地块/入口上 → 让原来的「点一下就传送」生效
+  try{
+    if(!mapRun.active) return false;
+    const wx = x - (mapRun.ox||0), wy = y - (mapRun.oy||0);
+    const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return false;
+    return (m.nodes||[]).some(n=> inRect(wx, wy, nodeRect(n, mapRun.w, mapRun.h)));
+  }catch(e){ return false; }
+});
 
 /* ---- 游戏循环（大厅 / 地图二选一） ---- */
 function loop(now){
@@ -3308,7 +3432,10 @@ function migrateMaps(d){
 }
 function seedMaps(){
   let n = 0;
-  const T=(name,icon,color,x,y,w,h,linkTo)=>({id:'st'+(++n), kind:'tile', name, icon, color, x, y, w, h:(h!=null?h:w), linkTo:linkTo||null, img:null});
+  const T=(name,icon,color,x,y,w,h,linkTo,extra)=>Object.assign({id:'st'+(++n), kind:'tile', name, icon, color, x, y, w, h:(h!=null?h:w),
+    linkTo:linkTo||null, img:(window.MapPlaceholders ? MapPlaceholders.pick(name).src : null),
+    action: linkTo ? 'teleport' : 'none', targetMap:linkTo||null, targetSpawn:null, panel:null,
+    triggerMode:'click', tip:''}, extra||{});
   const G=(name,x,y,w,h,extra)=>Object.assign({id:'sg'+(++n), kind:'trigger', name, icon:'🚪', x, y, w, h,
     action:'teleport', targetMap:null, targetSpawn:null, bidirectional:false, backName:'返回', backId:null,
     pairId:null, triggerMode:'auto', tip:''}, extra||{});
@@ -3320,10 +3447,10 @@ function seedMaps(){
   const maps = {}; const add = m => { maps[m.id] = m; return m; };
 
   add(M('home','家园',null,'#efe8d2',[
-    T('我的小屋','🛖','#b08968',0.42,0.50,0.16,0.16,null),
-    G('去学校',  0.82,0.74,0.14,0.10,{ targetMap:'school', targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'🏫', tip:'去学校' }),
-    G('服装店',  0.18,0.74,0.14,0.10,{ targetMap:'shop',   targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'👗', tip:'去服装店' }),
-    G('塔罗小屋',0.50,0.90,0.14,0.09,{ action:'panel', panel:'tarot', icon:'🔮', tip:'来占一卦' }),
+    T('我的小屋','🛖','#b08968',0.36,0.50,0.18,0.18,null),
+    T('塔罗小屋','🔮','#8a6fc4',0.66,0.50,0.18,0.18,null,{ action:'panel', panel:'tarot', tip:'来占一卦' }),
+    G('去学校',  0.82,0.76,0.14,0.10,{ targetMap:'school', targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'🏫', tip:'去学校' }),
+    G('服装店',  0.18,0.76,0.14,0.10,{ targetMap:'shop',   targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'👗', tip:'去服装店' }),
   ]));
   add(M('school','学校','home','#cfe8cf',[
     T('教学楼','🏫','#43a047',0.50,0.32,0.28,0.22,null),
@@ -3333,12 +3460,10 @@ function seedMaps(){
   add(M('library','图书馆','school','#e6ecf7',[ T('书架','📚','#8d6e63',0.5,0.40,0.34,0.20,null) ]));
   add(M('classroom','阶梯教室','school','#f2ead6',[ T('讲台','🎓','#a1887f',0.5,0.40,0.30,0.18,null) ]));
   add(M('shop','服装店','home','#f6e6ef',[
-    T('普通服装区','👗','#f2a4c8',0.20,0.42,0.20,0.18,null),
-    T('高级时装区','💎','#9fd8f2',0.50,0.42,0.20,0.18,null),
-    T('贵宾区',    '🦪','#f5c542',0.80,0.42,0.20,0.18,null),
-    G('普通衣橱',    0.20,0.74,0.20,0.10,{ action:'panel', panel:'wardrobe',        icon:'👗', tip:'打开普通衣橱' }),
-    G('高级时装衣橱',0.50,0.74,0.20,0.10,{ action:'panel', panel:'wardrobePremium', icon:'💎', tip:'打开高级时装衣橱' }),
-    G('贵宾区衣橱',  0.80,0.74,0.20,0.10,{ action:'panel', panel:'wardrobeVip',     icon:'🦪', tip:'打开贵宾区衣橱' }),
+    // 三个服装区＝地块本身就能打开衣橱，不再单独摆面板触发区
+    T('普通服装区','👗','#f2a4c8',0.20,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobe',        tip:'推开玻璃门，进去逛逛' }),
+    T('高级时装区','💎','#9fd8f2',0.50,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobePremium', tip:'高级区，请轻声细语' }),
+    T('贵宾区',    '🦪','#f5c542',0.80,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobeVip',     tip:'贵宾专属，欢迎光临' }),
   ], { allowWorldMap:false }));   // 服装店里不能开世界地图，只能靠走
   add(P('wardrobe_normal','普通衣橱','shop','wardrobe'));
   add(P('wardrobe_premium','高级时装衣橱','shop','wardrobePremium'));
@@ -3384,19 +3509,37 @@ function nodeRect(n, W, H){
   return { x:(n.x - w/2)*W, y:(n.y - h/2)*H, w:w*W, h:h*H };
 }
 function inRect(px, py, r){ return px>=r.x && px<=r.x+r.w && py>=r.y && py<=r.y+r.h; }
+/* 地块自己就有行为：跳转地图 / 打开界面 / 纯装饰 */
+function nodeAction(n){
+  if(!n) return 'none';
+  if(n.action) return n.action;
+  return n.linkTo ? 'teleport' : 'none';
+}
+function nodeTargetId(n){ return n.targetMap || n.linkTo || null; }
+function nodeIsHot(n){ const a = nodeAction(n); return a==='teleport' || a==='panel'; }
+/* 走上去会自动触发的东西（点一下才触发的地块不算） */
 function triggerAt(px, py){
   const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return null;
   const W = mapRun.w, H = mapRun.h; let hit = null;
   (m.nodes||[]).forEach(n=>{
-    if(n.kind!=='trigger') return;
-    if(n.action!=='teleport' && n.action!=='panel') return;
-    if(inRect(px, py, nodeRect(n, W, H))) hit = n;
+    if(!inRect(px, py, nodeRect(n, W, H))) return;
+    if(!nodeIsHot(n)) return;
+    if(n.kind==='tile' && (n.triggerMode||'click') !== 'auto') return;
+    hit = n;
   });
+  return hit;
+}
+/* 手指点在哪个地块上（不管它有没有行为） */
+function tileAt(px, py){
+  const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return null;
+  const W = mapRun.w, H = mapRun.h; let hit = null;
+  (m.nodes||[]).forEach(n=>{ if(n.kind!=='tile') return; if(inRect(px,py,nodeRect(n,W,H))) hit = n; });
   return hit;
 }
 
 /* ---- 进入 / 传送 ---- */
 function enterMap(id, spawnId){
+  ensureBody();
   const d = ensureMaps();
   const map = d.maps[id];
   if(!map){ toast('地图不存在：'+id); return; }
@@ -3422,15 +3565,17 @@ function enterMap(id, spawnId){
 }
 function fireTrigger(t){
   if(!t) return;
-  if(t.action === 'panel'){ mapRun.lastFired = t.id; openPanelNode(t); return; }
-  if(t.action !== 'teleport' || !t.targetMap) return;
+  const act = nodeAction(t);
+  const tid = nodeTargetId(t);
+  if(act === 'panel'){ mapRun.lastFired = t.id; openPanelNode(t); return; }
+  if(act !== 'teleport' || !tid) return;
   const d = ensureMaps();
   const cur = d.maps[mapState.currentId];
   if(cur && cur.allowTeleportOut === false){ toast('这里不能传送，请步行到门口'); return; }
-  const target = d.maps[t.targetMap];
-  if(!target){ toast('目标地图不存在，去《地图编辑引擎》检查「'+(t.name||'触发区')+'」'); return; }
+  const target = d.maps[tid];
+  if(!target){ toast('目标地图不存在，去《地图编辑引擎》检查「'+(t.name||'这个点')+'」'); return; }
   mapRun.lastFired = t.id;
-  enterMap(t.targetMap, t.targetSpawn);
+  enterMap(tid, t.targetSpawn);
   toast('→ ' + target.name);
 }
 /* 从全屏面板回到刚才那张地图（位置保留） */
@@ -3465,7 +3610,6 @@ function openPanelNode(node){
 function refreshMapTopbar(){
   const d = ensureMaps();
   const m = d.maps[mapState.currentId]; if(!m) return;
-  $('map-crumb').textContent = mapBreadcrumb(mapState.currentId).join(' › ') + (d.root===m.id ? '  ⭐主地图' : '');
   const back = $('map-back');
   back.textContent = m.parent ? '← 返回' : '← 回大厅';
   back.onclick = ()=>{ if(m.parent) enterMap(m.parent); else showScreen('game-screen'); };
@@ -3480,6 +3624,35 @@ function refreshMapTopbar(){
               : '摇杆 / WASD 行走 · 此处不能传送，只能步行')
     : '这里不能打开世界地图 · 只能步行前往出口';
 }
+/* 世界地图 = 一张图 + 上面的 POI 点（不再是一排文件夹卡片）。
+   坐标来源：优先用「父地图里指向它的地块」的位置；
+   没有地块的（编辑器里新建但还没摆上去的）自动排在网格上，保证每个地点都有位置。 */
+function worldMapLayout(){
+  const d = ensureMaps();
+  const ids = Object.keys(d.maps).filter(k => (d.maps[k].type || 'map') === 'map');
+  const pos = {};
+  const placed = {};
+  // ① 有地块指向它的 → 用地块坐标
+  Object.keys(d.maps).forEach(pk=>{
+    (d.maps[pk].nodes || []).forEach(n=>{
+      if(!n) return;
+      const tid = n.targetMap || n.linkTo;          // 地块 / 传送门都算
+      if(!tid || placed[tid]) return;
+      if(d.maps[tid]){ pos[tid] = { x:n.x, y:n.y, from:pk }; placed[tid] = 1; }
+    });
+  });
+  // ② 剩下的按网格铺开
+  let i = 0;
+  const rest = ids.filter(id => !placed[id]);
+  const cols = Math.max(3, Math.ceil(Math.sqrt(rest.length || 1)));
+  rest.forEach(id=>{
+    const col = i % cols, row = Math.floor(i / cols);
+    const rows = Math.max(1, Math.ceil(rest.length / cols));
+    pos[id] = { x: 0.14 + (0.72 * (cols === 1 ? 0.5 : col/(cols-1))), y: 0.22 + (0.6 * (rows === 1 ? 0.5 : row/(rows-1))), from:null };
+    i++;
+  });
+  return { ids, pos };
+}
 function openWorldMap(){
   const d = ensureMaps();
   const m = d.maps[mapState.currentId];
@@ -3490,23 +3663,86 @@ function openWorldMap(){
   mask.className = 'map-mask'; mask.id = 'map-modal-mask';
   const box = document.createElement('div'); box.className = 'map-modal';
   box.innerHTML = '<h3>🌍 世界地图</h3>'
-    + '<div class="sub">当前：' + esc(m ? m.name : '—') + ' · 点一个地点直接前往（主地图 ⭐）</div>'
-    + '<div class="wm-grid" id="wm-grid"></div>'
+    + '<div class="sub">当前：' + esc(m ? m.name : '—') + ' · 点地图上的标记直接前往（⭐ = 主地图）</div>'
+    + '<div class="wm-stage"><canvas id="wm-canvas"></canvas></div>'
+    + '<div class="wm-legend" id="wm-legend"></div>'
     + '<div class="map-foot"><button class="map-btn" id="wm-close">关闭</button></div>';
   mask.appendChild(box); document.body.appendChild(mask);
   $('wm-close').onclick = ()=> mask.remove();
   mask.addEventListener('click', e=>{ if(e.target === mask) mask.remove(); });
-  const grid = $('wm-grid');
-  Object.keys(d.maps).forEach(k=>{
+
+  const { ids, pos } = worldMapLayout();
+  const cvs = $('wm-canvas');
+  const ctx = cvs.getContext('2d');
+  let W = 0, H = 0, pins = [];
+  function draw(){
+    const rect = cvs.parentNode.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(240, Math.round(rect.width)); H = Math.max(135, Math.round(rect.height));
+    cvs.width = Math.round(W*dpr); cvs.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    // 背景：主地图的底色/底图
+    const root = d.maps[d.root] || d.maps[ids[0]];
+    const bgSrc = root && root.bg;
+    const bgImg = bgSrc ? mapImg(bgSrc) : null;
+    if(bgImg && bgImg.complete && bgImg.naturalWidth) drawCover(ctx, bgImg, W, H);
+    else {
+      const base = (root && root.bgColor) || '#a9c9e8';
+      const g = ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0, base); g.addColorStop(1, darken(base, .3));
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, H*0.62, W, H*0.38);
+    // 父子连线（谁通往谁）
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.setLineDash([5,6]);
+    ids.forEach(k=>{
+      const mm = d.maps[k]; if(!mm || !mm.parent) return;
+      const a = pos[k], b = pos[mm.parent]; if(!a || !b) return;
+      ctx.beginPath(); ctx.moveTo(a.x*W, a.y*H); ctx.lineTo(b.x*W, b.y*H); ctx.stroke();
+    });
+    ctx.restore();
+    // POI
+    pins = [];
+    const r = Math.max(14, Math.min(30, H*0.10));
+    const fs = Math.max(10, Math.min(14, H*0.045));
+    ids.forEach(k=>{
+      const mm = d.maps[k], p = pos[k]; if(!p) return;
+      const cx = p.x*W, cy = p.y*H;
+      const isCur = (k === mapState.currentId), isRoot = (k === d.root);
+      const color = isCur ? '#8a6fc4' : (isRoot ? '#e8a33d' : (mm.parent ? '#6a7fd6' : '#5fbf8f'));
+      poiBadge(ctx, cx, cy, r, color, isCur ? '📍' : (isRoot ? '⭐' : (mm.icon || '🗺️')), mm.img || null,
+               isCur ? 'rgba(255,255,255,.95)' : null, false);
+      poiLabel(ctx, cx, cy + r + fs*1.5, mm.name || k, null, fs);
+      pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
+    });
+  }
+  function hit(ev){
+    const rect = cvs.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) * (W / rect.width);
+    const y = (ev.clientY - rect.top) * (H / rect.height);
+    for(let i = pins.length-1; i >= 0; i--){
+      const p = pins[i];
+      if((x-p.x)*(x-p.x) + (y-p.y)*(y-p.y) <= p.r*p.r) return p.id;
+    }
+    return null;
+  }
+  cvs.addEventListener('click', ev=>{
+    const id = hit(ev); if(!id) return;
+    mask.remove(); enterMap(id, null);
+  });
+  draw();
+  window.addEventListener('resize', function onr(){ if(!document.body.contains(cvs)){ window.removeEventListener('resize', onr); return; } draw(); });
+
+  // 下面一排小胶囊：图太小点不准时的备用入口
+  const legend = $('wm-legend');
+  ids.forEach(k=>{
     const mm = d.maps[k];
-    if(mm.type && mm.type !== 'map') return;
-    const card = document.createElement('button');
-    card.className = 'wm-card' + (d.root===k ? ' main' : '') + (k===mapState.currentId ? ' cur' : '');
-    card.innerHTML = '<span class="wm-em">' + (k===mapState.currentId ? '📍' : (d.root===k ? '⭐' : '🗺️')) + '</span>'
-      + '<span class="wm-nm">' + esc(mm.name) + '</span>'
-      + '<span class="wm-path">' + esc(mapBreadcrumb(k).slice(0,-1).join(' › ') || '顶层') + '</span>';
-    card.onclick = ()=>{ mask.remove(); enterMap(k, null); };
-    grid.appendChild(card);
+    const b = document.createElement('button');
+    b.className = 'wm-chip' + (d.root===k ? ' main' : '') + (k===mapState.currentId ? ' cur' : '');
+    b.textContent = (k===mapState.currentId ? '📍 ' : (d.root===k ? '⭐ ' : '')) + (mm.name || k);
+    b.onclick = ()=>{ mask.remove(); enterMap(k, null); };
+    legend.appendChild(b);
   });
 }
 
@@ -3550,9 +3786,12 @@ function updateMapPop(){
 }
 function showMapPop(t){
   const pop = $('map-pop'); if(!pop) return;
-  $('mp-name').textContent = (t.icon||'🚪') + ' ' + (t.name||'门口');
+  $('mp-name').textContent = (t.icon||(t.kind==='tile'?'🏛️':'🚪')) + ' ' + (t.name||'门口');
   const tipEl = $('mp-tip');
-  tipEl.textContent = t.tip || (t.action==='panel' ? '打开面板' : '前往另一张地图');
+  const _act = nodeAction(t);
+  let _def = '前往另一张地图';
+  if(_act === 'panel'){ const _pi = (typeof panelInfo==='function') ? panelInfo(t.panel) : null; _def = '打开' + (_pi ? _pi.name.replace(/^\S+\s/,'') : '界面'); }
+  tipEl.textContent = t.tip || _def;
   tipEl.style.display = (t.tip && String(t.tip).trim()) ? '' : 'none';
   pop.classList.remove('hidden');
   // 地图用「世界画布 + contain 居中偏移」的变换，不是大厅的 WORLD.k
@@ -3617,52 +3856,126 @@ function drawCover(c, img, W, H){
   else { dw = W; dh = W/ir; dy = (H-dh)/2; }
   c.drawImage(img, dx, dy, dw, dh);
 }
-function drawMapTile(c, n, W, H){
-  const r = nodeRect(n, W, H);
+/* ---- 地图上的「UI 点」：地块 / 门口 / 交互入口都长这样 ----
+   陛下要的是「一张图 + 上面分布着图标」，不是一排文件夹。
+   所以这里统一画成扁平徽章：地面光斑 + 圆形牌子 + 名牌，点一下就到。 */
+function poiBadge(c, cx, cy, r, color, icon, imgSrc, ringColor, square){
   c.save();
-  c.fillStyle = 'rgba(0,0,0,.14)';
-  c.beginPath(); c.ellipse(r.x+r.w/2, r.y+r.h+6, r.w*0.42, Math.max(5, r.h*0.09), 0, 0, Math.PI*2); c.fill();
-  c.fillStyle = darken(n.color||'#b0a8c0', .3);
-  c.beginPath(); c.moveTo(r.x-6, r.y+r.h*0.20); c.lineTo(r.x+r.w/2, r.y-r.h*0.32); c.lineTo(r.x+r.w+6, r.y+r.h*0.20); c.closePath(); c.fill();
-  c.fillStyle = n.color || '#b0a8c0';
-  roundRect(c, r.x, r.y, r.w, r.h, 12); c.fill();
-  if(n.img){
-    const im = mapImg(n.img);
-    if(im && im.complete && im.naturalWidth){ c.drawImage(im, r.x, r.y, r.w, r.h); }
+  // 地面光斑
+  c.fillStyle = 'rgba(0,0,0,.16)';
+  c.beginPath(); c.ellipse(cx, cy + r*0.98, r*0.80, r*0.24, 0, 0, Math.PI*2); c.fill();
+  // 可交互外环
+  if(ringColor){
+    c.strokeStyle = ringColor; c.lineWidth = Math.max(2, r*0.10);
+    c.setLineDash([r*0.34, r*0.26]);
+    c.beginPath(); c.arc(cx, cy, r + r*0.26, 0, Math.PI*2); c.stroke();
+    c.setLineDash([]);
   }
-  c.fillStyle = '#fff';
-  c.textAlign='center'; c.textBaseline='middle';
-  c.font = Math.max(18, Math.min(40, r.h*0.40)) + 'px sans-serif';
-  c.fillText(n.icon||'📍', r.x+r.w/2, r.y+r.h*0.42);
-  const label = n.name || '';
-  c.font = '800 13px "Microsoft YaHei"';
-  const tw = c.measureText(label).width;
-  c.fillStyle = 'rgba(255,255,255,.94)';
-  roundRect(c, r.x+r.w/2-tw/2-10, r.y+r.h+6, tw+20, 22, 11); c.fill();
-  c.fillStyle = '#4a4358'; c.fillText(label, r.x+r.w/2, r.y+r.h+18);
+  // 牌子本体
+  const g = c.createLinearGradient(cx-r, cy-r, cx+r, cy+r);
+  g.addColorStop(0, color); g.addColorStop(1, darken(color, .30));
+  c.fillStyle = g;
+  c.beginPath();
+  if(square) roundRect(c, cx-r, cy-r, r*2, r*2, r*0.42);
+  else c.arc(cx, cy, r, 0, Math.PI*2);
+  c.fill();
+  c.lineWidth = Math.max(2, r*0.10); c.strokeStyle = 'rgba(255,255,255,.94)'; c.stroke();
+  // 图 / emoji
+  if(imgSrc){
+    const im = mapImg(imgSrc);
+    if(im && im.complete && im.naturalWidth){
+      c.save();
+      c.beginPath();
+      if(square) roundRect(c, cx-r*0.84, cy-r*0.84, r*1.68, r*1.68, r*0.34);
+      else c.arc(cx, cy, r*0.84, 0, Math.PI*2);
+      c.clip();
+      const ir = im.naturalWidth/im.naturalHeight, d = r*1.72;
+      let dw = d, dh = d;
+      if(ir > 1) dw = d*ir; else dh = d/ir;
+      c.drawImage(im, cx-dw/2, cy-dh/2, dw, dh);
+      c.restore();
+    }
+  } else if(icon){
+    c.textAlign='center'; c.textBaseline='middle';
+    c.font = Math.round(r*1.02) + 'px sans-serif';
+    c.fillStyle = '#fff';
+    c.fillText(icon, cx, cy + r*0.04);
+  }
   c.restore();
 }
+function poiLabel(c, cx, cy, text, sub, fs){
+  fs = fs || 12;
+  c.save();
+  c.textAlign='center'; c.textBaseline='middle';
+  c.font = '800 ' + fs + 'px "Microsoft YaHei"';
+  const tw = c.measureText(text).width;
+  const h = Math.round(fs*1.75), w = tw + fs*1.5;
+  c.fillStyle = 'rgba(255,255,255,.95)';
+  roundRect(c, cx-w/2, cy-h/2, w, h, h/2); c.fill();
+  c.fillStyle = '#3d3650'; c.fillText(text, cx, cy+0.5);
+  if(sub){
+    c.font = '700 ' + (fs-2) + 'px "Microsoft YaHei"';
+    c.fillStyle = 'rgba(255,255,255,.92)';
+    c.fillText(sub, cx, cy + h*0.85);
+  }
+  c.restore();
+}
+/* 地块（建筑）：它就是一张 PNG，直接铺在框里；有行为时才加可交互光环 */
+function drawMapTile(c, n, W, H){
+  const r0 = nodeRect(n, W, H);
+  const cx = r0.x + r0.w/2;
+  const fs = Math.max(11, Math.min(16, H*0.032));
+  const act = nodeAction(n), hot = nodeIsHot(n);
+  const im = n.img ? mapImg(n.img) : null;
+
+  if(im && im.complete && im.naturalWidth){
+    const ir = im.naturalWidth / im.naturalHeight;
+    let dw = r0.w, dh = r0.w / ir;
+    if(dh > r0.h){ dh = r0.h; dw = r0.h * ir; }
+    const baseY = r0.y + r0.h;                    // 底边贴地
+    c.save();
+    c.fillStyle = 'rgba(0,0,0,.18)';
+    c.beginPath(); c.ellipse(cx, baseY - dh*0.03, dw*0.44, Math.max(3, dh*0.08), 0, 0, Math.PI*2); c.fill();
+    if(hot){                                       // 可交互：脚下虚线椭圆
+      c.strokeStyle = act==='panel' ? 'rgba(240,180,60,.75)' : 'rgba(255,255,255,.7)';
+      c.lineWidth = 1.5; c.setLineDash([6,5]);
+      c.beginPath(); c.ellipse(cx, baseY - dh*0.03, dw*0.52, Math.max(4, dh*0.11), 0, 0, Math.PI*2); c.stroke();
+      c.setLineDash([]);
+    }
+    c.drawImage(im, cx - dw/2, baseY - dh, dw, dh);
+    c.restore();
+  } else {
+    const r = Math.max(15, Math.min(44, Math.min(r0.w, r0.h)*0.48));
+    const cy = r0.y + r0.h/2;
+    poiBadge(c, cx, cy, r, n.color || '#8f7fc4', n.icon || '📍', null,
+             hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, false);
+  }
+  const tag = act==='teleport' ? ' ›' : (act==='panel' ? ' ✦' : '');
+  poiLabel(c, cx, r0.y + r0.h + fs*1.15, (n.name||'地块') + tag, null, fs);
+}
+/* 门口 / 交互入口：方形牌子，颜色区分（金=面板组件，紫=传送门） */
 function drawTriggerBox(c, n, W, H){
-  const r = nodeRect(n, W, H);
   const isPanel = (n.action === 'panel');
   const off = (n.action === 'none');
+  const r0 = nodeRect(n, W, H);
+  const cx = r0.x + r0.w/2, cy = r0.y + r0.h/2;
+  const r  = Math.max(13, Math.min(38, Math.min(r0.w, r0.h)*0.42));
+  const fs = Math.max(10, Math.min(15, H*0.030));
+  if(off){
+    c.save(); c.globalAlpha = .35;
+    poiBadge(c, cx, cy, r*0.8, '#9a94a8', n.icon || '🚪', null, null, true);
+    c.restore(); return;
+  }
+  // 触发范围：地面淡椭圆（还能看出"走进去会触发"），不再是虚线文件夹
   c.save();
-  c.setLineDash([8,6]); c.lineWidth = 2;
-  c.strokeStyle = off ? 'rgba(150,150,160,.55)' : (isPanel ? 'rgba(240,180,60,.9)' : 'rgba(255,255,255,.9)');
-  c.fillStyle   = off ? 'rgba(150,150,160,.14)' : (isPanel ? 'rgba(240,180,60,.20)' : 'rgba(255,255,255,.16)');
-  roundRect(c, r.x, r.y, r.w, r.h, 10); c.fill(); c.stroke();
-  c.setLineDash([]);
-  c.textAlign='center'; c.textBaseline='middle';
-  c.font = Math.max(16, Math.min(32, r.h*0.38)) + 'px sans-serif';
-  c.fillStyle = '#fff';
-  c.fillText(n.icon || (isPanel ? '🧩' : '🚪'), r.x+r.w/2, r.y+r.h*0.36);
-  const label = n.name || '';
-  c.font = '800 12px "Microsoft YaHei"';
-  const tw = c.measureText(label).width;
-  c.fillStyle = 'rgba(0,0,0,.42)';
-  roundRect(c, r.x+r.w/2-tw/2-8, r.y+r.h*0.60, tw+16, 20, 10); c.fill();
-  c.fillStyle = '#fff'; c.fillText(label, r.x+r.w/2, r.y+r.h*0.60+10);
+  c.fillStyle = isPanel ? 'rgba(240,180,60,.16)' : 'rgba(120,160,255,.16)';
+  c.strokeStyle = isPanel ? 'rgba(240,180,60,.45)' : 'rgba(255,255,255,.45)';
+  c.lineWidth = 1.5; c.setLineDash([7,6]);
+  c.beginPath(); c.ellipse(cx, cy + r*0.55, r0.w*0.52, r0.h*0.55, 0, 0, Math.PI*2); c.fill(); c.stroke();
   c.restore();
+  poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
+           isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
+  poiLabel(c, cx, cy - r - fs*1.4, n.name || (isPanel ? '交互' : '门口'), null, fs);
 }
 function drawMap(){
   const c = mapRun.ctx; if(!c) return;
@@ -3682,10 +3995,13 @@ function drawMap(){
   c.save();
   c.translate(mapRun.ox||0, mapRun.oy||0);
   c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(0, H*0.62, W, H*0.38);
-  // 入口点（淡淡的旗子）
+  // 入口点：从地图上点进来时角色就落在这面旗子上
   (m.spawns||[]).forEach(s=>{
-    c.save(); c.globalAlpha = .45; c.textAlign='center'; c.textBaseline='bottom';
-    c.font = '15px sans-serif'; c.fillText('🚩', s.x*W, s.y*H); c.restore();
+    c.save(); c.globalAlpha = .5; c.textAlign='center'; c.textBaseline='bottom';
+    c.font = '16px sans-serif'; c.fillText('🚩', s.x*W, s.y*H);
+    c.globalAlpha = .8; c.font = '700 11px "Microsoft YaHei"';
+    c.fillStyle = 'rgba(255,255,255,.9)';
+    c.fillText('入口', s.x*W, s.y*H + 13); c.restore();
   });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H); });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
@@ -3704,18 +4020,15 @@ function drawMap(){
     const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return;
     const W = mapRun.w, H = mapRun.h;
     let hitT = null;
-    (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger' && (n.action==='teleport'||n.action==='panel') && inRect(x,y,nodeRect(n,W,H))) hitT = n; });
+    (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger' && nodeIsHot(n) && inRect(x,y,nodeRect(n,W,H))) hitT = n; });
     if(hitT){ hideMapPop(); mapRun.lastFired = hitT.id; fireTrigger(hitT); return; }
-    let hit = null;
-    (m.nodes||[]).forEach(n=>{ if(n.kind==='tile' && inRect(x,y,nodeRect(n,W,H))) hit = n; });
+    /* 地块本身就是触发点：点一下就按它的行为走 */
+    let hit = tileAt(x, y);
     if(!hit) return;
-    if(hit.linkTo && d.maps[hit.linkTo]){
-      const cur = d.maps[mapState.currentId];
-      if(cur && cur.allowTeleportOut === false){ toast('这里不能传送，请走过去'); return; }
-      enterMap(hit.linkTo, null);
-    } else {
-      toast('「' + (hit.name||'地块') + '」没有绑定子地图');
-    }
+    if(!nodeIsHot(hit)){ toast('「' + (hit.name||'地块') + '」只是装饰 · 在《地图编辑引擎》里给它加个行为'); return; }
+    hideMapPop();
+    if((hit.triggerMode||'click') === 'click'){ showMapPop(hit); return; }  // 点一下先确认
+    mapRun.lastFired = hit.id; fireTrigger(hit);
   });
 })();
 
