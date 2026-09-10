@@ -485,6 +485,296 @@ input{font-family:inherit;outline:none;}
 .try-info .tn{font-size:18px;font-weight:800;color:var(--c-ink);}
 .try-info .td{font-size:12px;color:var(--c-sub);margin-top:5px;line-height:1.6;}
 
+/* ============================================================
+   全机型自适应：基于 --ui-scale 变量按屏幕高度/比例自动缩放
+   ============================================================ */
+:root{
+  --ui-scale: 1;
+  --ui-btn-size: calc(64px * var(--ui-scale));
+  --ui-btn-gap:  calc(12px * var(--ui-scale));
+  --ui-joy-size: calc(128px * var(--ui-scale));
+  --ui-hud-size: calc(42px * var(--ui-scale));
+  --ui-hud-gap:  calc(10px * var(--ui-scale));
+  --ui-pad-y:    calc(14px * var(--ui-scale));
+  --ui-pad-x:    calc(16px * var(--ui-scale));
+  --ui-font:     calc(14px * var(--ui-scale));
+}
+
+/* ---- 主游戏界面：HUD / 货币 / 左按钮列 / 摇杆 ---- */
+#game-screen .hud{top:var(--ui-pad-y);left:var(--ui-pad-x);gap:var(--ui-hud-gap);}
+#game-screen .hud .avatar{width:var(--ui-hud-size);height:var(--ui-hud-size);font-size:calc(18px * var(--ui-scale));}
+#game-screen .hud .nick{font-size:calc(15px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+#game-screen .hud .badge{font-size:calc(12px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+#game-screen .hud-more{font-size:calc(20px * var(--ui-scale));}
+
+#game-screen .top-right-ui{top:var(--ui-pad-y);right:var(--ui-pad-x);gap:var(--ui-hud-gap);}
+#game-screen .coin-hud{padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
+#game-screen .coin-hud .coin-ico{font-size:calc(20px * var(--ui-scale));}
+#game-screen .coin-hud.multi{gap:calc(14px * var(--ui-scale));padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));}
+#game-screen .coin-hud.multi .cur-item{font-size:calc(15px * var(--ui-scale));}
+#game-screen .coin-hud.multi .cur-item .ci{font-size:calc(18px * var(--ui-scale));}
+
+#game-screen .left-ui{left:var(--ui-pad-x);gap:var(--ui-btn-gap);}
+#game-screen .ui-btn{width:var(--ui-btn-size);height:var(--ui-btn-size);border-radius:calc(18px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+#game-screen .ui-btn .ico{font-size:calc(22px * var(--ui-scale));}
+
+#game-screen .joystick{left:calc(28px * var(--ui-scale));bottom:calc(28px * var(--ui-scale));width:var(--ui-joy-size);height:var(--ui-joy-size);}
+#game-screen .joy-knob{width:calc(56px * var(--ui-scale));height:calc(56px * var(--ui-scale));margin:calc(-28px * var(--ui-scale)) 0 0 calc(-28px * var(--ui-scale));}
+#game-screen .joy-ring{inset:calc(14px * var(--ui-scale));}
+#game-screen .joy-hint{left:calc(28px * var(--ui-scale));bottom:calc(168px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+
+#game-screen .building-pop .bname{font-size:calc(15px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale));}
+#game-screen .building-pop .enter{font-size:calc(14px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));}
+
+/* ---- 登录 / 昵称页 split ---- */
+.split .brand .logo{width:calc(88px * var(--ui-scale));height:calc(88px * var(--ui-scale));font-size:calc(44px * var(--ui-scale));border-radius:calc(26px * var(--ui-scale));}
+.split .brand h1{font-size:calc(25px * var(--ui-scale));}
+.split .brand p{font-size:calc(13px * var(--ui-scale));}
+.split .brand .wx{width:calc(30px * var(--ui-scale));height:calc(30px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
+.split .form h2{font-size:calc(22px * var(--ui-scale));}
+.split .form .sub{font-size:calc(13px * var(--ui-scale));}
+.split .form{padding:calc(36px * var(--ui-scale)) calc(42px * var(--ui-scale));}
+.nick-avatar{width:calc(76px * var(--ui-scale));height:calc(76px * var(--ui-scale));font-size:calc(34px * var(--ui-scale));}
+
+/* ---- 衣橱 wardrobe-layout ---- */
+.wardrobe-layout{border-radius:calc(24px * var(--ui-scale));}
+.wb-side{width:calc(156px * var(--ui-scale));padding:calc(16px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+.cat-btn{padding:calc(11px * var(--ui-scale)) calc(13px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));}
+.cat-btn .c-ico{font-size:calc(17px * var(--ui-scale));}
+.cat-btn .c-count{font-size:calc(11px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(7px * var(--ui-scale));}
+.item-grid{gap:calc(12px * var(--ui-scale));}
+.item{padding:calc(12px * var(--ui-scale)) calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));gap:calc(7px * var(--ui-scale));}
+.item .swatch{width:calc(52px * var(--ui-scale));height:calc(52px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));}
+.item .iname{font-size:calc(12px * var(--ui-scale));}
+.item .equip-check{width:calc(22px * var(--ui-scale));height:calc(22px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+.wb-head h2{font-size:calc(22px * var(--ui-scale));}
+.wb-title-sub{font-size:calc(12px * var(--ui-scale));}
+.wb-back{padding:calc(10px * var(--ui-scale)) calc(22px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.wb-panel{padding:calc(22px * var(--ui-scale)) calc(24px * var(--ui-scale));}
+
+/* ---- 塔罗 ---- */
+.tarot-wrap{border-radius:calc(24px * var(--ui-scale));}
+.tarot-head h2{font-size:calc(22px * var(--ui-scale));}
+.tarot-head .t-back{padding:calc(9px * var(--ui-scale)) calc(20px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.tarot-head{padding:calc(16px * var(--ui-scale)) calc(24px * var(--ui-scale));}
+.tarot-stage{padding:calc(26px * var(--ui-scale)) calc(30px * var(--ui-scale));}
+.t-stage-title{font-size:calc(18px * var(--ui-scale));}
+.t-stage-sub{font-size:calc(13px * var(--ui-scale));}
+.t-btn{padding:calc(13px * var(--ui-scale)) calc(34px * var(--ui-scale));font-size:calc(16px * var(--ui-scale));}
+.tcard{width:calc(96px * var(--ui-scale));height:calc(160px * var(--ui-scale));}
+.tcard .back{font-size:calc(32px * var(--ui-scale));}
+.tcard .face .f-ico{font-size:calc(30px * var(--ui-scale));}
+.tcard .face .f-name{font-size:calc(13px * var(--ui-scale));}
+.tcard .face .f-pos{font-size:calc(10px * var(--ui-scale));}
+.spread-card{width:calc(220px * var(--ui-scale));padding:calc(24px * var(--ui-scale)) calc(16px * var(--ui-scale));border-radius:calc(18px * var(--ui-scale));}
+.spread-card .s-ico{font-size:calc(34px * var(--ui-scale));}
+.spread-card .s-name{font-size:calc(18px * var(--ui-scale));}
+.spread-card .s-desc{font-size:calc(12px * var(--ui-scale));}
+.spread-card .s-count{font-size:calc(12px * var(--ui-scale));}
+.q-chip{padding:calc(10px * var(--ui-scale)) calc(18px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.q-input input{padding:calc(12px * var(--ui-scale)) calc(16px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
+.reveal-slot{width:calc(112px * var(--ui-scale));}
+.reveal-slot .r-pos{font-size:calc(12px * var(--ui-scale));}
+.reveal-slot .r-pos-desc{font-size:calc(11px * var(--ui-scale));}
+.reading{padding:calc(18px * var(--ui-scale)) calc(22px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+
+/* ---- 地图 ---- */
+.map-topbar{top:var(--ui-pad-y);left:var(--ui-pad-x);right:var(--ui-pad-x);gap:calc(12px * var(--ui-scale));}
+.map-nav-btn{padding:calc(10px * var(--ui-scale)) calc(20px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.map-crumb{font-size:calc(15px * var(--ui-scale));padding:calc(10px * var(--ui-scale)) calc(18px * var(--ui-scale));}
+.map-tipbar{bottom:calc(16px * var(--ui-scale));font-size:calc(12.5px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));}
+.map-pop .mp-name{font-size:calc(15px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale));}
+.map-pop .mp-tip{font-size:calc(12px * var(--ui-scale));padding:calc(4px * var(--ui-scale)) calc(12px * var(--ui-scale));}
+.map-pop .mp-enter{font-size:calc(14px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(20px * var(--ui-scale));}
+.map-modal{border-radius:calc(22px * var(--ui-scale));padding:calc(22px * var(--ui-scale));}
+.map-modal h3{font-size:calc(19px * var(--ui-scale));}
+.map-modal .sub{font-size:calc(12px * var(--ui-scale));}
+.wm-card{padding:calc(12px * var(--ui-scale)) calc(8px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));}
+.wm-card .wm-em{font-size:calc(22px * var(--ui-scale));}
+.wm-card .wm-nm{font-size:calc(14px * var(--ui-scale));}
+.wm-card .wm-path{font-size:calc(11px * var(--ui-scale));}
+.map-btn{padding:calc(9px * var(--ui-scale)) calc(20px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+
+/* ---- 引擎中枢 hub ---- */
+.hub-wrap{gap:calc(22px * var(--ui-scale));}
+.hub-head h2{font-size:calc(26px * var(--ui-scale));}
+.hub-head .sub{font-size:calc(13px * var(--ui-scale));}
+.hub-back{padding:calc(11px * var(--ui-scale)) calc(22px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.hub-card{padding:calc(26px * var(--ui-scale)) calc(22px * var(--ui-scale));border-radius:calc(22px * var(--ui-scale));gap:calc(9px * var(--ui-scale));}
+.hub-card .ico{font-size:calc(38px * var(--ui-scale));}
+.hub-card .nm{font-size:calc(17px * var(--ui-scale));}
+.hub-card .ds{font-size:calc(12px * var(--ui-scale));}
+
+/* ---- 商店 / 试穿 ---- */
+.shop-panel{border-radius:calc(26px * var(--ui-scale));}
+.shop-top h3{font-size:calc(20px * var(--ui-scale));}
+.shop-top{padding:calc(18px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(12px * var(--ui-scale));}
+.shop-close{width:calc(38px * var(--ui-scale));height:calc(38px * var(--ui-scale));font-size:calc(17px * var(--ui-scale));}
+.shop-tabs{padding:calc(12px * var(--ui-scale)) calc(22px * var(--ui-scale)) 0;gap:calc(8px * var(--ui-scale));}
+.shop-tab{padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
+.shop-grid{padding:calc(16px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(22px * var(--ui-scale));gap:calc(14px * var(--ui-scale));}
+.shop-card{border-radius:calc(18px * var(--ui-scale));}
+.shop-thumb{height:calc(158px * var(--ui-scale));}
+.shop-nm{font-size:calc(13px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale)) calc(2px * var(--ui-scale));}
+.price-badge{font-size:calc(11px * var(--ui-scale));padding:calc(3px * var(--ui-scale)) calc(9px * var(--ui-scale));}
+.shop-price{padding:calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));gap:calc(6px * var(--ui-scale));}
+.try-panel{border-radius:calc(26px * var(--ui-scale));padding:calc(24px * var(--ui-scale)) calc(26px * var(--ui-scale));}
+.try-stage{height:calc(300px * var(--ui-scale));}
+.try-info .tn{font-size:calc(18px * var(--ui-scale));}
+.try-info .td{font-size:calc(12px * var(--ui-scale));}
+.pay-btn{padding:calc(11px * var(--ui-scale)) calc(20px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+
+/* ---- 通用：admin / toast / 抽屉 / form / button ---- */
+.admin-corner{font-size:calc(12px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(15px * var(--ui-scale));right:calc(20px * var(--ui-scale));bottom:calc(16px * var(--ui-scale));}
+.admin-modal{border-radius:calc(22px * var(--ui-scale));padding:calc(26px * var(--ui-scale));}
+.admin-modal h3{font-size:calc(19px * var(--ui-scale));}
+.admin-modal .sub{font-size:calc(12px * var(--ui-scale));}
+.admin-modal .field input{padding:calc(11px * var(--ui-scale)) calc(13px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.admin-btns button{padding:calc(12px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.drawer{width:min(420px, 86vw);}
+.drawer-head{padding:calc(18px * var(--ui-scale)) calc(20px * var(--ui-scale));}
+.drawer-head h3{font-size:calc(18px * var(--ui-scale));}
+.drawer-close{width:calc(34px * var(--ui-scale));height:calc(34px * var(--ui-scale));font-size:calc(16px * var(--ui-scale));}
+.drawer-body{padding:calc(16px * var(--ui-scale)) calc(20px * var(--ui-scale));}
+.friend-row{padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));gap:calc(12px * var(--ui-scale));}
+.friend-row .f-ava{width:calc(42px * var(--ui-scale));height:calc(42px * var(--ui-scale));font-size:calc(17px * var(--ui-scale));}
+.friend-row .f-name{font-size:calc(14px * var(--ui-scale));}
+.friend-row .f-meta{font-size:calc(12px * var(--ui-scale));}
+.add-friend input{padding:calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.add-friend button{padding:0 calc(18px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.profile-card{border-radius:calc(24px * var(--ui-scale));padding:calc(26px * var(--ui-scale)) calc(28px * var(--ui-scale));}
+.profile-avatar-wrap{width:calc(120px * var(--ui-scale));height:calc(150px * var(--ui-scale));border-radius:calc(18px * var(--ui-scale));}
+.profile-name{font-size:calc(22px * var(--ui-scale));}
+.profile-badge{font-size:calc(13px * var(--ui-scale));padding:calc(4px * var(--ui-scale)) calc(12px * var(--ui-scale));}
+.profile-stat{padding:calc(12px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));}
+.stat-label{font-size:calc(12px * var(--ui-scale));}
+.stat-val{font-size:calc(18px * var(--ui-scale));}
+.profile-hide{font-size:calc(14px * var(--ui-scale));padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));}
+.profile-earn{padding:calc(13px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
+.set-section{margin-bottom:calc(22px * var(--ui-scale));}
+.set-label{font-size:calc(13px * var(--ui-scale));margin-bottom:calc(12px * var(--ui-scale));}
+.theme-card{padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));gap:calc(10px * var(--ui-scale));}
+.theme-card .t-dot{width:calc(34px * var(--ui-scale));height:calc(34px * var(--ui-scale));}
+.theme-card .t-name{font-size:calc(14px * var(--ui-scale));}
+.theme-card .t-check{font-size:calc(15px * var(--ui-scale));}
+.panel{padding:calc(32px * var(--ui-scale)) calc(34px * var(--ui-scale));border-radius:calc(22px * var(--ui-scale));}
+.panel h2{font-size:calc(22px * var(--ui-scale));}
+.panel .sub{font-size:calc(13px * var(--ui-scale));margin-bottom:calc(24px * var(--ui-scale));}
+.field{margin-bottom:calc(14px * var(--ui-scale));}
+.field label{font-size:calc(13px * var(--ui-scale));margin-bottom:calc(6px * var(--ui-scale));}
+.field input{padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));}
+.btn-primary{padding:calc(13px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));font-size:calc(16px * var(--ui-scale));}
+.tab-switch{border-radius:calc(12px * var(--ui-scale));padding:calc(4px * var(--ui-scale));margin-bottom:calc(20px * var(--ui-scale));}
+.tab-switch button{padding:calc(9px * var(--ui-scale));border-radius:calc(9px * var(--ui-scale));font-size:calc(14px * var(--ui-scale));}
+.msg{font-size:calc(13px * var(--ui-scale));}
+#toast{font-size:calc(14px * var(--ui-scale));padding:calc(11px * var(--ui-scale)) calc(22px * var(--ui-scale));top:calc(18px * var(--ui-scale));}
+.element-grid{gap:calc(10px * var(--ui-scale));margin-bottom:calc(8px * var(--ui-scale));}
+.element-card{padding:calc(16px * var(--ui-scale)) calc(6px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));}
+.element-card .glyph{width:calc(46px * var(--ui-scale));height:calc(46px * var(--ui-scale));font-size:calc(24px * var(--ui-scale));margin-bottom:calc(10px * var(--ui-scale));}
+.element-card .name{font-size:calc(18px * var(--ui-scale));}
+.element-card .trait{font-size:calc(11px * var(--ui-scale));margin-top:calc(4px * var(--ui-scale));}
+.element-tip{font-size:calc(13px * var(--ui-scale));margin-top:calc(14px * var(--ui-scale));}
+.bg-toggle{right:calc(14px * var(--ui-scale));bottom:calc(14px * var(--ui-scale));padding:calc(9px * var(--ui-scale)) calc(16px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
+.bg-panel{right:calc(14px * var(--ui-scale));bottom:calc(60px * var(--ui-scale));width:calc(242px * var(--ui-scale));padding:calc(16px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));}
+.bg-panel .bp-title{font-size:calc(13px * var(--ui-scale));margin-bottom:calc(10px * var(--ui-scale));}
+.bg-panel .bp-label{font-size:calc(11px * var(--ui-scale));margin:calc(10px * var(--ui-scale)) 0 calc(6px * var(--ui-scale));}
+.bg-swatches{gap:calc(7px * var(--ui-scale));}
+.bg-swatch{width:calc(32px * var(--ui-scale));height:calc(32px * var(--ui-scale));border-radius:calc(10px * var(--ui-scale));}
+.bg-upload{padding:calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+.bg-custom-wrap{gap:calc(8px * var(--ui-scale));margin-top:calc(8px * var(--ui-scale));}
+
+/* ============================================================
+   断点 1：手机横屏高度 < 480px（极紧凑）
+   —— 左侧按钮改横排放底部，摇杆移右下
+   ============================================================ */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root { --ui-scale: 0.6; }
+
+  #game-screen .left-ui{
+    top: auto;
+    left: calc(16px * var(--ui-scale));
+    bottom: calc(16px * var(--ui-scale));
+    transform: none;
+    flex-direction: row;
+    gap: calc(8px * var(--ui-scale));
+  }
+  #game-screen .joystick{
+    left: auto;
+    right: calc(28px * var(--ui-scale));
+    bottom: calc(28px * var(--ui-scale));
+  }
+  #game-screen .joy-hint{
+    left: calc(28px * var(--ui-scale));
+    bottom: calc(120px * var(--ui-scale));
+  }
+
+  /* 衣橱改成上下布局（预览区 + 底部面板） */
+  .wardrobe-layout{
+    flex-direction: column;
+    height: min(560px, 96vh);
+  }
+  .wb-preview{
+    flex: 1 1 auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--accent-rgb),.12);
+  }
+  .wb-side{
+    width: 100%;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--accent-rgb),.12);
+    padding: calc(8px * var(--ui-scale)) calc(16px * var(--ui-scale));
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 0 0 auto;
+  }
+  .cat-col{
+    flex-direction: row;
+    gap: calc(6px * var(--ui-scale));
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .cat-btn{white-space: nowrap;flex-shrink: 0;}
+  .wb-panel{flex: 0 0 38%;max-height: 38%;}
+
+  /* 塔罗 */
+  .tarot-wrap{
+    flex-direction: row;
+    height: min(540px, 96vh);
+  }
+  .tarot-stage{flex: 1;}
+}
+
+/* ============================================================
+   断点 2：480-600px 中等高度（小 iPad 横屏）
+   ============================================================ */
+@media (min-height: 481px) and (max-height: 600px) and (orientation: landscape) {
+  :root { --ui-scale: 0.75; }
+}
+
+/* ============================================================
+   断点 3：600-800px 中高（iPad 横屏）
+   ============================================================ */
+@media (min-height: 601px) and (max-height: 800px) and (orientation: landscape) {
+  :root { --ui-scale: 0.88; }
+}
+
+/* ============================================================
+   竖屏窄屏（手机竖屏意外进入）：退化为居中卡片
+   ============================================================ */
+@media (max-width: 560px), (orientation: portrait) and (max-width: 700px){
+  .split{flex-direction: column;width:min(440px, 92vw);}
+  .split .brand{width: 100%;min-width: 0;padding:calc(22px * var(--ui-scale)) calc(20px * var(--ui-scale));gap:calc(10px * var(--ui-scale));}
+  .split .brand .logo{width:calc(64px * var(--ui-scale));height:calc(64px * var(--ui-scale));font-size:calc(32px * var(--ui-scale));border-radius:calc(20px * var(--ui-scale));}
+  .split .brand h1{font-size:calc(20px * var(--ui-scale));}
+  .split .form{padding:calc(26px * var(--ui-scale)) calc(24px * var(--ui-scale));}
+  .wardrobe-layout{flex-direction: column;height: min(720px, 96vh);}
+  .wb-side{width: 100%;border-right: none;border-bottom: 1px solid rgba(var(--accent-rgb),.12);}
+  .cat-col{flex-direction: row;overflow-x: auto;overflow-y: hidden;}
+  .cat-btn{white-space: nowrap;flex-shrink: 0;}
+  .tarot-wrap{height: min(640px, 96vh);}
+}
+
 </style>
 </head>
 <body data-page-node-id="KQs3LMuqGFTswhhrhfm9Cx">
@@ -3306,6 +3596,7 @@ if(window.__storageFallback){
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
 <script src="./orientation-lock.js" defer></script>
+<script src="./responsive.js" defer></script>
 <script src="./pwa-install.js" defer></script>
 </body>
 </html>

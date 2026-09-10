@@ -1,0 +1,30 @@
+/* ============================================================
+   拾光·澈屿 · 全机型 UI 自适应 · 共享 CSS
+   —— 根据 --ui-scale 变量按屏幕尺寸自动缩放
+   —— JS 端 src/responsive.js 计算 vmin → 写入 :root 变量
+   ============================================================ */
+:root{
+  --ui-scale: 1;
+  --ui-btn-size: calc(64px * var(--ui-scale));
+  --ui-btn-gap:  calc(12px * var(--ui-scale));
+  --ui-joy-size: calc(128px * var(--ui-scale));
+  --ui-hud-size: calc(42px * var(--ui-scale));
+  --ui-pad-y:    calc(14px * var(--ui-scale));
+  --ui-pad-x:    calc(16px * var(--ui-scale));
+}
+
+/* 通用控件缩放 */
+html, body { font-size: calc(14px * var(--ui-scale)); }
+button { font-size: calc(14px * var(--ui-scale)); padding: calc(8px * var(--ui-scale)) calc(16px * var(--ui-scale)); border-radius: calc(10px * var(--ui-scale)); }
+input, select, textarea { font-size: calc(14px * var(--ui-scale)); padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale)); }
+
+/* 通用断点 */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root { --ui-scale: 0.6; }
+}
+@media (min-height: 481px) and (max-height: 600px) and (orientation: landscape) {
+  :root { --ui-scale: 0.75; }
+}
+@media (min-height: 601px) and (max-height: 800px) and (orientation: landscape) {
+  :root { --ui-scale: 0.88; }
+}
