@@ -21,6 +21,10 @@
     --ink:#f0ebff; --sub:#b8aed6;
     --accent:#8b5cf6; --accent2:#6366f1;
     --gold:#f5c542; --danger:#e57373; --mint:#37c8b0;
+    /* 安全区（由 SafeArea.SPEC 实算，19 种机型 UI 侵入并集 + 2% 余量） */
+    --sa-x0:4%;  --sa-y0:10%;
+    --sa-w:92%;  --sa-h:75%;
+    --sa-bh:15%; --sa-jx:26%; --sa-jh:32%;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
@@ -121,13 +125,30 @@
   .ph-grid img{width:100%;height:44px;object-fit:contain;display:block;}
   .ph-grid span{display:block;font-size:10px;color:var(--sub);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-  /* 安全区（16:9 画布 · 中央 3/4 可编辑） */
+  /* 安全区：按市面 19 种机型实算的 UI 侵入并集（见 SafeArea.SPEC） */
   .safe-layer{position:absolute;inset:0;pointer-events:none;z-index:1;}
-  .safe-edit{position:absolute;left:12.5%;top:12.5%;width:75%;height:75%;border:2px dashed rgba(55,200,176,.85);border-radius:6px;box-shadow:0 0 0 9999px rgba(20,14,34,.34);}
-  .safe-edit::after{content:'可编辑区 · 中央 3/4';position:absolute;left:8px;top:-9px;background:rgba(55,200,176,.95);color:#04322c;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;}
-  .safe-ui{position:absolute;inset:0;border:2px solid rgba(240,165,0,.55);border-radius:4px;}
-  .safe-ui::after{content:'外圈 UI 安全保护区 · 别把东西放这儿';position:absolute;right:6px;bottom:6px;background:rgba(240,165,0,.9);color:#3a2c05;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+  .safe-edit{position:absolute;left:var(--sa-x0);top:var(--sa-y0);width:var(--sa-w);height:var(--sa-h);border:2px dashed rgba(55,200,176,.9);border-radius:6px;}
+  .safe-edit::after{content:'✅ 可编辑区 ' attr(data-pct);position:absolute;left:8px;top:-10px;background:rgba(55,200,176,.98);color:#04322c;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
+  /* 禁区：红色斜纹 + 角标，明确告诉你被什么 UI 挡住 */
+  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.20) 0 8px,rgba(226,75,74,.07) 8px 16px);border:1px solid rgba(226,75,74,.5);box-sizing:border-box;}
+  .safe-zone>i{position:absolute;left:6px;top:5px;font-size:11px;font-weight:900;font-style:normal;color:#ffd9d8;background:rgba(120,28,28,.88);padding:2px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
+  .safe-zone.bottom>i{left:6px;top:auto;bottom:5px;}
+  .safe-zone.joy>i{left:6px;top:5px;}
+  .sz-top{left:0;right:0;top:0;height:var(--sa-y0);}
+  .sz-bot{left:0;right:0;bottom:0;height:var(--sa-bh);}
+  .sz-joy{left:0;bottom:0;width:var(--sa-jx);height:var(--sa-jh);border-right:1px dashed rgba(226,75,74,.75);border-top:1px dashed rgba(226,75,74,.75);}
   .safe-off .safe-layer{display:none;}
+  .safe-note{position:absolute;right:8px;top:calc(var(--sa-y0) + 8px);background:rgba(20,14,34,.82);color:#ffd9a8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  /* 安全区说明弹窗 */
+  .sa-mask{position:fixed;inset:0;z-index:420;background:rgba(12,8,24,.62);display:flex;align-items:center;justify-content:center;padding:18px;}
+  .sa-panel{width:min(620px,96vw);max-height:86vh;overflow:auto;background:var(--panel,#221a35);border:1px solid var(--line,#3a2f52);border-radius:14px;padding:16px 18px;box-shadow:0 18px 60px rgba(0,0,0,.5);}
+  .sa-panel h3{margin:0 0 6px;font-size:16px;font-weight:900;}
+  .sa-panel p{margin:6px 0;font-size:12.5px;line-height:1.7;color:var(--sub,#b9aecd);}
+  .sa-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px;}
+  .sa-table th,.sa-table td{border:1px solid var(--line,#3a2f52);padding:4px 6px;text-align:left;white-space:nowrap;}
+  .sa-table th{background:rgba(255,255,255,.05);font-weight:900;}
+  .sa-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .sa-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
   .ed-clamp{outline:2px solid var(--danger) !important;}
 
   /* 右：属性 */
@@ -224,8 +245,9 @@
       <span class="pill-tip hidden" id="me-leaf-tip"></span>
       <button class="pill" id="me-set-root" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">⭐ 设为主地图</button>
       <button class="pill danger" id="me-del-map" data-page-node-id="qMJ1TSPloIVgyobacdE8tF">🗑 删除</button>
-      <button class="pill on" id="me-safe-toggle" title="16:9 画布里，只有中央 3/4 能放东西；外圈留给 UI" data-page-node-id="Ehzi3jr32qgXjk43HqBVuY">🛡 安全区</button>
-      <button class="pill" id="me-safe-fit" title="把这张地图里跑到外面的东西，一键收回中央 3/4" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
+      <button class="pill on" id="me-safe-toggle" title="显示红色禁区：顶栏 / 底部提示条 / 左下摇杆会盖住的地方" data-page-node-id="Ehzi3jr32qgXjk43HqBVuY">🛡 安全区</button>
+      <button class="pill" id="me-safe-fit" title="把这张地图里跑到红区的东西，一键收回可编辑区" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
+      <button class="pill" id="me-safe-why" title="这红区是怎么算出来的？19 种机型实测数据" data-page-node-id="saWhyBtn01">📐 依据</button>
     </div>
     <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG"></div>
     <div class="stage-hint" id="stage-hint" data-page-node-id="Tkn2HszHOqsoJQwO1Cmp2B">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
@@ -636,27 +658,75 @@ function setBox(el, o){
 function setPoint(el, o){ el.style.left=(o.x*100)+'%'; el.style.top=(o.y*100)+'%'; }
 
 /* ================= 安全区 =================
-   画布固定 16:9。只有「中央 3/4」能放东西（可编辑区），
-   外圈是 UI 安全保护区——不管设备是方平板、电脑还是长条手机，
-   按中心等比缩放后 UI 都还在屏幕里。                        */
+   不是拍脑袋的「中央 3/4」，是把 19 种市面机型逐个实算出来的：
+     画布 = 16:9 contain 居中；UI（顶栏 / 底部提示条 / 左下摇杆）叠在屏幕上。
+     机型越接近 16:9，黑边越小，UI 就越往画布里挤；平板（4:3）反而因为
+     上下黑边大，顶栏和摇杆都落在黑边里，不侵画布。
+   取所有机型的「最坏并集」再 +2% 余量：
+     顶栏最深 8.2% → 取 10%   底部提示条最高 86.3% → 取 85%
+     左下摇杆最大 x 23.5% / y 70.2% → 取 26% / 68%
+   所以安全区是一块 92%×75% 的大矩形，再挖掉左下角摇杆那一小块（L 形）。 */
 const SafeArea = {
-  EDIT:{ x:0.125, y:0.125, w:0.75, h:0.75 },   // 中央 3/4
+  SPEC:{ x0:0.04, y0:0.10, x1:0.96, y1:0.85, joyX:0.26, joyY:0.68 },
   on:true,
-  box(){ const e=this.EDIT; return { x0:e.x, y0:e.y, x1:e.x+e.w, y1:e.y+e.h }; },
+  box(){ const s=this.SPEC; return { x0:s.x0, y0:s.y0, x1:s.x1, y1:s.y1 }; },
+  inJoy(x,y){ const s=this.SPEC; return x < s.joyX && y > s.joyY; },
+  /* 说明弹窗用的实测表：[机型, 屏幕, 画布与黑边, 顶栏侵入, 底条起点, 摇杆顶, 摇杆右] */
+  DEVICES:[
+    ['iPhone SE / 8','667×375','画布铺满 无黑边','8.2%','86.8%','70.2%','19.2%'],
+    ['iPhone 11 / XR','896×414','左右黑边 80','8.2%','88.0%','70.2%','9.7%'],
+    ['iPhone 12/13/14','844×390','左右黑边 75','8.2%','87.3%','70.2%','9.2%'],
+    ['iPhone 15 Pro Max','932×430','左右黑边 84','8.2%','88.5%','70.2%','10.0%'],
+    ['Android 小 20:9','800×360','左右黑边 80','8.2%','86.3%','70.2%','7.1%'],
+    ['Android 中 20:9','852×393','左右黑边 77','8.2%','87.4%','70.2%','9.1%'],
+    ['Android 大 20:9','915×412','左右黑边 91','8.2%','88.0%','70.2%','8.3%'],
+    ['三星 S24U','780×360','左右黑边 70','8.2%','86.3%','70.2%','8.5%'],
+    ['老安卓 16:9','640×360','画布铺满 无黑边','8.2%','86.3%','70.2%','19.2%'],
+    ['iPad mini','1133×744','上下黑边 53','0%','不侵入','76.7%','22.3%'],
+    ['iPad 10.2','1024×768','上下黑边 96','0%','不侵入','81.4%','23.5%'],
+    ['iPad Air','1180×820','上下黑边 78','0%','不侵入','80.7%','21.8%'],
+    ['iPad Pro 11','1194×834','上下黑边 81','0%','不侵入','81.3%','21.7%'],
+    ['iPad Pro 12.9','1366×1024','上下黑边 128','0%','不侵入','88.2%','20.4%'],
+    ['安卓平板 16:10','1280×800','上下黑边 40','1.5%','98.7%','77.1%','21.0%'],
+    ['PC 1280 小窗','1280×720','画布铺满 无黑边','7.1%','93.1%','72.2%','21.0%'],
+    ['PC 1366','1366×768','画布铺满 无黑边','6.6%','93.6%','73.6%','20.4%'],
+    ['PC 1920','1920×1080','画布铺满 无黑边','4.7%','95.4%','79.5%','17.7%'],
+    ['PC 2560','2560×1440','画布铺满 无黑边','3.5%','96.6%','83.1%','16.0%']
+  ],
   layer(){
     const wrap = document.createElement('div'); wrap.className='safe-layer';
     if(!this.on) return wrap;
-    const ui = document.createElement('div'); ui.className='safe-ui';  wrap.appendChild(ui);
-    const ed = document.createElement('div'); ed.className='safe-edit'; wrap.appendChild(ed);
+    const s=this.SPEC;
+    const mk=(cls,txt)=>{ const d=document.createElement('div'); d.className='safe-zone '+cls; d.innerHTML='<i>'+txt+'</i>'; return d; };
+    wrap.appendChild(mk('sz-top','🚫 顶部禁区 · 顶栏（返回 / 世界地图）'));
+    wrap.appendChild(mk('sz-bot bottom','🚫 底部禁区 · 提示条'));
+    wrap.appendChild(mk('sz-joy joy','🚫 摇杆区'));
+    const ed=document.createElement('div'); ed.className='safe-edit';
+    ed.setAttribute('data-pct','x 4%~96% · y 10%~85%');
+    wrap.appendChild(ed);
+    const note=document.createElement('div'); note.className='safe-note';
+    note.textContent='红区会被 UI 挡住 · NPC / 传送门 / 玩法入口别放这儿';
+    wrap.appendChild(note);
     return wrap;
   },
   clamp(o, isPoint){
     if(!this.on || !o) return o;
     const b=this.box();
-    if(isPoint){ o.x=clamp(b.x0,b.x1,o.x); o.y=clamp(b.y0,b.y1,o.y); return o; }
+    if(isPoint){
+      o.x=clamp(b.x0,b.x1,o.x); o.y=clamp(b.y0,b.y1,o.y);
+      if(this.inJoy(o.x,o.y)){
+        const up=this.SPEC.joyY-o.y, right=this.SPEC.joyX-o.x;   // 往上 vs 往右，走最近的
+        if(up<=right) o.y=this.SPEC.joyY; else o.x=this.SPEC.joyX;
+      }
+      return o;
+    }
     const hw=Math.min(o.w||0, b.x1-b.x0)/2, hh=Math.min(tileH(o), b.y1-b.y0)/2;
     o.x=clamp(b.x0+hw, b.x1-hw, o.x);
     o.y=clamp(b.y0+hh, b.y1-hh, o.y);
+    if(this.inJoy(o.x,o.y)){
+      const up=this.SPEC.joyY-o.y, right=this.SPEC.joyX-o.x;
+      if(up<=right) o.y=Math.max(b.y0+hh, this.SPEC.joyY); else o.x=Math.max(b.x0+hw, this.SPEC.joyX);
+    }
     return o;
   },
   clampSize(o){
@@ -676,8 +746,32 @@ const SafeArea = {
     });
     (map.spawns||[]).forEach(s=>{ const bx=s.x, by=s.y; this.clamp(s,true); if(s.x!==bx||s.y!==by) n++; });
     return n;
-  }
+  },
+  toggle(){ this.on = !this.on; return this.on; }
 };
+
+/* 安全区「依据」弹窗：把 19 种机型的实测数据摆出来，说明红区不是拍脑袋定的 */
+function openSafeNote(){
+  const old=$('sa-mask'); if(old) old.remove();
+  const s=SafeArea.SPEC;
+  const mask=document.createElement('div'); mask.className='sa-mask'; mask.id='sa-mask';
+  const rows=SafeArea.DEVICES.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td>'+r[2]+'</td><td class="num">'+r[3]+'</td><td class="num">'+r[4]+'</td><td class="num">'+r[5]+'</td><td class="num">'+r[6]+'</td></tr>').join('');
+  mask.innerHTML='<div class="sa-panel">'
+    + '<h3>📐 安全区是怎么算出来的</h3>'
+    + '<p>画布是 <b>固定 16:9 等比缩放居中</b>，UI（顶栏 / 底部提示条 / 左下摇杆）叠在屏幕上。'
+    + '机型越接近 16:9，黑边越小，UI 就越往画布里挤；平板因为上下黑边大，顶栏反而落在黑边里不侵画布。</p>'
+    + '<p>把下面 19 种机型逐个实算，取<b>最坏并集</b>再加 2% 余量 → '
+    + '顶部 <b>10%</b>、底部 <b>85%</b>、左下摇杆区 <b>26% × 32%</b>。</p>'
+    + '<table class="sa-table"><thead><tr><th>机型</th><th>屏幕</th><th>画布 / 黑边</th><th>顶栏</th><th>底条起</th><th>摇杆起</th><th>摇杆右</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    + '<p style="margin-top:10px">所以可编辑区是这块 <b>L 形</b>：'
+    + 'x 4%~96%、y 10%~85%，再挖掉左下角摇杆那一小块（x&lt;26% 且 y&gt;68%）。'
+    + '比原来拍脑袋的「中央 3/4」可用面积还大一点，但底部和左下角更准。</p>'
+    + '<div class="sa-foot"><button class="btn small" id="sa-close">知道了</button></div>'
+    + '</div>';
+  document.body.appendChild(mask);
+  mask.addEventListener('click', e=>{ if(e.target===mask) mask.remove(); });
+  $('sa-close').onclick = ()=> mask.remove();
+}
 
 function renderEditor(){
   const d = ensureMaps();
@@ -1079,8 +1173,9 @@ $('me-safe-toggle').onclick = ()=>{
   $('me-safe-toggle').classList.toggle('on', on);
   $('edit-stage').classList.toggle('safe-off', !on);
   renderEditor();
-  toast(on ? '🛡 安全区已开 · 只有中央 3/4 能放东西' : '安全区已关 · 拖动不再受限（不建议）');
+  toast(on ? '🛡 安全区已开 · 红区会被 UI 挡住' : '安全区已关 · 拖动不再受限（不建议）');
 };
+$('me-safe-why').onclick = openSafeNote;
 $('me-safe-fit').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
   if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
@@ -1088,7 +1183,7 @@ $('me-safe-fit').onclick = ()=>{
   const n = SafeArea.fitMap(map);
   if(wasOff) SafeArea.on = false;
   saveMapsData(d); renderEditor(); renderProps();
-  toast(n ? ('🧲 已把 '+n+' 个东西收回中央 3/4') : '都已经在安全区里了 ✓');
+  toast(n ? ('🧲 已把 '+n+' 个东西收回可编辑区') : '都已经在安全区里了 ✓');
 };
 $('me-set-root').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];

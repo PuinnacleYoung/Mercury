@@ -1568,7 +1568,17 @@ function loadEngineBody(){
    ⚑ 陛下的「自己调好的那个素体」：本机有 LegacyBodyV4 时，优先用它（带真实贴图）。 */
 function ensureBody(){
   if(engine.bodyReady) return false;
-  try{ if(localStorage.getItem(ENG_LS.body)) return false; }catch(e){}
+  /* 本地有记录但一张图都没有 = 空壳（旧存档丢了图 / 只存了坐标），
+     这种不能算「存过」，否则素体工坊一片空白、游戏里也画不出人。 */
+  let hasImg = false;
+  try{
+    const raw = localStorage.getItem(ENG_LS.body);
+    if(raw){
+      const st = JSON.parse(raw);
+      hasImg = !!(st && Object.keys(st).some(k => st[k] && st[k].imgSrc));
+    }
+  }catch(e){}
+  if(hasImg) return false;
   /* ① 优先：陛下旧版真实素体（legacy-body-v4.js）—— 带真实贴图 */
   if(window.LegacyBodyV4 && LegacyBodyV4.build){
     try{

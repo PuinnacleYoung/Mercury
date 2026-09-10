@@ -595,6 +595,8 @@
           <button class="btn small mint" id="shopAdd" data-page-node-id="shopAdd0000000000001">＋ 添加到本区</button>
           <span class="cnt" id="shopCount" data-page-node-id="shopCount000000001"></span>
           <button class="btn small" id="shopRefresh" data-page-node-id="shopRefresh00000001">↻ 刷新</button>
+          <button class="btn small" id="shopExport" title="把各区货架（顺序 / 定价 / 限时）导出成 JSON">📤 导出商店</button>
+          <button class="btn small violet" id="shopImport" title="导入朋友的商店 JSON，缺的时装 / 套装会自动补进本地库">📥 导入商店</button>
         </div>
         <div class="shop-cards" id="shopCards" data-page-node-id="shopCards000000001"></div>
       </div>
@@ -616,6 +618,7 @@
   <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0" data-page-node-id="d4vNxJkB284Da7F22UBsMC">
 
 <!-- 内置初始素体模板：第一次打开（本地没存过素体）就自动铺上，并立刻存档，游戏端才读得到 -->
+<script src="./legacy-body-v4.js"></script>
 <script src="./body-template.js"></script>
 <script data-page-node-id="LFI6IqmhKO9GbGvCxK590t">
 /* ================= 存储兜底（隐私模式 / file:// / 禁 Cookie 时 localStorage 会抛异常） ================= */
@@ -1069,10 +1072,12 @@ const sessionStorage = _mkStore(window.sessionStorage);
         raw=JSON.stringify(d0);
       }
       const d=JSON.parse(raw);
+      let anyImg=false;
       PART_DEFS.forEach(p=>{ const s=d[p.key]; if(!s) return; const pt=parts[p.key];
         pt.x=s.x;pt.y=s.y;pt.w=s.w;pt.h=s.h;pt.rot=s.rot;pt.flipH=s.flipH;pt.jointPct=s.jointPct;
-        if(s.imgSrc){ const img=new Image(); img.src=s.imgSrc; pt.img=img; } });
-      return true;
+        if(s.imgSrc){ const img=new Image(); img.src=s.imgSrc; pt.img=img; anyImg=true; } });
+      // 有记录却一张图都没有 = 空壳（旧存档丢了图），当「没存过」继续走兜底
+      return anyImg;
     }catch(e){ return false; }
   }
 
@@ -3130,10 +3135,20 @@ const sessionStorage = _mkStore(window.sessionStorage);
     toast(msg);
   }
 
-  $('setExport').onclick=openSetExport;
-  $('setImport').onclick=()=>{ pickJSONFile(importSetPacks); };
-  $('shopExport').onclick=openShopExport;
-  $('shopImport').onclick=()=>{ pickJSONFile(importShopPacks); };
+  // 用 on() 而不是 $('x').onclick=：万一按钮缺了，只警告不崩（之前就是这里抛异常，
+  // 把后面素体注入 / stage 渲染全给中断了，表现为「素体工坊一片空白」）
+  on('setExport', openSetExport);
+  on('setImport', ()=>{ pickJSONFile(importSetPacks); });
+  on('shopExport', openShopExport);
+  on('shopImport', ()=>{ pickJSONFile(importShopPacks); });
+
+  /* 安全绑定：元素不存在时只警告，绝不抛异常中断初始化 */
+  function on(id, fn){
+    const el = $(id);
+    if(el){ el.onclick = fn; return true; }
+    try{ console.warn('[服装引擎] 缺少按钮 #' + id + '，已跳过绑定'); }catch(e){}
+    return false;
+  }
 
   /* ================= 衣橱预览双视角 ================= */
   /* 玩家档案：优先当前登录账号的，其次 demo 兜底 */
@@ -3169,6 +3184,28 @@ const sessionStorage = _mkStore(window.sessionStorage);
       : `⚠️ <b>玩家视角</b>：本机还没找到玩家档案 <code>${esc(profileKey())}</code>。请先在游戏里登录一次（或购买任意服装），现在按“一件都没买”预览。`;
   }
 
+  /* 本地一个素体都没存过 → 优先铺「陛下旧版真实素体」（legacy-body-v4.js，
+     从 file:// 本地存档的 engine_body_v4 还原出来的那套带真实贴图的小人），
+     而不是程序生成的内置模板。陛下要的是自己调好的那个。 */
+  function applyLegacyBody(){
+    if(!window.LegacyBodyV4 || !LegacyBodyV4.build) return false;
+    try{
+      const d = LegacyBodyV4.build();
+      let ok = 0;
+      PART_DEFS.forEach(p=>{
+        const s = d[p.key]; if(!s || !s.imgSrc) return;
+        const pt = parts[p.key];
+        pt.x=s.x; pt.y=s.y; pt.w=s.w; pt.h=s.h; pt.rot=s.rot||0; pt.flipH=!!s.flipH;
+        pt.jointPct = s.jointPct ? {...s.jointPct} : null;
+        const img = new Image(); img.src = s.imgSrc; pt.img = img; ok++;
+      });
+      if(!ok) return false;
+      try{ if(!localStorage.getItem(LS.anim) && LegacyBodyV4.anim) localStorage.setItem(LS.anim, JSON.stringify(LegacyBodyV4.anim)); }catch(e){}
+      saveBody();
+      return true;
+    }catch(e){ return false; }
+  }
+
   /* 本地一个素体都没存过 → 铺上「内置初始素体模板」并立刻存档。
      之前只 generateDemo() 不存档，游戏端读不到，就一直是火柴人。 */
   function applyBuiltinTemplate(){
@@ -3190,7 +3227,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
   /* ====== 初始化 ====== */
   loadLib(); loadOutfits(); loadSets();
   try{ loadPending(); reconcilePending(); }catch(e){}   // 上次缺的时装，这次可能已经在了
-  if(!loadBody()){ if(!applyBuiltinTemplate()) generateDemo(); }
+  if(!loadBody()){ if(!applyLegacyBody()){ if(!applyBuiltinTemplate()) generateDemo(); } }
   CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
   stageMgrs.body.render(); refreshPartsGrid();
   updateTopMeta();
