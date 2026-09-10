@@ -724,6 +724,7 @@ python serve.py
 
 | 日期 | 改了什么 |
 |---|---|
+| 2026-09-11 | **改名「拾光·澈屿」+ 换水墨仙子图图标**：手写 pillow 脚本中心裁切 → icons/{icon-192,icon-512,icon-512-maskable,apple-touch-icon,Mercury}.png + src/icons 同名 5 份同步；title / h1 / manifest.name / apple-mobile-web-app-title / serve.js 控制台 / pwa-install.js / sw.js 注释全量同步；sw cache 名升 v2 让装好 PWA 的用户也立刻看到新版本。仓库 URL 路径 `Mercury` 保持不动（改 = 换网址 = 浏览器数据清零） |
 | 2026-09-11 | 手册重写为新手版：加图示、三个完整案例、五层挂接关系详解、FAQ |
 | 2026-09-11 | **地图引擎 v2**：地图 / 面板组件 / 触发区 / 入口点三类节点；双向传送自动配对；地图级「能否开世界地图 / 能否传送出去」开关；主地图；v1 存档自动迁移 |
 | 2026-09-11 | **PWA 装到桌面**：manifest + icons（4 份纯标准库手写 PNG）+ Service Worker（HTML 网络优先 / 静态秒开 + 离线）+ iOS/安卓安装引导浮层；6 个页面全部接入；改完代码改 `sw.js` 的 `CACHE` 字段版本号即可强制刷新 |
