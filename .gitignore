@@ -18,3 +18,9 @@ $RECYCLE.BIN/
 
 # 历史对话记录（含内网链接，只留本地，不入库）
 docs/
+
+# 本地敏感凭据 —— 绝不能推上 GitHub（推了会被自动扫描 + 秒撤销）
+.local/
+*.token
+*.token.txt
+.github-token

@@ -3368,6 +3368,7 @@ function renderCheckin(){
   $('checkin-streak').textContent = streak + ' 天';
   $('checkin-total').textContent = total + ' 天';
   $('checkin-month').textContent = monthCount + ' 天';
+  $('checkin-cards').textContent = (profile.checkin.missCards||0) + ' 张';
   $('checkin-ym').textContent = y + ' 年 ' + (m+1) + ' 月';
 
   const grid = $('checkin-grid');
@@ -3402,10 +3403,30 @@ function renderCheckin(){
 }
 function doCheckin(dateStr){
   if(!profile) refreshProfile();
-  if(!profile.checkin) profile.checkin = { dates:[], lastDate:null, streak:0 };
-  if(profile.checkin.dates.includes(dateStr)){
+  if(!profile.checkin) profile.checkin = { dates:[], lastDate:null, streak:0, missCards:3, _missWarned:false };
+  if(typeof profile.checkin.missCards !== 'number') profile.checkin.missCards = 3;
+  if(typeof profile.checkin._missWarned !== 'boolean') profile.checkin._missWarned = false;
+  if((profile.checkin.dates||[]).includes(dateStr)){
     toast('✨ ' + dateStr + ' 已经签过啦');
     return;
+  }
+  const today = (function(){const d=new Date();return d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate());})();
+  const isPast = dateStr < today;
+  let costMiss = 0;
+  if(isPast){
+    if((profile.checkin.missCards||0) < 1){
+      toast('❌ 补签需要补签卡 · 你有 0 张 · 完成每日签到第 7 天送 1 张 / 第 30 天送 3 张');
+      return;
+    }
+    if(!profile.checkin._missWarned){
+      profile.checkin._missWarned = true;
+      saveProfile(profile);
+      toast('⚠️ 补签会消耗补签卡 · 这次扣 1 张，后续不再提醒 · 还剩 ' + (profile.checkin.missCards - 1) + ' 张');
+      renderCheckin();
+      return;
+    }
+    costMiss = 1;
+    profile.checkin.missCards -= 1;
   }
   profile.checkin.dates.push(dateStr);
   profile.checkin.dates.sort();
@@ -3415,8 +3436,17 @@ function doCheckin(dateStr){
 
   const rewards = [];
   profile.currency.coin += 50; rewards.push('🪙+50');
-  if(streak > 0 && streak % 7 === 0){ profile.currency.diamond += 20; rewards.push('💎+20'); }
-  if(streak > 0 && streak % 30 === 0){ profile.currency.pearl += 10; rewards.push('🦪+10'); }
+  if(streak > 0 && streak % 7 === 0){
+    profile.currency.diamond += 20; rewards.push('💎+20');
+    profile.checkin.missCards = (profile.checkin.missCards||0) + 1;
+    rewards.push('🎴+1 补签卡');
+  }
+  if(streak > 0 && streak % 30 === 0){
+    profile.currency.pearl += 10; rewards.push('🦪+10');
+    profile.checkin.missCards = (profile.checkin.missCards||0) + 3;
+    rewards.push('🎴+3 补签卡');
+  }
+  if(costMiss) rewards.unshift('🎴-' + costMiss + ' 补签');
   saveProfile(profile);
   renderCoins();
   renderCheckin();

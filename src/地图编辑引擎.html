@@ -93,6 +93,7 @@
   .pill.mint{background:linear-gradient(135deg,#2fb8a2,#37c8b0);border-color:transparent;color:#04322c;box-shadow:0 4px 12px rgba(55,200,176,.28);}
   .pill.danger{background:var(--danger);border-color:transparent;color:#fff;}
   .pill.on{outline:2px solid var(--gold);outline-offset:2px;}
+  .pill-divider{display:inline-block;width:1px;height:22px;background:var(--line);margin:0 4px;vertical-align:middle;}
   .pill[disabled],.pill.is-disabled{opacity:.42;cursor:not-allowed;pointer-events:none;filter:grayscale(.4);}
   .pill-tip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;color:#3a2c05;background:linear-gradient(135deg,#ffd58a,#ffb15c);border:1px solid rgba(140,80,20,.35);box-shadow:0 3px 10px rgba(255,160,60,.18);white-space:nowrap;}
   .pill-tip.mint{color:#04322c;background:linear-gradient(135deg,#a8e8da,#7fd6c2);border-color:rgba(15,90,80,.3);box-shadow:0 3px 10px rgba(55,200,176,.18);}
@@ -133,10 +134,10 @@
   .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:2;}
   .safe-edit::after{content:'✅ 可编辑区 ' attr(data-pct);position:absolute;left:8px;top:-10px;background:rgba(55,200,176,.98);color:#04322c;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
   /* 禁区：红色斜纹 + 角标，明确告诉你被什么 UI 挡住 */
-  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.20) 0 8px,rgba(226,75,74,.07) 8px 16px);border:1px solid rgba(226,75,74,.5);box-sizing:border-box;}
-  .safe-zone>i{position:absolute;left:6px;top:5px;font-size:11px;font-weight:900;font-style:normal;color:#ffd9d8;background:rgba(120,28,28,.88);padding:2px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
-  .safe-zone.bottom>i{left:6px;top:auto;bottom:5px;}
-  .safe-zone.joy>i{left:6px;top:5px;}
+  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.45) 0 10px,rgba(226,75,74,.12) 10px 20px);border:1px solid rgba(226,75,74,.85);box-sizing:border-box;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18);}
+  .safe-zone>i{position:absolute;left:8px;top:5px;font-size:12px;font-weight:900;font-style:normal;color:#fff;background:linear-gradient(135deg,#dc2626,#991b1b);padding:3px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.4px;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .safe-zone.bottom>i{left:8px;top:auto;bottom:5px;}
+  .safe-zone.joy>i{left:8px;top:5px;}
   .sz-top{left:0;right:0;top:0;height:var(--sa-y0);}
   .sz-bot{left:0;right:0;bottom:0;height:var(--sa-bh);}
   .sz-joy{left:0;bottom:0;width:var(--sa-jx);height:var(--sa-jh);border-right:1px dashed rgba(226,75,74,.75);border-top:1px dashed rgba(226,75,74,.75);}
@@ -235,6 +236,8 @@
   <div class="spacer" data-page-node-id="IbGtUlQhjrYfTSegX0iKCK"></div>
   <button class="top-btn" id="btn-hub-back" title="返回引擎中枢" data-page-node-id="AEaICtdAfFNzdNp1i8xRtP">← 返回中枢</button>
   <button class="top-btn" id="btn-backup" title="导出 / 导入数据备份" data-page-node-id="zdQ5rcvwgruEd1m9DAttu1">💾 备份</button>
+  <button class="top-btn" id="btn-copy-all" title="一键复制整套地图数据到剪贴板，换台电脑粘回去" data-page-node-id="btn-copy-all">📋 复制全部数据</button>
+  <button class="top-btn" id="btn-paste-all" title="从剪贴板粘一套地图数据替换本地（用于跨设备同步）" data-page-node-id="btn-paste-all">📥 粘贴替换</button>
   <button class="top-btn" id="btn-import" data-page-node-id="u1o9ppCYmFbJvhlp5UoARp">📥 导入 JSON</button>
   <button class="top-btn primary" id="btn-export" data-page-node-id="9AszpIAShT8E1MuqmQXCgu">📤 导出 JSON</button>
 </header>
@@ -270,6 +273,9 @@
       <button class="pill" id="me-edit-glow" title="高亮显示可编辑安全区域（绿色蒙版）——一眼看清能放东西的地方">🟢 可编辑区</button>
       <button class="pill" id="me-safe-fit" title="把这张地图里跑到红区的东西，一键收回可编辑区" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
       <button class="pill" id="me-safe-why" title="这红区是怎么算出来的？19 种机型实测数据" data-page-node-id="saWhyBtn01">📐 依据</button>
+      <span class="pill-divider"></span>
+      <button class="pill" id="me-fix-links" title="扫描所有节点，把'父级指向不存在或指自己'的孤儿自动提到顶层，配 toast 报告" data-page-node-id="me-fix-links">🔗 校验挂靠</button>
+      <button class="pill" id="me-merge-panels" title="把左侧的'面板'节点合并成父地图里的'触发地块'（action=panel）。合并后会删除原面板节点，迁移到建筑地块" data-page-node-id="me-merge-panels">📦 面板→触发</button>
     </div>
     <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG"></div>
     <div class="stage-hint" id="stage-hint" data-page-node-id="Tkn2HszHOqsoJQwO1Cmp2B">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
@@ -832,14 +838,14 @@ const SafeArea = {
     if(!this.on) return wrap;
     const s=this.SPEC;
     const mk=(cls,txt)=>{ const d=document.createElement('div'); d.className='safe-zone '+cls; d.innerHTML='<i>'+txt+'</i>'; return d; };
-    wrap.appendChild(mk('sz-top','🚫 顶部禁区 · 顶栏（返回 / 世界地图）'));
-    wrap.appendChild(mk('sz-bot bottom','🚫 底部禁区 · 提示条'));
-    wrap.appendChild(mk('sz-joy joy','🚫 摇杆区'));
+    wrap.appendChild(mk('sz-top','🚫 顶栏禁区'));
+    wrap.appendChild(mk('sz-bot bottom','🚫 底条禁区'));
+    wrap.appendChild(mk('sz-joy joy','🚫 摇杆禁区'));
     const ed=document.createElement('div'); ed.className='safe-edit';
     ed.setAttribute('data-pct','x 4%~96% · y 10%~85%');
     wrap.appendChild(ed);
     const note=document.createElement('div'); note.className='safe-note';
-    note.textContent='红区会被 UI 挡住 · NPC / 传送门 / 玩法入口别放这儿';
+    note.textContent='🛡红区被 UI 挡住 · NPC / 传送 / 玩法入口别放这里';
     wrap.appendChild(note);
     return wrap;
   },
@@ -1409,6 +1415,18 @@ $('me-edit-glow').onclick = ()=>{
   toast(on ? '🟢 已高亮可编辑区（绿色区域是能放东西的地方）' : '已关闭可编辑区高亮');
 };
 $('me-safe-why').onclick = openSafeNote;
+$('me-fix-links').onclick = ()=>{
+  const d = ensureMaps();
+  const repaired = validateAndRepairMapLinks(d, false);
+  if(!repaired.length) toast('🔗 所有节点挂靠正常 ✓');
+  else { saveMapsData(d); buildTree(); renderEditor(); renderProps(); }
+};
+$('me-merge-panels').onclick = ()=>{
+  if(!confirm('把左侧所有"面板"节点都合并到它的父地图里作为触发器（action=panel）？\n\n合并后面板节点会被删除，事件由父地图上的触发器接管。\n\n继续吗？')) return;
+  mergePanelsIntoTriggers();
+};
+$('btn-copy-all').onclick = copyAllMapsData;
+$('btn-paste-all').onclick = pasteAllMapsData;
 $('me-safe-fit').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
   if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
@@ -1747,8 +1765,172 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   syncAllPairs(d); saveMapsData(d);
   if(!d.maps[d.root]) d.root = Object.keys(d.maps)[0];
   editState.nodeId = d.root;
+  /* 默认：🛡安全区开 + 🟢可编辑区高亮开 —— 默认画布就给你看红区和绿框 */
+  SafeArea.on = true;
+  $('edit-stage').classList.remove('safe-off');
+  $('me-safe-toggle').classList.add('on');
+  $('edit-stage').classList.add('edit-glow');
+  $('me-edit-glow').classList.add('on');
   buildTree(); renderEditor(); renderProps();
+  /* 启动时悄悄校验一次挂靠，有问题就 toast 提示 */
+  const repaired = validateAndRepairMapLinks(d, /*silent*/ true);
+  if(repaired.length){
+    saveMapsData(d); buildTree(); renderEditor(); renderProps();
+    console.group('🔗 启动时自动修复挂靠');
+    repaired.forEach(r=>console.log(r));
+    console.groupEnd();
+    toast('🔗 启动时自动修复了 '+repaired.length+' 条挂靠问题（详见 console）', 4000);
+  }
 })();
+
+/* =========================================================
+   🔗 validateAndRepairMapLinks — 扫描所有节点，把"父级指向不存在或指向自己"
+   的孤儿节点自动提到顶层，并把"祖先环"里所有断链也一并清理。
+   返回一个 array of { id, name, oldParent, action } 报告，方便 console / toast。
+   ========================================================= */
+function validateAndRepairMapLinks(d, silent){
+  const report = [];
+  Object.values(d.maps).forEach(m=>{
+    if(!m || !m.parent) return;
+    const p = d.maps[m.parent];
+    if(!p || p.id === m.id){
+      const oldParent = m.parent;
+      m.parent = null;
+      report.push({ id:m.id, name:m.name||'(无名字)', oldParent, action:'提到顶层（父级已失效）' });
+    }
+  });
+  /* 兜底：父级指向「panel」节点的也清掉（地图不能挂面板下）*/
+  Object.values(d.maps).forEach(m=>{
+    if(m && m.parent && d.maps[m.parent] && d.maps[m.parent].type==='panel'){
+      const oldParent = m.parent;
+      m.parent = null;
+      report.push({ id:m.id, name:m.name||'(无名字)', oldParent, action:'提到顶层（父级是面板，地图不能挂在面板下）' });
+    }
+  });
+  if(!silent && report.length){
+    console.group('🔗 挂靠校验报告');
+    report.forEach(r=>console.log(`  ${r.name} (${r.id})：${r.action} (旧 parent=${r.oldParent})`));
+    console.groupEnd();
+    toast('🔗 已修复 '+report.length+' 条挂靠问题（详见 console）', 4000);
+  }
+  return report;
+}
+
+/* =========================================================
+   📦 mergePanelsIntoTriggers — 把所有 type='panel' 节点合并到父地图里
+   作为 action='panel' 的触发器，迁移完成后删除原 panel 节点。
+   ========================================================= */
+function mergePanelsIntoTriggers(){
+  const d = ensureMaps();
+  const panels = Object.values(d.maps).filter(m=>m && m.type==='panel');
+  if(!panels.length){ toast('没有需要合并的面板节点 ✓'); return; }
+  const summary = [];
+  panels.forEach(panel=>{
+    if(!panel.parent){ summary.push({ name:panel.name, action:'跳过 · 无父级，请先设一个父地图' }); return; }
+    const host = d.maps[panel.parent];
+    if(!host || host.type==='panel'){ summary.push({ name:panel.name, action:'跳过 · 父级不是地图' }); return; }
+    if(!host.nodes) host.nodes = [];
+    /* 创建触发器节点 */
+    const tg = mkTrigger(panel.name||'面板', 0.5, 0.5, 0.16, 0.1, {
+      action:'panel',
+      triggerMode:'interact',
+      panel: panel.kind || 'pickTarot',
+      label: panel.name,
+      icon: '📦'
+    });
+    host.nodes.push(tg);
+    /* 删面板节点 */
+    delete d.maps[panel.id];
+    /* 顺手把全局入口如果指向被删的面板 → 重置 */
+    if(d.root === panel.id){
+      d.root = Object.keys(d.maps).find(id => d.maps[id].type!=='panel') || Object.keys(d.maps)[0];
+      summary.push({ name:panel.name, action:'合并到父地图「'+host.name+'」· 原是全局入口已重置' });
+    }else{
+      summary.push({ name:panel.name, action:'合并到父地图「'+host.name+'」' });
+    }
+  });
+  /* 父子关系清理：把任何引用被删面板的子节点 parent 重置 */
+  Object.values(d.maps).forEach(m=>{
+    if(m.parent && !d.maps[m.parent]) m.parent = null;
+  });
+  saveMapsData(d);
+  editState.nodeId = d.root;
+  editState.sel = null;
+  buildTree(); renderEditor(); renderProps();
+  /* 打印迁移报告 */
+  console.group('📦 面板→触发 迁移报告');
+  summary.forEach(s=>console.log('  ' + s.name + ' → ' + s.action));
+  console.groupEnd();
+  toast('📦 已合并 '+summary.filter(s=>s.action.indexOf('合并到')===0).length+' 个面板到触发器（详见 console）', 4000);
+}
+
+/* =========================================================
+   📋 跨设备同步：复制全部地图数据 / 粘贴覆盖
+   ========================================================= */
+async function copyAllMapsData(){
+  const d = ensureMaps();
+  const payload = {
+    _type: 'mercury.maps.v1',
+    _at: new Date().toISOString(),
+    root: d.root,
+    maps: d.maps
+  };
+  const text = JSON.stringify(payload, null, 2);
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+      toast('📋 已复制全部地图数据 · 去另一台电脑粘回来');
+    }else{
+      throw new Error('clipboard api 不可用');
+    }
+  }catch(e){
+    /* 兜底：用 textarea + execCommand */
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('📋 已复制（兜底路径）'); }
+    catch(err){ toast('❌ 复制失败，请改用 📤 导出 JSON'); }
+    document.body.removeChild(ta);
+  }
+}
+async function pasteAllMapsData(){
+  let text = '';
+  try{
+    if(navigator.clipboard && navigator.clipboard.readText){
+      text = await navigator.clipboard.readText();
+    }else{
+      const ta = document.createElement('textarea');
+      ta.style.position='fixed'; ta.style.left='-9999px';
+      document.body.appendChild(ta); ta.focus();
+      /* 在没剪贴板 API 的浏览器里只能弹提示让用户贴进 textarea。简化掉，不强求 */
+      toast('当前浏览器不支持自动读剪贴板，请改用 📥 导入 JSON');
+      if(ta.parentNode) ta.parentNode.removeChild(ta);
+      return;
+    }
+  }catch(e){
+    toast('读取剪贴板被拒绝：请改用 📥 导入 JSON');
+    return;
+  }
+  try{
+    const payload = JSON.parse(text);
+    if(!payload || payload._type !== 'mercury.maps.v1' || !payload.maps){
+      toast('剪贴板内容不是 Mercury 地图数据（请确认是从另一台地图编辑引擎复制的）');
+      return;
+    }
+    if(!confirm('⚠️ 粘贴会覆盖本机的全部地图数据 · '+Object.keys(payload.maps).length+' 个节点。\n\n建议先 📤 导出 JSON 备份当前数据，再粘贴。\n\n确认覆盖吗？')) return;
+    Object.values(payload.maps).forEach(m=>{ if(m) m.id = m.id || ('m'+Math.random().toString(36).slice(2,8)); });
+    const d = ensureMaps();
+    d.root = payload.root;
+    d.maps = payload.maps;
+    if(!d.maps[d.root]) d.root = Object.keys(d.maps)[0];
+    saveMapsData(d);
+    editState.nodeId = d.root; editState.sel = null;
+    buildTree(); renderEditor(); renderProps();
+    toast('📥 已粘贴 '+Object.keys(payload.maps).length+' 个节点，新数据已生效');
+  }catch(err){
+    toast('剪贴板内容解析失败，请检查格式');
+  }
+}
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
 <script src="./orientation-lock.js" defer></script>
