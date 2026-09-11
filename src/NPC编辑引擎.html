@@ -167,6 +167,19 @@
   .savebar{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;}
   .savebar .status{font-size:12px;color:var(--sub);font-weight:700;margin-right:auto;}
 
+  /* 缩略图区块 */
+  .thumb-block{margin-top:14px;width:100%;max-width:340px;}
+  .thumb-label{font-size:12px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .thumb-label .line{flex:1;height:1px;background:var(--line);}
+  .thumb-row{display:flex;gap:10px;align-items:center;}
+  .thumb-preview{
+    width:64px;height:64px;border-radius:12px;border:2px dashed var(--line);background:rgba(255,255,255,.04);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;
+    font-size:10px;color:var(--hint);text-align:center;line-height:1.4;padding:4px;
+  }
+  .thumb-preview img{width:100%;height:100%;object-fit:contain;display:block;}
+  .thumb-btns{display:flex;flex-direction:column;gap:6px;}
+
   /* toast */
   #toast{
     position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
@@ -216,6 +229,17 @@
           <div class="stage" id="npc-stage"><canvas id="npc-canvas"></canvas><span class="tip">NPC 试衣预览</span></div>
           <div class="name-row">
             <input id="npc-name" placeholder="给 NPC 起个名字" maxlength="20">
+          </div>
+          <div class="thumb-block">
+            <div class="thumb-label">🖼 地图摆放缩略图<span class="line"></span></div>
+            <div class="thumb-row">
+              <div class="thumb-preview" id="thumb-preview" title="这张图会显示在地图编辑器里，用于判断角色怎么摆">（保存后自动生成）</div>
+              <div class="thumb-btns">
+                <button class="btn small" id="btn-thumb-regen" title="用当前试衣形象重新生成缩略图">🔄 重新生成</button>
+                <button class="btn small" id="btn-thumb-upload" title="上传一张自定义图片当缩略图">📁 上传</button>
+                <input type="file" id="thumb-file" accept="image/*" style="display:none">
+              </div>
+            </div>
           </div>
           <div class="savebar" style="width:100%;max-width:340px;">
             <span class="status" id="save-status"></span>
@@ -316,12 +340,14 @@ function loadNpcs(){
   try{ const raw=localStorage.getItem(LS.npcs); npcs = raw ? (JSON.parse(raw)||[]) : []; }
   catch(e){ npcs = []; }
   if(!Array.isArray(npcs)) npcs = [];
-  // 迁移兜底：确保每个 npc 有 outfit/dialogue/event
+  // 迁移兜底：确保每个 npc 有 outfit/dialogue/event/thumb
   npcs.forEach(n=>{
     if(!n.outfit || typeof n.outfit!=='object') n.outfit = {};
     if(!Array.isArray(n.dialogue)) n.dialogue = [];
     if(!n.event) n.event = { type:'none', param:'' };
     if(n.event.type===undefined) n.event.type='none';
+    if(typeof n.thumb !== 'string') n.thumb = null;
+    if(typeof n.thumbCustom !== 'string') n.thumbCustom = null;
   });
 }
 function saveNpcs(){
@@ -568,6 +594,17 @@ function drawCloth(ctx,img,box,a,mirror,deg,bx,fy){
   else { ctx.translate(left-a.x,top-a.y); ctx.drawImage(img,0,0,box.w,box.h); }
   ctx.restore();
 }
+/* 生成 NPC 缩略图：用同款渲染管线画到离屏 canvas 再导出 dataUrl。
+   供「地图编辑器摆放 NPC 时显示真实立绘」和「缩略图自定义」使用。 */
+function generateThumb(outfit, size){
+  size = size || 96;
+  const cvs = document.createElement('canvas');
+  cvs.width = size; cvs.height = size;
+  // drawNpc 内部会重设 canvas.width/height 并按 clientWidth 缩放，这里直接给固定尺寸
+  drawNpc(cvs, outfit);
+  try{ return cvs.toDataURL('image/png'); }
+  catch(e){ return null; }
+}
 /* 纯色兜底小人（没有素体时也能看个大概） */
 function drawFallback(ctx,W,H,outfit){
   const colors={ hair:'#5a4632', top:'#e06c6c', bottom:'#4a6cc0', shoes:'#3a3a3a', skin:'#ffd9b3' };
@@ -688,6 +725,20 @@ function drawPreview(){
   requestAnimationFrame(()=>drawNpc(cv,npc.outfit));
 }
 
+/* 缩略图预览：显示当前 NPC 的 thumb（自定义图优先），没有则提示保存生成 */
+function renderThumbBlock(){
+  const npc=curNpc(); const box=$('thumb-preview');
+  if(!npc){ return; }
+  const src = npc.thumbCustom || npc.thumb || null;
+  if(src){
+    box.innerHTML='';
+    const img=document.createElement('img'); img.src=src; img.alt='缩略图';
+    box.appendChild(img);
+  } else {
+    box.textContent='（保存后自动生成）';
+  }
+}
+
 function selectNpc(id){
   currentId=id; dirty=false;
   const npc=curNpc();
@@ -707,6 +758,7 @@ function renderAll(){
   renderItems();
   renderDialogue();
   renderEvent();
+  renderThumbBlock();
   drawPreview();
 }
 
@@ -725,11 +777,51 @@ $('btn-save').onclick=()=>{
   n.name=$('npc-name').value.trim()||('NPC '+(npcs.indexOf(n)+1));
   n.event.type=$('event-type').value;
   n.event.param=$('event-param').value.trim();
+  // 保存时自动生成/刷新缩略图（除非用户手动上传了自定义图，见 btn-thumb-upload）
+  if(!n.thumbCustom){
+    afterEngineReady(()=>{ n.thumb=generateThumb(n.outfit); saveNpcs(); renderThumbBlock(); });
+  }
   if(saveNpcs()){ dirty=false; $('save-status').textContent='✓ 已保存 '+new Date().toLocaleTimeString(); renderList(); toast('已保存「'+n.name+'」'); }
 };
 $('btn-add-dlg').onclick=()=>{ const n=curNpc(); if(!n) return; n.dialogue.push(''); dirty=true; renderDialogue(); const rows=$('dlg-list').querySelectorAll('input'); if(rows.length) rows[rows.length-1].focus(); };
 $('event-type').onchange=e=>{ const n=curNpc(); if(!n) return; n.event.type=e.target.value; dirty=true; updateEventHint(e.target.value); };
 $('event-param').oninput=e=>{ const n=curNpc(); if(!n) return; n.event.param=e.target.value; dirty=true; };
+
+/* 缩略图：重新生成 / 上传自定义图 */
+$('btn-thumb-regen').onclick=()=>{
+  const n=curNpc(); if(!n) return;
+  n.thumbCustom = null;               // 取消自定义，回到自动生成
+  afterEngineReady(()=>{
+    n.thumb = generateThumb(n.outfit);
+    saveNpcs(); renderThumbBlock(); renderList();
+    toast('已用当前形象重新生成缩略图');
+  });
+};
+$('btn-thumb-upload').onclick=()=>{ $('thumb-file').click(); };
+$('thumb-file').onchange=e=>{
+  const n=curNpc(); if(!n) return;
+  const f=e.target.files && e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    // 压缩到 96×96 以内的方形图，避免撑爆 localStorage
+    const img=new Image();
+    img.onload=()=>{
+      const S=96, cvs=document.createElement('canvas'); cvs.width=S; cvs.height=S;
+      const ctx=cvs.getContext('2d');
+      const r=Math.min(S/img.width, S/img.height);
+      const w=img.width*r, h=img.height*r;
+      ctx.clearRect(0,0,S,S);
+      ctx.drawImage(img, (S-w)/2, (S-h)/2, w, h);
+      n.thumbCustom = cvs.toDataURL('image/png');
+      n.thumb = n.thumbCustom;
+      saveNpcs(); renderThumbBlock(); renderList();
+      toast('已上传自定义缩略图');
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+  e.target.value='';
+};
 
 /* 离开前未保存提醒 */
 window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });

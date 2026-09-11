@@ -170,6 +170,10 @@ input{font-family:inherit;outline:none;}
 
 /* ---------- 昵称页 ---------- */
 .nick-avatar{width:76px;height:76px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;}
+.avatar-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0 16px;}
+.avatar-opt{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;border:3px solid transparent;transition:.15s;}
+.avatar-opt:active{transform:scale(.92);}
+.avatar-opt.sel{border-color:var(--accent,#8b5cf6);box-shadow:0 0 0 3px rgba(139,92,246,.25);}
 
 /* ---------- 五行选择页 ---------- */
 .element-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:8px;}
@@ -900,6 +904,8 @@ input{font-family:inherit;outline:none;}
       <h2>给自己起个昵称</h2>
       <p class="sub">这是你在世界里被看到的名字</p>
       <div class="field"><label>昵称</label><input id="nick-input" placeholder="最多 8 个字" maxlength="8"></div>
+      <label class="sub" style="display:block;margin-top:12px;font-weight:700;">选一个头像</label>
+      <div class="avatar-grid" id="avatar-grid"></div>
       <button class="btn-primary" id="nick-submit">下一步</button>
       <div class="msg" id="nick-msg"></div>
     </div>
@@ -2022,6 +2028,7 @@ function normalizeUser(u){
   if(typeof u.wealth !== 'number') u.wealth = 500;
   if(typeof u.coins !== 'number') u.coins = 100;
   if(typeof u.hideWealth !== 'boolean') u.hideWealth = false;
+  if(!u.avatar) u.avatar = PRESET_AVATARS[0].id;   // 旧存档补默认头像
   return u;
 }
 
@@ -2049,6 +2056,12 @@ function showScreen(id){
   if(hud) hud.classList.toggle('hidden', !(id==='game-screen' || id==='map-screen'));
   if(id!=='game-screen' && id!=='map-screen'){ try{ closeFriends(); closeSettings(); }catch(e){} }
   if(id==='admin-hub-screen') buildAdminHub();
+  if(id==='nickname-screen'){
+    // 恢复上次选的头像（或默认第一个），再渲染头像网格
+    selectedAvatar = avatarById(currentUser && currentUser.avatar);
+    renderAvatars();
+    setNickAvatarPreview();
+  }
   if(id==='game-screen'){ $('game-screen').style.display='block'; resizeLobby(); }
   if(id==='wardrobe-screen'){ initPreviewBg(); buildWardrobe(); }
   if(id==='tarot-screen'){ resetTarot(); }
@@ -2204,16 +2217,43 @@ $('auth-submit').onclick = ()=>{
 };
 
 /* ================= 昵称 ================= */
-function setNickAvatarPreview(){
-  const c = '#' + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
-  $('nick-avatar').style.background = c;
-  $('nick-avatar').textContent = ($('nick-input').value.trim()||'?').slice(0,1);
+/* 预设头像：emoji + 底色，玩家在昵称页选一个 */
+const PRESET_AVATARS = [
+  { id:'fox',     em:'🦊', bg:'#ff9d6e' },
+  { id:'cat',     em:'🐱', bg:'#f4a8c8' },
+  { id:'bear',    em:'🐻', bg:'#d9a066' },
+  { id:'rabbit',  em:'🐰', bg:'#b7d9a8' },
+  { id:'deer',    em:'🦌', bg:'#c3a98a' },
+  { id:'panda',   em:'🐼', bg:'#b8c4d0' },
+  { id:'dragon',  em:'🐉', bg:'#a89bd9' },
+  { id:'phoenix', em:'🦚', bg:'#7fc4e8' },
+];
+let selectedAvatar = PRESET_AVATARS[0];
+function avatarById(id){ return PRESET_AVATARS.find(a=>a.id===id) || PRESET_AVATARS[0]; }
+function renderAvatars(){
+  const grid = $('avatar-grid'); if(!grid) return;
+  grid.innerHTML='';
+  PRESET_AVATARS.forEach(a=>{
+    const b=document.createElement('div');
+    b.className='avatar-opt'+(selectedAvatar.id===a.id?' sel':'');
+    b.style.background=a.bg; b.textContent=a.em;
+    b.title=a.id;
+    b.onclick=()=>{ selectedAvatar=a; grid.querySelectorAll('.avatar-opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); setNickAvatarPreview(); };
+    grid.appendChild(b);
+  });
 }
-$('nick-input').oninput = setNickAvatarPreview;
+function setNickAvatarPreview(){
+  const a = selectedAvatar || avatarById(currentUser && currentUser.avatar);
+  const el = $('nick-avatar');
+  el.style.background = a.bg;
+  el.textContent = a.em;
+}
+$('nick-input').oninput = ()=>{ /* 昵称输入不再影响头像，仅保留占位 */ };
 $('nick-submit').onclick = ()=>{
   const n = $('nick-input').value.trim();
   if(!n){ $('nick-msg').textContent='昵称不能为空'; return; }
   currentUser.nickname = n;
+  currentUser.avatar = (selectedAvatar||PRESET_AVATARS[0]).id;   // 保存所选头像
   persistCurrent();                           // 【修 bug】以前用 saveAccounts(getAccounts()) 存了旧快照，导致下次进来还要重填昵称
   showScreen('element-screen');
   renderElements();
@@ -2317,8 +2357,9 @@ function refreshHud(){
   const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
   const nick = currentUser.nickname || '旅行者';
   $('hud-nick').textContent = nick;
-  $('hud-avatar').style.background = e.color;
-  $('hud-avatar').textContent = nick.slice(0,1);
+  const av = avatarById(currentUser.avatar);          // 预设头像
+  $('hud-avatar').style.background = av.bg;
+  $('hud-avatar').textContent = av.em;
   $('hud-badge').style.background = e.color;
   $('hud-badge').textContent = '五行·' + e.name;
 }
@@ -4687,7 +4728,19 @@ function drawMap(){
   if(!isFinite(mapRun.px) || !isFinite(mapRun.py)){ mapRun.px = W/2; mapRun.py = H*0.7; }
   /* currentUser 为空时（没登录就直接进地图）绝不能抛 —— 抛一次就会把 rAF 循环一起带走，
      表现就是「角色永远看不见」。 */
-  if(currentUser) drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
+  if(currentUser){
+    drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
+    // 玩家自己头顶显示昵称（和 NPC 名字牌同款，但用主题色描边更醒目）
+    const nick = currentUser.nickname || '旅行者';
+    c.save(); c.textAlign='center'; c.textBaseline='bottom';
+    c.font = '700 12px "Microsoft YaHei"';
+    const ph = mapRun.px, pfy = mapRun.py - ENG_BASE_H*0.58;
+    c.fillStyle = 'rgba(0,0,0,.30)';
+    c.fillText(nick, ph+1, pfy+1);
+    c.fillStyle = '#ffd86b';                       // 玩家名字牌用暖金色，与 NPC 白色区分
+    c.fillText(nick, ph, pfy);
+    c.restore();
+  }
   c.restore();
   // 空地图明确提示，防止用户以为是渲染坏了
   const nodeCount = (m.nodes||[]).length, spawnCount = (m.spawns||[]).length;
