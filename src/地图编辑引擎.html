@@ -138,6 +138,9 @@
   .sz-bot{left:0;right:0;bottom:0;height:var(--sa-bh);}
   .sz-joy{left:0;bottom:0;width:var(--sa-jx);height:var(--sa-jh);border-right:1px dashed rgba(226,75,74,.75);border-top:1px dashed rgba(226,75,74,.75);}
   .safe-off .safe-layer{display:none;}
+  /* 🟢 可编辑区高亮：绿色蒙版铺满安全区，一眼看到能放东西的地方 */
+  .edit-glow .safe-edit{background:rgba(60,230,150,.14);border-width:3px;border-style:solid;border-color:rgba(55,200,176,.98);box-shadow:0 0 0 9999px rgba(20,14,34,.42) inset;}
+  .edit-glow .safe-edit::after{background:rgba(60,230,150,.98);color:#04322c;}
   .safe-note{position:absolute;right:8px;top:calc(var(--sa-y0) + 8px);background:rgba(20,14,34,.82);color:#ffd9a8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
   /* 安全区说明弹窗 */
   .sa-mask{position:fixed;inset:0;z-index:420;background:rgba(12,8,24,.62);display:flex;align-items:center;justify-content:center;padding:18px;}
@@ -161,6 +164,21 @@
   .chk-row{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:12px;cursor:pointer;}
   .chk-row input{width:16px;height:16px;accent-color:var(--accent);}
   .sec-title{font-size:11px;font-weight:900;color:var(--gold);letter-spacing:.5px;margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--line);}
+  /* 🎵 背景音乐 · 属性面板通用区块 */
+  .bgm-block{display:flex;flex-direction:column;gap:8px;}
+  .bgm-block .bgm-name{font-size:12px;font-weight:800;color:var(--ink);padding:6px 10px;background:rgba(255,255,255,.06);border:1px dashed var(--line);border-radius:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bgm-block .bgm-name.empty{color:var(--sub);font-style:italic;font-weight:600;border-style:dotted;}
+  .bgm-block .bgm-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .bgm-block .bgm-btn{padding:6px 10px;font-size:11px;font-weight:800;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);border-radius:8px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:4px;}
+  .bgm-block .bgm-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .bgm-block .bgm-btn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .bgm-block .bgm-btn.danger{color:#ff8080;border-color:rgba(255,128,128,.4);}
+  .bgm-block .bgm-url{flex:1;min-width:120px;padding:6px 10px;font-size:11px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);border-radius:8px;font-family:ui-monospace,monospace;}
+  .bgm-block .bgm-vol{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--sub);font-weight:700;}
+  .bgm-block .bgm-vol input[type=range]{flex:1;accent-color:var(--accent);}
+  .bgm-block .bgm-vol b{min-width:32px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);}
+  .bgm-block .bgm-loop{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub);font-weight:700;cursor:pointer;}
+  .bgm-block .bgm-loop input{accent-color:var(--accent);}
   .del-tile{width:100%;padding:10px;border-radius:12px;background:var(--danger);color:#fff;font-size:13px;font-weight:800;margin-top:4px;}
   .hidden{display:none !important;}
 
@@ -223,7 +241,7 @@
   <aside class="panel tree-panel" data-page-node-id="zH4bVCKECBkgoWi931e4li">
     <div class="tree-head" data-page-node-id="gj6YGZL6jB7tKT0K1jmNvg">
       <h2 data-page-node-id="Ft7cL6aPpD6LyEa4BoHLN5">🗂️ 地图 / 组件</h2>
-      <div class="hint" data-page-node-id="Jjfdpb5lRQVI62lnjmzmHQ">🗺️ 地图＝可进入的场景<br data-page-node-id="R2CoDqfMaVXZzfEuQJ31J7">🧩 面板＝点开是衣橱/塔罗等界面</div>
+      <div class="hint" data-page-node-id="Jjfdpb5lRQVI62lnjmzmHQ">🌍 世界地图＝分类枢纽（挂着子关卡）<br>🎯 关卡地图＝可走的一层（含 NPC / 传送 / 玩法）<br>🧩 面板＝点开是衣橱/塔罗等界面</div>
       <div class="add-row" data-page-node-id="W5RKsGkHTC3d2Z5uw56vMZ">
         <button class="add-map" id="me-add-map" data-page-node-id="gaRqCdaqNC7jAYmD5pjvlQ">＋ 地图</button>
         <button class="add-panel" id="me-add-panel" data-page-node-id="BiT0FPt1DRkrRoU8RYVJuX">＋ 面板</button>
@@ -243,9 +261,10 @@
       <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 入口点</button>
       <button class="pill" id="me-walk" data-page-node-id="me-walk">🚶 行走区</button>
       <span class="pill-tip hidden" id="me-leaf-tip"></span>
-      <button class="pill" id="me-set-root" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">⭐ 设为主地图</button>
+      <button class="pill" id="me-set-root" title="全局唯一入口：进入游戏时角色首先出现在这里，通常是码头/大厅这样的枢纽" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">🏝 设为全局入口</button>
       <button class="pill danger" id="me-del-map" data-page-node-id="qMJ1TSPloIVgyobacdE8tF">🗑 删除</button>
       <button class="pill on" id="me-safe-toggle" title="显示红色禁区：顶栏 / 底部提示条 / 左下摇杆会盖住的地方" data-page-node-id="Ehzi3jr32qgXjk43HqBVuY">🛡 安全区</button>
+      <button class="pill" id="me-edit-glow" title="高亮显示可编辑安全区域（绿色蒙版）——一眼看清能放东西的地方">🟢 可编辑区</button>
       <button class="pill" id="me-safe-fit" title="把这张地图里跑到红区的东西，一键收回可编辑区" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
       <button class="pill" id="me-safe-why" title="这红区是怎么算出来的？19 种机型实测数据" data-page-node-id="saWhyBtn01">📐 依据</button>
     </div>
@@ -266,6 +285,8 @@
       <div class="chk-row" data-page-node-id="N4lCHYouwMDfsO29kCPyKv"><input type="checkbox" id="mp-worldmap" data-page-node-id="Wn3tlC5cfFf7lgJO7bBz66"><span data-page-node-id="wP4vFIXSHNwMDl2mGpQtSj">在此地图可按「世界地图」传送</span></div>
       <div class="chk-row" data-page-node-id="1Ez8FzMH2bLpPQIxiz0VHb"><input type="checkbox" id="mp-teleout" data-page-node-id="ueRssjXmL3MtZ1oNX7CD1v"><span data-page-node-id="9viIY4bLnTJVyhafcdSNDN">允许从此处传送去别处</span></div>
       <div class="warn" id="mp-tip" data-page-node-id="gneGE6j5k2ECXmqb7FLzsz"></div>
+      <div class="sec-title">🎵 背景音乐</div>
+      <div class="bgm-block" id="mp-bgm"></div>
     </div>
 
     <!-- 面板属性 -->
@@ -276,6 +297,8 @@
       <label data-page-node-id="B0VfHlCplYLa4KceKIK1pR">打开的内容<select id="pn-kind" data-page-node-id="eBwE16mKRrBclkGHB7H0XM"></select></label>
       <div class="warn" data-page-node-id="gaBIBDLgrSJY4R3ipRElH6">面板类组件不是地图：角色在游戏里点/走到它，直接打开对应界面（如衣橱、塔罗），不会切场景。</div>
       <button class="del-tile" id="pn-del" data-page-node-id="xn5i6pW2qkty6CsxGiza1j">🗑 删除组件</button>
+      <div class="sec-title">🎵 背景音乐</div>
+      <div class="bgm-block" id="pn-bgm"></div>
     </div>
 
     <!-- 地块属性（建筑＝一张 PNG + 自带触发） -->
@@ -561,10 +584,10 @@ function ensureMaps(){
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
 
 /* =========================================================
-   父节点 vs 叶子关卡
-   —— 父节点：map.nodes 里挂了「建筑地块（kind=tile）」，是『中国/美国/学校』这种
-   —— 叶子关卡：没挂 tile，是玩家点开地块之后能走的那一层（图书馆/我的小屋/服装店…）
-   —— 行走区 / 传送门 / 入口点：只有叶子关卡才允许加（避免在父节点上铺绿色步行道）
+   🌍 世界地图 vs 🎯 关卡地图
+   —— 世界地图（父节点）：map.nodes 里挂了「建筑地块（kind=tile）」，是『中国/美国/学校』这种分类枢纽
+   —— 关卡地图（叶子）：没挂 tile，是玩家点开地块之后能走的那一层（图书馆/我的小屋/服装店…）
+   —— 行走区 / 传送门 / 入口点：只有关卡地图才允许加（避免在世界地图上铺绿色步行道）
    ========================================================= */
 function hasChildTiles(map){
   return !!map && map.type!=='panel' && (map.nodes||[]).some(n=>n && n.kind==='tile');
@@ -584,11 +607,11 @@ function updateCanvasForLeaf(map){
   if(map.type==='panel'){ tip.classList.add('hidden'); return; }
   if(leaf){
     tip.className = 'pill-tip mint';
-    tip.textContent = '🍃 叶子关卡 · 可以加传送门 / 入口点 / 行走区';
+    tip.textContent = '🎯 关卡地图 · 可以加传送门 / 入口点 / 行走区';
   }else{
     tip.className = 'pill-tip';
     const n = (map.nodes||[]).filter(x=>x && x.kind==='tile').length;
-    tip.textContent = '🗂 父节点 · 挂着 '+n+' 个子地块 · 行走/传送请到叶子关卡';
+    tip.textContent = '🌍 世界地图 · 挂着 '+n+' 个子地块 · 行走/传送请到关卡地图';
   }
   tip.classList.remove('hidden');
 }
@@ -625,6 +648,71 @@ function syncAllPairs(d){
   Object.values(d.maps).forEach(m=> (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') syncPair(d, m, n); }));
 }
 
+/* ================= 🎵 BGM 通用块 =================
+   数据：obj.bgm = { src:'data:audio/…' 或 http URL, name:'文件名', volume:0-1, loop:true, muted:false }
+   编辑器只负责让陛下填 src / 试听，具体播放在游戏本体 index.html 里做。 */
+const _bgmPreview = { audio:null, hostId:null, obj:null };
+function stopBgmPreview(){
+  if(_bgmPreview.audio){ try{ _bgmPreview.audio.pause(); }catch(e){} _bgmPreview.audio.src=''; }
+  _bgmPreview.audio=null; _bgmPreview.hostId=null; _bgmPreview.obj=null;
+}
+function renderBgmBlock(hostId, obj){
+  const host = document.getElementById(hostId); if(!host || !obj) return;
+  if(!obj.bgm) obj.bgm = { src:'', name:'', volume:0.6, loop:true, muted:false };
+  const b = obj.bgm;
+  const isPlaying = _bgmPreview.hostId===hostId && _bgmPreview.audio && !_bgmPreview.audio.paused;
+  const displayName = b.src ? (b.name || (b.src.startsWith('data:') ? '（本地上传的音频）' : b.src.slice(-40))) : '（未设置 · 静音）';
+  host.innerHTML =
+    `<div class="bgm-name${b.src?'':' empty'}" title="${escapeHtml(b.src||'')}">🎧 ${escapeHtml(displayName)}</div>
+     <div class="bgm-row">
+       <label class="bgm-btn">📁 上传<input type="file" accept="audio/*" id="${hostId}-file" style="display:none"></label>
+       <button class="bgm-btn ${isPlaying?'on':''}" id="${hostId}-play">${isPlaying?'⏸ 暂停':'🎧 试听'}</button>
+       <button class="bgm-btn" id="${hostId}-stop">⏹</button>
+       <button class="bgm-btn danger" id="${hostId}-clear">🗑 清除</button>
+     </div>
+     <input type="text" class="bgm-url" id="${hostId}-url" placeholder="或粘贴音频 URL（.mp3/.ogg）" value="${escapeHtml(b.src && !b.src.startsWith('data:') ? b.src : '')}">
+     <div class="bgm-vol"><span>音量</span><input type="range" id="${hostId}-vol" min="0" max="100" step="1" value="${Math.round((b.volume||0.6)*100)}"><b id="${hostId}-vv">${Math.round((b.volume||0.6)*100)}</b></div>
+     <label class="bgm-loop"><input type="checkbox" id="${hostId}-loop" ${b.loop!==false?'checked':''}>循环播放</label>`;
+  const Q=id=>document.getElementById(id);
+  const d = getMapsData();
+  const save = ()=>{ if(d) saveMapsData(d); };
+
+  Q(hostId+'-file').onchange = (e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size > 5*1024*1024){ if(!confirm('文件超过 5MB，可能撑爆 localStorage，确定继续？')) { e.target.value=''; return; } }
+    const rd=new FileReader();
+    rd.onload = ev=>{ b.src = ev.target.result; b.name = f.name; save(); renderBgmBlock(hostId, obj); toast('🎵 已上传 · '+f.name); };
+    rd.readAsDataURL(f);
+  };
+  Q(hostId+'-url').onchange = ()=>{ b.src = Q(hostId+'-url').value.trim(); b.name = b.src ? b.src.split('/').pop() : ''; save(); renderBgmBlock(hostId, obj); };
+  Q(hostId+'-play').onclick = ()=>{
+    if(!b.src){ toast('还没设置音乐 · 请先上传或粘贴 URL'); return; }
+    if(_bgmPreview.hostId===hostId && _bgmPreview.audio){
+      if(_bgmPreview.audio.paused){ _bgmPreview.audio.play(); } else { _bgmPreview.audio.pause(); }
+      renderBgmBlock(hostId, obj); return;
+    }
+    stopBgmPreview();
+    const a = new Audio(b.src); a.volume = b.volume||0.6; a.loop = b.loop!==false;
+    a.play().catch(err=>toast('播放失败：'+err.message));
+    _bgmPreview.audio=a; _bgmPreview.hostId=hostId; _bgmPreview.obj=obj;
+    a.onended = ()=>renderBgmBlock(hostId, obj);
+    renderBgmBlock(hostId, obj);
+  };
+  Q(hostId+'-stop').onclick = ()=>{ stopBgmPreview(); renderBgmBlock(hostId, obj); };
+  Q(hostId+'-clear').onclick = ()=>{
+    if(!confirm('清除这段背景音乐？')) return;
+    stopBgmPreview();
+    obj.bgm = { src:'', name:'', volume:b.volume, loop:b.loop, muted:false };
+    save(); renderBgmBlock(hostId, obj); toast('已清除');
+  };
+  Q(hostId+'-vol').oninput = ()=>{
+    const v=+Q(hostId+'-vol').value; b.volume = v/100; Q(hostId+'-vv').textContent=v;
+    if(_bgmPreview.hostId===hostId && _bgmPreview.audio) _bgmPreview.audio.volume = b.volume;
+    save();
+  };
+  Q(hostId+'-loop').onchange = ()=>{ b.loop = Q(hostId+'-loop').checked; if(_bgmPreview.hostId===hostId && _bgmPreview.audio) _bgmPreview.audio.loop = b.loop; save(); };
+}
+
 /* ================= 节点树 ================= */
 function buildTree(){
   const d = ensureMaps();
@@ -636,9 +724,9 @@ function buildTree(){
     row.className = 'tree-row' + (map.id===editState.nodeId?' on':'') + (map.id===editState.nodeId&&isPanel?' panel-on':'');
     row.style.paddingLeft = (10 + depth*16)+'px';
     const cnt = (map.nodes||[]).length + (isPanel?0:(map.spawns||[]).length);
-    row.innerHTML = `<span>${isPanel?panelEm(map.panel):(map.id===d.root?'🏠':'🗺️')}</span>`
+    row.innerHTML = `<span>${isPanel?panelEm(map.panel):(map.id===d.root?'🏝':'🗺️')}</span>`
       + `<span class="mt-name">${escapeHtml(map.name)}</span>`
-      + (map.id===d.root?'<span class="root-tag">主地图</span>':'')
+      + (map.id===d.root?'<span class="root-tag">🏝 入口</span>':'')
       + `<span class="mt-count">${isPanel?'面板':cnt}</span>`;
     row.onclick = ()=>{ editState.nodeId=map.id; editState.sel=null; buildTree(); renderEditor(); renderProps(); };
     tree.appendChild(row);
@@ -919,6 +1007,8 @@ function renderProps(){
   const d = ensureMaps();
   const map = d.maps[editState.nodeId];
   const sel = editState.sel;
+  // 切了节点就停试听（同一节点内的属性刷新不停）
+  if(_bgmPreview.audio && _bgmPreview.obj !== map) stopBgmPreview();
   if(!map){ showPane(null); return; }
 
   if(!sel){                                   // 地图 / 面板 本体
@@ -932,6 +1022,7 @@ function renderProps(){
       $('pn-parent').onchange = ()=>{ map.parent=$('pn-parent').value||null; saveMapsData(d); buildTree(); };
       $('pn-kind').onchange = ()=>{ map.panel=$('pn-kind').value; saveMapsData(d); buildTree(); renderEditor(); };
       $('pn-del').onclick = ()=>delNode(map.id);
+      renderBgmBlock('pn-bgm', map);
     } else {
       showPane('p-map');
       $('mp-name').value = map.name;
@@ -940,16 +1031,17 @@ function renderProps(){
       $('mp-teleout').checked  = !!map.allowTeleportOut;
       $('mp-tip').innerHTML = map.id===d.root
         ? (isLeafMap(map)
-            ? '⭐ 这是主地图：进入游戏默认站在这里。'
-            : '<b style="color:#a04020">⚠ 这是个挂着子地块的「父节点」，不建议当主地图</b> · 一开局角色应该站在能走的叶子关卡（像图书馆/我的小屋那种），<a href="#" id="mp-pick-leaf" style="color:var(--accent);font-weight:900">点这里挑一个子关卡当主地图 →</a>')
-        : ('主地图目前是「'+escapeHtml((d.maps[d.root]||{}).name||'?')+'」'
-           + (isLeafMap(d.maps[d.root]) ? '（🍃 叶子关卡，对的）' : '（⚠ 它是父节点，建议改成叶子关卡）')
-           + '，可在工具条点「⭐ 设为主地图」更换。');
-      const pickLeaf=$('mp-pick-leaf'); if(pickLeaf){ pickLeaf.onclick=(e)=>{ e.preventDefault(); const opts=Object.values(d.maps).filter(m=>m.type!=='panel' && isLeafMap(m) && m.id!==map.id); if(!opts.length){ toast('没有可用的叶子关卡 · 先去建一张空的地图'); return; } askName('选哪个叶子关卡当主地图？（输入名字）', txt=>{ const m=opts.find(x=>x.name===txt) || opts.find(x=>x.name.indexOf(txt)>=0) || opts[0]; d.root=m.id; saveMapsData(d); buildTree(); renderEditor(); renderProps(); toast('已把「'+m.name+'」设为主地图'); }); }; }
+            ? '🏝 这是<b>全局入口</b>：进入游戏时角色首先出现在这里，通常是码头/大厅之类的枢纽。'
+            : '<b style="color:#a04020">⚠ 这是「🌍 世界地图」（挂着子关卡的分类节点），不适合当入口</b> · 一开局角色应该站在能走的「🎯 关卡地图」（像图书馆/我的小屋那种），<a href="#" id="mp-pick-leaf" style="color:var(--accent);font-weight:900">点这里挑一个关卡地图当入口 →</a>')
+        : ('全局入口目前是「'+escapeHtml((d.maps[d.root]||{}).name||'?')+'」'
+           + (isLeafMap(d.maps[d.root]) ? '（🎯 关卡地图，OK）' : '（⚠ 它是🌍 世界地图，建议改成关卡地图）')
+           + '，可在工具条点「🏝 设为全局入口」更换。');
+      const pickLeaf=$('mp-pick-leaf'); if(pickLeaf){ pickLeaf.onclick=(e)=>{ e.preventDefault(); const opts=Object.values(d.maps).filter(m=>m.type!=='panel' && isLeafMap(m) && m.id!==map.id); if(!opts.length){ toast('没有可用的关卡地图 · 先去建一张空地图'); return; } askName('选哪个关卡地图当全局入口？（输入名字）', txt=>{ const m=opts.find(x=>x.name===txt) || opts.find(x=>x.name.indexOf(txt)>=0) || opts[0]; d.root=m.id; saveMapsData(d); buildTree(); renderEditor(); renderProps(); toast('已把「'+m.name+'」设为全局入口'); }); }; }
       $('mp-name').oninput = ()=>{ map.name=$('mp-name').value; saveMapsData(d); buildTree(); $('me-map-name').value=map.name; };
       $('mp-parent').onchange = ()=>{ map.parent=$('mp-parent').value||null; saveMapsData(d); buildTree(); };
       $('mp-worldmap').onchange = ()=>{ map.allowWorldMap=$('mp-worldmap').checked; saveMapsData(d); };
       $('mp-teleout').onchange  = ()=>{ map.allowTeleportOut=$('mp-teleout').checked; saveMapsData(d); };
+      renderBgmBlock('mp-bgm', map);
     }
     return;
   }
@@ -1152,7 +1244,7 @@ $('me-add-tile').onclick = ()=>{
 $('me-add-trigger').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
   if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
-  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），传送门请加到叶子关卡里'); return; }
+  if(!isLeafMap(map)){ toast('这是「🌍 世界地图」（挂着子地块），传送门请加到关卡地图里'); return; }
   if(!map.nodes) map.nodes=[];
   const g = mkTrigger('新触发区', 0.5, 0.72, 0.14, 0.1, { action:'teleport', triggerMode:'auto' });
   map.nodes.push(g); editState.sel={kind:'trigger', id:g.id};
@@ -1162,7 +1254,7 @@ $('me-add-trigger').onclick = ()=>{
 $('me-add-spawn').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
   if(!map || map.type==='panel'){ toast('请先选一张地图'); return; }
-  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），入口点请加到叶子关卡里'); return; }
+  if(!isLeafMap(map)){ toast('这是「🌍 世界地图」（挂着子地块），入口点请加到关卡地图里'); return; }
   if(!map.spawns) map.spawns=[];
   const s = mkSpawn('入口'+(map.spawns.length+1), 0.5, 0.8);
   map.spawns.push(s); editState.sel={kind:'spawn', id:s.id};
@@ -1174,6 +1266,19 @@ $('me-safe-toggle').onclick = ()=>{
   $('edit-stage').classList.toggle('safe-off', !on);
   renderEditor();
   toast(on ? '🛡 安全区已开 · 红区会被 UI 挡住' : '安全区已关 · 拖动不再受限（不建议）');
+};
+$('me-edit-glow').onclick = ()=>{
+  const on = !$('edit-stage').classList.contains('edit-glow');
+  $('edit-stage').classList.toggle('edit-glow', on);
+  $('me-edit-glow').classList.toggle('on', on);
+  // 高亮时默认打开安全区（不然看不到高亮框）
+  if(on && $('edit-stage').classList.contains('safe-off')){
+    SafeArea.on = true;
+    $('edit-stage').classList.remove('safe-off');
+    $('me-safe-toggle').classList.add('on');
+    renderEditor();
+  }
+  toast(on ? '🟢 已高亮可编辑区（绿色区域是能放东西的地方）' : '已关闭可编辑区高亮');
 };
 $('me-safe-why').onclick = openSafeNote;
 $('me-safe-fit').onclick = ()=>{
@@ -1187,9 +1292,10 @@ $('me-safe-fit').onclick = ()=>{
 };
 $('me-set-root').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
-  if(!map || map.type==='panel'){ toast('主地图必须是地图，不能是面板'); return; }
+  if(!map || map.type==='panel'){ toast('全局入口只能是地图，不能是面板'); return; }
+  if(!isLeafMap(map)){ if(!confirm('这是「🌍 世界地图」（挂着子关卡的分类节点），不推荐当入口。真的要设吗？')) return; }
   d.root = map.id; saveMapsData(d); buildTree(); renderProps();
-  toast('已把「'+map.name+'」设为进入游戏的主地图');
+  toast('🏝 已把「'+map.name+'」设为全局入口');
 };
 
 /* =========================================================
@@ -1211,7 +1317,7 @@ function openWalkEditor(){
   const map=d.maps[editState.nodeId];
   if(!map){ toast('先在左边选一张地图'); return; }
   if(map.type==='panel'){ toast('组件不是地图，没有行走区'); return; }
-  if(!isLeafMap(map)){ toast('这是「父节点」（挂着子地块），行走区只能画在叶子关卡里'); return; }
+  if(!isLeafMap(map)){ toast('这是「🌍 世界地图」（挂着子地块），行走区只能画在关卡地图里'); return; }
 
   const wrap=document.createElement('div'); wrap.className='wk-mask';
   wrap.innerHTML='<div class="wk-panel">'
@@ -1359,7 +1465,7 @@ $('me-del-map').onclick = ()=>delNode(editState.nodeId);
 function delNode(id){
   const d = ensureMaps();
   const map = d.maps[id]; if(!map) return;
-  if(id===d.root){ toast('这是主地图，请先换一个主地图'); return; }
+  if(id===d.root){ toast('这是全局入口，请先换一个入口'); return; }
   const kids = Object.values(d.maps).filter(m=>m.parent===id);
   if(kids.length){ toast('请先删除它的子节点（'+kids.length+' 个）'); return; }
   if(!confirm('删除「'+map.name+'」？')) return;
