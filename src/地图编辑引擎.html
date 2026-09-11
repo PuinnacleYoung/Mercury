@@ -110,24 +110,34 @@
   /* 设备框架：none = 全屏 */
   .device-none .device-viewport{padding:0;background:transparent;}
   .device-none .device-statusbar{display:none;}
-  /* iPhone SE  375 × 667 */
-  .device-iphone-se .device-viewport{padding:36px 22px 22px;background:#1a1424;}
-  .device-iphone-se .device-statusbar{background:rgba(0,0,0,.6);}
-  .device-iphone-se .stage{aspect-ratio:375/667;max-width:240px;max-height:520px;width:auto;border:3px solid #1f1f24;border-radius:24px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.5);}
-  /* iPhone 15 Pro Max  430 × 932 */
-  .device-iphone-15pm .device-viewport{padding:30px 18px;background:#1a1424;}
-  .device-iphone-15pm .device-statusbar{background:rgba(0,0,0,.6);}
-  .device-iphone-15pm .stage{aspect-ratio:430/932;max-width:210px;max-height:520px;width:auto;border:3px solid #1a1a1f;border-radius:36px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.6);}
-  .device-iphone-15pm .device-statusbar::before{content:'14:35';display:inline-block;font-weight:800;}
-  .device-iphone-15pm .device-statusbar::after{content:'🔋95%   📶';font-size:10px;}
-  /* Android 20:9 */
-  .device-android .device-viewport{padding:32px 18px;background:#1a1424;}
-  .device-android .device-statusbar{background:rgba(0,0,0,.65);}
-  .device-android .stage{aspect-ratio:9/19.5;max-width:180px;max-height:520px;width:auto;border:3px solid #14141a;border-radius:20px;box-shadow:0 0 0 4px #232328, 0 16px 40px rgba(0,0,0,.5);}
-  /* iPad 4:3 */
-  .device-ipad .device-viewport{padding:24px 24px;background:#1a1424;}
-  .device-ipad .device-statusbar{background:rgba(0,0,0,.5);}
-  .device-ipad .stage{aspect-ratio:4/3;max-width:520px;max-height:520px;width:auto;border:3px solid #1a1a1f;border-radius:14px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.5);}
+  /* =========================================================
+     手机/平板设备框：Mercury 强制横屏
+     注意：aspect-ratio 必须写「横向宽 / 竖向高」，不能再写成 375/667 这种竖屏值。
+     同时覆盖 .stage 的 min-height/max-height，防止基础规则把横屏框重新撑成竖屏。
+     ========================================================= */
+  .device-iphone-se .device-viewport,
+  .device-iphone-15pm .device-viewport,
+  .device-android .device-viewport,
+  .device-ipad .device-viewport{padding:28px 34px;background:#1a1424;min-height:360px;overflow:hidden;}
+  .device-iphone-se .device-statusbar,
+  .device-iphone-15pm .device-statusbar,
+  .device-android .device-statusbar,
+  .device-ipad .device-statusbar{display:none;}
+  .device-iphone-se .stage,
+  .device-iphone-15pm .stage,
+  .device-android .stage,
+  .device-ipad .stage{
+    width:min(100%,760px);height:auto;min-height:0;max-height:none;flex:none;
+    border:4px solid #111116;box-shadow:0 0 0 5px #303038,0 18px 48px rgba(0,0,0,.62);
+  }
+  /* iPhone SE：横屏 667 × 375 */
+  .device-iphone-se .stage{aspect-ratio:667/375;border-radius:26px;}
+  /* iPhone 15 Pro Max：横屏 932 × 430 */
+  .device-iphone-15pm .stage{aspect-ratio:932/430;border-radius:30px;}
+  /* Android 20:9：横屏 19.5 × 9 */
+  .device-android .stage{aspect-ratio:19.5/9;border-radius:24px;}
+  /* iPad：横屏 4:3 */
+  .device-ipad .stage{aspect-ratio:4/3;max-width:650px;border-radius:18px;}
   /* PC 1280 × 720 */
   .device-pc-1280 .device-viewport{padding:24px 24px 18px;background:#0c0a18;}
   .device-pc-1280 .device-statusbar{background:#1f1f2a;font-size:11px;color:#ccc;}
@@ -135,21 +145,24 @@
   .device-pc-1280 .device-statusbar::before{content:'🪟 Mercury Editor — 学校 · 阶梯教室';}
   .device-pc-1280 .device-statusbar::after{content:'— □ ✕';}
 
-  /* ===== UI 预览覆盖层（默认隐藏，开关后显示）===== */
-  .ui-overlay{position:absolute;inset:0;pointer-events:none;z-index:6;display:none;}
-  body.show-ui .ui-overlay{display:block;}
-  .ui-bar{position:absolute;left:0;right:0;font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85);letter-spacing:.4px;}
-  /* 顶栏 — 不再透明到看不清：黑色实色 + 高度 10% */
-  .ui-topbar{top:0;height:var(--sa-y0);background:linear-gradient(180deg,rgba(15,8,32,.92),rgba(15,8,32,.5));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px);border-bottom:2px solid rgba(255,255,255,.18);}
-  .ui-topbar .lbl,.ui-topbar .lbl-r{background:rgba(255,255,255,.16);padding:3px 10px;border-radius:999px;backdrop-filter:blur(2px);}
-  /* 底栏 — 固定 15% 高度，不再 calc((1 - var(--sa-y1)) * 100%) */
-  .ui-bottombtn{top:auto;bottom:0;height:15%;min-height:60px;background:linear-gradient(0deg,rgba(15,8,32,.92),rgba(15,8,32,.45));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px) 8px;border-top:2px solid rgba(255,255,255,.18);}
-  .ui-bottombtn .btn{background:rgba(255,255,255,.16);padding:5px 12px;border-radius:999px;backdrop-filter:blur(2px);}
-  /* 摇杆 — 强制 96px + 圆环 + 内圈，永远可见 */
-  .ui-joystick{position:absolute;left:max(calc(var(--sa-jx) * 100% + 8px), 24px);bottom:max(calc((1 - var(--sa-jy)) * 100% + 8px), 50px);width:96px;height:96px;border-radius:50%;background:rgba(0,0,0,.55);border:3px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.55);}
-  .ui-stick{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(255,255,255,.45));box-shadow:0 4px 12px rgba(0,0,0,.5);}
-  .ui-stick::after{content:'摇';position:absolute;color:#000;font-size:11px;font-weight:900;}
-  .ui-overlay .lbl-act{position:absolute;right:14px;bottom:calc(15% + 12px);background:rgba(245,197,66,.92);color:#3a2c05;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  /* =========================================================
+     游戏 UI 预览层
+     重点：renderEditor() 每次都会清空 stage，因此 UI 必须由 JS 每次重建；
+     显隐绑定在 stage.ui-preview-on，不再只靠 body class。
+     ========================================================= */
+  .ui-overlay{position:absolute;inset:0;pointer-events:none;z-index:60;display:none;font-family:inherit;}
+  .stage.ui-preview-on .ui-overlay,body.show-ui .stage .ui-overlay{display:block!important;}
+  .ui-topbar{position:absolute;left:0;right:0;top:0;height:11%;min-height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 3%;color:#fff;background:linear-gradient(180deg,rgba(17,10,35,.96),rgba(17,10,35,.78));border-bottom:2px solid rgba(255,255,255,.28);box-shadow:0 4px 14px rgba(0,0,0,.28);}
+  .ui-profile{display:flex;align-items:center;gap:8px;font-size:clamp(11px,1.7vw,16px);font-weight:900;}
+  .ui-avatar{display:grid;place-items:center;width:clamp(24px,4vw,36px);aspect-ratio:1;border-radius:50%;background:#f5c542;border:2px solid #fff;color:#3a2c05;box-shadow:0 2px 8px rgba(0,0,0,.35);}
+  .ui-currency{display:flex;gap:7px;align-items:center;font-size:clamp(10px,1.45vw,14px);font-weight:900;}
+  .ui-chip{padding:5px 10px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.14);box-shadow:inset 0 1px rgba(255,255,255,.16);}
+  .ui-bottomnav{position:absolute;left:0;right:0;bottom:0;height:16%;min-height:54px;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:8px 3%;color:#fff;background:linear-gradient(0deg,rgba(17,10,35,.97),rgba(17,10,35,.72));border-top:2px solid rgba(255,255,255,.28);box-shadow:0 -4px 14px rgba(0,0,0,.28);}
+  .ui-navbtn{display:flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(255,255,255,.16);font-size:clamp(10px,1.4vw,14px);font-weight:900;white-space:nowrap;}
+  .ui-joystick{position:absolute;left:3.5%;bottom:19%;width:clamp(68px,12%,104px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),rgba(0,0,0,.62));border:3px solid rgba(255,255,255,.68);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.58),inset 0 0 0 8px rgba(255,255,255,.06);}
+  .ui-stick{display:grid;place-items:center;width:44%;aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#fff,#a7b0c5);color:#211930;font-size:clamp(9px,1.1vw,12px);font-weight:1000;box-shadow:0 4px 12px rgba(0,0,0,.58);}
+  .ui-action{position:absolute;right:4%;bottom:23%;display:grid;place-items:center;width:clamp(48px,7.5%,70px);aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#f5c542,#f08b32);border:3px solid rgba(255,255,255,.8);color:#3a2c05;font-size:clamp(10px,1.2vw,13px);font-weight:1000;box-shadow:0 5px 18px rgba(0,0,0,.45);}
+  .ui-orientation-badge{position:absolute;left:50%;top:13%;transform:translateX(-50%);padding:4px 12px;border-radius:999px;background:rgba(39,190,159,.94);color:#042f28;font-size:clamp(9px,1.1vw,12px);font-weight:1000;box-shadow:0 3px 10px rgba(0,0,0,.3);white-space:nowrap;}
   .bn-close{margin-left:6px;background:#3a2a08;color:#fff3a3;border:none;width:22px;height:22px;border-radius:50%;font-size:14px;font-weight:900;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
   .bn-close:hover{background:#1f1704;}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
@@ -180,26 +193,24 @@
   .ph-grid img{width:100%;height:44px;object-fit:contain;display:block;}
   .ph-grid span{display:block;font-size:10px;color:var(--sub);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-  /* 安全区：按市面 19 种机型实算的 UI 侵入并集（见 SafeArea.SPEC） */
-  .safe-layer{position:absolute;inset:0;pointer-events:none;z-index:1;}
-  .safe-edit{position:absolute;left:var(--sa-x0);top:var(--sa-y0);width:var(--sa-w);height:var(--sa-h);border:2px dashed rgba(55,200,176,.9);border-radius:6px;}
-  /* 行走区可视化：mask 图铺满 stage，通过 hue-rotate 让白像素显示为绿色可走蒙层 */
-  .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:2;}
-  .safe-edit::after{content:'✅ 可编辑区 ' attr(data-pct);position:absolute;left:8px;top:-10px;background:rgba(55,200,176,.98);color:#04322c;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
-  /* 禁区：红色斜纹 + 角标，明确告诉你被什么 UI 挡住 */
-  .safe-layer{position:absolute;inset:0;z-index:5;pointer-events:none;}
-  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.55) 0 10px,rgba(226,75,74,.18) 10px 20px);border:1.5px solid rgba(226,75,74,.95);box-sizing:border-box;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);}
-  .safe-zone>i{position:absolute;left:8px;top:5px;font-size:12px;font-weight:900;font-style:normal;color:#fff;background:linear-gradient(135deg,#dc2626,#7f1d1d);padding:3px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.4px;box-shadow:0 2px 8px rgba(0,0,0,.5);}
-  .safe-zone.bottom>i{left:8px;top:auto;bottom:5px;}
-  .safe-zone.joy>i{left:8px;top:5px;}
-  .sz-top{left:0;right:0;top:0;height:var(--sa-y0);}
-  .sz-bot{left:0;right:0;bottom:0;height:var(--sa-bh);}
-  .sz-joy{left:0;bottom:0;width:var(--sa-jx);height:var(--sa-jh);border-right:1px dashed rgba(226,75,74,.75);border-top:1px dashed rgba(226,75,74,.75);}
-  .safe-off .safe-layer{display:none;}
-  /* 🟢 可编辑区高亮：绿色蒙版铺满安全区，一眼看到能放东西的地方 */
-  .edit-glow .safe-edit{background:rgba(60,230,150,.14);border-width:3px;border-style:solid;border-color:rgba(55,200,176,.98);box-shadow:0 0 0 9999px rgba(20,14,34,.42) inset;}
-  .edit-glow .safe-edit::after{background:rgba(60,230,150,.98);color:#04322c;}
-  .safe-note{position:absolute;right:8px;top:calc(var(--sa-y0) + 8px);background:rgba(20,14,34,.82);color:#ffd9a8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  /* =========================================================
+     安全区预览层：红色 = 会被 UI 占用；绿色 = 可放玩法内容。
+     层级固定 50，高于地图/地块，低于 UI(60)，保证任何地图上都清晰可见。
+     ========================================================= */
+  .safe-layer{position:absolute;inset:0;z-index:50;pointer-events:none;display:block!important;overflow:hidden;}
+  .safe-off .safe-layer{display:none!important;}
+  .safe-edit{position:absolute;left:4%;top:10%;width:92%;height:75%;border:4px solid #23e0a5;border-radius:8px;background:rgba(35,224,165,.12);box-shadow:inset 0 0 28px rgba(35,224,165,.18),0 0 0 2px rgba(0,0,0,.28);}
+  .safe-edit::after{content:'✅ 安全可编辑区 · x 4%~96% · y 10%~85%';position:absolute;left:50%;top:8px;transform:translateX(-50%);background:#23e0a5;color:#062f25;font-size:clamp(9px,1.2vw,12px);font-weight:1000;padding:4px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.38);}
+  .safe-zone{position:absolute;background:repeating-linear-gradient(135deg,rgba(255,44,76,.78) 0 10px,rgba(255,44,76,.28) 10px 20px);border:2px solid #ff3156;box-sizing:border-box;box-shadow:inset 0 0 18px rgba(80,0,20,.3);}
+  .safe-zone>i{position:absolute;left:8px;top:5px;font-size:clamp(9px,1.15vw,12px);font-weight:1000;font-style:normal;color:#fff;background:#b70f31;padding:4px 10px;border:1px solid rgba(255,255,255,.5);border-radius:999px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.55);}
+  .safe-zone.bottom>i{top:auto;bottom:5px;}
+  .safe-zone.joy>i{top:8px;}
+  .sz-top{left:0;right:0;top:0;height:10%;}
+  .sz-bot{left:0;right:0;bottom:0;height:15%;}
+  .sz-joy{left:0;bottom:0;width:26%;height:32%;border-radius:0 70% 0 0;}
+  .safe-note{position:absolute;right:2%;top:12%;background:#231835;color:#ffe5b9;border:2px solid #f5c542;font-size:clamp(9px,1.1vw,12px);font-weight:1000;padding:4px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.48);}
+  /* 行走区可视化 */
+  .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:20;}
   /* 安全区说明弹窗 */
   .sa-mask{position:fixed;inset:0;z-index:420;background:rgba(12,8,24,.62);display:flex;align-items:center;justify-content:center;padding:18px;}
   .sa-panel{width:min(620px,96vw);max-height:86vh;overflow:auto;background:var(--panel,#221a35);border:1px solid var(--line,#3a2f52);border-radius:14px;padding:16px 18px;box-shadow:0 18px 60px rgba(0,0,0,.5);}
@@ -330,10 +341,10 @@
       <span class="pill-divider"></span>
       <select class="pill device-sel" id="me-device" title="切换不同机型看裁切后的显示区域" data-page-node-id="me-device">
         <option value="none">🖥 无（16:9 全屏）</option>
-        <option value="iphone-se">📱 iPhone SE</option>
-        <option value="iphone-15pm">📱 iPhone 15 Pro Max</option>
-        <option value="android">📱 Android 20:9</option>
-        <option value="ipad">📱 iPad 4:3</option>
+        <option value="iphone-se">📱 iPhone SE · 横屏</option>
+        <option value="iphone-15pm" selected>📱 iPhone 15 Pro Max · 横屏</option>
+        <option value="android">📱 Android 20:9 · 横屏</option>
+        <option value="ipad">📱 iPad 4:3 · 横屏</option>
         <option value="pc-1280">💻 PC 1280</option>
       </select>
       <button class="pill" id="me-ui-toggle" title="在画布上叠加显示游戏运行时顶栏/底条/摇杆 UI 的真实位置" data-page-node-id="me-ui-toggle">📐 UI 预览</button>
@@ -344,17 +355,11 @@
       <button class="pill" id="me-fix-links" title="扫描所有节点，把'父级指向不存在或指自己'的孤儿自动提到顶层，配 toast 报告" data-page-node-id="me-fix-links">🔗 校验挂靠</button>
       <button class="pill" id="me-merge-panels" title="把左侧的 'panel' 节点（纯界面）合并成父地图里的 '触发地块'。关卡地图不会被合并" data-page-node-id="me-merge-panels">📦 面板→触发</button>
     </div>
-    <div class="stage-frame device-none" id="stage-frame" data-page-node-id="stage-frame">
-      <div class="device-name" id="device-name">🖥 全屏预览</div>
+    <div class="stage-frame device-iphone-15pm" id="stage-frame" data-page-node-id="stage-frame">
+      <div class="device-name" id="device-name">📱 iPhone 15 Pro Max · 横屏 932×430</div>
       <div class="device-viewport" id="device-viewport">
         <div class="device-statusbar" id="device-statusbar"></div>
-        <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG">
-          <div class="ui-overlay" id="ui-overlay">
-            <div class="ui-bar ui-topbar">🐹 暮眠 · 🪙 12345</div>
-            <div class="ui-bar ui-bottombtn">⬆ 返回大厅 · 🌏 世界地图</div>
-            <div class="ui-joystick"><div class="ui-stick"></div></div>
-          </div>
-        </div>
+        <div class="stage ui-preview-on edit-glow" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG"></div>
       </div>
     </div>
     <div class="stage-hint" id="stage-hint" data-page-node-id="Tkn2HszHOqsoJQwO1Cmp2B">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
@@ -772,7 +777,8 @@ function updateCanvasForLeaf(map){
   const leaf = isLeafMap(map, d);
   const isPanel = map && map.type==='panel';
   // 关卡地图专属功能（世界地图全部隐藏 / 灰化）
-  ['me-add-trigger','me-add-spawn','me-walk','me-edit-glow','me-safe-toggle','me-safe-fit','me-safe-why'].forEach(id=>{
+  /* 世界地图不能编辑玩法，但「安全区 / UI 预览」属于显示工具，任何节点都必须能开关 */
+  ['me-add-trigger','me-add-spawn','me-walk'].forEach(id=>{
     const el = $(id); if(!el) return;
     const off = !leaf || isPanel;
     el.classList.toggle('is-disabled', off);
@@ -1126,6 +1132,31 @@ function openSafeNote(){
   $('sa-close').onclick = ()=> mask.remove();
 }
 
+/* 每次 renderEditor 清空画布后，重建游戏 UI 覆盖层。
+   这是之前 UI 永远不显示的根因修复：不能把静态 UI 写在会被 innerHTML='' 清空的 #edit-stage 里。 */
+function buildRuntimeUiPreview(){
+  const ui = document.createElement('div');
+  ui.className = 'ui-overlay';
+  ui.id = 'ui-overlay';
+  ui.innerHTML = `
+    <div class="ui-topbar">
+      <div class="ui-profile"><span class="ui-avatar">🐹</span><span>暮眠</span></div>
+      <div class="ui-currency">
+        <span class="ui-chip">🪙 12,345</span>
+        <span class="ui-chip">💎 88</span>
+        <span class="ui-chip">🔮 5</span>
+      </div>
+    </div>
+    <div class="ui-orientation-badge">📱 手机强制横屏 UI 预览</div>
+    <div class="ui-joystick"><div class="ui-stick">摇杆</div></div>
+    <div class="ui-action">交互</div>
+    <div class="ui-bottomnav">
+      <span class="ui-navbtn">← 返回</span>
+      <span class="ui-navbtn">🌍 世界地图</span>
+      <span class="ui-navbtn">👤 卡片</span>
+    </div>`;
+  return ui;
+}
 function renderEditor(){
   const d = ensureMaps();
   const map = d.maps[editState.nodeId];
@@ -1158,7 +1189,8 @@ function renderEditor(){
   /* ★ hub（有子关卡的）不画 spawn —— spawn 是关卡的出生点，hub 没出生概念 */
   const _renderIsHub = Object.values(d.maps||{}).some(x=>x && x.type!=='panel' && x.parent===map.id);
   if(!_renderIsHub) (map.spawns||[]).forEach(s=> stage.appendChild(buildSpawnEl(map, s)));
-  if(window.SafeArea && SafeArea.layer) stage.appendChild(SafeArea.layer());
+  /* SafeArea 是顶层 const，不会成为 window.SafeArea；旧判断永远为 false，导致蒙版从未插入 DOM */
+  if(typeof SafeArea !== 'undefined' && SafeArea.layer) stage.appendChild(SafeArea.layer());
   /* 行走区可视化：整张 walk mask 半透明绿色蒙层贴在画布上，一眼看清边界 */
   if(map.walk && map.walk.data){
     const wImg = document.createElement('img');
@@ -1167,6 +1199,8 @@ function renderEditor(){
     wImg.alt = '';
     stage.appendChild(wImg);
   }
+  /* UI 最后追加，层级固定在 safe-layer 之上；每次 render 都重建，所以绝不会再被 innerHTML 清掉 */
+  stage.appendChild(buildRuntimeUiPreview());
 
   if(!(map.nodes||[]).length && !(map.spawns||[]).length){
     const empty = document.createElement('div'); empty.className='stage-empty';
@@ -1575,11 +1609,11 @@ $('me-safe-why').onclick = openSafeNote;
 /* ====== 机型切换预览 ====== */
 const DEVICE_LABELS = {
   none: '🖥 全屏预览（16:9 自由版）',
-  'iphone-se': '📱 iPhone SE (375×667 16:9 · 1.78)',
-  'iphone-15pm': '📱 iPhone 15 Pro Max (430×932 20:9 · 2.17)',
-  android: '📱 Android 20:9 (窄屏 · 9:19.5)',
-  ipad: '📱 iPad 4:3 (1024×768 · 黑边粗)',
-  'pc-1280': '💻 PC 1280×720 (16:9 · 桌面端)'
+  'iphone-se': '📱 iPhone SE · 横屏 667×375',
+  'iphone-15pm': '📱 iPhone 15 Pro Max · 横屏 932×430',
+  android: '📱 Android 20:9 · 横屏 19.5:9',
+  ipad: '📱 iPad · 横屏 4:3（1024×768）',
+  'pc-1280': '💻 PC 1280×720（16:9）'
 };
 function setDevice(dev){
   const frame = $('stage-frame');
@@ -1593,10 +1627,12 @@ function setDevice(dev){
 $('me-device').onchange = ()=> setDevice($('me-device').value);
 /* ====== UI 预览开关 ====== */
 $('me-ui-toggle').onclick = ()=>{
-  const on = !document.body.classList.contains('show-ui');
-  document.body.classList.toggle('show-ui', on);
+  const stage = $('edit-stage');
+  const on = !stage.classList.contains('ui-preview-on');
+  stage.classList.toggle('ui-preview-on', on);
+  document.body.classList.toggle('show-ui', on); // 兼容旧 CSS / 老缓存
   $('me-ui-toggle').classList.toggle('on', on);
-  toast(on ? '📐 UI 预览已开 · 顶栏 / 底条 / 摇杆的真实位置显示出来了' : 'UI 预览已关');
+  toast(on ? '📐 UI 预览已开 · 顶栏 / 底栏 / 摇杆 / 交互键已显示' : 'UI 预览已关');
 };
 $('me-fix-links').onclick = ()=>{
   const d = ensureMaps();
@@ -2045,7 +2081,10 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   $('edit-stage').classList.add('edit-glow');
   $('me-edit-glow').classList.add('on');
   document.body.classList.add('show-ui');
+  $('edit-stage').classList.add('ui-preview-on');
   const uiBtn = $('me-ui-toggle'); if(uiBtn) uiBtn.classList.add('on');
+  /* 手机预览默认就是陛下要求的 iPhone 15 Pro Max 横屏，不再默认全屏/竖屏 */
+  setDevice('iphone-15pm');
   /* 启动红条：告诉陛下"🟥 红区 = UI 会被遮的地方，🟩 绿框 = 东西要放这里" —— 常驻，可关 */
   let banner = $('me-safebanner');
   if(!banner){
