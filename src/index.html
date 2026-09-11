@@ -2243,8 +2243,8 @@ let mapRun = {
   keys:{up:false,down:false,left:false,right:false},
   joy:{active:false, dx:0, dy:0},
   lastT:0, active:false, cool:0,
-  bgImg:null, bgSrc:'',
-  standing:null, lastFired:null,
+  bgImg:null,bgSrc:'',walkMapId:null,walkPixels:null,walkReady:false,
+  standing:null,lastFired:null,
 };
 
 function enterLobby(){
@@ -2265,10 +2265,8 @@ function enterLobby(){
   // 【陛下要求】登录后如果配置了全局入口，直接跳入入口关卡地图，不停留在大厅 canvas
   try{
     const d = ensureMaps();
-    const rootId = d && d.root && d.maps[d.root] ? d.root : (d && d.maps ? Object.keys(d.maps)[0] : null);
-    if(rootId && d.maps[rootId] && d.maps[rootId].type !== 'panel'){
-      requestAnimationFrame(()=>enterMap(rootId));
-    }
+    const entryId=d&&d.entryLevelId&&isLevelNode(d.maps[d.entryLevelId])?d.entryLevelId:null;
+    if(entryId)requestAnimationFrame(()=>enterMap(entryId));
   }catch(err){ console.warn('auto enter root map failed:', err); }
 }
 function initLobbyCanvas(){
@@ -2305,9 +2303,9 @@ window.__mapDebug = function(){
     const d = ensureMaps();
     const m = d && d.maps ? d.maps[mapState.currentId] : null;
     const info = {
-      root: d && d.root,
-      current: mapState.currentId,
-      mapName: m && m.name, mapType: m && m.type,
+      rootMapId:d&&d.rootMapId,entryLevelId:d&&d.entryLevelId,
+      current:mapState.currentId,
+      mapName:m&&m.name,nodeType:m&&m.nodeType,
       nodes: m ? (m.nodes||[]).length : '-',
       spawns: m ? (m.spawns||[]).length : '-',
       bgColor: m && m.bgColor, bgSrc: (m && m.bg) ? String(m.bg).slice(0,40)+'...' : '',
@@ -2435,8 +2433,8 @@ enableFloatJoystick('map-screen', 'map-joystick', 'map-joy-knob', mapRun.joy, fu
   try{
     if(!mapRun.active) return false;
     const wx = x - (mapRun.ox||0), wy = y - (mapRun.oy||0);
-    const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return false;
-    return (m.nodes||[]).some(n=> inRect(wx, wy, nodeRect(n, mapRun.w, mapRun.h)));
+    const d=ensureMaps(),m=d.maps[mapState.currentId];if(!isLevelNode(m))return false;
+    return (m.nodes||[]).some(n=>inRect(wx,wy,nodeRect(n,mapRun.w,mapRun.h)));
   }catch(e){ return false; }
 });
 
@@ -3667,6 +3665,7 @@ const PANEL_KINDS = [
   { id:'wardrobeVip',     name:'🦪 贵宾区衣橱',   em:'🦪', zones:['limited','outfit'] },
   { id:'tarot',           name:'🔮 塔罗占卜',     em:'🔮', zones:null },
   { id:'wish',            name:'⛲ 许愿池',       em:'⛲', zones:null },
+  { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
 ];
 function panelInfo(id){ return PANEL_KINDS.filter(p=>p.id===id)[0] || null; }
 function panelName(id){ const p = panelInfo(id); return p ? p.name : (id||'（未设置）'); }
@@ -3679,96 +3678,169 @@ function saveMapsData(d){ _mapsCache = d; try{ localStorage.setItem(LS_MAPS, JSO
 function invalidateMaps(){ _mapsCache = null; }
 window.addEventListener('storage', e=>{ if(e.key === LS_MAPS) invalidateMaps(); });
 
-/* 旧版 v1（tiles）→ v2（nodes / spawns / 开关） */
+/* ================= 地图 Schema v3 =================
+   Map   = 导航容器，只保存 navTiles，不可走、无出生点、无运行时触发。
+   Level = 可运行关卡，只保存 entities / spawns / walk，必须挂在 Map 下。
+   Panel = 独立 registry，不进入 maps 树。
+   运行时只读显式 nodeType；只有 v1/v2 → v3 迁移允许一次性启发式判断。 */
+const MAP_SCHEMA_VERSION = 3;
+const FIXED_NODE_TYPES = {
+  'world-hub':'map', home:'map', school:'map',
+  shop:'level', library:'level', classroom:'level'
+};
+const FIXED_PARENTS = {
+  'world-hub':null, home:'world-hub', school:'home',
+  shop:'home', library:'school', classroom:'school'
+};
+function defaultPanelRegistry(){
+  const out = {};
+  PANEL_KINDS.forEach(p=>{ out[p.id] = { id:p.id, name:p.name, em:p.em, zones:p.zones || null }; });
+  return out;
+}
+function nodeTypeOf(m){ return m && (m.nodeType==='map' || m.nodeType==='level') ? m.nodeType : null; }
+function isMapNode(m){ return nodeTypeOf(m)==='map'; }
+function isLevelNode(m){ return nodeTypeOf(m)==='level'; }
+function itemTargetId(n){ return n && (n.targetId || n.targetLevelId || n.targetMap || n.linkTo) || null; }
+function ensureNavTile(map, target, x, y, icon){
+  if(!map || !target) return;
+  const list = map.navTiles || (map.navTiles=[]);
+  if(list.some(n=>itemTargetId(n)===target.id)) return;
+  list.push({ id:'nav_'+map.id+'_'+target.id, kind:'nav', name:target.name, icon:icon||target.icon||(isMapNode(target)?'🗺️':'📍'),
+    x:x, y:y, w:0.18, h:0.16, img:null, action:'navigate', targetId:target.id, triggerMode:'click', tip:'进入'+target.name });
+}
 function migrateMaps(d){
   if(!d || !d.maps) return d;
-  if(d.version >= 2) return d;
-  Object.keys(d.maps).forEach(k=>{
-    const m = d.maps[k];
-    if(!m.type) m.type = 'map';
-    const old = m.tiles || [];
-    m.nodes = old.map(t=>Object.assign({}, t, { kind: t.kind || 'tile' }));
+  const oldVersion = Number(d.version||1);
+  const migrationLog = [];
+  d.panels = Object.assign(defaultPanelRegistry(), d.panels||{});
+
+  /* v1 tiles 先归一成旧 nodes。 */
+  Object.values(d.maps).forEach(m=>{
+    if(!m) return;
+    if(!Array.isArray(m.nodes) && Array.isArray(m.tiles)) m.nodes = m.tiles.map(t=>Object.assign({}, t, {kind:t.kind||'tile'}));
     delete m.tiles;
-    if(m.type==='map'){
-      if(!Array.isArray(m.spawns) || !m.spawns.length) m.spawns = [{ id:'spawn_default', name:'默认入口', x:0.5, y:0.85 }];
-      if(m.allowWorldMap==null) m.allowWorldMap = true;
-      if(m.allowTeleportOut==null) m.allowTeleportOut = true;
-    }
-    (m.nodes||[]).forEach(n=>{
-      if(n.kind==='trigger'){
-        if(!n.action) n.action = n.targetMap ? 'teleport' : 'none';
-        if(!n.triggerMode) n.triggerMode = 'auto';
-      }
-    });
   });
-  d.version = 2;
+
+  /* 旧 panel 节点提取到独立 registry，并从地图树移除。 */
+  Object.keys(d.maps).forEach(id=>{
+    const m=d.maps[id];
+    if(!m || m.type!=='panel') return;
+    const panelId=m.panel||id;
+    d.panels[panelId]=Object.assign({}, d.panels[panelId]||{}, {id:panelId, name:m.name||panelId});
+    delete d.maps[id];
+    migrationLog.push('PANEL_EXTRACTED:'+id+'->'+panelId);
+  });
+
+  /* 只在旧数据迁移时允许启发式；v3 运行时不再按 children 推断。 */
+  Object.values(d.maps).forEach(m=>{
+    if(!m) return;
+    if(FIXED_NODE_TYPES[m.id]) m.nodeType=FIXED_NODE_TYPES[m.id];
+    else if(!nodeTypeOf(m)){
+      const hasChild=Object.values(d.maps).some(x=>x && x.parent===m.id && x.type!=='panel');
+      m.nodeType=hasChild?'map':'level';
+      migrationLog.push('TYPE_INFERRED:'+m.id+'='+m.nodeType);
+    }
+    m.type='map'; // 兼容旧字段；业务判断一律使用 nodeType
+    if(FIXED_PARENTS.hasOwnProperty(m.id)) m.parent=FIXED_PARENTS[m.id];
+  });
+
+  let world=d.maps['world-hub'];
+  if(!world){
+    world={id:'world-hub',name:'世界地图',type:'map',nodeType:'map',parent:null,bg:null,bgColor:'#d4dff7',navTiles:[],nodes:[],spawns:[]};
+    d.maps[world.id]=world;
+    migrationLog.push('MAP_CREATED:world-hub');
+  }
+  world.nodeType='map'; world.type='map'; world.parent=null;
+
+  if(!Array.isArray(d._quarantine)) d._quarantine=[];
+  Object.values(d.maps).forEach(m=>{
+    if(!m) return;
+    if(isMapNode(m)){
+      const src=Array.isArray(m.navTiles)?m.navTiles:(Array.isArray(m.nodes)?m.nodes:[]);
+      const nav=[]; const rejected=[];
+      src.forEach(n=>{
+        const tid=itemTargetId(n);
+        if(tid&&d.maps[tid]&&d.maps[tid].parent===m.id)nav.push(Object.assign({},n,{kind:'nav',action:'navigate',targetId:tid,targetMap:null,targetLevelId:null,linkTo:null,triggerMode:'click'}));
+        else rejected.push(n);
+      });
+      if(rejected.length && oldVersion<3) d._quarantine.push({fromMapId:m.id,kind:'map-runtime-items',items:rejected});
+      m.navTiles=nav; m.nodes=m.navTiles;
+      if((m.spawns||[]).length && oldVersion<3) d._quarantine.push({fromMapId:m.id,kind:'map-spawns',items:m.spawns});
+      m.spawns=[]; delete m.walk; delete m.entities;
+      m.allowWorldMap=true; m.allowTeleportOut=false;
+    }else{
+      const src=Array.isArray(m.entities)?m.entities:(Array.isArray(m.nodes)?m.nodes:[]);
+      const entities=[]; const rejected=[];
+      src.forEach(n=>{
+        const a=n.action || (n.targetMap?'teleport':'none');
+        const tid=itemTargetId(n);
+        if((a==='teleport' || a==='teleportLevel') && (!tid || !isLevelNode(d.maps[tid]))){ rejected.push(n); return; }
+        const next=Object.assign({},n);
+        if(a==='teleport')next.action='teleportLevel';
+        if(next.triggerMode==='auto')next.triggerMode='onEnter';
+        if(next.action==='teleportLevel'){next.targetLevelId=tid;next.targetMap=tid;}
+        if(next.action==='panel' && !next.panelId) next.panelId=next.panel;
+        entities.push(next);
+      });
+      if(rejected.length && oldVersion<3) d._quarantine.push({fromMapId:m.id,kind:'invalid-level-links',items:rejected});
+      m.entities=entities; m.nodes=m.entities;
+      if(!Array.isArray(m.spawns) || !m.spawns.length) m.spawns=[{id:'spawn_default',name:'默认入口',x:0.5,y:0.85}];
+      if(m.allowWorldMap==null) m.allowWorldMap=true;
+      if(m.allowTeleportOut==null) m.allowTeleportOut=true;
+      delete m.navTiles;
+    }
+  });
+
+  /* 明确的 Mercury 层级与导航建筑。 */
+  if(d.maps.home) ensureNavTile(world,d.maps.home,0.5,0.55,'🏠');
+  if(d.maps.home && d.maps.school) ensureNavTile(d.maps.home,d.maps.school,0.68,0.48,'🏫');
+  if(d.maps.home && d.maps.shop) ensureNavTile(d.maps.home,d.maps.shop,0.28,0.55,'👗');
+  if(d.maps.school && d.maps.library) ensureNavTile(d.maps.school,d.maps.library,0.30,0.58,'📚');
+  if(d.maps.school&&d.maps.classroom)ensureNavTile(d.maps.school,d.maps.classroom,0.70,0.58,'🎓');
+  Object.values(d.maps).forEach(child=>{const parent=child&&child.parent?d.maps[child.parent]:null;if(parent&&isMapNode(parent))ensureNavTile(parent,child,0.5,0.5,isMapNode(child)?'🗺️':'🎯');});
+  Object.values(d.maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles||[];});
+
+  d.rootMapId = isMapNode(d.maps[d.rootMapId]) ? d.rootMapId : 'world-hub';
+  const oldEntry = d.entryLevelId || d.root;
+  d.entryLevelId = isLevelNode(d.maps[oldEntry]) ? oldEntry
+    : (isLevelNode(d.maps.classroom) ? 'classroom' : ((Object.values(d.maps).find(isLevelNode)||{}).id||null));
+  d.root = d.entryLevelId; // 旧调用兼容；不再承担地图根节点语义
+  d.version=MAP_SCHEMA_VERSION;
+  if(migrationLog.length) d._migrationV3={at:new Date().toISOString(),fromVersion:oldVersion,log:migrationLog};
   return d;
 }
 function seedMaps(){
-  let n = 0;
-  const T=(name,icon,color,x,y,w,h,linkTo,extra)=>Object.assign({id:'st'+(++n), kind:'tile', name, icon, color, x, y, w, h:(h!=null?h:w),
-    linkTo:linkTo||null, img:(window.MapPlaceholders ? MapPlaceholders.pick(name).src : null),
-    action: linkTo ? 'teleport' : 'none', targetMap:linkTo||null, targetSpawn:null, panel:null,
-    triggerMode:'click', tip:''}, extra||{});
-  const G=(name,x,y,w,h,extra)=>Object.assign({id:'sg'+(++n), kind:'trigger', name, icon:'🚪', x, y, w, h,
-    action:'teleport', targetMap:null, targetSpawn:null, bidirectional:false, backName:'返回', backId:null,
-    pairId:null, triggerMode:'auto', tip:''}, extra||{});
-  const M=(id,name,parent,bgColor,nodes,extra)=>Object.assign({id, name, type:'map', parent:parent||null, bg:null, bgColor,
-    nodes:nodes||[], spawns:[{id:'spawn_default', name:'默认入口', x:0.5, y:0.85}],
-    allowWorldMap:true, allowTeleportOut:true}, extra||{});
-  const P=(id,name,parent,panel)=>({id, name, type:'panel', parent:parent||null, bg:null, bgColor:'#e8e0f2',
-    nodes:[], spawns:[], panel});
-  const maps = {}; const add = m => { maps[m.id] = m; return m; };
-
-  add(M('home','家园',null,'#efe8d2',[
-    T('我的小屋','🛖','#b08968',0.36,0.50,0.18,0.18,null),
-    T('塔罗小屋','🔮','#8a6fc4',0.66,0.50,0.18,0.18,null,{ action:'panel', panel:'tarot', tip:'来占一卦' }),
-    G('去学校',  0.82,0.76,0.14,0.10,{ targetMap:'school', targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'🏫', tip:'去学校' }),
-    G('服装店',  0.18,0.76,0.14,0.10,{ targetMap:'shop',   targetSpawn:'spawn_default', bidirectional:true, backName:'回家', icon:'👗', tip:'去服装店' }),
-  ]));
-  add(M('school','学校','home','#cfe8cf',[
-    T('教学楼','🏫','#43a047',0.50,0.32,0.28,0.22,null),
-    G('图书馆门口',  0.28,0.62,0.14,0.10,{ targetMap:'library',   targetSpawn:'spawn_default', bidirectional:true, backName:'回走廊', icon:'📚', tip:'进入图书馆' }),
-    G('阶梯教室门口',0.72,0.62,0.14,0.10,{ targetMap:'classroom', targetSpawn:'spawn_default', bidirectional:true, backName:'回走廊', icon:'🎓', tip:'进入阶梯教室' }),
-  ]));
-  add(M('library','图书馆','school','#e6ecf7',[ T('书架','📚','#8d6e63',0.5,0.40,0.34,0.20,null) ]));
-  add(M('classroom','阶梯教室','school','#f2ead6',[ T('讲台','🎓','#a1887f',0.5,0.40,0.30,0.18,null) ]));
-  add(M('shop','服装店','home','#f6e6ef',[
-    // 三个服装区＝地块本身就能打开衣橱，不再单独摆面板触发区
-    T('普通服装区','👗','#f2a4c8',0.20,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobe',        tip:'推开玻璃门，进去逛逛' }),
-    T('高级时装区','💎','#9fd8f2',0.50,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobePremium', tip:'高级区，请轻声细语' }),
-    T('贵宾区',    '🦪','#f5c542',0.80,0.42,0.20,0.20,null,{ action:'panel', panel:'wardrobeVip',     tip:'贵宾专属，欢迎光临' }),
-  ], { allowWorldMap:false }));   // 服装店里不能开世界地图，只能靠走
-  add(P('wardrobe_normal','普通衣橱','shop','wardrobe'));
-  add(P('wardrobe_premium','高级时装衣橱','shop','wardrobePremium'));
-  add(P('wardrobe_vip','贵宾区衣橱','shop','wardrobeVip'));
-  add(P('tarot_room','塔罗小屋','home','tarot'));
-
-  // 双向传送：在目标地图自动补一个返回门（放在目标入口点下方）
-  const d = { version:2, root:'home', maps };
-  Object.keys(maps).forEach(k=>{
-    (maps[k].nodes||[]).filter(g=>g.kind==='trigger' && g.bidirectional && g.targetMap).forEach(g=>{
-      const tm = maps[g.targetMap]; if(!tm) return;
-      const sp = (tm.spawns||[])[0] || {x:0.5, y:0.85};
-      const back = { id:g.id+'_back', kind:'trigger', name:g.backName||'返回', icon:'↩️',
-        x:sp.x, y:Math.min(0.95, sp.y + 0.07), w:0.14, h:0.09,
-        action:'teleport', targetMap:maps[k].id, targetSpawn:g.targetSpawn||'spawn_default',
-        bidirectional:false, backName:'', backId:null, pairId:g.id,
-        triggerMode:g.triggerMode||'auto', tip:'' };
-      tm.nodes.push(back); g.backId = back.id;
-    });
-  });
-  return d;
+  let n=0;
+  const nav=(name,icon,targetId,x,y)=>({id:'nav'+(++n),kind:'nav',name,icon,x,y,w:0.18,h:0.16,img:null,action:'navigate',targetId,triggerMode:'click',tip:'进入'+name});
+  const entity=(name,icon,x,y,w,h,extra)=>Object.assign({id:'e'+(++n),kind:'tile',name,icon,x,y,w,h,img:null,action:'none',triggerMode:'click',tip:''},extra||{});
+  const map=(id,name,parent,bgColor,navTiles)=>({id,name,type:'map',nodeType:'map',parent:parent||null,bg:null,bgColor,navTiles:navTiles||[],nodes:navTiles||[],spawns:[],allowWorldMap:true,allowTeleportOut:false});
+  const level=(id,name,parent,bgColor,entities,extra)=>Object.assign({id,name,type:'map',nodeType:'level',parent,bg:null,bgColor,entities:entities||[],nodes:entities||[],spawns:[{id:'spawn_default',name:'默认入口',x:0.5,y:0.85}],allowWorldMap:true,allowTeleportOut:true},extra||{});
+  const maps={}; const add=m=>{maps[m.id]=m;return m;};
+  const world=add(map('world-hub','世界地图',null,'#d4dff7',[]));
+  const home=add(map('home','家园','world-hub','#efe8d2',[]));
+  const school=add(map('school','学校','home','#cfe8cf',[]));
+  add(level('shop','服装店','home','#f6e6ef',[
+    entity('普通服装区','👗',0.20,0.42,0.20,0.20,{action:'panel',panelId:'wardrobe',panel:'wardrobe',tip:'推开玻璃门，进去逛逛'}),
+    entity('高级时装区','💎',0.50,0.42,0.20,0.20,{action:'panel',panelId:'wardrobePremium',panel:'wardrobePremium',tip:'高级区，请轻声细语'}),
+    entity('贵宾区','🦪',0.80,0.42,0.20,0.20,{action:'panel',panelId:'wardrobeVip',panel:'wardrobeVip',tip:'贵宾专属，欢迎光临'})
+  ],{allowWorldMap:false}));
+  add(level('library','图书馆','school','#e6ecf7',[entity('书架','📚',0.5,0.40,0.34,0.20)]));
+  add(level('classroom','阶梯教室','school','#f2ead6',[entity('讲台','🎓',0.5,0.40,0.30,0.18)]));
+  world.navTiles.push(nav('家园','🏠','home',0.5,0.55));
+  home.navTiles.push(nav('学校','🏫','school',0.68,0.48),nav('服装店','👗','shop',0.28,0.55));
+  school.navTiles.push(nav('图书馆','📚','library',0.30,0.58),nav('阶梯教室','🎓','classroom',0.70,0.58));
+  Object.values(maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles;});
+  return {version:MAP_SCHEMA_VERSION,rootMapId:'world-hub',entryLevelId:'classroom',root:'classroom',maps,panels:defaultPanelRegistry(),_migrationV3:{at:new Date().toISOString(),fromVersion:0,log:['SEEDED_V3']}};
 }
 function ensureMaps(){
-  if(_mapsCache && _mapsCache.root && _mapsCache.maps) return _mapsCache;
-  let d = getMapsData();
-  if(!d || !d.root || !d.maps){ d = seedMaps(); saveMapsData(d); return _mapsCache; }
-  if((d.version||1) < 2){ d = migrateMaps(d) || d; saveMapsData(d); }
-  /* 🌎 父级自愈：把所有"原本该挂但 parent 失效/成环/指向 panel"的关卡提到「🌍 世界地图」枢纽上 */
-  const res = autoAssignWorldMapParent(d);
-  if(res.changed){ saveMapsData(d); console.info('[Mercury] autoAssign:', res.log); }
-  _mapsCache = d; return _mapsCache;
+  if(_mapsCache && _mapsCache.version===MAP_SCHEMA_VERSION && _mapsCache.maps) return _mapsCache;
+  let d=getMapsData();
+  if(!d || !d.maps) d=seedMaps();
+  const before=JSON.stringify(d);
+  d=migrateMaps(d)||d;
+  if(JSON.stringify(d)!==before || !getMapsData()) saveMapsData(d);
+  _mapsCache=d;
+  return d;
 }
 /* 把所有无父级 / 父级失效的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上。
    帝皇要求：关卡必须有父级，世界地图也要存在一张。
@@ -3857,7 +3929,7 @@ function autoAssignWorldMapParent(d){
   return { changed, log };
 }
 function getMap(id){ return ensureMaps().maps[id]; }
-function mainMapId(){ const d = ensureMaps(); return d.maps[d.root] ? d.root : Object.keys(d.maps)[0]; }
+function mainMapId(){const d=ensureMaps();return isLevelNode(d.maps[d.entryLevelId])?d.entryLevelId:((Object.values(d.maps).find(isLevelNode)||{}).id||null);}
 function mapBreadcrumb(id){
   const d = ensureMaps(); const chain = [];
   let cur = d.maps[id], guard = 0;
@@ -3878,131 +3950,82 @@ function nodeAction(n){
   if(n.action) return n.action;
   return n.linkTo ? 'teleport' : 'none';
 }
-function nodeTargetId(n){ return n.targetMap || n.linkTo || null; }
-function nodeIsHot(n){ const a = nodeAction(n); return a==='teleport' || a==='panel'; }
+function nodeTargetId(n){return itemTargetId(n);}
+function nodeIsHot(n){const a=nodeAction(n);return a==='teleport'||a==='teleportLevel'||a==='panel'||a==='dialogue'||a==='gameplay'||a==='collect';}
 /* 走上去会自动触发的东西（点一下才触发的地块不算） */
 function triggerAt(px, py){
-  const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return null;
+  const d=ensureMaps();const m=d.maps[mapState.currentId];if(!isLevelNode(m))return null;
   const W = mapRun.w, H = mapRun.h; let hit = null;
   (m.nodes||[]).forEach(n=>{
     if(!inRect(px, py, nodeRect(n, W, H))) return;
     if(!nodeIsHot(n)) return;
-    if(n.kind==='tile' && (n.triggerMode||'click') !== 'auto') return;
-    hit = n;
+    if((n.triggerMode||'click')!=='onEnter')return;
+    hit=n;
   });
   return hit;
 }
 /* 手指点在哪个地块上（不管它有没有行为） */
 function tileAt(px, py){
-  const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return null;
+  const d=ensureMaps();const m=d.maps[mapState.currentId];if(!isLevelNode(m))return null;
   const W = mapRun.w, H = mapRun.h; let hit = null;
   (m.nodes||[]).forEach(n=>{ if(n.kind!=='tile') return; if(inRect(px,py,nodeRect(n,W,H))) hit = n; });
   return hit;
 }
 
-/* 「这个地图是否有子关卡」—— 走子地图集合里有没有 m.parent === id 的
-   （panel 不算子关卡，且自己永远不是自己的子）。陛下要的是"世界地图 = 有子关卡"。 */
-function winHasChildMaps(id, d){
-  if(!d || !d.maps) return false;
-  return Object.values(d.maps).some(m=>m && m.id !== id && m.parent === id && (m.type||'map') === 'map');
-}
-/* 找一个叶子关卡：先在以 rootId 为根的树里沿子节点挑 isLeaf（hasChildMaps===false），
-   没找到再走第一张 type=map 的兜底。返回 id 或 null。 */
-function firstLeafMapId(d, rootId){
-  if(!d || !d.maps) return null;
-  const queue = [rootId].filter(Boolean);
-  const seen = new Set();
-  while(queue.length){
-    const cur = queue.shift();
-    if(!cur || seen.has(cur)) continue;
-    seen.add(cur);
-    const m = d.maps[cur];
-    if(!m || m.type === 'panel') continue;
-    const kids = Object.values(d.maps).filter(x=>x && x.parent === cur && (x.type||'map')==='map');
-    if(kids.length === 0) return cur;        // 叶子
-    queue.push(...kids.map(k=>k.id));
-  }
-  /* 兜底：返回第一张地图 id */
-  const fb = Object.keys(d.maps).find(k => (d.maps[k].type||'map') === 'map');
-  return fb || null;
+/* 兼容旧函数名，但类型判断只读显式 nodeType。 */
+function winHasChildMaps(id,d){return !!(d&&isMapNode(d.maps[id]));}
+function firstLeafMapId(d,rootId){
+  if(!d||!d.maps)return null;
+  const queue=[rootId].filter(Boolean),seen=new Set();
+  while(queue.length){const id=queue.shift();if(!id||seen.has(id))continue;seen.add(id);const m=d.maps[id];if(isLevelNode(m))return id;if(isMapNode(m))queue.push(...Object.values(d.maps).filter(x=>x&&x.parent===id).map(x=>x.id));}
+  return ((Object.values(d.maps).find(isLevelNode)||{}).id)||null;
 }
 
-/* ---- 进入 / 传送 ----
-   extra fix：
-   · 是 panel → 落到 openPanelNode 而不是切屏
-   · 是世界地图（非关卡）→ 走 fallback：自动挑第一个「可走的关卡（hasChildMaps or 已是地图）」
-   · 关卡没 spawns → 兜底 (0.5, 0.85)
-*/
-function enterMap(id, spawnId){
-  ensureBody();
-  const d = ensureMaps();
-  let map = d.maps[id];
-  /* 目标不存在 → 落到 root / 第一张地图 */
-  if(!map){
-    const fbId = d.maps[d.root] ? d.root : Object.keys(d.maps)[0];
-    map = d.maps[fbId];
-    if(!map){ toast('⚠️ 地图数据损坏，请去《地图编辑引擎》重建'); showScreen('game-screen'); return; }
-    toast('⚠️ 目标地图"'+id+'"不存在，已回到"'+(map.name||fbId)+'"');
-    id = fbId;
-  }
-  if(map.type === 'panel'){ openPanelNode(map); return; }   // 面板节点直接打开面板
-  /* 🌎 兜底：当前节点是「世界地图（挂着子关卡）」 → 不能把角色摆在上面，改去第一个关卡 */
-  if(winHasChildMaps(id, d)){
-    const leafId = firstLeafMapId(d, id);
-    if(leafId && leafId !== id){
-      toast('🌎 "'+map.name+'"是世界地图（挂着子关卡），自动跳到第一个关卡 · 去《地图编辑引擎》改根节点');
-      id = leafId; map = d.maps[id];
-      if(!map){ showScreen('game-screen'); return; }
-    }
-  }
-  /* 关卡没 spawns → 临时兜底 (0.5, 0.85)，并落盘，让陛下之后不会没头苍蝇
-     ★ 但 hub（有子关卡）不能加 spawn —— 它不是"关卡"，没有出生点概念
-     ★ 当前 id 若已被前面的 winHasChildMaps 兜底改到 leaf，那就不算 hub，正常加 spawn */
-  const _isHubNow = winHasChildMaps(id, d);
-  if(!_isHubNow && map.type !== 'panel' && (!Array.isArray(map.spawns) || !map.spawns.length)){
-    map.spawns = [{ id:'spawn_default', name:'默认入口', x:0.5, y:0.85 }];
-    saveMapsData(d);
-  }
-  mapState.currentId = id; mapState.spawnId = spawnId || null;
-  showScreen('map-screen');
-  // 延一帧再算尺寸：map-screen 刚从 hidden 切显，某些浏览器上首帧 innerWidth/Height 还没稳
-  const _spawnPlacement = ()=>{
-    resizeMap();
-    loadMapBg(map);
-    const W = mapRun.w || window.innerWidth || 1, H = mapRun.h || window.innerHeight || 1;
-    let sx = 0.5, sy = 0.85;
-    const sp = (map.spawns||[]).filter(s=>s.id===spawnId)[0] || (map.spawns||[])[0];
-    if(sp && isFinite(sp.x) && isFinite(sp.y)){ sx = sp.x; sy = sp.y; }
-    // 出生点强制夹到可视区，防止编辑器里被拖到画布外
-    sx = Math.max(0.05, Math.min(0.95, sx));
-    sy = Math.max(0.05, Math.min(0.95, sy));
-    mapRun.px = sx*W; mapRun.py = sy*H;
-    mapRun.facing = 1; mapRun.walkPhase = 0; mapRun.moving = false;
-    mapRun.cool = 0.6;                       // 落地后短暂免疫，防止来回弹
-    mapRun.standing = triggerAt(mapRun.px, mapRun.py);
-    mapRun.lastFired = mapRun.standing ? mapRun.standing.id : null;
-    hideMapPop();
-    mapRun.active = true;
-    mapRun.lastT = performance.now();
-    refreshMapTopbar();
-    if(!loopId) loopId = requestAnimationFrame(loop);
+function loadRuntimeWalk(level){
+  mapRun.walkMapId=level?level.id:null;mapRun.walkPixels=null;mapRun.walkReady=false;
+  if(!level||!level.walk||!level.walk.data)return;
+  const im=new Image();
+  im.onload=()=>{if(mapRun.walkMapId!==level.id)return;const c=document.createElement('canvas');c.width=192;c.height=108;const x=c.getContext('2d');x.drawImage(im,0,0,192,108);try{mapRun.walkPixels=x.getImageData(0,0,192,108).data;mapRun.walkReady=true;}catch(e){mapRun.walkPixels=null;}};
+  im.src=level.walk.data;
+}
+function runtimeWalkable(level,px,py){
+  if(!level||!level.walk||!level.walk.data||!mapRun.walkReady||mapRun.walkMapId!==level.id||!mapRun.walkPixels)return true;
+  const ix=Math.max(0,Math.min(191,Math.floor(px/Math.max(1,mapRun.w)*192))),iy=Math.max(0,Math.min(107,Math.floor(py/Math.max(1,mapRun.h)*108)));
+  return mapRun.walkPixels[(iy*192+ix)*4+3]>32;
+}
+/* ---- 进入关卡 ----
+   Map 与 Level 严格分流：Map 打开导航，不创建角色；Level 才进入运行场景。 */
+function enterMap(id,spawnId){
+  ensureBody();const d=ensureMaps();let level=d.maps[id];
+  if(!level){id=d.entryLevelId;level=d.maps[id];toast('⚠️ 目标不存在，已回到登录入口');}
+  if(isMapNode(level)){openMapNavigator(level.id);return;}
+  if(!isLevelNode(level)){toast('❌ ENTRY_NOT_LEVEL：目标不是可运行关卡');return;}
+  if(!level.parent||!isMapNode(d.maps[level.parent])){toast('❌ LEVEL_NO_PARENT：关卡必须挂在 Map 下');return;}
+  if(!Array.isArray(level.spawns)||!level.spawns.length){toast('❌ LEVEL_NO_SPAWN：关卡没有出生点');return;}
+  mapState.currentId=id;mapState.spawnId=spawnId||null;loadRuntimeWalk(level);showScreen('map-screen');
+  const place=()=>{
+    resizeMap();loadMapBg(level);
+    const W=mapRun.w||window.innerWidth||1,H=mapRun.h||window.innerHeight||1;
+    const sp=(level.spawns||[]).find(s=>s.id===spawnId)||(level.spawns||[])[0];
+    const sx=Math.max(0.05,Math.min(0.95,Number(sp.x)||0.5)),sy=Math.max(0.05,Math.min(0.95,Number(sp.y)||0.85));
+    mapRun.px=sx*W;mapRun.py=sy*H;mapRun.facing=1;mapRun.walkPhase=0;mapRun.moving=false;mapRun.cool=0.6;
+    mapRun.standing=triggerAt(mapRun.px,mapRun.py);mapRun.lastFired=mapRun.standing?mapRun.standing.id:null;
+    hideMapPop();mapRun.active=true;mapRun.lastT=performance.now();refreshMapTopbar();if(!loopId)loopId=requestAnimationFrame(loop);
   };
-  requestAnimationFrame(_spawnPlacement);
+  requestAnimationFrame(place);
 }
 function fireTrigger(t){
-  if(!t) return;
-  const act = nodeAction(t);
-  const tid = nodeTargetId(t);
-  if(act === 'panel'){ mapRun.lastFired = t.id; openPanelNode(t); return; }
-  if(act !== 'teleport' || !tid) return;
-  const d = ensureMaps();
-  const cur = d.maps[mapState.currentId];
-  if(cur && cur.allowTeleportOut === false){ toast('这里不能传送，请步行到门口'); return; }
-  const target = d.maps[tid];
-  if(!target){ toast('目标地图不存在，去《地图编辑引擎》检查「'+(t.name||'这个点')+'」'); return; }
-  mapRun.lastFired = t.id;
-  enterMap(tid, t.targetSpawn);
-  toast('→ ' + target.name);
+  if(!t)return;const act=nodeAction(t),tid=nodeTargetId(t);
+  if(act==='panel'){mapRun.lastFired=t.id;openPanelNode(t);return;}
+  if(act==='dialogue'){toast(t.tip||'💬 对话事件');return;}
+  if(act==='gameplay'){toast(t.tip||'🎮 玩法事件');return;}
+  if(act==='collect'){toast(t.tip||'✨ 收集成功');return;}
+  if((act!=='teleport'&&act!=='teleportLevel')||!tid)return;
+  const d=ensureMaps(),cur=d.maps[mapState.currentId];
+  if(cur&&cur.allowTeleportOut===false){toast('这里不能传送，请步行到门口');return;}
+  const target=d.maps[tid];if(!isLevelNode(target)){toast('❌ LEVEL_TARGET_INVALID：传送目标必须是 Level');return;}
+  if(t.targetSpawn&&!(target.spawns||[]).some(s=>s.id===t.targetSpawn)){toast('❌ TARGET_SPAWN_INVALID：目标出生点不存在');return;}
+  mapRun.lastFired=t.id;enterMap(tid,t.targetSpawn);toast('→ '+target.name);
 }
 /* 从全屏面板回到刚才那张地图（位置保留） */
 function backToMap(){
@@ -4019,12 +4042,14 @@ function backToMap(){
 
 /* ---- 面板组件（衣橱 / 塔罗 / 许愿池…） ---- */
 function openPanelNode(node){
-  const kind = node.panel || (node.action==='panel' ? node.panel : null) || 'wardrobe';
+  const kind=node.panelId||node.panel||null;
+  if(!kind||!ensureMaps().panels[kind]){toast('❌ PANEL_TARGET_INVALID：面板未注册');return;}
   const info = panelInfo(kind);
   const label = info ? info.name.replace(/^\S+\s/, '') : (node.name || '组件');
   panelReturn = 'map';
-  if(kind === 'tarot'){ showScreen('tarot-screen'); return; }
-  if(kind === 'wish'){ toast('⛲ 许愿池还在开发中'); return; }
+  if(kind==='tarot'){showScreen('tarot-screen');return;}
+  if(kind==='checkin'){openCheckin();return;}
+  if(kind==='wish'){toast('⛲ 许愿池还在开发中');return;}
   // 三档衣橱：按商店分区自动过滤
   wbZoneFilter = (info && info.zones) ? info.zones.slice() : null;
   wbTitle = (info ? info.em + ' ' : '') + label;
@@ -4037,18 +4062,13 @@ function refreshMapTopbar(){
   const d = ensureMaps();
   const m = d.maps[mapState.currentId]; if(!m) return;
   const back = $('map-back');
-  back.textContent = m.parent ? '← 返回' : '← 返回入口';
-  back.onclick = ()=>{
-    if(m.parent){ enterMap(m.parent); return; }
-    // 没父级 = 顶层关卡，回到全局入口
-    const rootId = d.root && d.maps[d.root] ? d.root : mainMapId();
-    if(rootId && rootId !== mapState.currentId) enterMap(rootId);
-    else showScreen('game-screen');
-  };
-  const wm = $('map-world');
-  const canWM = (m.allowWorldMap !== false);
-  wm.classList.toggle('hidden', !canWM);
-  wm.onclick = openWorldMap;
+  const parentMap=m.parent&&isMapNode(d.maps[m.parent])?d.maps[m.parent]:d.maps[d.rootMapId];
+  back.textContent=parentMap?'← '+parentMap.name:'← 返回';
+  back.onclick=()=>{if(parentMap)openMapNavigator(parentMap.id);else showScreen('game-screen');};
+  const wm=$('map-world');
+  const canWM=(m.allowWorldMap!==false);
+  wm.classList.toggle('hidden',!canWM);
+  wm.onclick=()=>openWorldMap(d.rootMapId,false);
   /* 👤 名字卡片按钮 — 陛下登录进地图后也能直接开 profile / 签到日历 */
   const prof = $('map-profile');
   if(prof) prof.onclick = ()=>{
@@ -4066,43 +4086,27 @@ function refreshMapTopbar(){
 /* 世界地图 = 一张图 + 上面的 POI 点（不再是一排文件夹卡片）。
    坐标来源：优先用「父地图里指向它的地块」的位置；
    没有地块的（编辑器里新建但还没摆上去的）自动排在网格上，保证每个地点都有位置。 */
-function worldMapLayout(){
-  const d = ensureMaps();
-  const ids = Object.keys(d.maps).filter(k => (d.maps[k].type || 'map') === 'map');
-  const pos = {};
-  const placed = {};
-  // ① 有地块指向它的 → 用地块坐标
-  Object.keys(d.maps).forEach(pk=>{
-    (d.maps[pk].nodes || []).forEach(n=>{
-      if(!n) return;
-      const tid = n.targetMap || n.linkTo;          // 地块 / 传送门都算
-      if(!tid || placed[tid]) return;
-      if(d.maps[tid]){ pos[tid] = { x:n.x, y:n.y, from:pk }; placed[tid] = 1; }
-    });
-  });
-  // ② 剩下的按网格铺开
-  let i = 0;
-  const rest = ids.filter(id => !placed[id]);
-  const cols = Math.max(3, Math.ceil(Math.sqrt(rest.length || 1)));
-  rest.forEach(id=>{
-    const col = i % cols, row = Math.floor(i / cols);
-    const rows = Math.max(1, Math.ceil(rest.length / cols));
-    pos[id] = { x: 0.14 + (0.72 * (cols === 1 ? 0.5 : col/(cols-1))), y: 0.22 + (0.6 * (rows === 1 ? 0.5 : row/(rows-1))), from:null };
-    i++;
-  });
-  return { ids, pos };
+function worldMapLayout(mapId){
+  const d=ensureMaps(),host=isMapNode(d.maps[mapId])?d.maps[mapId]:d.maps[d.rootMapId];
+  const ids=Object.values(d.maps).filter(m=>m&&m.parent===host.id).map(m=>m.id),pos={},placed={};
+  (host.navTiles||host.nodes||[]).forEach(n=>{const tid=itemTargetId(n);if(tid&&ids.includes(tid)&&!placed[tid]){pos[tid]={x:n.x,y:n.y,from:host.id,tile:n};placed[tid]=1;}});
+  const rest=ids.filter(id=>!placed[id]),cols=Math.max(2,Math.ceil(Math.sqrt(rest.length||1)));
+  rest.forEach((id,i)=>{const col=i%cols,row=Math.floor(i/cols),rows=Math.max(1,Math.ceil(rest.length/cols));pos[id]={x:0.18+0.64*(cols===1?0.5:col/(cols-1)),y:0.28+0.48*(rows===1?0.5:row/(rows-1)),from:host.id};});
+  return {ids,pos,host};
 }
-function openWorldMap(){
-  const d = ensureMaps();
-  const m = d.maps[mapState.currentId];
-  if(m && m.allowWorldMap === false){ toast('这里不能打开世界地图'); return; }
-  if(m && m.allowTeleportOut === false){ toast('这里不能传送，请步行出门'); return; }
+function openMapNavigator(mapId){return openWorldMap(mapId,true);}
+function openWorldMap(mapId,force){
+  const d=ensureMaps();
+  const m=d.maps[mapState.currentId];
+  const navMap=isMapNode(d.maps[mapId])?d.maps[mapId]:d.maps[d.rootMapId];
+  if(!force&&m&&m.allowWorldMap===false){toast('这里不能打开世界地图');return;}
+  if(!force&&m&&m.allowTeleportOut===false){toast('这里不能传送，请步行出门');return;}
   const old = $('map-modal-mask'); if(old) old.remove();
   const mask = document.createElement('div');
   mask.className = 'map-mask'; mask.id = 'map-modal-mask';
   const box = document.createElement('div'); box.className = 'map-modal';
-  box.innerHTML = '<h3>🌍 世界地图</h3>'
-    + '<div class="sub">当前：' + esc(m ? m.name : '—') + ' · 点地图上的标记直接前往（⭐ = 主地图）</div>'
+  box.innerHTML='<h3>🗺 '+esc(navMap?navMap.name:'地图导航')+'</h3>'
+    +'<div class="sub">当前位置：'+esc(m?m.name:'—')+' · Map 只导航，点建筑进入子地图或关卡</div>'
     + '<div class="wm-stage"><canvas id="wm-canvas"></canvas></div>'
     + '<div class="wm-legend" id="wm-legend"></div>'
     + '<div class="map-foot"><button class="map-btn" id="wm-close">关闭</button></div>';
@@ -4110,7 +4114,7 @@ function openWorldMap(){
   $('wm-close').onclick = ()=> mask.remove();
   mask.addEventListener('click', e=>{ if(e.target === mask) mask.remove(); });
 
-  const { ids, pos } = worldMapLayout();
+  const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
   const cvs = $('wm-canvas');
   const ctx = cvs.getContext('2d');
   let W = 0, H = 0, pins = [];
@@ -4122,8 +4126,8 @@ function openWorldMap(){
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
     // 背景：主地图的底色/底图
-    const root = d.maps[d.root] || d.maps[ids[0]];
-    const bgSrc = root && root.bg;
+    const root=host||d.maps[d.rootMapId];
+    const bgSrc=root&&root.bg;
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
     if(bgImg && bgImg.complete && bgImg.naturalWidth) drawCover(ctx, bgImg, W, H);
     else {
@@ -4148,10 +4152,9 @@ function openWorldMap(){
     ids.forEach(k=>{
       const mm = d.maps[k], p = pos[k]; if(!p) return;
       const cx = p.x*W, cy = p.y*H;
-      const isCur = (k === mapState.currentId), isRoot = (k === d.root);
-      const color = isCur ? '#8a6fc4' : (isRoot ? '#e8a33d' : (mm.parent ? '#6a7fd6' : '#5fbf8f'));
-      poiBadge(ctx, cx, cy, r, color, isCur ? '📍' : (isRoot ? '⭐' : (mm.icon || '🗺️')), mm.img || null,
-               isCur ? 'rgba(255,255,255,.95)' : null, false);
+      const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
+      const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
+      poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
       poiLabel(ctx, cx, cy + r + fs*1.5, mm.name || k, null, fs);
       pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
     });
@@ -4167,20 +4170,21 @@ function openWorldMap(){
     return null;
   }
   cvs.addEventListener('click', ev=>{
-    const id = hit(ev); if(!id) return;
-    mask.remove(); enterMap(id, null);
+    const id=hit(ev);if(!id)return;
+    mask.remove();if(isMapNode(d.maps[id]))openMapNavigator(id);else enterMap(id,null);
   });
   draw();
-  window.addEventListener('resize', function onr(){ if(!document.body.contains(cvs)){ window.removeEventListener('resize', onr); return; } draw(); });
+  const legend=$('wm-legend');
+  if(host&&host.parent&&isMapNode(d.maps[host.parent])){const up=document.createElement('button');up.className='wm-chip';up.textContent='← 返回 '+d.maps[host.parent].name;up.onclick=()=>{mask.remove();openMapNavigator(host.parent);};legend.appendChild(up);}
+  window.addEventListener('resize',function onr(){if(!document.body.contains(cvs)){window.removeEventListener('resize',onr);return;}draw();});
 
   // 下面一排小胶囊：图太小点不准时的备用入口
-  const legend = $('wm-legend');
   ids.forEach(k=>{
     const mm = d.maps[k];
     const b = document.createElement('button');
-    b.className = 'wm-chip' + (d.root===k ? ' main' : '') + (k===mapState.currentId ? ' cur' : '');
-    b.textContent = (k===mapState.currentId ? '📍 ' : (d.root===k ? '⭐ ' : '')) + (mm.name || k);
-    b.onclick = ()=>{ mask.remove(); enterMap(k, null); };
+    b.className='wm-chip'+(d.entryLevelId===k?' main':'')+(k===mapState.currentId?' cur':'');
+    b.textContent=(k===mapState.currentId?'📍 ':(d.entryLevelId===k?'⭐ ':(isMapNode(mm)?'🗺️ ':'🎯 ')))+(mm.name||k);
+    b.onclick=()=>{mask.remove();if(isMapNode(mm))openMapNavigator(k);else enterMap(k,null);};
     legend.appendChild(b);
   });
 }
@@ -4198,16 +4202,10 @@ function stepMap(now){
     if(mapRun.keys.up)    dy-=1;
     if(mapRun.keys.down)  dy+=1;
   }
-  mapRun.moving = (dx!==0 || dy!==0);
-  if(mapRun.moving){
-    const len = Math.hypot(dx,dy); dx/=len; dy/=len;
-    mapRun.px += dx*MAP_SPEED*dt;
-    mapRun.py += dy*MAP_SPEED*dt;
-    if(dx>0) mapRun.facing=1; else if(dx<0) mapRun.facing=-1;
-    mapRun.walkPhase += dt*12;
-  }
-  mapRun.px = Math.max(24, Math.min(mapRun.w-24, mapRun.px));
-  mapRun.py = Math.max(74, Math.min(mapRun.h-28, mapRun.py));
+  mapRun.moving=(dx!==0||dy!==0);const prevX=mapRun.px,prevY=mapRun.py;
+  if(mapRun.moving){const len=Math.hypot(dx,dy);dx/=len;dy/=len;mapRun.px+=dx*MAP_SPEED*dt;mapRun.py+=dy*MAP_SPEED*dt;if(dx>0)mapRun.facing=1;else if(dx<0)mapRun.facing=-1;mapRun.walkPhase+=dt*12;}
+  mapRun.px=Math.max(24,Math.min(mapRun.w-24,mapRun.px));mapRun.py=Math.max(74,Math.min(mapRun.h-28,mapRun.py));
+  const d=ensureMaps(),level=d.maps[mapState.currentId];if(!runtimeWalkable(level,mapRun.px,mapRun.py)){mapRun.px=prevX;mapRun.py=prevY;mapRun.moving=false;}
   updateMapPop();
 }
 function updateMapPop(){
@@ -4219,9 +4217,8 @@ function updateMapPop(){
   if(!t){ if(prevId) hideMapPop(); mapRun.lastFired = null; return; }
   if(nowId === prevId) return;
   if(mapRun.lastFired === nowId) return;
-  if((t.triggerMode || 'auto') === 'confirm'){ showMapPop(t); return; }
-  mapRun.lastFired = nowId;
-  fireTrigger(t);
+  if((t.triggerMode||'onEnter')!=='onEnter')return;
+  mapRun.lastFired=nowId;fireTrigger(t);
 }
 function showMapPop(t){
   const pop = $('map-pop'); if(!pop) return;
@@ -4410,7 +4407,7 @@ function drawMapTile(c, n, W, H){
     poiBadge(c, cx, cy, r, n.color || '#8f7fc4', n.icon || '📍', null,
              hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, false);
   }
-  const tag = act==='teleport' ? ' ›' : (act==='panel' ? ' ✦' : '');
+  const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
   poiLabel(c, cx, r0.y + r0.h + fs*1.15, (n.name||'地块') + tag, null, fs);
 }
 /* 门口 / 交互入口：方形牌子，颜色区分（金=面板组件，紫=传送门） */
@@ -4454,7 +4451,8 @@ function drawMap(){
     g.addColorStop(0, base); g.addColorStop(1, darken(base, .35));
     c.fillStyle = g; c.fillRect(0,0,FW,FH);
   }
-  if(!m){ _drawMapBadge(c, FW, FH, '⚠️ 找不到当前地图', '按左上角"← 回大厅"回主界面'); return; }
+  if(!m){_drawMapBadge(c,FW,FH,'⚠️ 找不到当前关卡','请从地图导航选择一个 Level');return;}
+  if(!isLevelNode(m)){_drawMapBadge(c,FW,FH,'🗺 Map 只负责导航','这里不会生成角色、出生点或运行时触发');return;}
   /* 世界内容：整体平移到居中位置，比例永不拉伸 */
   c.save();
   c.translate(mapRun.ox||0, mapRun.oy||0);
@@ -4488,7 +4486,7 @@ function drawMap(){
     const rect = mc.getBoundingClientRect();
     // 屏幕坐标 → 世界画布坐标（减去 contain 的居中留边）
     const x = e.clientX - rect.left - (mapRun.ox||0), y = e.clientY - rect.top - (mapRun.oy||0);
-    const d = ensureMaps(); const m = d.maps[mapState.currentId]; if(!m) return;
+    const d=ensureMaps(),m=d.maps[mapState.currentId];if(!isLevelNode(m))return;
     const W = mapRun.w, H = mapRun.h;
     let hitT = null;
     (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger' && nodeIsHot(n) && inRect(x,y,nodeRect(n,W,H))) hitT = n; });
@@ -4504,8 +4502,8 @@ function drawMap(){
 })();
 
 /* ---- 地图 / 家园入口 ---- */
-$('btn-map').onclick  = ()=>{ enterMap(mainMapId()); };
-$('btn-home').onclick = ()=>{ const d = ensureMaps(); enterMap(d.maps['home'] ? 'home' : mainMapId()); };
+$('btn-map').onclick=()=>{const d=ensureMaps();openMapNavigator(d.rootMapId);};
+$('btn-home').onclick=()=>{const d=ensureMaps();openMapNavigator(isMapNode(d.maps.home)?'home':d.rootMapId);};
 
 /* ================= 退出 ================= */
 $('btn-logout').onclick = ()=>{

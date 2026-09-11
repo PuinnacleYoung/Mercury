@@ -24,3 +24,6 @@ docs/
 *.token
 *.token.txt
 .github-token
+
+# 本地浏览器回归截图（只用于验收，不入库）
+*-proof.png
