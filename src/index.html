@@ -2261,6 +2261,14 @@ function enterLobby(){
   lobby.lastT = performance.now();
   stopLoop();
   loopId = requestAnimationFrame(loop);
+  // 【陛下要求】登录后如果配置了全局入口，直接跳入入口关卡地图，不停留在大厅 canvas
+  try{
+    const d = ensureMaps();
+    const rootId = d && d.root && d.maps[d.root] ? d.root : (d && d.maps ? Object.keys(d.maps)[0] : null);
+    if(rootId && d.maps[rootId] && d.maps[rootId].type !== 'panel'){
+      requestAnimationFrame(()=>enterMap(rootId));
+    }
+  }catch(err){ console.warn('auto enter root map failed:', err); }
 }
 function initLobbyCanvas(){
   lobby.canvas = $('lobby-canvas');
