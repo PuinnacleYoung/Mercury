@@ -410,6 +410,33 @@ input{font-family:inherit;outline:none;}
 .profile-hide input{width:18px;height:18px;accent-color:var(--c-accent);}
 .profile-earn{width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#f6c344,#e8a33d);color:#5b3c00;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(246,195,68,.4);cursor:pointer;letter-spacing:1px;transition:.15s;}
 .profile-earn:active{transform:scale(.98);}
+.profile-checkin{width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#7ed6c4,#4fb3a4);color:#fff;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(126,214,196,.4);cursor:pointer;letter-spacing:1px;transition:.15s;margin-bottom:10px;}
+.profile-checkin:active{transform:scale(.98);}
+
+/* ---------- 签到日历弹层 ---------- */
+.checkin-mask{position:fixed;inset:0;z-index:130;background:rgba(30,24,46,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
+.checkin-card{position:relative;width:min(420px,92vw);max-height:92vh;overflow:auto;background:rgba(var(--glass-rgb),.97);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.32);padding:22px 20px;}
+.checkin-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:10px;background:rgba(var(--glass-rgb),.7);border:1px solid var(--glass-border);color:var(--c-sub);font-size:14px;cursor:pointer;}
+.checkin-title{font-size:20px;font-weight:800;text-align:center;margin-bottom:4px;color:var(--c-ink);}
+.checkin-sub{font-size:12px;color:var(--c-sub);text-align:center;margin-bottom:14px;}
+.checkin-info{display:flex;justify-content:space-around;background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);border-radius:14px;padding:10px;margin-bottom:12px;}
+.checkin-info>div{text-align:center;}
+.checkin-info .label{font-size:11px;color:var(--c-sub);margin-bottom:2px;}
+.checkin-info .val{font-size:16px;font-weight:800;color:var(--c-accent);}
+.checkin-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.checkin-nav button{width:34px;height:34px;border-radius:10px;background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);cursor:pointer;font-size:14px;color:var(--c-ink);font-weight:800;}
+.checkin-nav .ym{font-size:16px;font-weight:800;color:var(--c-ink);flex:1;text-align:center;}
+.checkin-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.checkin-grid .wd{text-align:center;font-size:11px;color:var(--c-sub);padding:4px 0;font-weight:700;}
+.checkin-grid .day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:rgba(var(--glass-rgb),.4);border:1px solid transparent;color:var(--c-ink);transition:.12s;position:relative;}
+.checkin-grid .day:hover:not(.blank):not(.future){background:rgba(var(--accent-rgb),.18);}
+.checkin-grid .day.blank{background:transparent;cursor:default;}
+.checkin-grid .day.today{border-color:var(--c-accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25);}
+.checkin-grid .day.signed{background:linear-gradient(135deg,#f6c344,#e8a33d);color:#5b3c00;}
+.checkin-grid .day.signed::after{content:'✓';position:absolute;bottom:2px;right:4px;font-size:10px;font-weight:800;}
+.checkin-grid .day.future{opacity:.35;cursor:not-allowed;}
+.checkin-rewards{font-size:12px;color:var(--c-sub);margin-top:12px;line-height:1.7;background:rgba(var(--glass-rgb),.5);border-radius:10px;padding:10px 12px;border:1px solid var(--glass-border);}
+.checkin-rewards b{color:var(--c-ink);}
 
 /* ---------- 地图引擎 v2（运行时：可行走 + 触发区 + 面板） ---------- */
 #map-screen{background:linear-gradient(135deg,var(--c-bg),var(--c-bg2));}
@@ -1060,7 +1087,34 @@ input{font-family:inherit;outline:none;}
       <span>🔒 隐藏我的财富</span>
       <input type="checkbox" id="profile-hide-wealth">
     </div>
+    <button class="profile-checkin" id="profile-checkin">📅 签到日历</button>
     <button class="profile-earn" id="profile-earn">💰 领取测试货币（金+100 / 钻+20 / 珍+10）</button>
+  </div>
+</div>
+
+<!-- ===== 签到日历弹层 ===== -->
+<div class="checkin-mask hidden" id="checkin-mask">
+  <div class="checkin-card">
+    <button class="checkin-close" id="checkin-close">✕</button>
+    <div class="checkin-title">📅 每日签到</div>
+    <div class="checkin-sub">点击日历里的任意日期即可签到（未来日期不可选）</div>
+    <div class="checkin-info">
+      <div><div class="label">🔥 连签</div><div class="val" id="checkin-streak">0 天</div></div>
+      <div><div class="label">📆 累计</div><div class="val" id="checkin-total">0 天</div></div>
+      <div><div class="label">🗓 本月</div><div class="val" id="checkin-month">0 天</div></div>
+    </div>
+    <div class="checkin-nav">
+      <button id="checkin-prev" title="上个月">‹</button>
+      <div class="ym" id="checkin-ym"></div>
+      <button id="checkin-next" title="下个月">›</button>
+    </div>
+    <div class="checkin-grid" id="checkin-grid"></div>
+    <div class="checkin-rewards">
+      🎁 <b>奖励规则</b>：<br>
+      · 单次签到：<b>🪙 金币 +50</b><br>
+      · 连续签到 <b>每 7 天</b>额外送 <b>💎 钻石 +20</b><br>
+      · 连续签到 <b>每 30 天</b>额外送 <b>🦪 珍珠 +10</b>
+    </div>
   </div>
 </div>
 
@@ -3127,6 +3181,8 @@ function normalizeProfile(p){
   if(!Array.isArray(p.ownedItems)) p.ownedItems = [];
   if(!Array.isArray(p.ownedOutfits)) p.ownedOutfits = [];
   if(!p.wornOutfit) p.wornOutfit = null;
+  if(!p.checkin) p.checkin = { dates: [], lastDate: null, streak: 0 };
+  if(!Array.isArray(p.checkin.dates)) p.checkin.dates = [];
   return p;
 }
 function saveProfile(p){ try{ localStorage.setItem(profileKey(), JSON.stringify(p)); }catch(e){ toast('⚠️ 档案保存失败'); } }
@@ -3225,6 +3281,118 @@ $('profile-earn').onclick = ()=>{
 $('btn-coins').onclick = ()=>{
   const c = (profile && profile.currency) || {coin:0, diamond:0, pearl:0};
   toast(`🪙${c.coin} · 💎${c.diamond} · 🦪${c.pearl}（名字卡片里可领取测试货币）`);
+};
+
+/* ================= 签到日历系统 ================= */
+function _pad2(n){ return String(n).padStart(2,'0'); }
+function fmtDateStr(d){ return d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate()); }
+function todayStr(){ return fmtDateStr(new Date()); }
+function computeStreak(dates){
+  if(!dates || !dates.length) return 0;
+  const set = new Set(dates);
+  let streak = 0;
+  const d = new Date();
+  // 连签起点：今天签了从今天算；今天没签但昨天签了，从昨天算，方便展示"连签中"
+  if(!set.has(fmtDateStr(d))) d.setDate(d.getDate()-1);
+  while(set.has(fmtDateStr(d))){
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+let _checkinView = { year:new Date().getFullYear(), month:new Date().getMonth() };
+function openCheckin(){
+  refreshProfile();
+  const now = new Date();
+  _checkinView = { year: now.getFullYear(), month: now.getMonth() };
+  renderCheckin();
+  $('checkin-mask').classList.remove('hidden');
+}
+function closeCheckin(){ $('checkin-mask').classList.add('hidden'); }
+function renderCheckin(){
+  if(!profile) refreshProfile();
+  const dates = new Set((profile.checkin && profile.checkin.dates) || []);
+  const total = dates.size;
+  const streak = computeStreak([...dates]);
+  const y = _checkinView.year, m = _checkinView.month;
+  const today = todayStr();
+  const monthPrefix = y+'-'+_pad2(m+1);
+  let monthCount = 0;
+  dates.forEach(d=>{ if(d.startsWith(monthPrefix)) monthCount++; });
+  $('checkin-streak').textContent = streak + ' 天';
+  $('checkin-total').textContent = total + ' 天';
+  $('checkin-month').textContent = monthCount + ' 天';
+  $('checkin-ym').textContent = y + ' 年 ' + (m+1) + ' 月';
+
+  const grid = $('checkin-grid');
+  grid.innerHTML = '';
+  ['日','一','二','三','四','五','六'].forEach(w=>{
+    const el = document.createElement('div');
+    el.className = 'wd'; el.textContent = w;
+    grid.appendChild(el);
+  });
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  for(let i=0;i<firstDay;i++){
+    const el = document.createElement('div');
+    el.className = 'day blank';
+    grid.appendChild(el);
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = y+'-'+_pad2(m+1)+'-'+_pad2(d);
+    const el = document.createElement('div');
+    el.className = 'day';
+    el.textContent = d;
+    if(dateStr === today) el.classList.add('today');
+    if(dates.has(dateStr)) el.classList.add('signed');
+    if(dateStr > today){
+      el.classList.add('future');
+      el.title = '未来日期不能签到哦';
+    } else {
+      el.onclick = ()=>doCheckin(dateStr);
+    }
+    grid.appendChild(el);
+  }
+}
+function doCheckin(dateStr){
+  if(!profile) refreshProfile();
+  if(!profile.checkin) profile.checkin = { dates:[], lastDate:null, streak:0 };
+  if(profile.checkin.dates.includes(dateStr)){
+    toast('✨ ' + dateStr + ' 已经签过啦');
+    return;
+  }
+  profile.checkin.dates.push(dateStr);
+  profile.checkin.dates.sort();
+  profile.checkin.lastDate = dateStr;
+  const streak = computeStreak(profile.checkin.dates);
+  profile.checkin.streak = streak;
+
+  const rewards = [];
+  profile.currency.coin += 50; rewards.push('🪙+50');
+  if(streak > 0 && streak % 7 === 0){ profile.currency.diamond += 20; rewards.push('💎+20'); }
+  if(streak > 0 && streak % 30 === 0){ profile.currency.pearl += 10; rewards.push('🦪+10'); }
+  saveProfile(profile);
+  renderCoins();
+  renderCheckin();
+  toast('🎉 签到成功 · ' + rewards.join(' / '));
+}
+$('profile-checkin').onclick = ()=>{ closeProfile(); openCheckin(); };
+$('checkin-close').onclick = closeCheckin;
+$('checkin-mask').addEventListener('click', e=>{ if(e.target===$('checkin-mask')) closeCheckin(); });
+$('checkin-prev').onclick = ()=>{
+  let m = _checkinView.month - 1, y = _checkinView.year;
+  if(m < 0){ m = 11; y--; }
+  _checkinView = { year:y, month:m }; renderCheckin();
+};
+$('checkin-next').onclick = ()=>{
+  const now = new Date();
+  if(_checkinView.year > now.getFullYear() || (_checkinView.year === now.getFullYear() && _checkinView.month >= now.getMonth())){
+    toast('未来月份不能签到哦');
+    return;
+  }
+  let m = _checkinView.month + 1, y = _checkinView.year;
+  if(m > 11){ m = 0; y++; }
+  _checkinView = { year:y, month:m }; renderCheckin();
 };
 
 /* ================= 商店系统（§4 · 时装店建筑 + 5 区 + 试穿 + 购买） ================= */
