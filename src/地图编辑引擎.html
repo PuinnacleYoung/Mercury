@@ -338,7 +338,9 @@
       </select>
       <button class="pill" id="me-ui-toggle" title="在画布上叠加显示游戏运行时顶栏/底条/摇杆 UI 的真实位置" data-page-node-id="me-ui-toggle">📐 UI 预览</button>
       <span class="pill-divider"></span>
-      <button class="pill" id="me-attach-hub" title="把所有无父级的关卡挂到「🌍 世界地图」枢纽上 · 陛下要求" data-page-node-id="me-attach-hub">📌 挂靠世界地图</button>
+      <button class="pill" id="me-attach-hub" title="把所有无父级/挂错/成环的关卡挂到「🌍 世界地图」枢纽上 · 陛下要求" data-page-node-id="me-attach-hub">📌 挂靠世界地图</button>
+      <button class="pill" id="me-clean-hub" title="扫描所有世界地图（挂着子关卡的节点）· 把它们身上的 spawn / trigger 移到 _quarantine 数组里（陛下可恢复）· 让 hub 真正『不能走』" data-page-node-id="me-clean-hub">🧹 清理 hub</button>
+      <button class="pill" id="me-diag" title="诊断报告：扫描所有节点 · 告诉陛下哪里有父级失效 / hub 上有 spawn / 关卡没入口 等问题" data-page-node-id="me-diag">🩺 诊断</button>
       <button class="pill" id="me-fix-links" title="扫描所有节点，把'父级指向不存在或指自己'的孤儿自动提到顶层，配 toast 报告" data-page-node-id="me-fix-links">🔗 校验挂靠</button>
       <button class="pill" id="me-merge-panels" title="把左侧的 'panel' 节点（纯界面）合并成父地图里的 '触发地块'。关卡地图不会被合并" data-page-node-id="me-merge-panels">📦 面板→触发</button>
     </div>
@@ -664,47 +666,83 @@ function ensureMaps(){
   const before = JSON.stringify(d).length;
   migrateMaps(d);
   normalizeTiles(d);
-  /* 🌎 父级自愈：把所有无父级/父级失效的关卡挂到「🌍 世界地图」枢纽上
-     （与 index.html 的 autoAssignWorldMapParent 共享逻辑；这里再跑一份以防别的入口） */
-  const healed = autoAssignWorldMapParent(d);
-  if(JSON.stringify(d).length !== before || healed) saveMapsData(d);
+  const res = autoAssignWorldMapParent(d);
+  if(JSON.stringify(d).length !== before || res.changed) saveMapsData(d);
   return d;
 }
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
 
-/* 与 index.html 同款：把无父级/父级失效的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上 */
+/* 与 index.html 同款：把无父级/父级失效/成环/指向 panel 的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上
+   返回值：{ changed, log } —— log 是给陛下看的明细 */
 function autoAssignWorldMapParent(d){
-  if(!d || !d.maps) return false;
+  if(!d || !d.maps) return { changed:false, log:['⚠️ 没有数据'] };
   const HUB_ID = 'world-hub';
+  const log = [];
   let hub = d.maps[HUB_ID];
   if(!hub){
     hub = {
       id: HUB_ID, name: '🌍 世界地图', type: 'map', parent: null,
       bg: null, bgColor: '#d4dff7',
-      nodes: [], spawns: [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }],
-      allowWorldMap: true, allowTeleportOut: true
+      nodes: [], spawns: [],    // ← hub 不能有 spawn
+      allowWorldMap: true, allowTeleportOut: true,
+      description: '世界地图枢纽 — 所有关卡都挂在这儿（陛下强制要求）'
     };
     d.maps[HUB_ID] = hub;
+    log.push('🆕 自动建了一张「🌍 世界地图」id=world-hub');
   }else{
     hub.type = 'map';
+    hub.parent = null;
     if(typeof hub.allowWorldMap !== 'boolean') hub.allowWorldMap = true;
     if(typeof hub.allowTeleportOut !== 'boolean') hub.allowTeleportOut = true;
     if(!Array.isArray(hub.nodes)) hub.nodes = [];
-    if(!Array.isArray(hub.spawns) || !hub.spawns.length) hub.spawns = [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }];
+    hub.spawns = [];
+  }
+  function isBrokenChain(m){
+    const seen = new Set();
+    let cur = m; let steps = 0;
+    while(cur){
+      if(seen.has(cur.id)) return { broken:true, reason:'环（'+cur.id+'）', steps };
+      seen.add(cur.id);
+      if(!cur.parent) return { broken:false, steps };
+      if(steps++ > 30) return { broken:true, reason:'链路过长（>30）', steps };
+      const p = d.maps[cur.parent];
+      if(!p) return { broken:true, reason:'父级不存在（'+cur.parent+'）', steps };
+      if(p.id === m.id) return { broken:true, reason:'父级指向自己', steps };
+      cur = p;
+    }
+    return { broken:true, reason:'链路断尾', steps };
   }
   let changed = false;
   Object.values(d.maps).forEach(m=>{
     if(!m || m.id === HUB_ID) return;
     if((m.type||'map') !== 'map') return;
-    const p = m.parent ? d.maps[m.parent] : null;
-    if(p && p.type !== 'panel' && p.id !== m.id) return;
-    m.parent = HUB_ID; changed = true;
+    let reason = null;
+    if(!m.parent) reason = '无父级';
+    else if(!d.maps[m.parent]) reason = '父级不存在（'+m.parent+'）';
+    else if(d.maps[m.parent].type === 'panel') reason = '父级是面板';
+    else if(d.maps[m.parent].id === m.id) reason = '父级指向自己';
+    else{
+      const chk = isBrokenChain(m);
+      if(chk.broken) reason = chk.reason;
+    }
+    if(reason){
+      log.push('🔧 '+m.name+'（'+m.id+'）· '+reason+' → 挂到 world-hub');
+      m.parent = HUB_ID;
+      changed = true;
+    }
   });
-  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
-    const fb = Object.keys(d.maps).find(k => d.maps[k] && d.maps[k].type !== 'panel' && k !== HUB_ID);
-    if(fb){ d.root = fb; changed = true; }else if(hub){ d.root = HUB_ID; changed = true; }
+  if(d.root === HUB_ID){
+    const fb = Object.values(d.maps).find(m=>m && m.id!==HUB_ID && m.parent===HUB_ID && (m.type||'map')==='map');
+    if(fb){ d.root = fb.id; log.push('🪜 入口从 world-hub 改为「'+fb.name+'」'); changed = true; }
   }
-  return changed;
+  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
+    const fb = Object.values(d.maps).find(m=>m && m.id!==HUB_ID && (m.type||'map')==='map');
+    if(fb){ d.root = fb.id; log.push('🪜 入口改为「'+fb.name+'」'); changed = true; }
+    else if(hub){ d.root = HUB_ID; log.push('🪜 入口只能设为 world-hub'); changed = true; }
+  }
+  if(changed) log.push('✓ 共修复 '+log.filter(s=>s.startsWith('🔧')).length+' 个父级');
+  else log.push('✓ 所有挂靠正常，无需修复');
+  return { changed, log };
 }
 
 /* =========================================================
@@ -761,7 +799,9 @@ function updateCanvasForLeaf(map){
   }else{
     tip.className = 'pill-tip';
     const kids = Object.values(d.maps||{}).filter(m=>m && m.type!=='panel' && m.parent===map.id).length;
-    tip.textContent = '🌍 世界地图 · 挂着 '+kids+' 张子关卡 · 不能行走 · 点建筑地块 = 跳去对应关卡';
+    /* ★ 只有 world-hub 才显示「🌍 世界地图」文案；其他 hub（陛下自己挂的）显节点真名 */
+    const head = (map.id==='world-hub') ? '🌍 世界地图' : ('🗺 '+map.name+'（hub）');
+    tip.textContent = head+' · 挂着 '+kids+' 张子关卡 · 不能行走 · 把子关卡挂在地块上（点地块 = 跳关）';
   }
   tip.classList.remove('hidden');
 }
@@ -1115,7 +1155,9 @@ function renderEditor(){
     else stage.appendChild(buildTileEl(d, map, n));
   });
   updateCanvasForLeaf(map);
-  (map.spawns||[]).forEach(s=> stage.appendChild(buildSpawnEl(map, s)));
+  /* ★ hub（有子关卡的）不画 spawn —— spawn 是关卡的出生点，hub 没出生概念 */
+  const _renderIsHub = Object.values(d.maps||{}).some(x=>x && x.type!=='panel' && x.parent===map.id);
+  if(!_renderIsHub) (map.spawns||[]).forEach(s=> stage.appendChild(buildSpawnEl(map, s)));
   if(window.SafeArea && SafeArea.layer) stage.appendChild(SafeArea.layer());
   /* 行走区可视化：整张 walk mask 半透明绿色蒙层贴在画布上，一眼看清边界 */
   if(map.walk && map.walk.data){
@@ -1566,15 +1608,95 @@ $('me-merge-panels').onclick = ()=>{
   if(!confirm('把左侧所有"纯界面面板"节点（塔罗 / 衣橱 / 许愿池）合并到它的父地图里作为触发地块？\n\n判定规则：\n· 节点类型 = panel（不是 map！）  ← 陛下要求「能走的关卡」不会被合并成触发\n· 父级是一张真实地图\n· 该地图存在\n\n合并后面板节点会被删除，事件由父地图上的触发地块接管。\n\n继续吗？')) return;
   mergePanelsIntoTriggers();
 };
-/* 📌 挂靠世界地图：把所有无父级/挂错的关卡统一挂到「🌍 世界地图」上 */
+/* 📌 挂靠世界地图：把所有无父级/挂错/成环的关卡统一挂到「🌍 世界地图」上 */
 $('me-attach-hub').onclick = ()=>{
   const d = ensureMaps();
   const before = JSON.stringify(d);
-  const healed = autoAssignWorldMapParent(d);
+  const res = autoAssignWorldMapParent(d);
   saveMapsData(d); invalidateMaps && invalidateMaps();
   buildTree(); renderEditor(); renderProps();
-  if(JSON.stringify(d) === before) toast('📌 所有关卡都已挂在「🌍 世界地图」下，无需改动 ✓');
-  else toast('📌 父级自愈完成 · 已统一挂到「🌍 世界地图」');
+  const detail = res.log.join(' · ');
+  if(JSON.stringify(d) === before) toast('📌 已确认 · '+detail);
+  else { alert('📌 父级自愈报告\n\n'+detail); toast('📌 父级已自愈 · 见对话框明细'); }
+};
+/* 🧹 清理 hub 上的 trigger/spawn —— 让世界地图真正"不能走" */
+$('me-clean-hub').onclick = ()=>{
+  const d = ensureMaps();
+  if(!confirm('扫描所有「世界地图」（挂着子关卡的节点），把它们身上的入口点（spawn）和传送门（trigger）移到 _quarantine 数组里（陛下之后想恢复可以问我），让 hub 真正『不能走』。\n\n这是清理操作 —— 一旦合并，陛下要从 _quarantine 里恢复我才能帮您拿回来。\n\n继续吗？')) return;
+  if(!Array.isArray(d._quarantine)) d._quarantine = [];
+  const moved = [];
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.type==='panel') return;
+    const kids = Object.values(d.maps||{}).filter(x=>x && x.type!=='panel' && x.parent===m.id).length;
+    if(kids === 0) return;     // 不是 hub → 跳过
+    const sLen = (m.spawns||[]).length;
+    if(sLen){
+      d._quarantine.push({ fromMapId:m.id, fromMapName:m.name, kind:'spawns', items:m.spawns });
+      moved.push(m.name+': '+sLen+' 个入口点');
+      m.spawns = [];
+    }
+    const trgs = (m.nodes||[]).filter(n=>n && (n.kind==='trigger' || n.action==='teleport'));
+    if(trgs.length){
+      d._quarantine.push({ fromMapId:m.id, fromMapName:m.name, kind:'triggers', items:trgs });
+      moved.push(m.name+': '+trgs.length+' 个传送门');
+      m.nodes = (m.nodes||[]).filter(n=> n && n.kind!=='trigger' && n.action!=='teleport');
+    }
+  });
+  if(!moved.length){ toast('✓ 没有 hub 上的 spawn/trigger 需要清理'); return; }
+  saveMapsData(d); invalidateMaps && invalidateMaps();
+  buildTree(); renderEditor(); renderProps();
+  alert('🧹 已清理（已备份到 _quarantine）：\n\n'+moved.join('\n'));
+  toast('🧹 已清理 '+moved.length+' 项');
+};
+/* 🩺 诊断报告 —— 把所有问题都给陛下看 */
+$('me-diag').onclick = ()=>{
+  const d = ensureMaps();
+  const lines = [];
+  let issueCount = 0;
+  /* 1) 父级失效 */
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.id==='world-hub') return;
+    if(m.type==='panel') return;
+    if(!m.parent) { lines.push('🪜 '+m.name+'（'+m.id+'）· 无父级 → 建议挂到 world-hub'); issueCount++; return; }
+    if(!d.maps[m.parent]) { lines.push('🪜 '+m.name+'（'+m.id+'）· 父级 '+m.parent+' 不存在'); issueCount++; return; }
+    if(d.maps[m.parent].type==='panel'){ lines.push('🪜 '+m.name+'（'+m.id+'）· 父级是面板'); issueCount++; return; }
+    /* 链路成环 */
+    const seen = new Set([m.id]); let cur = m; let loop = false;
+    while(cur.parent){
+      if(seen.has(cur.parent)){ loop = true; break; }
+      seen.add(cur.parent);
+      const p = d.maps[cur.parent]; if(!p) break; cur = p;
+    }
+    if(loop){ lines.push('🪜 '+m.name+'（'+m.id+'）· 父级链路成环'); issueCount++; }
+  });
+  /* 2) hub 上的 spawn / trigger */
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.type==='panel') return;
+    const kids = Object.values(d.maps||{}).filter(x=>x && x.type!=='panel' && x.parent===m.id).length;
+    if(kids === 0) return;
+    if((m.spawns||[]).length){ lines.push('🧹 '+m.name+'（hub）· 有 '+m.spawns.length+' 个 spawn · 该清掉'); issueCount++; }
+    const trgs = (m.nodes||[]).filter(n=>n && (n.kind==='trigger' || n.action==='teleport'));
+    if(trgs.length){ lines.push('🧹 '+m.name+'（hub）· 有 '+trgs.length+' 个 trigger · 该清掉'); issueCount++; }
+  });
+  /* 3) 关卡没 spawn */
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.type==='panel') return;
+    const kids = Object.values(d.maps||{}).filter(x=>x && x.type!=='panel' && x.parent===m.id).length;
+    if(kids > 0) return;     // 是 hub → 跳过
+    if(!Array.isArray(m.spawns) || !m.spawns.length){ lines.push('🚪 '+m.name+'（关卡）· 没有入口点 · 玩家进来没出生地'); issueCount++; }
+  });
+  /* 4) 入口 root 状态 */
+  const root = d.maps[d.root];
+  if(!root){ lines.push('🏝 d.root 指向不存在的 id='+d.root); issueCount++; }
+  else if(root.id==='world-hub'){ lines.push('🏝 入口是 world-hub 本身（应该改为挂在其下的某个关卡）'); issueCount++; }
+  else if(root.type==='panel'){ lines.push('🏝 入口是面板 '+root.name); issueCount++; }
+  else if(!root.parent || !d.maps[root.parent]){ lines.push('🏝 入口「'+root.name+'」没有父级（建议挂到 world-hub 下）'); issueCount++; }
+  /* 5) world-hub 是否存在 */
+  if(!d.maps['world-hub']){ lines.push('🌍 没有 world-hub（按一下「📌 挂靠世界地图」自动建）'); issueCount++; }
+  /* 报告 */
+  if(!issueCount){ alert('🩺 诊断报告\n\n✓ 所有节点都正常，无问题 ✓'); toast('🩺 全部正常 ✓'); return; }
+  alert('🩺 诊断报告（共 '+issueCount+' 个问题）\n\n'+lines.join('\n')+'\n\n建议：按「📌 挂靠世界地图」自动修复前 1 类 + 「🧹 清理 hub」自动修复第 2 类');
+  toast('🩺 发现 '+issueCount+' 个问题 · 见对话框');
 };
 $('btn-copy-all').onclick = copyAllMapsData;
 $('btn-paste-all').onclick = pasteAllMapsData;

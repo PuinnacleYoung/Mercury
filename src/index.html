@@ -3765,9 +3765,9 @@ function ensureMaps(){
   let d = getMapsData();
   if(!d || !d.root || !d.maps){ d = seedMaps(); saveMapsData(d); return _mapsCache; }
   if((d.version||1) < 2){ d = migrateMaps(d) || d; saveMapsData(d); }
-  /* 🌎 父级自愈：把所有"原本该挂但 parent 失效"的关卡提到一张「🌍 世界地图」枢纽上 */
-  const healed = autoAssignWorldMapParent(d);
-  if(healed) saveMapsData(d);
+  /* 🌎 父级自愈：把所有"原本该挂但 parent 失效/成环/指向 panel"的关卡提到「🌍 世界地图」枢纽上 */
+  const res = autoAssignWorldMapParent(d);
+  if(res.changed){ saveMapsData(d); console.info('[Mercury] autoAssign:', res.log); }
   _mapsCache = d; return _mapsCache;
 }
 /* 把所有无父级 / 父级失效的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上。
@@ -3778,49 +3778,83 @@ function ensureMaps(){
    返回值：true = 数据被改动并需要 saveMapsData；false = 无需改动
 */
 function autoAssignWorldMapParent(d){
-  if(!d || !d.maps) return false;
+  if(!d || !d.maps) return { changed:false, log:['⚠️ 没有数据'] };
   /* 确保 hub 存在 */
   const HUB_ID = 'world-hub';
+  const log = [];
   let hub = d.maps[HUB_ID];
   if(!hub){
     hub = {
       id: HUB_ID, name: '🌍 世界地图', type: 'map', parent: null,
       bg: null, bgColor: '#d4dff7',
-      nodes: [], spawns: [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }],
+      nodes: [], spawns: [],    // ← hub 不能有 spawn，画布里就不画了
       allowWorldMap: true, allowTeleportOut: true,
       description: '世界地图枢纽 — 所有关卡都挂在这儿（陛下强制要求）'
     };
     d.maps[HUB_ID] = hub;
+    log.push('🆕 自动建了一张「🌍 世界地图」id=world-hub');
   }else{
-    /* hub 被错改成 panel / 拼错 → 修回 type=map */
     hub.type = 'map';
+    hub.parent = null;         // hub 自己不能挂任何东西
     if(typeof hub.allowWorldMap !== 'boolean') hub.allowWorldMap = true;
     if(typeof hub.allowTeleportOut !== 'boolean') hub.allowTeleportOut = true;
     if(!Array.isArray(hub.nodes)) hub.nodes = [];
-    if(!Array.isArray(hub.spawns) || !hub.spawns.length) hub.spawns = [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }];
+    /* ★ hub 不该有 spawn（spawn 是关卡的出生点）*/
+    hub.spawns = [];
+  }
+  /* ★ 环路检测：沿 m.parent 向上走，如果走到自己 / 重复 → 视为 broken */
+  function isBrokenChain(m){
+    const seen = new Set();
+    let cur = m;
+    let steps = 0;
+    while(cur){
+      if(seen.has(cur.id)) return { broken:true, reason:'环'+'（'+cur.id+'）', steps };
+      seen.add(cur.id);
+      if(!cur.parent) return { broken:false, steps };
+      if(steps++ > 30) return { broken:true, reason:'链路过长（>30）', steps };
+      const p = d.maps[cur.parent];
+      if(!p) return { broken:true, reason:'父级不存在（'+cur.parent+'）', steps };
+      if(p.id === m.id) return { broken:true, reason:'父级指向自己', steps };
+      cur = p;
+    }
+    return { broken:true, reason:'链路断尾', steps };
   }
   let changed = false;
   Object.values(d.maps).forEach(m=>{
-    if(!m || m.id === HUB_ID) return;                  // hub 自己就别挂自己了
-    if((m.type||'map') !== 'map') return;              // panel 节点不需要父级
+    if(!m || m.id === HUB_ID) return;
+    if((m.type||'map') !== 'map') return;
     const p = m.parent ? d.maps[m.parent] : null;
-    if(p && p.type !== 'panel' && p.id !== m.id) return; // 父级是有效关卡 — 保留
-    /* 父级失效 / 没有 → 挂到 hub */
-    m.parent = HUB_ID;
-    changed = true;
-  });
-  /* 入口 d.root 若是 panel / 不存在 → 强制设到第一张关卡 */
-  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
-    const fb = Object.keys(d.maps).find(k => d.maps[k] && d.maps[k].type !== 'panel' && k !== HUB_ID);
-    if(fb){
-      d.root = fb;
-      changed = true;
-    }else if(hub){
-      d.root = HUB_ID;
+    /* 父级不存在 / 指向自己 / 指向 panel / 链路成环 → 强制重挂 */
+    let reason = null;
+    if(!m.parent) reason = '无父级';
+    else if(!p) reason = '父级不存在（'+m.parent+'）';
+    else if(p.type === 'panel') reason = '父级是面板';
+    else if(p.id === m.id) reason = '父级指向自己';
+    else{
+      const chk = isBrokenChain(m);
+      if(chk.broken) reason = chk.reason;
+    }
+    if(reason){
+      log.push('🔧 '+m.name+'（'+m.id+'）· '+reason+' → 挂到 world-hub');
+      m.parent = HUB_ID;
       changed = true;
     }
+  });
+  /* ★ 入口 d.root 必须是关卡（不能是 hub 自己） */
+  if(d.root === HUB_ID){
+    /* 入口不能是 hub，找第一个挂在 hub 下的关卡 */
+    const fb = Object.values(d.maps).find(m=>m && m.id!==HUB_ID && m.parent===HUB_ID && (m.type||'map')==='map');
+    if(fb){ d.root = fb.id; log.push('🪜 入口从 world-hub 改为第一个关卡「'+fb.name+'」'); changed = true; }
   }
-  return changed;
+  /* 入口若是 panel → 改到第一张关卡 */
+  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
+    const fb = Object.values(d.maps).find(m=>m && m.id!==HUB_ID && (m.type||'map')==='map');
+    if(fb){ d.root = fb.id; log.push('🪜 入口改为「'+fb.name+'」'); changed = true; }
+    else if(hub){ d.root = HUB_ID; log.push('🪜 入口只能设为 world-hub'); changed = true; }
+  }
+  if(changed) log.push('✓ 共修复 '+log.filter(s=>s.startsWith('🔧')).length+' 个父级');
+  else log.push('✓ 所有挂靠正常，无需修复');
+  return { changed, log };
 }
 function getMap(id){ return ensureMaps().maps[id]; }
 function mainMapId(){ const d = ensureMaps(); return d.maps[d.root] ? d.root : Object.keys(d.maps)[0]; }
@@ -3921,8 +3955,11 @@ function enterMap(id, spawnId){
       if(!map){ showScreen('game-screen'); return; }
     }
   }
-  /* 关卡没 spawns → 临时兜底 (0.5, 0.85)，并落盘，让陛下之后不会没头苍蝇 */
-  if(map.type !== 'panel' && (!Array.isArray(map.spawns) || !map.spawns.length)){
+  /* 关卡没 spawns → 临时兜底 (0.5, 0.85)，并落盘，让陛下之后不会没头苍蝇
+     ★ 但 hub（有子关卡）不能加 spawn —— 它不是"关卡"，没有出生点概念
+     ★ 当前 id 若已被前面的 winHasChildMaps 兜底改到 leaf，那就不算 hub，正常加 spawn */
+  const _isHubNow = winHasChildMaps(id, d);
+  if(!_isHubNow && map.type !== 'panel' && (!Array.isArray(map.spawns) || !map.spawns.length)){
     map.spawns = [{ id:'spawn_default', name:'默认入口', x:0.5, y:0.85 }];
     saveMapsData(d);
   }
