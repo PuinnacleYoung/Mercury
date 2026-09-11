@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数据恢复工具 · 拾光澈屿</title>
+<style>
+:root{
+  --paper:#fff; --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+  --line:#e6ddf4; --line2:#efeaf8;
+  --bg1:#f3eef9; --bg2:#e9e1f5; --bg3:#ddd2f0;
+  --accent:#7f66c4; --accent-soft:#d6caf0; --accent-tint:#ece4fa;
+  --shadow:0 6px 22px rgba(90,70,140,.10);
+  --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  min-height:100vh; font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:linear-gradient(160deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+  color:var(--ink); padding:22px 16px 60px;
+}
+.wrap{max-width:860px;margin:0 auto;}
+h1{font-size:21px;margin:0 0 4px;font-weight:800;}
+.sub{color:var(--sub);font-size:13px;margin-bottom:18px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+.card h2 .n{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:12px;align-items:center;justify-content:center;font-weight:800;flex:0 0 22px;}
+
+.cloud{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;
+  border:2px solid var(--line);background:#fbfaff;}
+.cloud.ok{border-color:var(--ok);background:#f2fbf7;}
+.cloud.warn{border-color:var(--warn);background:#fff8ee;}
+.cloud-ico{font-size:30px;line-height:1;}
+.cloud-name{font-size:16px;font-weight:900;}
+.cloud-sub{font-size:12px;color:var(--sub);word-break:break-all;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:var(--sub);font-weight:700;font-size:12px;padding:7px 6px;border-bottom:1px solid var(--line);}
+td{padding:8px 6px;border-bottom:1px solid var(--line2);vertical-align:middle;}
+tr:last-child td{border-bottom:0;}
+td.ck{width:38px;text-align:center;}
+td.ck input{width:17px;height:17px;cursor:pointer;accent-color:var(--accent);}
+td.k{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:11.5px;color:var(--accent);white-space:nowrap;}
+.nm{font-weight:800;}
+.ds{font-size:11.5px;color:var(--sub);}
+.sz{white-space:nowrap;font-size:12px;color:var(--sub);}
+tr.miss td.nm,tr.miss td.ds{opacity:.75;}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:800;white-space:nowrap;}
+.pill.ok{background:#dcfce7;color:var(--ok);}
+.pill.bad{background:#fee2e2;color:var(--bad);}
+.pill.warn{background:#fef3c7;color:var(--warn);}
+.pill.none{background:#f2f0f5;color:#a9a3b3;}
+
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+button{
+  padding:10px 18px;border-radius:12px;border:1px solid var(--line);
+  background:#fff;color:var(--ink);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
+}
+button:hover{border-color:var(--accent-soft);background:var(--accent-tint);}
+button.primary{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border-color:transparent;}
+button.primary:hover{filter:brightness(1.07);}
+button.danger{background:#fff;border-color:#f0c2c0;color:var(--bad);}
+button.ghost{background:transparent;}
+button.sm{padding:7px 13px;font-size:13px;border-radius:10px;}
+.msg{margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;display:none;line-height:1.7;}
+.msg.ok{display:block;background:#dcfce7;color:var(--ok);}
+.msg.bad{display:block;background:#fee2e2;color:var(--bad);}
+.msg.warn{display:block;background:#fef3c7;color:var(--warn);}
+code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:12.5px;}
+.tip{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.7;}
+.tip b{color:var(--ink);}
+.pv{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+.pv-box{text-align:center;}
+.pv-box canvas{width:150px;height:210px;border:1px dashed var(--line);border-radius:12px;background:#fbf9ff;display:block;}
+.pv-box span{display:block;margin-top:6px;font-size:12px;color:var(--sub);font-weight:700;}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛠 数据恢复工具</h1>
+  <div class="sub">有人用管理员权限改坏了数据？勾上要恢复的项目，一键拉回<b>云端默认</b>。只动你勾的选项，别的存档一概不碰。</div>
+
+  <div class="card">
+    <h2><span class="n">1</span>云端默认数据在哪</h2>
+    <div class="cloud" id="cloudBox">
+      <div class="cloud-ico" id="cloudIco">⏳</div>
+      <div>
+        <div class="cloud-name" id="cloudName">读取中…</div>
+        <div class="cloud-sub" id="cloudSub"></div>
+      </div>
+    </div>
+    <div class="tip" id="cloudTip"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>勾选要恢复的数据</h2>
+    <div class="bar">
+      <button class="sm" id="btnAllCloud">☁️ 只选「有默认」的</button>
+      <button class="sm" id="btnAllDiff">🔀 只选「被改过」的</button>
+      <button class="sm" id="btnAll">✅ 全选</button>
+      <button class="sm" id="btnNone">⬜ 全不选</button>
+      <button class="sm" id="btnReload">🔄 重新扫描</button>
+    </div>
+    <table>
+      <thead><tr><th class="ck"></th><th>数据项</th><th>存储键</th><th style="width:92px">本机</th><th style="width:96px">云端默认</th><th style="width:104px">状态</th></tr></thead>
+      <tbody id="tbl"></tbody>
+    </table>
+    <div class="btns">
+      <button class="primary" id="btnRestore">☁️ 把勾选项恢复成云端默认</button>
+      <button class="danger" id="btnClearSel">🗑 清空勾选项（删掉本机数据）</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="tip">
+      <b>恢复</b>＝用云端那份覆盖本机同名数据；<b>清空</b>＝直接删掉本机这份，下次打开引擎会走它自己的兜底逻辑。<br>
+      <b>⚠️ 恢复不可撤销</b>。改坏了才需要恢复，正常情况别乱点 —— 拿不准就先去「数据备份与迁移」导出一份。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>素体专项（最常被改坏的一项）</h2>
+    <div class="pv">
+      <div class="pv-box"><canvas id="pvNow" width="300" height="420"></canvas><span>现在本机存的</span></div>
+      <div class="pv-box"><canvas id="pvV4" width="300" height="420"></canvas><span>云端默认的</span></div>
+    </div>
+    <div class="btns">
+      <button id="btnFix">✅ 换回默认素体（保留我调过的坐标）</button>
+      <button id="btnHard">♻️ 彻底恢复出厂（连坐标一起还原）</button>
+    </div>
+    <div class="tip">
+      <b>「保留坐标」</b>：只把 6 张图片换成云端那套，你在素体工坊里手动挪过的位置 / 旋转 / 关节点一律不动。<br>
+      <b>「彻底恢复出厂」</b>：图片和坐标一起还原，你自己调过的摆放会丢。<br>
+      两个按钮<b>都只动素体</b>，不碰服装库、套装、地图、账号。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>管理员：更新云端默认</h2>
+    <div class="tip" style="margin-top:0">
+      把<b>现在这台机器上的数据</b>定为新的「云端默认」：勾好上面的项目 → 下载 <code>cloud-defaults.json</code> →
+      放进仓库的 <code>src/</code> 目录并提交推送 → 所有人打开本页就能恢复到你这份。<br>
+      <b>注意：</b>这一步是拿本机数据覆盖官方默认，请确认本机这份是对的再传。
+    </div>
+    <div class="btns">
+      <button id="btnMakeCloud">📤 生成云端快照文件（下载 JSON）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">5</span>修完去哪儿看</h2>
+    <div class="btns">
+      <button class="ghost" onclick="location.href='./index.html?hub=1'">🎮 返回中枢</button>
+      <button class="ghost" onclick="location.href='./index.html'">🏠 游戏端</button>
+      <button class="ghost" onclick="location.href='./服装编辑引擎.html'">🎨 服装引擎</button>
+      <button class="ghost" onclick="location.href='./NPC编辑引擎.html'">🧍 NPC 工坊</button>
+      <button class="ghost" onclick="location.href='./数据备份与迁移.html'">💾 备份与迁移</button>
+    </div>
+    <div class="tip">改完记得<b>回游戏端硬刷一次</b>（<code>Ctrl+F5</code>），因为 Service Worker 会缓存旧文件。</div>
+  </div>
+</div>
+
+<script src="./legacy-body-v4.js"></script>
+<script src="./body-template.js"></script>
+<script src="./npc-render.js"></script>
+<script>
+(function(){
+  var R = window.NPCRenderer;
+  var $ = function(id){ return document.getElementById(id); };
+  var CLOUD_URL = './cloud-defaults.json';
+  var CLOUD = null;
+  var CLOUD_ERR = '';
+
+  function fmtBytes(n){
+    if(!n) return '—';
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1048576).toFixed(2) + ' MB';
+  }
+  function pill(txt, cls){ return '<span class="pill '+cls+'">'+txt+'</span>'; }
+
+  /* 数据项清单。builtin = 没有云端快照时也能靠代码生成的出厂默认值 */
+  var ITEMS = [
+    { key:'engine_body_v4',      ico:'🧍', nm:'素体底膜',     ds:'素体工坊的 6 个零件 + 关节坐标', builtin:'body' },
+    { key:'engine_anim_cfg',     ico:'🎬', nm:'动画配置',     ds:'挥手 / 走路参数',                builtin:'anim' },
+    { key:'engine_auto_trim',    ico:'✂️', nm:'自动裁边设置', ds:'服装引擎上传 PNG 是否自动裁透明边', builtin:'trim' },
+    { key:'engine_lib_v3',       ico:'👗', nm:'服装库',       ds:'服装工坊做的所有衣服素材' },
+    { key:'engine_outfits_v3',   ico:'👚', nm:'穿搭方案',     ds:'衣橱里另存的搭配组合' },
+    { key:'engine_outfitsets_v1',ico:'🎽', nm:'套装库',       ds:'套装编辑页产出' },
+    { key:'engine_npcs_v1',      ico:'👤', nm:'NPC 库',       ds:'NPC 引擎创建的所有角色' },
+    { key:'game_maps',           ico:'🗺', nm:'地图数据',     ds:'地图编辑引擎的地块与连线' },
+    { key:'game_accounts',       ico:'👥', nm:'游戏账号',     ds:'昵称 / 等级 / 装扮 / 货币' },
+    { key:'engine_body_v3',      ico:'🗄', nm:'素体 · 旧版',  ds:'v3 遗留键，迁移用' },
+    { key:'game_current_user',   ico:'🔑', nm:'当前登录账号', ds:'记住的登录态' }
+  ];
+  var PREFIX = ['engine_','game_','player_profile_','tarot_'];
+
+  function builtinValue(kind){
+    if(!kind) return null;
+    if(kind === 'body'){ return window.LegacyBodyV4 ? JSON.stringify(window.LegacyBodyV4.build()) : null; }
+    if(kind === 'anim'){ return window.LegacyBodyV4 ? JSON.stringify(window.LegacyBodyV4.anim || {}) : null; }
+    if(kind === 'trim'){ return '1'; }
+    return null;
+  }
+
+  function extraKeys(){
+    var seen = {}, out = [], i, p;
+    ITEMS.forEach(function(it){ seen[it.key] = 1; });
+    try{
+      for(i=0;i<localStorage.length;i++){
+        var k = localStorage.key(i);
+        if(!k || seen[k]) continue;
+        var hit = false;
+        for(p=0;p<PREFIX.length;p++){ if(k.indexOf(PREFIX[p])===0){ hit=true; break; } }
+        if(hit){ seen[k]=1; out.push({ key:k, ico:'📦', nm:'（扫描到的额外键）', ds:'自定义数据' }); }
+      }
+    }catch(e){}
+    return out;
+  }
+  function allItems(){ return ITEMS.concat(extraKeys()); }
+  function findItem(k){
+    var arr = allItems();
+    for(var i=0;i<arr.length;i++) if(arr[i].key===k) return arr[i];
+    return { key:k };
+  }
+  function localRaw(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function cloudRaw(k){ return (CLOUD && CLOUD.data && typeof CLOUD.data[k] === 'string') ? CLOUD.data[k] : null; }
+  function sourceRaw(it){ return cloudRaw(it.key) || builtinValue(it.builtin); }
+  function sourceLabel(it){ return cloudRaw(it.key) ? '云端' : (builtinValue(it.builtin) ? '内置出厂' : ''); }
+
+  function same(a, b){
+    if(a === b) return true;
+    if(a == null || b == null) return false;
+    try{ return JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b)); }
+    catch(e){ return false; }
+  }
+
+  function render(){
+    var tb = $('tbl'); tb.innerHTML = '';
+    allItems().forEach(function(it){
+      var loc = localRaw(it.key), src = sourceRaw(it), lbl = sourceLabel(it);
+      var tr = document.createElement('tr');
+      if(!src) tr.className = 'miss';
+      var st;
+      if(loc == null && src == null)  st = pill('两端都没有', 'none');
+      else if(loc == null)            st = pill('本机没有', 'warn');
+      else if(src == null)            st = pill('无默认', 'none');
+      else if(same(loc, src))         st = pill('已一致 ✅', 'ok');
+      else                            st = pill('被改过 ⚠️', 'warn');
+      tr.innerHTML =
+        '<td class="ck"><input type="checkbox" data-key="'+it.key+'"'+(src?'':' disabled')+'></td>' +
+        '<td><div class="nm">'+it.ico+' '+it.nm+'</div><div class="ds">'+it.ds+'</div></td>' +
+        '<td class="k">'+it.key+'</td>' +
+        '<td class="sz">'+(loc!=null ? fmtBytes(loc.length*2) : '—')+'</td>' +
+        '<td class="sz">'+(src!=null ? fmtBytes(src.length*2)+(lbl?'<br><span style="font-size:11px">'+lbl+'</span>':'') : '—')+'</td>' +
+        '<td>'+st+'</td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  function checkedKeys(){
+    var out = [], els = document.querySelectorAll('#tbl input[type=checkbox]');
+    for(var i=0;i<els.length;i++) if(els[i].checked) out.push(els[i].getAttribute('data-key'));
+    return out;
+  }
+  function setChecked(pred){
+    var els = document.querySelectorAll('#tbl input[type=checkbox]');
+    for(var i=0;i<els.length;i++){
+      if(els[i].disabled){ els[i].checked = false; continue; }
+      var k = els[i].getAttribute('data-key');
+      els[i].checked = !!pred(k, findItem(k));
+    }
+  }
+
+  function show(msg, cls){
+    var m = $('msg'); m.className = 'msg ' + (cls||''); m.innerHTML = msg || '';
+  }
+
+  $('btnRestore').onclick = function(){
+    var keys = checkedKeys();
+    if(!keys.length){ show('请先勾选要恢复的项目 ⬆️', 'warn'); return; }
+    if(!confirm('即将把下面 '+keys.length+' 项恢复成云端默认（本机现有数据会被覆盖，不可撤销）：\n\n· '+keys.join('\n· ')+'\n\n确定吗？')) return;
+    var ok = 0, fail = [];
+    keys.forEach(function(k){
+      var v = sourceRaw(findItem(k));
+      if(v == null){ fail.push(k + '（没有可用的默认）'); return; }
+      try{
+        localStorage.setItem(k, v); ok++;
+        if(R && k === 'engine_body_v4'){ try{ R.hydrateBody(JSON.parse(v)); }catch(e){} }
+      }catch(e){ fail.push(k + '（' + (e.name==='QuotaExceededError' ? '空间不足' : e.name) + '）'); }
+    });
+    if(fail.length) show('⚠️ 成功 '+ok+' 项，失败 '+fail.length+' 项：<br>' + fail.join('<br>'), 'warn');
+    else show('✅ 已恢复 '+ok+' 项到云端默认。<br>去游戏端硬刷一次（Ctrl+F5）就能看到。', 'ok');
+    render(); draw('now');
+  };
+
+  $('btnClearSel').onclick = function(){
+    var keys = checkedKeys();
+    if(!keys.length){ show('请先勾选要清空的项目 ⬆️', 'warn'); return; }
+    if(!confirm('确定删除本机这 '+keys.length+' 项数据？此操作不可撤销，建议先去「数据备份与迁移」导出备份！')) return;
+    if(!confirm('再确认一次：真的删掉 '+keys.length+' 项吗？')) return;
+    keys.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+    show('已清空 '+keys.length+' 项', 'ok');
+    render(); draw('now');
+  };
+
+  function renderCloud(){
+    var box = $('cloudBox');
+    if(CLOUD && CLOUD.data){
+      box.className = 'cloud ok';
+      $('cloudIco').textContent = '☁️';
+      var n = Object.keys(CLOUD.data).length;
+      $('cloudName').innerHTML = '云端快照已加载 · ' + n + ' 项';
+      var t = CLOUD._meta && CLOUD._meta.updatedAt ? CLOUD._meta.updatedAt.replace('T',' ').slice(0,19) : '未知';
+      $('cloudSub').textContent = '更新于 ' + t + ' · ' + CLOUD_URL;
+      $('cloudTip').innerHTML = '勾上项目点「☁️ 恢复」即可。想改云端这份，看下面第 4 步。';
+    }else{
+      box.className = 'cloud warn';
+      $('cloudIco').textContent = '⚠️';
+      $('cloudName').textContent = '云端快照没读到';
+      $('cloudSub').textContent = CLOUD_URL + ' · ' + (CLOUD_ERR || '未知原因');
+      $('cloudTip').innerHTML =
+        '<b>素体 / 动画 / 自动裁边</b>有内置出厂值，<b>照样能恢复</b>（表里标「内置出厂」）。<br>' +
+        '其余项目需要云端文件。如果你是<b>双击 HTML 打开</b>的（<code>file://</code>），浏览器会禁止读取本地 JSON —— ' +
+        '请用 <code>start-server.bat</code> 启动服务器后再打开本页。';
+    }
+  }
+
+  function loadCloud(cb){
+    try{
+      var x = new XMLHttpRequest();
+      x.open('GET', CLOUD_URL + '?t=' + Date.now(), true);
+      x.onreadystatechange = function(){
+        if(x.readyState !== 4) return;
+        if(x.status === 200 || (x.status === 0 && x.responseText)){
+          try{ CLOUD = JSON.parse(x.responseText); }
+          catch(e){ CLOUD = null; CLOUD_ERR = 'JSON 解析失败'; }
+        }else{ CLOUD_ERR = 'HTTP ' + x.status; }
+        if(cb) cb();
+      };
+      x.onerror = function(){ CLOUD_ERR = '被浏览器拦下（file:// 下常见）'; if(cb) cb(); };
+      x.send();
+    }catch(e){ CLOUD_ERR = e.message; if(cb) cb(); }
+  }
+
+  $('btnMakeCloud').onclick = function(){
+    var keys = checkedKeys();
+    if(!keys.length){ show('先在上面勾选要上传为云端默认的项目 ⬆️', 'warn'); return; }
+    if(!confirm('将用【本机当前数据】覆盖云端默认，包含：\n\n· '+keys.join('\n· ')+'\n\n请确认本机这份是对的。确定吗？')) return;
+    var keep = {};
+    if(CLOUD && CLOUD.data) Object.keys(CLOUD.data).forEach(function(k){ keep[k] = CLOUD.data[k]; });
+    var miss = [];
+    keys.forEach(function(k){
+      var v = localRaw(k);
+      if(v == null) miss.push(k); else keep[k] = v;
+    });
+    if(Object.keys(keep).length === 0){ show('本机这些项都是空的，没什么可传', 'warn'); return; }
+    var payload = {
+      _meta:{ app:'q版换装小游戏', ver:1, note:'云端默认数据快照',
+              updatedAt:new Date().toISOString(), origin:location.origin },
+      data: keep
+    };
+    try{
+      var blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'cloud-defaults.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      show('✅ 已生成 cloud-defaults.json（' + Object.keys(keep).length + ' 项）' +
+           (miss.length ? '<br>⚠️ 这几项本机是空的，没写进去：' + miss.join('、') : '') +
+           '<br><b>下一步：</b>把这个文件放进仓库的 <code>src/</code> 目录并提交推送，线上就生效了。', 'ok');
+    }catch(e){ show('生成失败：' + e.message, 'bad'); }
+  };
+
+  /* 素体预览 */
+  function draw(which){
+    try{
+      var cv = $(which === 'v4' ? 'pvV4' : 'pvNow');
+      if(!cv || !R) return;
+      R.drawNpc(cv, {}, { fitMode:'contain', groundRatio:0.9, dpr:2 });
+    }catch(e){}
+  }
+  try{ if(R) R.ensureBody(); }catch(e){}
+  draw('now');
+  (function(){
+    if(!R || !window.LegacyBodyV4) return;
+    try{
+      var backup = null;
+      try{ backup = localStorage.getItem('engine_body_v4'); }catch(e){}
+      R.hydrateBody(window.LegacyBodyV4.build());
+      draw('v4');
+      try{
+        if(backup !== null){ localStorage.setItem('engine_body_v4', backup); R.hydrateBody(JSON.parse(backup)); }
+      }catch(e){}
+    }catch(e){}
+  })();
+
+  $('btnFix').onclick = function(){
+    if(!R){ show('npc-render.js 没加载，素体专项用不了', 'bad'); return; }
+    var r = R.forceLegacyBody(true);
+    if(r && r.ok) show('✅ 素体已换回默认（保留了你调过的坐标）。回游戏端 Ctrl+F5 硬刷一次。', 'ok');
+    else show('❌ 没修成：' + ((r && r.reason) || '未知原因'), 'bad');
+    render(); draw('now');
+  };
+  $('btnHard').onclick = function(){
+    if(!R){ show('npc-render.js 没加载，素体专项用不了', 'bad'); return; }
+    if(!confirm('彻底恢复出厂？\n\n你在素体工坊里手动挪过的位置 / 旋转 / 关节点会全部丢失。\n服装库、套装、商店、地图、账号都不受影响。')) return;
+    var r = R.forceLegacyBody(false);
+    if(r && r.ok) show('✅ 素体已彻底恢复出厂。回游戏端 Ctrl+F5 硬刷一次。', 'ok');
+    else show('❌ 没修成：' + ((r && r.reason) || '未知原因'), 'bad');
+    render(); draw('now');
+  };
+
+  $('btnAllCloud').onclick = function(){ setChecked(function(k, it){ return !!sourceRaw(it); }); };
+  $('btnAllDiff').onclick  = function(){ setChecked(function(k, it){
+    var src = sourceRaw(it);
+    return src != null && !same(localRaw(k), src);
+  }); };
+  $('btnAll').onclick   = function(){ setChecked(function(){ return true; }); };
+  $('btnNone').onclick  = function(){ setChecked(function(){ return false; }); };
+  $('btnReload').onclick= function(){ location.reload(); };
+
+  loadCloud(function(){ renderCloud(); render(); $('btnAllCloud').click(); });
+})();
+</script>
+</body>
+</html>

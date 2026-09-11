@@ -393,6 +393,7 @@
       <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 出生点</button>
       <button class="pill" id="me-add-npc" title="从《NPC 引擎》建好的 NPC 里挑一个放到关卡里" data-page-node-id="me-add-npc">👤 放置 NPC</button>
       <button class="pill" id="me-walk" data-page-node-id="me-walk">🚶 行走区</button>
+      <button class="pill" id="me-autotrim" title="上传 PNG 时自动裁掉四周全透明的边，地块外框跟着收缩到真实内容" data-page-node-id="me-autotrim">✂️ 自动裁边</button>
       <span class="pill-tip hidden" id="me-leaf-tip"></span>
       <button class="pill" id="me-set-root" title="全局唯一入口：进入游戏时角色首先出现在这里，通常是码头/大厅这样的枢纽" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">🏝 设为全局入口</button>
       <button class="pill danger" id="me-del-map" data-page-node-id="qMJ1TSPloIVgyobacdE8tF">🗑 删除</button>
@@ -1679,8 +1680,10 @@ function addBgLayerFromFile(e){
   const map = curMap(); if(!map){ toast('先在左边选一张地图'); return; }
   const file = e.target.files[0];
   if(file && file.size > 2*1024*1024){ toast('图片太大，控制在 2MB 内'); e.target.value=''; return; }
-  pickImage(e, url=>{
+  pickImage(e, (url, info)=>{
     const d = ensureMaps();
+    /* 裁过边就直接用裁后的比例，别再去探测整图的比例 */
+    const iaTrim = (info && info.cut && info.sw && info.sh) ? (info.sw/info.sh) : 0;
     const put = ia=>{
       /* 顺序很重要：先用这张图定世界比例，再按新比例算「不变形」的 w/h。
          反过来的话，第一张 4:3 图会按旧的 16:9 兜底算尺寸 → 上屏就是压扁的。 */
@@ -1689,14 +1692,16 @@ function addBgLayerFromFile(e){
       const fit = bgAspectFit(ia, wa);
       const l = newBgLayer('背景层 ' + ((map.bgLayers||[]).length+1), url);
       l.w = fit.w; l.h = fit.h;
+      shrinkBoxToTrim(l, info);
       (map.bgLayers = map.bgLayers || []).push(l);
       editState.bgSel = l.id; editState.sel = null;
       markBgDirty(map);
       saveMapsData(d); buildTree(); renderEditor(); renderProps();
       toast('🖼 已加入「'+l.name+'」· 世界比例 '+(Math.round(wa*1000)/1000)+' · 在画布上拖它 / 拖右下角缩放');
     };
-    const known = World._aspect[url];
-    if(known) put(known); else World.probe(url, ia=>put(ia));
+    if(iaTrim) put(iaTrim);
+    else if(World._aspect[url]) put(World._aspect[url]);
+    else World.probe(url, ia=>put(ia));
   });
 }
 function removeBgLayer(id){
@@ -1869,11 +1874,18 @@ function renderBgLayers(map){
     inp.onchange = ev=>{
       const f=ev.target.files[0]; if(!f) return;
       if(f.size>2*1024*1024){ toast('图片太大，控制在 2MB 内'); inp.value=''; return; }
-      pickImage(ev, url=>{
+      pickImage(ev, (url, info)=>{
         cur.img=url;
-        const apply = ia=>{ const fit=bgAspectFit(ia, World.aspect(map)); cur.w=fit.w; cur.h=fit.h; markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps(); toast('🖼 这一层的图已替换'); };
-        const known=World._aspect[url];
-        if(known) apply(known); else World.probe(url, apply);
+        const apply = ia=>{
+          const fit=bgAspectFit(ia, World.aspect(map));
+          cur.w=fit.w; cur.h=fit.h;
+          shrinkBoxToTrim(cur, info);
+          markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps();
+          toast('🖼 这一层的图已替换');
+        };
+        if(info && info.cut && info.sw && info.sh) apply(info.sw/info.sh);
+        else if(World._aspect[url]) apply(World._aspect[url]);
+        else World.probe(url, apply);
       });
       inp.onchange = null;
     };
@@ -2016,7 +2028,11 @@ function renderProps(){
     $('tl-spawn').onchange=()=>{t.targetSpawn=$('tl-spawn').value||null;saveMapsData(d);};
     $('tl-panel').onchange=()=>{t.panelId=$('tl-panel').value;t.panel=t.panelId;saveMapsData(d);renderEditor();};
     $('tl-file').onchange = e=>{
-      pickImage(e, url=>{ t.img=url; saveMapsData(d); renderEditor(); renderProps(); });
+      pickImage(e, (url, info)=>{
+        t.img=url;
+        if(shrinkBoxToTrim(t, info)) toast('📐 地块外框已收缩到真实内容，玩家看到哪儿就能踩到哪儿');
+        saveMapsData(d); renderEditor(); renderProps();
+      });
       e.target.value='';
     };
     $('tl-del').onclick = ()=>{
@@ -2142,11 +2158,78 @@ function fillSpawnSelect(sel, mapId, cur){
     if(s.id===cur) o.selected=true; sel.appendChild(o);
   });
 }
+/* ============ 上传 PNG 自动裁边 ============
+   很多素材图内容只占中间一小块，四周全是透明。不裁的话：
+   ① base64 白白变大；② 地块外框比看到的内容大一圈，玩家以为要走到边缘才触发。
+   裁完之后把外框收缩到内容范围 —— 「看见的」＝「能踩到的」。 */
+const LS_MAP_TRIM = 'map_auto_trim';
+function autoTrimMap(){ try{ return localStorage.getItem(LS_MAP_TRIM) !== '0'; }catch(e){ return true; } }
+function renderTrimPill(){
+  const b=$('me-autotrim'); if(!b) return;
+  const on=autoTrimMap();
+  b.textContent = on ? '✅ 自动裁边' : '⬜ 自动裁边';
+  b.classList.toggle('gold', on);
+  b.title = on ? '已开启：上传 PNG 自动裁掉透明边，地块外框会跟着收缩到真实内容'
+               : '已关闭：上传的 PNG 原样保留，地块外框不动';
+}
+function trimPng(dataUrl, cb){
+  const img=new Image();
+  img.onload=()=>{
+    const iw=img.naturalWidth, ih=img.naturalHeight;
+    const pass=cut=>cb({ dataUrl, iw, ih, sx:0, sy:0, sw:iw, sh:ih, cut:false });
+    if(!iw || !ih){ pass(); return; }
+    const c=document.createElement('canvas'); c.width=iw; c.height=ih;
+    const cx=c.getContext('2d', { willReadFrequently:true });
+    cx.drawImage(img,0,0);
+    let data;
+    try{ data=cx.getImageData(0,0,iw,ih).data; }catch(e){ pass(); return; }
+    let minX=iw, minY=ih, maxX=-1, maxY=-1;
+    for(let y=0;y<ih;y++){
+      const row=y*iw*4;
+      for(let x=0;x<iw;x++){
+        if(data[row+x*4+3] > 8){
+          if(x<minX) minX=x; if(x>maxX) maxX=x;
+          if(y<minY) minY=y; if(y>maxY) maxY=y;
+        }
+      }
+    }
+    if(maxX < 0){ pass(); return; }                       // 整张全透明 → 不裁
+    const sx=minX, sy=minY, sw=maxX-minX+1, sh=maxY-minY+1;
+    if(sw===iw && sh===ih){ pass(); return; }             // 本来就没透明边
+    const o=document.createElement('canvas'); o.width=sw; o.height=sh;
+    o.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    let out=dataUrl;
+    try{ out=o.toDataURL('image/png'); }catch(e){}
+    cb({ dataUrl:out, iw, ih, sx, sy, sw, sh, cut:true });
+  };
+  img.onerror=()=>cb({ dataUrl, iw:0, ih:0, sx:0, sy:0, sw:0, sh:0, cut:false });
+  img.src=dataUrl;
+}
+/* 裁边后把地块/背景层的外框收缩到内容范围（x,y 是归一化中心点） */
+function shrinkBoxToTrim(o, info){
+  if(!info || !info.cut || !info.iw || !info.ih) return false;
+  const w0=o.w||0, h0=o.h||0;
+  if(!w0 || !h0) return false;
+  const cxr=(info.sx + info.sw/2)/info.iw;      // 内容中心在整图里的相对位置
+  const cyr=(info.sy + info.sh/2)/info.ih;
+  o.w=Math.max(0.004, w0*(info.sw/info.iw));
+  o.h=Math.max(0.004, h0*(info.sh/info.ih));
+  o.x=(o.x||0) + (cxr-0.5)*w0;
+  o.y=(o.y||0) + (cyr-0.5)*h0;
+  return true;
+}
 function pickImage(e, cb){
   const f=e.target.files[0]; if(!f) return;
   if(f.size > 2*1024*1024){ toast('图片太大，控制在 2MB 内'); e.target.value=''; return; }
   const r=new FileReader();
-  r.onload=()=>cb(r.result);
+  r.onload=()=>{
+    const raw=r.result;
+    if(!autoTrimMap()){ cb(raw, null); return; }
+    trimPng(raw, info=>{
+      if(info.cut) toast('✂️ 已裁掉透明边：'+info.iw+'×'+info.ih+' → '+info.sw+'×'+info.sh);
+      cb(info.dataUrl, info);
+    });
+  };
   r.readAsDataURL(f);
   e.target.value='';
 }
@@ -2569,6 +2652,14 @@ function openWalkEditor(){
   redraw(); updatePct();
 }
 $('me-walk').onclick = openWalkEditor;
+$('me-autotrim').onclick = ()=>{
+  const on = !autoTrimMap();
+  try{ localStorage.setItem(LS_MAP_TRIM, on ? '1' : '0'); }catch(e){}
+  renderTrimPill();
+  toast(on ? '✂️ 自动裁边已开启：上传 PNG 会自动裁掉透明边，地块外框跟着收缩'
+           : '自动裁边已关闭：上传的 PNG 原样保留');
+};
+renderTrimPill();
 $('me-del-map').onclick = ()=>delNode(editState.nodeId);
 
 function delNode(id){

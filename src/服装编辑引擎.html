@@ -1118,38 +1118,66 @@ const sessionStorage = _mkStore(window.sessionStorage);
     stage.appendChild(el); applyBodyEl(el, key); return el;
   }
 
+  /* 合成一层：舞台多大就画多大，不再被 SLOT_BOX 框死。
+     以前是「按 box 的 3 倍开一张正方形画布 + 最后压回 max(box.w,box.h)*2」，
+     素材一旦放大超过框就会被硬压回去 —— 陛下要的就是能自由超出。
+     现在：① 按旋转后的几何包围盒开画布 ② 画 ③ 像素级精修裁掉透明边
+     返回 w/h（舞台像素真实尺寸）+ cx/cy（内容中心相对 box 中心的偏移）。 */
+  const COMPOSE_MAX_DIM=900;   // 只防 localStorage 爆炸，不是「不许超过」的限制
   function composeSubLayer(pieces, box){
     if(!pieces || pieces.length===0) return null;
-    const W=Math.max(80, Math.round(box.w*3)), H=Math.max(80, Math.round(box.h*3));
-    const cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
-    const ctx=cvs.getContext('2d');
-    const scale=W/box.w;
+    const PAD=6;
+    // 1) 先按旋转后的几何包围盒定画布
+    let gx0=Infinity, gy0=Infinity, gx1=-Infinity, gy1=-Infinity;
     pieces.forEach(pc=>{
-      const cx=W/2 + pc.ox*scale, cy=H/2 + pc.oy*scale;
-      const w=pc.w*scale, h=pc.h*scale;
+      const r=((pc.rot||0)%360)*Math.PI/180;
+      const c=Math.abs(Math.cos(r)), s=Math.abs(Math.sin(r));
+      const hw=(pc.w*c + pc.h*s)/2, hh=(pc.w*s + pc.h*c)/2;
+      if(pc.ox-hw<gx0) gx0=pc.ox-hw;
+      if(pc.ox+hw>gx1) gx1=pc.ox+hw;
+      if(pc.oy-hh<gy0) gy0=pc.oy-hh;
+      if(pc.oy+hh>gy1) gy1=pc.oy+hh;
+    });
+    if(!isFinite(gx0) || !isFinite(gy0) || !isFinite(gx1) || !isFinite(gy1)) return null;
+    const bw=(gx1-gx0)+PAD*2, bh=(gy1-gy0)+PAD*2;
+    if(!(bw>0) || !(bh>0)) return null;
+    const k=Math.min(1, COMPOSE_MAX_DIM/Math.max(bw,bh));
+    const cw=Math.max(2,Math.round(bw*k)), ch=Math.max(2,Math.round(bh*k));
+    const x0=gx0-PAD, y0=gy0-PAD;
+    const cvs=document.createElement('canvas'); cvs.width=cw; cvs.height=ch;
+    const ctx=cvs.getContext('2d');
+    ctx.scale(k,k); ctx.translate(-x0,-y0);
+    pieces.forEach(pc=>{
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(pc.rot*Math.PI/180);
+      ctx.translate(pc.ox, pc.oy);
+      ctx.rotate((pc.rot||0)*Math.PI/180);
       if(pc.flipH) ctx.scale(-1,1);
       const img=pc._img || (pc._img=(()=>{const i=new Image(); i.src=pc.imgSrc; return i;})());
-      if(img.complete && img.naturalWidth) ctx.drawImage(img, -w/2, -h/2, w, h);
-      else { ctx.fillStyle='rgba(160,150,190,.5)'; ctx.fillRect(-w/2,-h/2,w,h); }
+      if(img.complete && img.naturalWidth) ctx.drawImage(img, -pc.w/2, -pc.h/2, pc.w, pc.h);
+      else { ctx.fillStyle='rgba(160,150,190,.5)'; ctx.fillRect(-pc.w/2,-pc.h/2,pc.w,pc.h); }
       ctx.restore();
     });
-    const data=ctx.getImageData(0,0,W,H).data;
-    let minX=W, minY=H, maxX=0, maxY=0, found=false;
-    for(let y=0;y<H;y++){ for(let x=0;x<W;x++){
-      const a=data[(y*W+x)*4+3];
-      if(a>8){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; found=true; }
-    }}
-    if(!found) return null;
-    const pad=2; minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad); maxX=Math.min(W-1,maxX+pad); maxY=Math.min(H-1,maxY+pad);
-    const cw=maxX-minX+1, ch=maxY-minY+1;
-    const sz=Math.max(cw,ch);
-    const finalSz=Math.min(sz, Math.round(Math.max(box.w,box.h)*2));
-    const out=document.createElement('canvas'); out.width=finalSz; out.height=finalSz;
-    out.getContext('2d').drawImage(cvs, minX-(sz-cw)/2, minY-(sz-ch)/2, sz, sz, 0,0, finalSz, finalSz);
-    return { dataUrl:out.toDataURL('image/png'), boxW:box.w, boxH:box.h };
+    // 2) 像素级精修裁边
+    let data;
+    try{ data=ctx.getImageData(0,0,cw,ch).data; }
+    catch(e){ return { dataUrl:cvs.toDataURL('image/png'), w:bw, h:bh, cx:(x0+bw/2), cy:(y0+bh/2), boxW:box.w, boxH:box.h }; }
+    let minX=cw, minY=ch, maxX=-1, maxY=-1;
+    for(let y=0;y<ch;y++){ const row=y*cw*4;
+      for(let x=0;x<cw;x++){
+        if(data[row+x*4+3]>8){
+          if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+        }
+      }}
+    if(maxX<0) return null;
+    const tX=minX, tY=minY, tW=maxX-minX+1, tH=maxY-minY+1;
+    const out=document.createElement('canvas'); out.width=tW; out.height=tH;
+    out.getContext('2d').drawImage(cvs, tX, tY, tW, tH, 0, 0, tW, tH);
+    return {
+      dataUrl: out.toDataURL('image/png'),
+      w: tW/k, h: tH/k,                                  // 舞台像素真实尺寸（不再被 box 卡死）
+      cx: x0 + (tX + tW/2)/k, cy: y0 + (tY + tH/2)/k,    // 内容中心相对 box 中心的偏移
+      boxW: box.w, boxH: box.h
+    };
   }
 
   /* 上传即裁剪：去掉 PNG 四周透明边，返回 {dataUrl,width,height,changed}
@@ -1286,15 +1314,22 @@ const sessionStorage = _mkStore(window.sessionStorage);
   function drawComposed(stage, catId, L, composed, mirror){
     const anchors=getAnchors(); const a=anchors[L.anchor]; if(!a) return;
     const box=SLOT_BOX[catId+'/'+L.key];
+    /* 用合成结果的真实尺寸 + 偏移摆放，老数据缺 w/h/cx/cy 时回退到 box */
+    const w  = (composed && composed.w)  || box.w;
+    const h  = (composed && composed.h)  || box.h;
+    const cx = (composed && composed.cx) || 0;
+    const cy = (composed && composed.cy) || 0;
     const el=document.createElement('div'); el.className='layer-el'; el.style.zIndex=L.z;
-    el.style.left=(a.x - box.w/2 + box.ox)+'px'; el.style.top=(a.y - box.h/2 + box.oy)+'px';
-    el.style.width=box.w+'px'; el.style.height=box.h+'px';
+    el.style.left=(a.x + box.ox + cx - w/2)+'px'; el.style.top=(a.y + box.oy + cy - h/2)+'px';
+    el.style.width=w+'px'; el.style.height=h+'px';
     el.dataset.source='composed'; el.dataset.subKey=L.key;  // 拖拽覆盖用标识
     // 记录挂接点 + 旋转中心（anchor 点相对元素左上角的偏移），供动画跟随旋转使用
     el.dataset.anchor=L.anchor; el.dataset.mirror=mirror?'1':'0';
-    el.dataset.ox=(box.w/2 - box.ox); el.dataset.oy=(box.h/2 - box.oy);
-    // 镜像用内层 wrap 绕中心翻转，外层负责绕 anchor 旋转，避免 scaleX 绕非中心点导致平移
+    const ax=w/2 - box.ox - cx, ay=h/2 - box.oy - cy;
+    el.dataset.ox=ax; el.dataset.oy=ay;
+    // 镜像用内层 wrap 绕 anchor 竖直线翻转，外层负责绕 anchor 旋转，避免整体平移
     const wrap=document.createElement('div'); wrap.className='flip-wrap';
+    wrap.style.transformOrigin=ax+'px '+ay+'px';
     if(mirror) wrap.style.transform='scaleX(-1)';
     const img=document.createElement('img'); img.src=composed.dataUrl; img.draggable=false; wrap.appendChild(img);
     el.appendChild(wrap);

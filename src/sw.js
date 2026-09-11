@@ -1,6 +1,6 @@
 /* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
    其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v10';
+const CACHE = 'shuguang-v11';
 const PRECACHE = [
   './',
   './index.html',
@@ -18,7 +18,8 @@ const PRECACHE = [
   './塔罗编辑引擎.html',
   './数据备份与迁移.html',
   './安全区方案.html',
-  './修复素体.html',
+  './数据恢复工具.html',
+  './cloud-defaults.json',
   './assets/'
 ];
 

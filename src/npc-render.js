@@ -358,48 +358,67 @@
   }
 
   /* ---------- 部件合成缓存（服装层） ---------- */
+  /* 自由尺寸合成：按旋转后的几何包围盒开画布，再像素级精修裁透明边。
+     不再把素材压回 SLOT_BOX —— 素材放大超出框也能原样保留。
+     返回 w/h（舞台像素真实尺寸）+ cx/cy（内容中心相对 box 中心的偏移）。 */
+  const ENG_COMPOSE_MAX_DIM = 900;
   function engComposeLayer(pieces, box){
     if(!pieces || pieces.length===0) return null;
-    const W = Math.max(80, Math.round(box.w*3));
-    const H = Math.max(80, Math.round(box.h*3));
-    const cvs = document.createElement("canvas"); cvs.width=W; cvs.height=H;
-    const ctx = cvs.getContext("2d"); const scale = W / box.w;
-    pieces.forEach(pc => {
-      const cx = W/2 + pc.ox*scale, cy = H/2 + pc.oy*scale;
-      const w = pc.w*scale, h = pc.h*scale;
+    const PAD = 6;
+    let gx0=Infinity, gy0=Infinity, gx1=-Infinity, gy1=-Infinity;
+    pieces.forEach(pc=>{
+      const r = ((pc.rot||0)%360) * Math.PI/180;
+      const c = Math.abs(Math.cos(r)), s = Math.abs(Math.sin(r));
+      const hw = (pc.w*c + pc.h*s)/2, hh = (pc.w*s + pc.h*c)/2;
+      if(pc.ox-hw < gx0) gx0 = pc.ox-hw;
+      if(pc.ox+hw > gx1) gx1 = pc.ox+hw;
+      if(pc.oy-hh < gy0) gy0 = pc.oy-hh;
+      if(pc.oy+hh > gy1) gy1 = pc.oy+hh;
+    });
+    if(!isFinite(gx0) || !isFinite(gy0) || !isFinite(gx1) || !isFinite(gy1)) return null;
+    const bw = (gx1-gx0) + PAD*2, bh = (gy1-gy0) + PAD*2;
+    if(!(bw>0) || !(bh>0)) return null;
+    const k = Math.min(1, ENG_COMPOSE_MAX_DIM / Math.max(bw, bh));
+    const cw = Math.max(2, Math.round(bw*k)), ch = Math.max(2, Math.round(bh*k));
+    const x0 = gx0-PAD, y0 = gy0-PAD;
+    const cvs = document.createElement("canvas"); cvs.width=cw; cvs.height=ch;
+    const ctx = cvs.getContext("2d");
+    ctx.scale(k, k); ctx.translate(-x0, -y0);
+    pieces.forEach(pc=>{
       ctx.save();
-      ctx.translate(cx, cy);
+      ctx.translate(pc.ox, pc.oy);
       ctx.rotate((pc.rot||0) * Math.PI / 180);
       if(pc.flipH) ctx.scale(-1, 1);
       const img = engImg(pc.imgSrc);
-      if(img && img.complete && img.naturalWidth) ctx.drawImage(img, -w/2, -h/2, w, h);
-      else { ctx.fillStyle = "rgba(160,150,190,.5)"; ctx.fillRect(-w/2, -h/2, w, h); }
+      if(img && img.complete && img.naturalWidth) ctx.drawImage(img, -pc.w/2, -pc.h/2, pc.w, pc.h);
+      else { ctx.fillStyle = "rgba(160,150,190,.5)"; ctx.fillRect(-pc.w/2, -pc.h/2, pc.w, pc.h); }
       ctx.restore();
     });
-    let data; try{ data = ctx.getImageData(0,0,W,H).data; }catch(e){ return null; }
-    let minX=W, minY=H, maxX=0, maxY=0, found=false;
-    for(let y=0;y<H;y++){ for(let x=0;x<W;x++){
-      const a = data[(y*W+x)*4+3];
-      if(a>8){
-        if(x<minX) minX=x; if(x>maxX) maxX=x;
-        if(y<minY) minY=y; if(y>maxY) maxY=y;
-        found = true;
-      }
-    } }
-    if(!found) return null;
-    const pad = 2;
-    minX = Math.max(0, minX-pad); minY = Math.max(0, minY-pad);
-    maxX = Math.min(W-1, maxX+pad); maxY = Math.min(H-1, maxY+pad);
-    const cw = maxX-minX+1, ch = maxY-minY+1, sz = Math.max(cw, ch);
-    const finalSz = Math.min(sz, Math.round(Math.max(box.w, box.h)*2));
-    const out = document.createElement("canvas"); out.width = finalSz; out.height = finalSz;
-    out.getContext("2d").drawImage(cvs, minX-(sz-cw)/2, minY-(sz-ch)/2, sz, sz, 0, 0, finalSz, finalSz);
-    return { dataUrl: out.toDataURL("image/png") };
+    let data; try{ data = ctx.getImageData(0,0,cw,ch).data; }catch(e){
+      return { dataUrl: cvs.toDataURL("image/png"), w:bw, h:bh, cx:(x0+bw/2), cy:(y0+bh/2) };
+    }
+    let minX=cw, minY=ch, maxX=-1, maxY=-1;
+    for(let y=0;y<ch;y++){ const row=y*cw*4;
+      for(let x=0;x<cw;x++){
+        if(data[row+x*4+3] > 8){
+          if(x<minX) minX=x; if(x>maxX) maxX=x;
+          if(y<minY) minY=y; if(y>maxY) maxY=y;
+        }
+      } }
+    if(maxX < 0) return null;
+    const tX=minX, tY=minY, tW=maxX-minX+1, tH=maxY-minY+1;
+    const out = document.createElement("canvas"); out.width=tW; out.height=tH;
+    out.getContext("2d").drawImage(cvs, tX, tY, tW, tH, 0, 0, tW, tH);
+    return {
+      dataUrl: out.toDataURL("image/png"),
+      w: tW/k, h: tH/k,
+      cx: x0 + (tX + tW/2)/k, cy: y0 + (tY + tH/2)/k
+    };
   }
   function engCacheComposed(key, pieces, box){
     let c = engine._composed.get(key);
     if(!c){ c = { ready:false, building:false }; engine._composed.set(key, c); }
-    if(c.ready) return { dataUrl: c.dataUrl };
+    if(c.ready) return { dataUrl:c.dataUrl, w:c.w, h:c.h, cx:c.cx, cy:c.cy };
     if(c.building || !pieces || !pieces.length) return null;
     for(let i=0;i<pieces.length;i++){
       const im = engImg(pieces[i].imgSrc);
@@ -408,8 +427,8 @@
     c.building = true;
     const res = engComposeLayer(pieces, box);
     c.building = false;
-    if(res){ c.dataUrl = res.dataUrl; c.ready = true; }
-    return c.ready ? { dataUrl: c.dataUrl } : null;
+    if(res){ c.dataUrl = res.dataUrl; c.w = res.w; c.h = res.h; c.cx = res.cx; c.cy = res.cy; c.ready = true; }
+    return c.ready ? { dataUrl:c.dataUrl, w:c.w, h:c.h, cx:c.cx, cy:c.cy } : null;
   }
   function engItemThumb(item){
     const cat = ENG_CAT_MAP[item.category]; if(!cat || !item.layers) return null;
@@ -443,20 +462,26 @@
   function engVisAnchorX(p){
     return (p.flipH && p.jointPct) ? (1 - p.jointPct.x) : (p.jointPct ? p.jointPct.x : 0.5);
   }
-  function drawCloth(ctx, img, box, a, mirror, deg, bx, fy){
+  /* composed 带 w/h/cx/cy 时用真实尺寸摆放；老数据没有就退回 box（行为不变） */
+  function drawCloth(ctx, img, composed, box, a, mirror, deg, bx, fy){
     if(!img || !img.complete || !img.naturalWidth) return;
-    const left = a.x - box.w/2 + box.ox;
-    const top  = a.y - box.h/2 + box.oy;
+    const w  = (composed && composed.w)  || box.w;
+    const h  = (composed && composed.h)  || box.h;
+    const cx = (composed && composed.cx) || 0;
+    const cy = (composed && composed.cy) || 0;
+    const left = a.x + box.ox + cx - w/2;
+    const top  = a.y + box.oy + cy - h/2;
+    const L = left - a.x, T = top - a.y;
     ctx.save();
     ctx.translate(a.x - bx, a.y - fy);
     ctx.rotate((mirror ? -deg : deg) * Math.PI / 180);
     if(mirror){
-      ctx.translate(left + box.w/2 - a.x, top + box.h/2 - a.y);
+      /* 绕 anchor 竖直线翻转：局部 [L, L+w] 经 scale(-1,1) 落到 [-L-w, -L] */
+      ctx.translate(0, T);
       ctx.scale(-1, 1);
-      ctx.drawImage(img, -box.w/2, -box.h/2, box.w, box.h);
+      ctx.drawImage(img, L, 0, w, h);
     }else{
-      ctx.translate(left - a.x, top - a.y);
-      ctx.drawImage(img, 0, 0, box.w, box.h);
+      ctx.drawImage(img, L, T, w, h);
     }
     ctx.restore();
   }
@@ -536,14 +561,14 @@
           if(!composed || !composed.dataUrl) return;
           const img = engImg(composed.dataUrl); if(!img) return;
           const a = anchors[L.anchor]; if(!a) return;
-          list.push({ z:L.z, kind:"cloth", img, box, a, mirror, deg:0 });
+          list.push({ z:L.z, kind:"cloth", img, composed, box, a, mirror, deg:0 });
         });
       });
     }
     list.sort((x,y)=>x.z - y.z);
     list.forEach(it => {
       if(it.kind === "body") drawBodyPart(ctx, it.p, it.def, b.cx, b.maxY);
-      else drawCloth(ctx, it.img, it.box, it.a, it.mirror, 0, b.cx, b.maxY);
+      else drawCloth(ctx, it.img, it.composed, it.box, it.a, it.mirror, it.deg, b.cx, b.maxY);
     });
     ctx.restore();
     return true;
