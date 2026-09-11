@@ -2282,6 +2282,36 @@ window.addEventListener('keyup', e=>{
   const d = KEYMAP[e.key.toLowerCase()]; if(!d) return;
   lobby.keys[d]=false; mapRun.keys[d]=false;
 });
+/* 地图诊断快捷键：地图页按 D 打印当前地图运行时快照 —— 出现空白时用来定位 */
+window.__mapDebug = function(){
+  try{
+    const d = ensureMaps();
+    const m = d && d.maps ? d.maps[mapState.currentId] : null;
+    const info = {
+      root: d && d.root,
+      current: mapState.currentId,
+      mapName: m && m.name, mapType: m && m.type,
+      nodes: m ? (m.nodes||[]).length : '-',
+      spawns: m ? (m.spawns||[]).length : '-',
+      bgColor: m && m.bgColor, bgSrc: (m && m.bg) ? String(m.bg).slice(0,40)+'...' : '',
+      canvas: mapRun.canvas ? mapRun.canvas.width+'x'+mapRun.canvas.height : 'null',
+      world: mapRun.w+'x'+mapRun.h, offset: (mapRun.ox||0)+','+(mapRun.oy||0),
+      player: (mapRun.px|0)+','+(mapRun.py|0),
+      active: mapRun.active, hasLoop: !!loopId,
+    };
+    console.table(info);
+    toast('🐞 地图诊断已打印到 console（F12 → Console）');
+    return info;
+  }catch(err){ toast('诊断失败：'+err.message); }
+};
+window.addEventListener('keydown', e=>{
+  if((e.key==='d' || e.key==='D') && mapRun && mapRun.active && !e.ctrlKey && !e.metaKey){
+    // 排除输入框
+    const tag = (e.target && e.target.tagName || '').toUpperCase();
+    if(tag==='INPUT' || tag==='TEXTAREA') return;
+    window.__mapDebug();
+  }
+});
 // 虚拟摇杆（左下角，王者式：拖哪走哪）· 大厅与地图各一个，共用同一套逻辑
 function bindJoystick(zoneId, knobId, joy){
   const zone = $(zoneId);
@@ -3738,27 +3768,41 @@ function tileAt(px, py){
 function enterMap(id, spawnId){
   ensureBody();
   const d = ensureMaps();
-  const map = d.maps[id];
-  if(!map){ toast('地图不存在：'+id); return; }
-  if(map.type === 'panel'){ openPanelNode(map); return; }   // 兜底：面板节点直接打开面板
+  let map = d.maps[id];
+  if(!map){
+    // 目标不存在 → 回落到全局入口 / 第一张地图，避免直接空屏
+    const fbId = d.maps[d.root] ? d.root : Object.keys(d.maps)[0];
+    map = d.maps[fbId];
+    if(!map){ toast('⚠️ 地图数据损坏，请去《地图编辑引擎》重建'); showScreen('game-screen'); return; }
+    toast('⚠️ 目标地图"'+id+'"不存在，已回到"'+(map.name||fbId)+'"');
+    id = fbId;
+  }
+  if(map.type === 'panel'){ openPanelNode(map); return; }   // 面板节点直接打开面板
   mapState.currentId = id; mapState.spawnId = spawnId || null;
   showScreen('map-screen');
-  resizeMap();
-  loadMapBg(map);
-  const W = mapRun.w || window.innerWidth, H = mapRun.h || window.innerHeight;
-  let sx = 0.5, sy = 0.85;
-  const sp = (map.spawns||[]).filter(s=>s.id===spawnId)[0] || (map.spawns||[])[0];
-  if(sp){ sx = sp.x; sy = sp.y; }
-  mapRun.px = sx*W; mapRun.py = sy*H;
-  mapRun.facing = 1; mapRun.walkPhase = 0; mapRun.moving = false;
-  mapRun.cool = 0.6;                       // 落地后短暂免疫，防止来回弹
-  mapRun.standing = triggerAt(mapRun.px, mapRun.py);
-  mapRun.lastFired = mapRun.standing ? mapRun.standing.id : null;
-  hideMapPop();
-  mapRun.active = true;
-  mapRun.lastT = performance.now();
-  refreshMapTopbar();
-  if(!loopId) loopId = requestAnimationFrame(loop);
+  // 延一帧再算尺寸：map-screen 刚从 hidden 切显，某些浏览器上首帧 innerWidth/Height 还没稳
+  const _spawnPlacement = ()=>{
+    resizeMap();
+    loadMapBg(map);
+    const W = mapRun.w || window.innerWidth || 1, H = mapRun.h || window.innerHeight || 1;
+    let sx = 0.5, sy = 0.85;
+    const sp = (map.spawns||[]).filter(s=>s.id===spawnId)[0] || (map.spawns||[])[0];
+    if(sp && isFinite(sp.x) && isFinite(sp.y)){ sx = sp.x; sy = sp.y; }
+    // 出生点强制夹到可视区，防止编辑器里被拖到画布外
+    sx = Math.max(0.05, Math.min(0.95, sx));
+    sy = Math.max(0.05, Math.min(0.95, sy));
+    mapRun.px = sx*W; mapRun.py = sy*H;
+    mapRun.facing = 1; mapRun.walkPhase = 0; mapRun.moving = false;
+    mapRun.cool = 0.6;                       // 落地后短暂免疫，防止来回弹
+    mapRun.standing = triggerAt(mapRun.px, mapRun.py);
+    mapRun.lastFired = mapRun.standing ? mapRun.standing.id : null;
+    hideMapPop();
+    mapRun.active = true;
+    mapRun.lastT = performance.now();
+    refreshMapTopbar();
+    if(!loopId) loopId = requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(_spawnPlacement);
 }
 function fireTrigger(t){
   if(!t) return;
@@ -4044,7 +4088,28 @@ function loadMapBg(m){
   if(!src) return;
   const im = new Image();
   im.onload = ()=>{ if(mapRun.bgSrc === src) mapRun.bgImg = im; };
+  im.onerror = ()=>{ if(mapRun.bgSrc === src){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(src).slice(0,60)); } };
   im.src = src;
+}
+/* 空/坏地图兜底提示卡 —— 避免整块画布看起来"神秘一片白" */
+function _drawMapBadge(c, FW, FH, title, sub){
+  c.save();
+  const bw = Math.min(FW - 40, 520), bh = 96;
+  const bx = (FW - bw)/2, by = (FH - bh)/2;
+  c.fillStyle = 'rgba(30,24,46,.78)';
+  c.beginPath();
+  if(c.roundRect) c.roundRect(bx, by, bw, bh, 14); else c.rect(bx, by, bw, bh);
+  c.fill();
+  c.textAlign='center'; c.textBaseline='middle';
+  c.fillStyle = '#fff';
+  c.font = '700 16px "Microsoft YaHei",sans-serif';
+  c.fillText(title, FW/2, by + 34);
+  if(sub){
+    c.fillStyle = 'rgba(255,255,255,.75)';
+    c.font = '400 12px "Microsoft YaHei",sans-serif';
+    c.fillText(sub, FW/2, by + 62);
+  }
+  c.restore();
 }
 function drawCover(c, img, W, H){
   const ir = (img.naturalWidth||1) / (img.naturalHeight||1), sr = W/H;
@@ -4175,9 +4240,13 @@ function drawTriggerBox(c, n, W, H){
   poiLabel(c, cx, cy - r - fs*1.4, n.name || (isPanel ? '交互' : '门口'), null, fs);
 }
 function drawMap(){
-  const c = mapRun.ctx; if(!c) return;
-  const W = mapRun.w, H = mapRun.h;              // 世界画布（16:9）
-  const FW = mapRun.fw || W, FH = mapRun.fh || H; // 全屏（背景铺满，留边也有底）
+  let c = mapRun.ctx;
+  if(!c || !mapRun.canvas || !mapRun.canvas.width){ resizeMap(); c = mapRun.ctx; }
+  if(!c) return;
+  let W = mapRun.w, H = mapRun.h;              // 世界画布（16:9）
+  let FW = mapRun.fw || W, FH = mapRun.fh || H; // 全屏（背景铺满，留边也有底）
+  // canvas 尺寸 0 兜底（切显 map-screen 首帧偶发）
+  if(!W || !H || !FW || !FH){ resizeMap(); W = mapRun.w; H = mapRun.h; FW = mapRun.fw||W; FH = mapRun.fh||H; }
   const d = ensureMaps(); const m = d.maps[mapState.currentId];
   c.clearRect(0,0,FW,FH);
   if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, FW, FH);
@@ -4187,7 +4256,7 @@ function drawMap(){
     g.addColorStop(0, base); g.addColorStop(1, darken(base, .35));
     c.fillStyle = g; c.fillRect(0,0,FW,FH);
   }
-  if(!m) return;
+  if(!m){ _drawMapBadge(c, FW, FH, '⚠️ 找不到当前地图', '按左上角"← 回大厅"回主界面'); return; }
   /* 世界内容：整体平移到居中位置，比例永不拉伸 */
   c.save();
   c.translate(mapRun.ox||0, mapRun.oy||0);
@@ -4202,8 +4271,15 @@ function drawMap(){
   });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H); });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
+  // 角色出生点 NaN 兜底：直接落到世界中央偏下
+  if(!isFinite(mapRun.px) || !isFinite(mapRun.py)){ mapRun.px = W/2; mapRun.py = H*0.7; }
   drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
   c.restore();
+  // 空地图明确提示，防止用户以为是渲染坏了
+  const nodeCount = (m.nodes||[]).length, spawnCount = (m.spawns||[]).length;
+  if(nodeCount===0 && spawnCount===0){
+    _drawMapBadge(c, FW, FH, '📭 "'+(m.name||m.id)+'" 是空地图', '打开《地图编辑引擎》加入口 / 地块 / 触发区');
+  }
 }
 
 /* ---- 点一下也能进（手机友好） ---- */
