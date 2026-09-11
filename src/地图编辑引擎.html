@@ -99,6 +99,49 @@
   .pill-tip.mint{color:#04322c;background:linear-gradient(135deg,#a8e8da,#7fd6c2);border-color:rgba(15,90,80,.3);box-shadow:0 3px 10px rgba(55,200,176,.18);}
   .pill-tip.warn{color:#4a0e0e;background:linear-gradient(135deg,#ffb0b0,#ff8080);border-color:rgba(140,20,20,.35);box-shadow:0 3px 10px rgba(255,80,80,.22);}
   .stage{flex:0 0 auto;width:100%;aspect-ratio:16/9;max-height:62vh;position:relative;border-radius:14px;border:2px dashed rgba(139,92,246,.45);overflow:hidden;background-size:cover;background-position:center;min-height:260px;}
+  /* ================= 机型预览 + UI 预览 ================= */
+  .device-sel{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding:0 10px;height:32px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;}
+  .stage-frame{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:8px;background:rgba(0,0,0,.18);border-radius:16px;min-height:280px;}
+  .device-name{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.5px;padding:0 4px;}
+  .device-viewport{position:relative;width:100%;display:flex;align-items:center;justify-content:center;padding:14px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 10px,rgba(0,0,0,.18) 10px 20px);border-radius:12px;min-height:240px;overflow:auto;}
+  .device-statusbar{position:absolute;top:0;left:0;right:0;height:24px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);font-size:11px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:space-between;padding:0 12px;pointer-events:none;z-index:8;}
+
+  /* 设备框架：none = 全屏 */
+  .device-none .device-viewport{padding:0;background:transparent;}
+  .device-none .device-statusbar{display:none;}
+  /* iPhone SE  375 × 667 */
+  .device-iphone-se .device-viewport{padding:36px 22px 22px;background:#1a1424;}
+  .device-iphone-se .device-statusbar{background:rgba(0,0,0,.6);}
+  .device-iphone-se .stage{aspect-ratio:375/667;max-width:240px;max-height:520px;width:auto;border:3px solid #1f1f24;border-radius:24px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.5);}
+  /* iPhone 15 Pro Max  430 × 932 */
+  .device-iphone-15pm .device-viewport{padding:30px 18px;background:#1a1424;}
+  .device-iphone-15pm .device-statusbar{background:rgba(0,0,0,.6);}
+  .device-iphone-15pm .stage{aspect-ratio:430/932;max-width:210px;max-height:520px;width:auto;border:3px solid #1a1a1f;border-radius:36px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.6);}
+  .device-iphone-15pm .device-statusbar::before{content:'14:35';display:inline-block;font-weight:800;}
+  .device-iphone-15pm .device-statusbar::after{content:'🔋95%   📶';font-size:10px;}
+  /* Android 20:9 */
+  .device-android .device-viewport{padding:32px 18px;background:#1a1424;}
+  .device-android .device-statusbar{background:rgba(0,0,0,.65);}
+  .device-android .stage{aspect-ratio:9/19.5;max-width:180px;max-height:520px;width:auto;border:3px solid #14141a;border-radius:20px;box-shadow:0 0 0 4px #232328, 0 16px 40px rgba(0,0,0,.5);}
+  /* iPad 4:3 */
+  .device-ipad .device-viewport{padding:24px 24px;background:#1a1424;}
+  .device-ipad .device-statusbar{background:rgba(0,0,0,.5);}
+  .device-ipad .stage{aspect-ratio:4/3;max-width:520px;max-height:520px;width:auto;border:3px solid #1a1a1f;border-radius:14px;box-shadow:0 0 0 4px #2a2a30, 0 16px 40px rgba(0,0,0,.5);}
+  /* PC 1280 × 720 */
+  .device-pc-1280 .device-viewport{padding:24px 24px 18px;background:#0c0a18;}
+  .device-pc-1280 .device-statusbar{background:#1f1f2a;font-size:11px;color:#ccc;}
+  .device-pc-1280 .stage{aspect-ratio:16/9;max-width:560px;max-height:380px;width:auto;border:2px solid #2c2c38;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+  .device-pc-1280 .device-statusbar::before{content:'🪟 Mercury Editor — 学校 · 阶梯教室';}
+  .device-pc-1280 .device-statusbar::after{content:'— □ ✕';}
+
+  /* ===== UI 预览覆盖层（默认隐藏，开关后显示）===== */
+  .ui-overlay{position:absolute;inset:0;pointer-events:none;z-index:6;display:none;}
+  body.show-ui .ui-overlay{display:block;}
+  .ui-bar{position:absolute;left:0;right:0;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);letter-spacing:.4px;}
+  .ui-topbar{top:0;height:var(--sa-y0);background:linear-gradient(180deg,rgba(15,8,32,.78),rgba(15,8,32,0));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px);}
+  .ui-bottombtn{top:auto;bottom:0;height:calc((1 - var(--sa-y1)) * 100%);background:linear-gradient(0deg,rgba(15,8,32,.7),rgba(15,8,32,0));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px) 8px;}
+  .ui-joystick{position:absolute;left:max(calc(var(--sa-jx) * 100% + 8px), 24px);bottom:max(calc((1 - var(--sa-jy)) * 100% + 8px), 50px);width:96px;height:96px;border-radius:50%;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;}
+  .ui-stick{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(255,255,255,.35));box-shadow:0 4px 12px rgba(0,0,0,.5);}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
   .stage-hint{text-align:center;font-size:11px;color:var(--sub);margin-top:8px;}
 
@@ -274,10 +317,32 @@
       <button class="pill" id="me-safe-fit" title="把这张地图里跑到红区的东西，一键收回可编辑区" data-page-node-id="vDsf4tEkykfigIeNBBlBUE">🧲 收回</button>
       <button class="pill" id="me-safe-why" title="这红区是怎么算出来的？19 种机型实测数据" data-page-node-id="saWhyBtn01">📐 依据</button>
       <span class="pill-divider"></span>
+      <select class="pill device-sel" id="me-device" title="切换不同机型看裁切后的显示区域" data-page-node-id="me-device">
+        <option value="none">🖥 无（16:9 全屏）</option>
+        <option value="iphone-se">📱 iPhone SE</option>
+        <option value="iphone-15pm">📱 iPhone 15 Pro Max</option>
+        <option value="android">📱 Android 20:9</option>
+        <option value="ipad">📱 iPad 4:3</option>
+        <option value="pc-1280">💻 PC 1280</option>
+      </select>
+      <button class="pill" id="me-ui-toggle" title="在画布上叠加显示游戏运行时顶栏/底条/摇杆 UI 的真实位置" data-page-node-id="me-ui-toggle">📐 UI 预览</button>
+      <span class="pill-divider"></span>
       <button class="pill" id="me-fix-links" title="扫描所有节点，把'父级指向不存在或指自己'的孤儿自动提到顶层，配 toast 报告" data-page-node-id="me-fix-links">🔗 校验挂靠</button>
       <button class="pill" id="me-merge-panels" title="把左侧的'面板'节点合并成父地图里的'触发地块'（action=panel）。合并后会删除原面板节点，迁移到建筑地块" data-page-node-id="me-merge-panels">📦 面板→触发</button>
     </div>
-    <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG"></div>
+    <div class="stage-frame device-none" id="stage-frame" data-page-node-id="stage-frame">
+      <div class="device-name" id="device-name">🖥 全屏预览</div>
+      <div class="device-viewport" id="device-viewport">
+        <div class="device-statusbar" id="device-statusbar"></div>
+        <div class="stage" id="edit-stage" data-page-node-id="QqiJue0argeuU82SF9gTwG">
+          <div class="ui-overlay" id="ui-overlay">
+            <div class="ui-bar ui-topbar">🐹 暮眠 · 🪙 12345</div>
+            <div class="ui-bar ui-bottombtn">⬆ 返回大厅 · 🌏 世界地图</div>
+            <div class="ui-joystick"><div class="ui-stick"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="stage-hint" id="stage-hint" data-page-node-id="Tkn2HszHOqsoJQwO1Cmp2B">拖动移动 · 拖右下角缩放 · 点元素在右侧配置</div>
   </section>
 
@@ -1415,6 +1480,32 @@ $('me-edit-glow').onclick = ()=>{
   toast(on ? '🟢 已高亮可编辑区（绿色区域是能放东西的地方）' : '已关闭可编辑区高亮');
 };
 $('me-safe-why').onclick = openSafeNote;
+/* ====== 机型切换预览 ====== */
+const DEVICE_LABELS = {
+  none: '🖥 全屏预览（16:9 自由版）',
+  'iphone-se': '📱 iPhone SE (375×667 16:9 · 1.78)',
+  'iphone-15pm': '📱 iPhone 15 Pro Max (430×932 20:9 · 2.17)',
+  android: '📱 Android 20:9 (窄屏 · 9:19.5)',
+  ipad: '📱 iPad 4:3 (1024×768 · 黑边粗)',
+  'pc-1280': '💻 PC 1280×720 (16:9 · 桌面端)'
+};
+function setDevice(dev){
+  const frame = $('stage-frame');
+  frame.classList.remove('device-none','device-iphone-se','device-iphone-15pm','device-android','device-ipad','device-pc-1280');
+  frame.classList.add('device-' + dev);
+  $('device-name').textContent = DEVICE_LABELS[dev] || '自定义';
+  $('me-device').value = dev;
+  /* 切回全屏时跑一次 resizeMap() 让画布重新 16:9 撑满 */
+  setTimeout(()=>{ window.dispatchEvent(new Event('resize')); }, 60);
+}
+$('me-device').onchange = ()=> setDevice($('me-device').value);
+/* ====== UI 预览开关 ====== */
+$('me-ui-toggle').onclick = ()=>{
+  const on = !document.body.classList.contains('show-ui');
+  document.body.classList.toggle('show-ui', on);
+  $('me-ui-toggle').classList.toggle('on', on);
+  toast(on ? '📐 UI 预览已开 · 顶栏 / 底条 / 摇杆的真实位置显示出来了' : 'UI 预览已关');
+};
 $('me-fix-links').onclick = ()=>{
   const d = ensureMaps();
   const repaired = validateAndRepairMapLinks(d, false);
