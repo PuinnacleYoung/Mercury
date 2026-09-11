@@ -1955,6 +1955,14 @@ let currentUser = null; // {username, password, nickname, element, outfit, frien
 function getAccounts(){ try{return JSON.parse(localStorage.getItem(LS_ACCOUNTS)||'{}');}catch(e){return {};} }
 function saveAccounts(a){ localStorage.setItem(LS_ACCOUNTS, JSON.stringify(a)); }
 function setCurrent(username){ localStorage.setItem(LS_CURRENT, username||''); }
+/* 把内存里 currentUser 的最新状态写回 localStorage —— getAccounts 每次都新 parse，
+   `saveAccounts(getAccounts())` 会存回过时快照，所以必须显式覆盖 accounts[username]。*/
+function persistCurrent(){
+  if(!currentUser || !currentUser.username) return;
+  const a = getAccounts();
+  a[currentUser.username] = currentUser;
+  saveAccounts(a);
+}
 /* 旧存档迁移：补齐等级/财富/金币/隐藏财富字段 */
 function normalizeUser(u){
   if(!u) return u;
@@ -2149,7 +2157,7 @@ $('nick-submit').onclick = ()=>{
   const n = $('nick-input').value.trim();
   if(!n){ $('nick-msg').textContent='昵称不能为空'; return; }
   currentUser.nickname = n;
-  saveAccounts(getAccounts()); // 已引用同一对象，但稳妥再存
+  persistCurrent();                           // 【修 bug】以前用 saveAccounts(getAccounts()) 存了旧快照，导致下次进来还要重填昵称
   showScreen('element-screen');
   renderElements();
 };
@@ -2179,7 +2187,7 @@ function renderElements(){
   btn.onclick = ()=>{
     if(!selectedElement){ toast('请先选择一个属性'); return; }
     currentUser.element = selectedElement;
-    saveAccounts(getAccounts());
+    persistCurrent();                         // 【修 bug】同上：以前存了旧快照，五行会重置
     enterLobby();
   };
   $('element-tip').after(btn);
@@ -2813,7 +2821,7 @@ function buildWardrobe(){
   const equip = (val, name)=>{
     currentUser.outfit[curCat] = val;
     if(profile){ profile.wornOutfit = Object.assign({}, currentUser.outfit); saveProfile(profile); }
-    saveAccounts(getAccounts());
+    persistCurrent();
     drawLobby();
     buildWardrobe();
     toast('已换上 '+name);
@@ -2844,7 +2852,7 @@ function buildWardrobe(){
         let n=0;
         ENG_CATEGORIES.forEach(c=>{ const iid = s.itemIds && s.itemIds[c.id]; if(iid){ currentUser.outfit[c.id]=iid; n++; } });
         if(profile){ profile.wornOutfit = Object.assign({}, currentUser.outfit); saveProfile(profile); }
-        saveAccounts(getAccounts()); drawLobby(); buildWardrobe();
+        persistCurrent(); drawLobby(); buildWardrobe();
         toast('已换上套装「'+s.name+'」· '+n+' 件');
       };
       grid.appendChild(d);
@@ -2992,7 +3000,7 @@ function addFriend(f){
   if(!currentUser.friends) currentUser.friends=[];
   if(currentUser.friends.some(x=>x.nickname===f.nickname)){ toast('已经是好友了'); return; }
   currentUser.friends.push(f);
-  saveAccounts(getAccounts());
+  persistCurrent();
   buildFriends();
   toast('已添加好友 '+f.nickname);
 }
@@ -3299,11 +3307,11 @@ function renderProfile(){
 $('hud-card').onclick = openProfile;
 $('profile-close').onclick = closeProfile;
 $('profile-mask').addEventListener('click', e=>{ if(e.target===$('profile-mask')) closeProfile(); });
-$('profile-hide-wealth').onchange = e=>{ currentUser.hideWealth = e.target.checked; saveAccounts(getAccounts()); renderProfile(); };
+$('profile-hide-wealth').onchange = e=>{ currentUser.hideWealth = e.target.checked; persistCurrent(); renderProfile(); };
 $('profile-earn').onclick = ()=>{
   profile.currency.coin += 100; profile.currency.diamond += 20; profile.currency.pearl += 10;
   currentUser.coins = profile.currency.coin;   // 老字段同步一份
-  saveAccounts(getAccounts());
+  persistCurrent();
   saveProfile(profile);
   renderProfile(); renderCoins();
   toast('💰 金币+100 / 钻石+20 / 珍珠+10');

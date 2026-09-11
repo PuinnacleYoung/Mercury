@@ -96,6 +96,7 @@
   .pill[disabled],.pill.is-disabled{opacity:.42;cursor:not-allowed;pointer-events:none;filter:grayscale(.4);}
   .pill-tip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800;color:#3a2c05;background:linear-gradient(135deg,#ffd58a,#ffb15c);border:1px solid rgba(140,80,20,.35);box-shadow:0 3px 10px rgba(255,160,60,.18);white-space:nowrap;}
   .pill-tip.mint{color:#04322c;background:linear-gradient(135deg,#a8e8da,#7fd6c2);border-color:rgba(15,90,80,.3);box-shadow:0 3px 10px rgba(55,200,176,.18);}
+  .pill-tip.warn{color:#4a0e0e;background:linear-gradient(135deg,#ffb0b0,#ff8080);border-color:rgba(140,20,20,.35);box-shadow:0 3px 10px rgba(255,80,80,.22);}
   .stage{flex:0 0 auto;width:100%;aspect-ratio:16/9;max-height:62vh;position:relative;border-radius:14px;border:2px dashed rgba(139,92,246,.45);overflow:hidden;background-size:cover;background-position:center;min-height:260px;}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
   .stage-hint{text-align:center;font-size:11px;color:var(--sub);margin-top:8px;}
@@ -586,34 +587,60 @@ function ensureMaps(){
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
 
 /* =========================================================
-   🌍 世界地图 vs 🎯 关卡地图
-   —— 世界地图（父节点）：map.nodes 里挂了「建筑地块（kind=tile）」，是『中国/美国/学校』这种分类枢纽
-   —— 关卡地图（叶子）：没挂 tile，是玩家点开地块之后能走的那一层（图书馆/我的小屋/服装店…）
-   —— 行走区 / 传送门 / 入口点：只有关卡地图才允许加（避免在世界地图上铺绿色步行道）
+   🌍 世界地图 vs 🎯 关卡地图（v3 · 按子地图判断，而不是按 tile）
+   —— 世界地图 = 挂着子关卡的分类枢纽（大陆 / 学校 / 家园）
+       * 画布上的 tile = 每个子关卡的"入口地标"（点它 = 跳去那张关卡）
+       * 不能行走，不能画行走区，不能加传送门 / 入口点 / 可编辑区
+   —— 关卡地图 = 玩家真正走进去玩的场景（阶梯教室 / 图书馆 / 服装店…）
+       * tile = 场景里的建筑（衣橱、塔罗），tile 自带触发（跳图 / 开面板 / 装饰）
+       * 可以画行走区、加入口点，触发已挂在 tile 上，不需要独立传送门
+   —— 全局入口：必须是「关卡地图」，且必须挂在某个「世界地图」下（可全屏世界地图跳转）
    ========================================================= */
-function hasChildTiles(map){
+function hasChildMaps(map, d){
+  d = d || ensureMaps();
+  if(!map || map.type==='panel') return false;
+  return Object.values(d.maps||{}).some(m => m && m.type!=='panel' && m.parent === map.id);
+}
+function hasChildTiles(map){                     // 保留：给旧调用兜底
   return !!map && map.type!=='panel' && (map.nodes||[]).some(n=>n && n.kind==='tile');
 }
-function isLeafMap(map){
-  return !!map && map.type!=='panel' && !hasChildTiles(map);
+function isLeafMap(map, d){
+  return !!map && map.type!=='panel' && !hasChildMaps(map, d);
 }
 function updateCanvasForLeaf(map){
   const tip = $('me-leaf-tip'); if(!tip) return;
-  const leaf = isLeafMap(map);
-  ['me-add-trigger','me-add-spawn','me-walk'].forEach(id=>{
+  const d = ensureMaps();
+  const leaf = isLeafMap(map, d);
+  const isPanel = map && map.type==='panel';
+  // 关卡地图专属功能（世界地图全部隐藏 / 灰化）
+  ['me-add-trigger','me-add-spawn','me-walk','me-edit-glow','me-safe-toggle','me-safe-fit','me-safe-why'].forEach(id=>{
     const el = $(id); if(!el) return;
-    el.classList.toggle('is-disabled', !leaf);
-    el.setAttribute('aria-disabled', leaf?'false':'true');
+    const off = !leaf || isPanel;
+    el.classList.toggle('is-disabled', off);
+    el.setAttribute('aria-disabled', off?'true':'false');
+    el.style.opacity = off ? '.35' : '';
+    el.style.pointerEvents = off ? 'none' : '';
   });
   if(!map){ tip.classList.add('hidden'); return; }
-  if(map.type==='panel'){ tip.classList.add('hidden'); return; }
+  if(isPanel){ tip.classList.add('hidden'); return; }
   if(leaf){
     tip.className = 'pill-tip mint';
-    tip.textContent = '🎯 关卡地图 · 可以加传送门 / 入口点 / 行走区';
+    // 关卡地图必须挂在世界地图下 —— 提醒
+    const parent = map.parent ? d.maps[map.parent] : null;
+    const parentOk = parent && parent.type!=='panel' && !isLeafMap(parent, d);
+    if(!parentOk && map.id !== d.root){
+      tip.className = 'pill-tip warn';
+      tip.textContent = '🎯 关卡地图 · ⚠ 建议在右侧「上级节点」挂到一个「🌍 世界地图」下';
+    }else if(!parentOk && map.id === d.root){
+      tip.className = 'pill-tip warn';
+      tip.textContent = '🎯 关卡地图（🏝 全局入口） · ⚠ 强烈建议挂到一个「🌍 世界地图」下，才能在游戏里通过世界地图跳转';
+    }else{
+      tip.textContent = '🎯 关卡地图 · 可以加地块 / 入口点 / 行走区（触发建议挂在地块上）';
+    }
   }else{
     tip.className = 'pill-tip';
-    const n = (map.nodes||[]).filter(x=>x && x.kind==='tile').length;
-    tip.textContent = '🌍 世界地图 · 挂着 '+n+' 个子地块 · 行走/传送请到关卡地图';
+    const kids = Object.values(d.maps||{}).filter(m=>m && m.type!=='panel' && m.parent===map.id).length;
+    tip.textContent = '🌍 世界地图 · 挂着 '+kids+' 张子关卡 · 不能行走 · 点建筑地块 = 跳去对应关卡';
   }
   tip.classList.remove('hidden');
 }
@@ -1394,8 +1421,17 @@ $('me-safe-fit').onclick = ()=>{
 $('me-set-root').onclick = ()=>{
   const d=ensureMaps(); const map=d.maps[editState.nodeId];
   if(!map || map.type==='panel'){ toast('全局入口只能是地图，不能是面板'); return; }
-  if(!isLeafMap(map)){ if(!confirm('这是「🌍 世界地图」（挂着子关卡的分类节点），不推荐当入口。真的要设吗？')) return; }
-  d.root = map.id; saveMapsData(d); buildTree(); renderProps();
+  if(!isLeafMap(map, d)){
+    toast('❌ 全局入口必须是「🎯 关卡地图」——世界地图不能走，也不会触发事件');
+    return;
+  }
+  // 建议挂在世界地图下
+  const parent = map.parent ? d.maps[map.parent] : null;
+  const parentOk = parent && parent.type!=='panel' && !isLeafMap(parent, d);
+  if(!parentOk){
+    if(!confirm('这张关卡地图还没挂在任何「🌍 世界地图」下。\n\n直接设为入口的话，玩家进游戏后只能待在这一关，无法通过世界地图跳转到别的关卡。\n\n建议：先在右侧「上级节点」里挂到一个世界地图下。\n\n仍然要现在就设为入口吗？')) return;
+  }
+  d.root = map.id; saveMapsData(d); buildTree(); renderProps(); renderEditor();
   toast('🏝 已把「'+map.name+'」设为全局入口');
 };
 
