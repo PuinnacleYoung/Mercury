@@ -25,6 +25,7 @@
     --sa-x0:4%;  --sa-y0:10%;
     --sa-w:92%;  --sa-h:75%;
     --sa-bh:15%; --sa-jx:26%; --sa-jh:32%;
+    --sa-x1:96%; --sa-y1:85%; --sa-jy:68%;  /* 顶栏终点 / 底栏起点 / 摇杆顶部 — 让 .ui-bottombtn 别再撑满 100% */
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
@@ -137,11 +138,20 @@
   /* ===== UI 预览覆盖层（默认隐藏，开关后显示）===== */
   .ui-overlay{position:absolute;inset:0;pointer-events:none;z-index:6;display:none;}
   body.show-ui .ui-overlay{display:block;}
-  .ui-bar{position:absolute;left:0;right:0;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);letter-spacing:.4px;}
-  .ui-topbar{top:0;height:var(--sa-y0);background:linear-gradient(180deg,rgba(15,8,32,.78),rgba(15,8,32,0));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px);}
-  .ui-bottombtn{top:auto;bottom:0;height:calc((1 - var(--sa-y1)) * 100%);background:linear-gradient(0deg,rgba(15,8,32,.7),rgba(15,8,32,0));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px) 8px;}
-  .ui-joystick{position:absolute;left:max(calc(var(--sa-jx) * 100% + 8px), 24px);bottom:max(calc((1 - var(--sa-jy)) * 100% + 8px), 50px);width:96px;height:96px;border-radius:50%;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;}
-  .ui-stick{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(255,255,255,.35));box-shadow:0 4px 12px rgba(0,0,0,.5);}
+  .ui-bar{position:absolute;left:0;right:0;font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85);letter-spacing:.4px;}
+  /* 顶栏 — 不再透明到看不清：黑色实色 + 高度 10% */
+  .ui-topbar{top:0;height:var(--sa-y0);background:linear-gradient(180deg,rgba(15,8,32,.92),rgba(15,8,32,.5));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px);border-bottom:2px solid rgba(255,255,255,.18);}
+  .ui-topbar .lbl,.ui-topbar .lbl-r{background:rgba(255,255,255,.16);padding:3px 10px;border-radius:999px;backdrop-filter:blur(2px);}
+  /* 底栏 — 固定 15% 高度，不再 calc((1 - var(--sa-y1)) * 100%) */
+  .ui-bottombtn{top:auto;bottom:0;height:15%;min-height:60px;background:linear-gradient(0deg,rgba(15,8,32,.92),rgba(15,8,32,.45));display:flex;align-items:center;justify-content:space-between;padding:0 max(var(--sa-x0),12px) 8px;border-top:2px solid rgba(255,255,255,.18);}
+  .ui-bottombtn .btn{background:rgba(255,255,255,.16);padding:5px 12px;border-radius:999px;backdrop-filter:blur(2px);}
+  /* 摇杆 — 强制 96px + 圆环 + 内圈，永远可见 */
+  .ui-joystick{position:absolute;left:max(calc(var(--sa-jx) * 100% + 8px), 24px);bottom:max(calc((1 - var(--sa-jy)) * 100% + 8px), 50px);width:96px;height:96px;border-radius:50%;background:rgba(0,0,0,.55);border:3px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.55);}
+  .ui-stick{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(255,255,255,.45));box-shadow:0 4px 12px rgba(0,0,0,.5);}
+  .ui-stick::after{content:'摇';position:absolute;color:#000;font-size:11px;font-weight:900;}
+  .ui-overlay .lbl-act{position:absolute;right:14px;bottom:calc(15% + 12px);background:rgba(245,197,66,.92);color:#3a2c05;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  .bn-close{margin-left:6px;background:#3a2a08;color:#fff3a3;border:none;width:22px;height:22px;border-radius:50%;font-size:14px;font-weight:900;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
+  .bn-close:hover{background:#1f1704;}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
   .stage-hint{text-align:center;font-size:11px;color:var(--sub);margin-top:8px;}
 
@@ -177,8 +187,9 @@
   .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:2;}
   .safe-edit::after{content:'✅ 可编辑区 ' attr(data-pct);position:absolute;left:8px;top:-10px;background:rgba(55,200,176,.98);color:#04322c;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
   /* 禁区：红色斜纹 + 角标，明确告诉你被什么 UI 挡住 */
-  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.45) 0 10px,rgba(226,75,74,.12) 10px 20px);border:1px solid rgba(226,75,74,.85);box-sizing:border-box;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18);}
-  .safe-zone>i{position:absolute;left:8px;top:5px;font-size:12px;font-weight:900;font-style:normal;color:#fff;background:linear-gradient(135deg,#dc2626,#991b1b);padding:3px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.4px;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .safe-layer{position:absolute;inset:0;z-index:5;pointer-events:none;}
+  .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.55) 0 10px,rgba(226,75,74,.18) 10px 20px);border:1.5px solid rgba(226,75,74,.95);box-sizing:border-box;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);}
+  .safe-zone>i{position:absolute;left:8px;top:5px;font-size:12px;font-weight:900;font-style:normal;color:#fff;background:linear-gradient(135deg,#dc2626,#7f1d1d);padding:3px 10px;border-radius:999px;white-space:nowrap;letter-spacing:.4px;box-shadow:0 2px 8px rgba(0,0,0,.5);}
   .safe-zone.bottom>i{left:8px;top:auto;bottom:5px;}
   .safe-zone.joy>i{left:8px;top:5px;}
   .sz-top{left:0;right:0;top:0;height:var(--sa-y0);}
@@ -1913,14 +1924,16 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   $('me-edit-glow').classList.add('on');
   document.body.classList.add('show-ui');
   const uiBtn = $('me-ui-toggle'); if(uiBtn) uiBtn.classList.add('on');
-  /* 启动红条：告诉陛下"🟥 红区 = UI 会被遮的地方，🟩 绿框 = 东西要放这里" */
-  const banner = document.createElement('div');
-  banner.id = 'me-safebanner';
-  banner.innerHTML = '👀 <b>红斜纹</b>=UI 侵入区（顶栏 / 底条 / 摇杆会盖） · <b>绿框</b>=东西放这里 · <b>蓝十字</b>=门口可点';
-  banner.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;background:linear-gradient(135deg,#fff3a3,#ffd86b);color:#3a2a08;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.3);border:1px solid #b58a18;letter-spacing:.4px;';
-  document.body.appendChild(banner);
-  setTimeout(()=>{ banner.style.transition='opacity .6s'; banner.style.opacity='.25'; }, 6000);
-  setTimeout(()=> banner.remove(), 14000);
+  /* 启动红条：告诉陛下"🟥 红区 = UI 会被遮的地方，🟩 绿框 = 东西要放这里" —— 常驻，可关 */
+  let banner = $('me-safebanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'me-safebanner';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = '<b>👀 红斜纹</b>=UI 侵入区（顶栏/底条/摇杆会盖） · <b>绿框</b>=东西放这里 · <b>蓝十字</b>=门口可点 <button type="button" class="bn-close" aria-label="关闭">✕</button>';
+  banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1000;background:linear-gradient(135deg,#fff3a3,#ffd86b);color:#3a2a08;padding:8px 16px 8px 18px;border-radius:999px;font-size:13px;font-weight:800;box-shadow:0 6px 22px rgba(0,0,0,.35);border:1px solid #b58a18;letter-spacing:.4px;display:flex;align-items:center;gap:10px;white-space:nowrap;max-width:92vw;';
+  banner.querySelector('.bn-close').onclick = ()=> banner.remove();
   buildTree(); renderEditor(); renderProps();
   /* 启动时悄悄校验一次挂靠，有问题就 toast 提示 */
   const repaired = validateAndRepairMapLinks(d, /*silent*/ true);
