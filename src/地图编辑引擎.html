@@ -128,6 +128,8 @@
   /* 安全区：按市面 19 种机型实算的 UI 侵入并集（见 SafeArea.SPEC） */
   .safe-layer{position:absolute;inset:0;pointer-events:none;z-index:1;}
   .safe-edit{position:absolute;left:var(--sa-x0);top:var(--sa-y0);width:var(--sa-w);height:var(--sa-h);border:2px dashed rgba(55,200,176,.9);border-radius:6px;}
+  /* 行走区可视化：mask 图铺满 stage，通过 hue-rotate 让白像素显示为绿色可走蒙层 */
+  .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:2;}
   .safe-edit::after{content:'✅ 可编辑区 ' attr(data-pct);position:absolute;left:8px;top:-10px;background:rgba(55,200,176,.98);color:#04322c;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;}
   /* 禁区：红色斜纹 + 角标，明确告诉你被什么 UI 挡住 */
   .safe-zone{position:absolute;background:repeating-linear-gradient(45deg,rgba(226,75,74,.20) 0 8px,rgba(226,75,74,.07) 8px 16px);border:1px solid rgba(226,75,74,.5);box-sizing:border-box;}
@@ -717,8 +719,10 @@ function renderBgmBlock(hostId, obj){
 function buildTree(){
   const d = ensureMaps();
   const tree = $('map-tree'); tree.innerHTML='';
-  const root = d.maps[d.root]; if(!root) return;
-  (function draw(map, depth){
+  const drawn = new Set();
+  const draw = (map, depth)=>{
+    if(!map || drawn.has(map.id)) return;
+    drawn.add(map.id);
     const row = document.createElement('div');
     const isPanel = map.type==='panel';
     row.className = 'tree-row' + (map.id===editState.nodeId?' on':'') + (map.id===editState.nodeId&&isPanel?' panel-on':'');
@@ -730,8 +734,23 @@ function buildTree(){
       + `<span class="mt-count">${isPanel?'面板':cnt}</span>`;
     row.onclick = ()=>{ editState.nodeId=map.id; editState.sel=null; buildTree(); renderEditor(); renderProps(); };
     tree.appendChild(row);
-    Object.values(d.maps).filter(m=>m.parent===map.id).forEach(c=>draw(c, depth+1));
-  })(root, 0);
+    // 递归所有子（按名字排序稳定显示）
+    Object.values(d.maps)
+      .filter(m=>m.parent===map.id)
+      .sort((a,b)=>(a.name||'').localeCompare(b.name||''))
+      .forEach(c=>draw(c, depth+1));
+  };
+  /* 1) 全局入口第一个 */
+  if(d.maps[d.root]) draw(d.maps[d.root], 0);
+  /* 2) 其他顶层节点（parent 为空 或 parent 不存在的孤儿）*/
+  Object.values(d.maps)
+    .filter(m=>!drawn.has(m.id) && (!m.parent || !d.maps[m.parent]))
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||''))
+    .forEach(m=>draw(m, 0));
+  /* 3) 兜底：孤立环 / 找不到路径的剩余节点，直接平铺在最底下（避免"消失"）*/
+  Object.values(d.maps)
+    .filter(m=>!drawn.has(m.id))
+    .forEach(m=>draw(m, 0));
 }
 
 /* ================= 画布 ================= */
@@ -838,6 +857,64 @@ const SafeArea = {
   toggle(){ this.on = !this.on; return this.on; }
 };
 
+/* ================= 行走区蒙版采样器 =================
+   规则：关卡地图（isLeafMap）里的地块 / 触发区 / 入口点只能落在"可走"像素上。
+   数据源：map.walk = { w:192, h:108, data:'data:image/png...' }，alpha>32 视为可走。
+   若地图无 walk 数据 → 全图可走（不限制）。 */
+const WalkMask = {
+  _mapId: null, _canvas: null, _pixels: null, _ready: false,
+  load(map){
+    if(!map || !map.walk || !map.walk.data){
+      this._mapId = map ? map.id : null;
+      this._pixels = null; this._ready = false;
+      return;
+    }
+    if(this._mapId === map.id && this._ready) return; // 已加载
+    this._mapId = map.id; this._ready = false;
+    const im = new Image();
+    im.onload = ()=>{
+      const c = this._canvas || (this._canvas = document.createElement('canvas'));
+      c.width = 192; c.height = 108;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.drawImage(im, 0, 0, c.width, c.height);
+      try{
+        this._pixels = ctx.getImageData(0,0,c.width,c.height).data;
+        this._ready = true;
+      }catch(e){ this._pixels = null; this._ready = false; }
+    };
+    im.onerror = ()=>{ this._pixels = null; this._ready = false; };
+    im.src = map.walk.data;
+  },
+  /* 归一化坐标 (0-1) 是否在行走区内。无 walk 数据默认 true */
+  isWalkable(map, x, y){
+    if(!map || !map.walk || !map.walk.data) return true;
+    if(!this._ready || this._mapId !== map.id || !this._pixels) return true; // 还没加载好也放行
+    const W = 192, H = 108;
+    const ix = Math.max(0, Math.min(W-1, Math.floor(x * W)));
+    const iy = Math.max(0, Math.min(H-1, Math.floor(y * H)));
+    return this._pixels[(iy * W + ix) * 4 + 3] > 32; // alpha > 32 视为可走
+  },
+  /* 若地图有 walk 数据 → 限制目标点必须可走；不可走则回到上次合法位置 */
+  clampTo(map, o, prevX, prevY){
+    if(!o || !map || !map.walk || !map.walk.data) return o;
+    if(this.isWalkable(map, o.x, o.y)) return o;
+    // 尝试向可走点微调：沿 prev→now 方向二分
+    if(prevX != null && prevY != null){
+      let lo = 0, hi = 1;
+      for(let i=0;i<8;i++){
+        const t = (lo+hi)/2;
+        const tx = prevX + (o.x-prevX)*t;
+        const ty = prevY + (o.y-prevY)*t;
+        if(this.isWalkable(map, tx, ty)) lo = t; else hi = t;
+      }
+      o.x = prevX + (o.x-prevX)*lo;
+      o.y = prevY + (o.y-prevY)*lo;
+    }
+    return o;
+  }
+};
+
 /* 安全区「依据」弹窗：把 19 种机型的实测数据摆出来，说明红区不是拍脑袋定的 */
 function openSafeNote(){
   const old=$('sa-mask'); if(old) old.remove();
@@ -869,6 +946,8 @@ function renderEditor(){
   $('canvas-head').classList.toggle('hidden', !map);
   if(!map){ return; }
   $('me-map-name').value = map.name;
+  // 加载本图的行走区蒙版（异步，用于拖动时约束）
+  if(isMap) WalkMask.load(map);
 
   // 面板节点：中间只给提示
   if(!isMap){
@@ -890,6 +969,14 @@ function renderEditor(){
   updateCanvasForLeaf(map);
   (map.spawns||[]).forEach(s=> stage.appendChild(buildSpawnEl(map, s)));
   if(window.SafeArea && SafeArea.layer) stage.appendChild(SafeArea.layer());
+  /* 行走区可视化：整张 walk mask 半透明绿色蒙层贴在画布上，一眼看清边界 */
+  if(map.walk && map.walk.data){
+    const wImg = document.createElement('img');
+    wImg.className = 'walk-overlay';
+    wImg.src = map.walk.data;
+    wImg.alt = '';
+    stage.appendChild(wImg);
+  }
 
   if(!(map.nodes||[]).length && !(map.spawns||[]).length){
     const empty = document.createElement('div'); empty.className='stage-empty';
@@ -964,13 +1051,27 @@ function bindDrag(el, getObj, kind, map){
     selectNode(kind, o.id);
     const stage=$('edit-stage'); const rect=stage.getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
+    /* 行走区约束：关卡地图有 walk 数据时，不能拖到不可走像素 */
+    const constrainWalk = !!(map && map.type!=='panel' && map.walk && map.walk.data);
+    let lastGoodX = ox, lastGoodY = oy;
     const move=ev=>{
       o.x = clamp01(ox + (ev.clientX-sx)/rect.width);
       o.y = clamp01(oy + (ev.clientY-sy)/rect.height);
       SafeArea.clamp(o, kind==='spawn');
+      if(constrainWalk){
+        WalkMask.clampTo(map, o, lastGoodX, lastGoodY);
+        if(WalkMask.isWalkable(map, o.x, o.y)){ lastGoodX = o.x; lastGoodY = o.y; }
+        else { o.x = lastGoodX; o.y = lastGoodY; }
+      }
       if(kind==='spawn') setPoint(el,o); else setBox(el,o);
     };
-    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); commit(); };
+    const up=()=>{
+      window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up);
+      if(constrainWalk && !WalkMask.isWalkable(map, o.x, o.y)){
+        toast('⚠️ 只能放在绿色行走区里');
+      }
+      commit();
+    };
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
   if(kind==='spawn') return;
@@ -1394,6 +1495,45 @@ function openWalkEditor(){
     dctx.strokeStyle='rgba(255,255,255,.10)'; dctx.lineWidth=1;
     for(let i=1;i<6;i++){ const x=DW/6*i; dctx.beginPath(); dctx.moveTo(x,0); dctx.lineTo(x,DH); dctx.stroke(); }
     for(let j=1;j<3;j++){ const y=DH/3*j; dctx.beginPath(); dctx.moveTo(0,y); dctx.lineTo(DW,y); dctx.stroke(); }
+    /* 地块/触发区/入口点 · 半透明叠加显示，方便对着已有元素刷行走区 */
+    (map.nodes||[]).forEach(n=>{
+      if(!n) return;
+      const w=(typeof n.w==='number'?n.w:0.14)*DW;
+      const h=(typeof n.h==='number'?n.h:(typeof n.w==='number'?n.w:0.14))*DW;
+      const cx=n.x*DW, cy=n.y*DH;
+      const x=cx-w/2, y=cy-h/2;
+      dctx.save();
+      dctx.globalAlpha=0.55;
+      if(n.kind==='tile'){
+        dctx.strokeStyle='rgba(255,215,120,.9)'; dctx.lineWidth=2;
+        dctx.setLineDash([]); dctx.strokeRect(x,y,w,h);
+        dctx.fillStyle='rgba(255,215,120,.14)'; dctx.fillRect(x,y,w,h);
+      } else if(n.kind==='trigger'){
+        dctx.strokeStyle='rgba(120,220,255,.95)'; dctx.lineWidth=2;
+        dctx.setLineDash([5,4]); dctx.strokeRect(x,y,w,h);
+        dctx.fillStyle='rgba(120,220,255,.12)'; dctx.fillRect(x,y,w,h);
+      }
+      dctx.setLineDash([]);
+      dctx.globalAlpha=0.9;
+      dctx.textAlign='center'; dctx.textBaseline='middle';
+      dctx.font='700 13px "Microsoft YaHei"';
+      dctx.fillStyle='#fff'; dctx.strokeStyle='rgba(0,0,0,.65)'; dctx.lineWidth=3;
+      const label=(n.icon||'')+' '+(n.name||'');
+      dctx.strokeText(label, cx, cy); dctx.fillText(label, cx, cy);
+      dctx.restore();
+    });
+    (map.spawns||[]).forEach(s=>{
+      const cx=s.x*DW, cy=s.y*DH;
+      dctx.save();
+      dctx.globalAlpha=0.9;
+      dctx.textAlign='center'; dctx.textBaseline='middle';
+      dctx.font='20px "Microsoft YaHei"';
+      dctx.strokeStyle='rgba(0,0,0,.65)'; dctx.lineWidth=3;
+      dctx.strokeText('🚩', cx, cy); dctx.fillStyle='#fff'; dctx.fillText('🚩', cx, cy);
+      dctx.font='700 11px "Microsoft YaHei"';
+      dctx.strokeText(s.name||'入口', cx, cy+14); dctx.fillText(s.name||'入口', cx, cy+14);
+      dctx.restore();
+    });
   }
   function updatePct(){
     const p=walkPctOf(mask);
