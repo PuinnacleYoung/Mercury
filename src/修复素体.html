@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>修复素体 · 拾光澈屿</title>
+<style>
+:root{
+  --paper:#fff; --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+  --line:#e6ddf4; --line2:#efeaf8;
+  --bg1:#f3eef9; --bg2:#e9e1f5; --bg3:#ddd2f0;
+  --accent:#7f66c4; --accent-soft:#d6caf0; --accent-tint:#ece4fa;
+  --shadow:0 6px 22px rgba(90,70,140,.10);
+  --ok:#16a34a; --bad:#dc2626; --warn:#d97706;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  min-height:100vh; font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:linear-gradient(160deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+  color:var(--ink); padding:22px 16px 60px;
+}
+.wrap{max-width:720px;margin:0 auto;}
+h1{font-size:20px;margin:0 0 4px;}
+.sub{color:var(--sub);font-size:13px;margin-bottom:18px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+td{padding:7px 6px;border-bottom:1px solid var(--line2);vertical-align:top;}
+td:first-child{color:var(--sub);width:38%;white-space:nowrap;}
+td:last-child{font-weight:700;word-break:break-all;}
+tr:last-child td{border-bottom:0;}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:800;}
+.pill.ok{background:#dcfce7;color:var(--ok);}
+.pill.bad{background:#fee2e2;color:var(--bad);}
+.pill.warn{background:#fef3c7;color:var(--warn);}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+button{
+  padding:10px 18px;border-radius:12px;border:1px solid var(--line);
+  background:#fff;color:var(--ink);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
+}
+button:hover{border-color:var(--accent-soft);background:var(--accent-tint);}
+button.primary{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border-color:transparent;}
+button.primary:hover{filter:brightness(1.07);}
+button.ghost{background:transparent;}
+.pv{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+.pv-box{text-align:center;}
+.pv-box canvas{
+  width:150px;height:210px;border:1px dashed var(--line);border-radius:12px;background:#fbf9ff;display:block;
+}
+.pv-box span{display:block;margin-top:6px;font-size:12px;color:var(--sub);font-weight:700;}
+.msg{margin-top:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;display:none;}
+.msg.ok{display:block;background:#dcfce7;color:var(--ok);}
+.msg.bad{display:block;background:#fee2e2;color:var(--bad);}
+code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:12.5px;}
+.tip{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.7;}
+.tip b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧍 素体修复工具</h1>
+  <div class="sub">把本机存的素体换回「找回的那套真实贴图素体」（LegacyBodyV4）。只动素体，不动服装库 / 套装 / 地图。</div>
+
+  <div class="card">
+    <h2>📋 当前本机素体体检</h2>
+    <table id="tbl">
+      <tr><td>localStorage 键</td><td><code>engine_body_v4</code></td></tr>
+      <tr><td>占用体积</td><td id="r-bytes">—</td></tr>
+      <tr><td>部件数 / 带图数</td><td id="r-parts">—</td></tr>
+      <tr><td>图片格式</td><td id="r-type">—</td></tr>
+      <tr><td>是不是找回的那套</td><td id="r-legacy">—</td></tr>
+    </table>
+    <div class="tip" id="r-tip"></div>
+  </div>
+
+  <div class="card">
+    <h2>👀 预览对比</h2>
+    <div class="pv">
+      <div class="pv-box"><canvas id="pvNow" width="300" height="420"></canvas><span>现在本机存的</span></div>
+      <div class="pv-box"><canvas id="pvV4" width="300" height="420"></canvas><span>找回的默认素体</span></div>
+    </div>
+    <div class="tip">左边是现在游戏里会出现的样子，右边是应该出现的样子。<b>不一样就点下面的按钮修。</b></div>
+  </div>
+
+  <div class="card">
+    <h2>🔧 一键修复</h2>
+    <div class="btns">
+      <button class="primary" id="btnFix">✅ 换回找回的素体（保留我调过的坐标）</button>
+      <button id="btnHard">♻️ 彻底恢复出厂（连坐标一起还原）</button>
+      <button class="ghost" id="btnReload">🔄 重新体检</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="tip">
+      <b>「保留坐标」</b>：只把 6 张图片换成找回的那套，你在素体工坊里手动挪过的位置 / 旋转 / 关节点一律不动。<br>
+      <b>「彻底恢复出厂」</b>：图片和坐标一起还原成找回时的原始值，你自己调过的摆放会丢。<br>
+      两个按钮都<b>不会</b>碰服装库、套装、商店、地图、账号。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🚪 修完去哪儿看</h2>
+    <div class="btns">
+      <button class="ghost" onclick="location.href='./index.html'">🎮 游戏端</button>
+      <button class="ghost" onclick="location.href='./服装编辑引擎.html'">🎨 服装引擎（素体工坊）</button>
+      <button class="ghost" onclick="location.href='./NPC编辑引擎.html'">🧍 NPC 工坊</button>
+    </div>
+    <div class="tip">改完记得<b>回游戏端硬刷一次</b>（<code>Ctrl+F5</code>），因为 Service Worker 会缓存旧文件。</div>
+  </div>
+</div>
+
+<script src="./legacy-body-v4.js"></script>
+<script src="./body-template.js"></script>
+<script src="./npc-render.js"></script>
+<script>
+(function(){
+  var R = window.NPCRenderer;
+  var $ = function(id){ return document.getElementById(id); };
+  function pill(txt, cls){ return '<span class="pill '+cls+'">'+txt+'</span>'; }
+
+  function fmtBytes(n){
+    if(!n) return '0 B';
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1048576).toFixed(2) + ' MB';
+  }
+
+  function inspect(){
+    if(!R){ $('r-tip').innerHTML = '❌ npc-render.js 没加载成功'; return null; }
+    var s = R.inspectBody();
+    $('r-bytes').textContent = s.raw ? fmtBytes(s.raw) : '（没有存过）';
+    $('r-parts').textContent = s.parts + ' / ' + s.withImg + ' 个带图';
+    $('r-type').textContent  = s.imgType ? (s.imgType.toUpperCase()) : '—';
+    $('r-legacy').innerHTML  = s.looksLegacy ? pill('是 ✅ 已经是对的', 'ok')
+                             : (s.raw ? pill('不是 ❌ 是别的素体', 'bad') : pill('没有存过', 'warn'));
+    var tip = '';
+    if(!s.raw) tip = '本机还没存过素体 —— 打开游戏 / 素体工坊时会自动铺上找回的那套，理论上不用修。';
+    else if(s.looksLegacy) tip = '已经是找回的那套了 ✅ 不用修。如果你在游戏里还是看不见人，那是<b>别的原因</b>（比如 Service Worker 缓存了旧代码），硬刷一次 <code>Ctrl+F5</code> 试试。';
+    else tip = '本机存的是<b>另一套素体</b>（'+(s.imgType||'未知格式')+'，'+fmtBytes(s.raw)+'）。找回的那套是 <b>WebP 格式、约 41KB</b>。' +
+               '因为本地已经有完整的一套，程序不会自动覆盖 —— 点下面的按钮手动换回来。';
+    $('r-tip').innerHTML = tip;
+    return s;
+  }
+
+  function draw(which){
+    try{
+      var cv = $(which === 'v4' ? 'pvV4' : 'pvNow');
+      if(!cv || !R) return;
+      R.drawNpc(cv, {}, { fitMode:'contain', groundRatio:0.9, dpr:2 });
+    }catch(e){}
+  }
+
+  // 先画「现在本机存的」
+  try{ if(R) R.ensureBody(); }catch(e){}
+  draw('now');
+
+  // 再画「找回的那套」：临时强制灌一份画完，但不落盘
+  (function(){
+    if(!R || !window.LegacyBodyV4) return;
+    try{
+      var backup = null;
+      try{ backup = localStorage.getItem('engine_body_v4'); }catch(e){}
+      var parts = window.LegacyBodyV4.build();
+      R.hydrateBody(parts);
+      draw('v4');
+      // 还原成本机状态，别偷偷改了陛下的存档
+      // 注意：本机没存过时 backup 为 null，这时候别乱 hydrate，
+      // 否则会把上面 ensureBody() 刚铺好的素体清掉，左边预览变空白
+      try{
+        if(backup !== null){
+          localStorage.setItem('engine_body_v4', backup);
+          R.hydrateBody(JSON.parse(backup));
+        }
+      }catch(e){}
+    }catch(e){}
+  })();
+
+  $('btnFix').onclick = function(){
+    if(!R) return;
+    var r = R.forceLegacyBody(true);
+    show(r, '保留坐标');
+  };
+  $('btnHard').onclick = function(){
+    if(!R) return;
+    if(!confirm('彻底恢复出厂？\n\n你在素体工坊里手动挪过的位置 / 旋转 / 关节点会全部丢失。\n服装库、套装、商店、地图、账号都不受影响。')) return;
+    var r = R.forceLegacyBody(false);
+    show(r, '彻底恢复出厂');
+  };
+  $('btnReload').onclick = function(){ location.reload(); };
+
+  function show(r, label){
+    var m = $('msg');
+    m.className = 'msg ' + (r && r.ok ? 'ok' : 'bad');
+    if(r && r.ok){
+      m.innerHTML = '✅ 修好了（'+label+'）：6 个部件全部换成找回的素体，' +
+                    fmtBytes(r.bytes) + ' 已写入 localStorage。<br>现在去游戏端硬刷一次（Ctrl+F5）就能看见。';
+      inspect();
+      draw('now');
+    }else{
+      m.innerHTML = '❌ 没修成：' + ((r && r.reason) || '未知原因') +
+                    '<br>检查一下本页有没有加载到 <code>legacy-body-v4.js</code>。';
+    }
+  }
+
+  inspect();
+})();
+</script>
+</body>
+</html>

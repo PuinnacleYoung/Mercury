@@ -239,6 +239,73 @@
     return false;
   }
 
+  /* 无条件把「找回的默认素体 LegacyBodyV4」灌回 localStorage 并重新 hydrate。
+     与 ensureBody 的区别：ensureBody 只在「本地没存过 / 存了空壳」时才补，
+     本地已经有一套完整（但不是 LegacyV4）的素体时它就不管了 —— 这时候用这个。
+     keepGeom=true  → 保留陛下手动调过的坐标 / 旋转 / jointPct，只换图片
+     keepGeom=false → 连坐标一起还原成 LegacyV4 原始值（彻底恢复出厂）
+     返回 { ok, parts, bytes } */
+  function forceLegacyBody(keepGeom){
+    if(!global.LegacyBodyV4 || !global.LegacyBodyV4.build){
+      return { ok:false, reason:"LegacyBodyV4 没加载（legacy-body-v4.js 没引入？）" };
+    }
+    try{
+      const parts = global.LegacyBodyV4.build();
+      if(keepGeom !== false){
+        try{
+          const raw = localStorage.getItem(LS.body);
+          if(raw){
+            const st = JSON.parse(raw);
+            ENG_PART_DEFS.forEach(def => {
+              const lc = st && st[def.key]; if(!lc) return;
+              const p = parts[def.key]; if(!p) return;
+              if(typeof lc.x === "number") p.x = lc.x;
+              if(typeof lc.y === "number") p.y = lc.y;
+              if(typeof lc.w === "number") p.w = lc.w;
+              if(typeof lc.h === "number") p.h = lc.h;
+              if(typeof lc.rot === "number") p.rot = lc.rot;
+              if(typeof lc.flipH === "boolean") p.flipH = lc.flipH;
+              if(lc.jointPct) p.jointPct = lc.jointPct;
+            });
+          }
+        }catch(e){}
+      }
+      const json = JSON.stringify(parts);
+      localStorage.setItem(LS.body, json);
+      if(LegacyBodyV4.anim && !localStorage.getItem(LS.anim)){
+        try{ localStorage.setItem(LS.anim, JSON.stringify(LegacyBodyV4.anim)); }catch(e){}
+      }
+      hydrateBody(parts);
+      engine._v4ok = true;
+      return { ok: engine.bodyReady, parts: Object.keys(parts), bytes: json.length };
+    }catch(e){
+      return { ok:false, reason: String(e && e.message || e) };
+    }
+  }
+
+  /* 体检：当前 localStorage 里的素体到底是什么样的（不改任何东西） */
+  function inspectBody(){
+    const out = { raw:0, parts:0, withImg:0, keys:[], looksLegacy:false, ready:engine.bodyReady, v4ok:!!engine._v4ok };
+    try{
+      const raw = localStorage.getItem(LS.body);
+      out.raw = raw ? raw.length : 0;
+      const st = raw ? JSON.parse(raw) : null;
+      if(st){
+        const keys = Object.keys(st); out.keys = keys;
+        keys.forEach(k => {
+          if(!st[k]) return;
+          out.parts++;
+          if(st[k].imgSrc) out.withImg++;
+        });
+        // LegacyV4 的图是 webp，且整体约 41KB；BodyTemplate 是程序生成的 png，小得多
+        const h = st.head && st.head.imgSrc || "";
+        out.looksLegacy = /^data:image\/webp/.test(h);
+        out.imgType = (h.match(/^data:image\/([a-z0-9+]+)/i) || [])[1] || "";
+      }
+    }catch(e){ out.err = String(e && e.message || e); }
+    return out;
+  }
+
   function loadLib(){
     try{
       const raw = localStorage.getItem(LS.lib);
@@ -580,6 +647,7 @@
     engine, engImg, afterEngineReady,
     // 装/卸
     hydrateBody, loadBody, ensureBody, refreshEngineData,
+    forceLegacyBody, inspectBody,
     loadLib, findEngineItem, engItemThumb,
     // 几何
     engGetAnchors, engBounds, engVisAnchorX,

@@ -2183,10 +2183,13 @@ const sessionStorage = _mkStore(window.sessionStorage);
     else p.flipH=!p.flipH;
     saveBody(); stageMgrs.body.render();
   } };
-  $('bResetBody').onclick=()=>{ if(!confirm('重置素体？')) return;
+  /* 「重置素体」= 换回陛下找回的那套真实贴图素体（legacy-body-v4.js），
+     而不是程序生成的初始模板 —— 之前这里写死了 applyBuiltinTemplate()，
+     陛下点了「重置」反而离找回的素体更远了。 */
+  $('bResetBody').onclick=()=>{ if(!confirm('把素体换回「找回的默认素体」？\n\n会覆盖当前素体的图片与摆放（仅素体，不影响服装库 / 套装 / 商店 / 地图）。')) return;
     localStorage.removeItem(LS.body);
-    if(!applyBuiltinTemplate()) generateDemo();
-    stageMgrs.body.render(); refreshPartsGrid(); toast('已重置为初始模板'); };
+    if(!applyLegacyBody()){ if(!applyBuiltinTemplate()) generateDemo(); }
+    stageMgrs.body.render(); refreshPartsGrid(); toast('已恢复为找回的默认素体'); };
 
   // 中线吸附 / 左右对称 / 整体镜像
   $('bSnapMid').onclick=()=>{ snapMid=!snapMid; $('bSnapMid').classList.toggle('on', snapMid); toast(snapMid?'📏 中线吸附 开':'📏 中线吸附 关'); };

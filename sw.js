@@ -1,5 +1,5 @@
 /* 拾光·澈屿 Service Worker（根目录版）—— 策略同 src/sw.js */
-const CACHE = 'shuguang-root-v8';
+const CACHE = 'shuguang-root-v9';
 const PRECACHE = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const PRECACHE = [
   './src/manifest.webmanifest',
   './src/body-template.js',
   './src/legacy-body-v4.js',
+  './src/npc-render.js',
   './src/map-placeholders.js',
   './src/icons/icon-192.png',
   './src/icons/icon-512.png',
