@@ -279,6 +279,7 @@
 
 <script src="./legacy-body-v4.js"></script>
 <script src="./body-template.js"></script>
+<script src="./npc-render.js"></script>
 <script>
 /* ================= 存储兜底 ================= */
 const _MEM_STORE = Object.create(null);
@@ -421,10 +422,7 @@ const ENG_LAYERS = {
 };
 const ENGINE_BASE_H = 200;
 
-const engine = {
-  parts: {}, lib: {}, bodyReady:false,
-  _imgs: new Map(), _composed: new Map(),
-};
+const engine = NPCRenderer.engine;   // 本地 engine 与 NPCRenderer 共享同一对象，保证 ensureBody/drawNpc 状态一致
 let _engPending = 0, _engReadyCbs = [];
 function _engDec(){ _engPending--; if(_engPending<=0){ _engPending=0; const c=_engReadyCbs; _engReadyCbs=[]; c.forEach(f=>{try{f();}catch(e){}}); } }
 function engImg(src){
@@ -594,16 +592,10 @@ function drawCloth(ctx,img,box,a,mirror,deg,bx,fy){
   else { ctx.translate(left-a.x,top-a.y); ctx.drawImage(img,0,0,box.w,box.h); }
   ctx.restore();
 }
-/* 生成 NPC 缩略图：用同款渲染管线画到离屏 canvas 再导出 dataUrl。
+/* 生成 NPC 缩略图：委托 NPCRenderer（已修复下半身裁切）
    供「地图编辑器摆放 NPC 时显示真实立绘」和「缩略图自定义」使用。 */
 function generateThumb(outfit, size){
-  size = size || 96;
-  const cvs = document.createElement('canvas');
-  cvs.width = size; cvs.height = size;
-  // drawNpc 内部会重设 canvas.width/height 并按 clientWidth 缩放，这里直接给固定尺寸
-  drawNpc(cvs, outfit);
-  try{ return cvs.toDataURL('image/png'); }
-  catch(e){ return null; }
+  return NPCRenderer.generateThumb(outfit, size);
 }
 /* 纯色兜底小人（没有素体时也能看个大概） */
 function drawFallback(ctx,W,H,outfit){

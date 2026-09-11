@@ -187,6 +187,7 @@
   .ed-npc{position:absolute;border-radius:14px;border:2px solid #b49ae0;background:rgba(127,102,196,.14);display:flex;align-items:center;justify-content:center;cursor:move;touch-action:none;font-size:30px;z-index:6;box-shadow:0 6px 16px rgba(0,0,0,.28);overflow:visible;}
   .ed-npc.has-img{background:transparent;border-color:transparent;box-shadow:none;font-size:0;}
   .ed-npc .npc-img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;}
+  .ed-npc .npc-canvas{width:100%;height:100%;display:block;pointer-events:none;background:transparent;}
   .ed-npc.has-img.sel{box-shadow:0 0 0 3px #b49ae0,0 8px 20px rgba(127,102,196,.4);border-radius:14px;}
   .ed-npc.sel{box-shadow:0 0 0 3px #b49ae0,0 8px 20px rgba(127,102,196,.4);}
   .ed-npc.locked{cursor:not-allowed;box-shadow:0 0 0 3px #f5c542,0 6px 16px rgba(0,0,0,.28)!important;}
@@ -603,6 +604,9 @@
 <div id="toast" data-page-node-id="wFCi2AXn62Cu7jqoV2TR6D"></div>
 
 <script src="./map-placeholders.js"></script>
+<script src="./legacy-body-v4.js"></script>
+<script src="./body-template.js"></script>
+<script src="./npc-render.js"></script>
 <script>
 /* ================= 存储兜底 ================= */
 const _MEM_STORE = Object.create(null);
@@ -1540,19 +1544,21 @@ function buildNpcEl(d, map, n){
   el.dataset.nid = n.id; el.dataset.kind = 'npc';
   setBox(el, n);
   const npc = npcById(n.npcId);
-  // 真实立绘：优先用 NPC 引擎保存时生成的缩略图（thumb），没有就退化到 emoji
-  const thumb = npc && (npc.thumbCustom || npc.thumb);
-  if(thumb){
-    el.classList.add('has-img');
-    const img = document.createElement('img');
-    img.src = thumb; img.alt = npc ? npc.name : 'NPC';
-    img.className = 'npc-img';
-    img.draggable = false;
-    el.appendChild(img);
-  } else {
-    const s = document.createElement('span'); s.textContent = npc ? (npc.icon||'🧍') : '❓';
-    el.appendChild(s);
-  }
+  // 真实立绘：用 NPCRenderer 实时画（带衣服的角色 + 等比 contain）
+  el.classList.add('has-img');
+  const cv = document.createElement('canvas');
+  cv.className = 'npc-canvas';
+  // canvas 内部分辨率（DPR 2，足够清晰）
+  cv.width = 256; cv.height = 384;
+  el.appendChild(cv);
+  const outfit = (npc && npc.outfit) || {};
+  const redraw = ()=>{
+    try{ NPCRenderer.drawNpc(cv, outfit, { fitMode:'contain', groundRatio:0.88, dpr:2 }); }
+    catch(e){ try{ NPCRenderer.drawFallback(cv.getContext('2d'), cv.clientWidth||256, cv.clientHeight||384, outfit); }catch(_){} }
+  };
+  el._redraw = redraw;
+  redraw();
+  if(NPCRenderer.afterEngineReady) NPCRenderer.afterEngineReady(redraw);
   if(n.locked) lockBadge(el);
   const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=npc?npc.name:'(NPC 已删除)'; el.appendChild(lb);
   bindDrag(el, ()=>n, 'npc', map);
@@ -1607,6 +1613,8 @@ function bindDrag(el, getObj, kind, map){
       o.h = clamp(0.03, 0.95, oh + (ev.clientY-sy)/rect.height);
       SafeArea.clampSize(o);
       setBox(el,o);
+      // 缩放过程中实时刷新（NPC 真实立绘 canvas 需要跟着 el 大小重画）
+      if(typeof el._redraw === 'function'){ try{ el._redraw(); }catch(e){} }
     };
     const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);if(constrainWalk&&!WalkMask.isObjectWalkable(map,o,false)){o.w=ow;o.h=oh;setBox(el,o);toast('⚠️ 触发/物件范围必须完整落在行走区内');}commit();};
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
