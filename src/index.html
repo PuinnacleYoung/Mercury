@@ -394,7 +394,10 @@ input{font-family:inherit;outline:none;}
 .coin-hud.home{color:#fff;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));border-color:transparent;box-shadow:0 6px 18px var(--gold-glow);}
 /* 名字卡片详情弹层 */
 .profile-mask{position:fixed;inset:0;z-index:120;background:rgba(30,24,46,.44);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
-.profile-card{position:relative;width:min(470px,92vw);background:rgba(var(--glass-rgb),.97);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.32);padding:26px 28px;}
+/* max-height + overflow：手机横屏（高 430px 左右）时卡片比屏幕还高，
+   底部的「📅 签到日历」会被顶出可视区、点不到 —— 这就是"签到页面打不开"的根因之一。
+   现在卡片自身可滚动，任何机型都摸得到底部按钮。 */
+.profile-card{position:relative;width:min(470px,92vw);max-height:92vh;overflow:auto;overscroll-behavior:contain;background:rgba(var(--glass-rgb),.97);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.32);padding:26px 28px;}
 .profile-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:10px;background:rgba(var(--glass-rgb),.7);border:1px solid var(--glass-border);color:var(--c-sub);font-size:16px;cursor:pointer;transition:.2s;}
 .profile-close:hover{background:var(--c-accent);color:#fff;}
 .profile-head{display:flex;align-items:center;gap:20px;margin-bottom:20px;}
@@ -475,8 +478,10 @@ input{font-family:inherit;outline:none;}
 .wm-nm{font-size:14px;font-weight:800;}
 .wm-path{font-size:11px;color:var(--c-sub);text-align:center;line-height:1.3;}
 .wm-card.cur .wm-path{color:rgba(255,255,255,.85);}
-.map-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
-.map-btn{padding:9px 20px;border-radius:999px;background:rgba(var(--glass-rgb),.7);border:1px solid var(--glass-border);color:var(--c-ink);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.map-foot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px;}
+.map-btn{padding:9px 20px;border-radius:999px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));border:1px solid transparent;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px var(--gold-glow);}
+.map-btn.ghost{background:rgba(var(--glass-rgb),.7);color:var(--c-ink);border-color:var(--glass-border);box-shadow:none;}
+.map-btn.ghost:hover{background:rgba(var(--glass-rgb),.95);}
 
 /* ---------- 管理员入口 & 引擎中枢 ---------- */
 .admin-corner{position:absolute;right:20px;bottom:16px;padding:8px 15px;border-radius:999px;background:rgba(120,110,140,.13);border:1px solid rgba(120,110,140,.22);color:#9890a8;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px;}
@@ -573,28 +578,33 @@ input{font-family:inherit;outline:none;}
   --ui-font:     calc(14px * var(--ui-scale));
 }
 
+/* ---- 运行时通用 HUD（大厅 + 关卡共用一张，位置尺寸完全一致） ---- */
+#runtime-hud{position:fixed;inset:0;z-index:60;pointer-events:none;}
+#runtime-hud>*{pointer-events:auto;}
+
 /* ---- 主游戏界面：HUD / 货币 / 左按钮列 / 摇杆 ---- */
-#game-screen .hud{top:var(--ui-pad-y);left:var(--ui-pad-x);gap:var(--ui-hud-gap);}
-#game-screen .hud .avatar{width:var(--ui-hud-size);height:var(--ui-hud-size);font-size:calc(18px * var(--ui-scale));}
-#game-screen .hud .nick{font-size:calc(15px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
-#game-screen .hud .badge{font-size:calc(12px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
-#game-screen .hud-more{font-size:calc(20px * var(--ui-scale));}
+#runtime-hud .hud{top:var(--ui-pad-y);left:var(--ui-pad-x);gap:var(--ui-hud-gap);}
+#runtime-hud .hud .avatar{width:var(--ui-hud-size);height:var(--ui-hud-size);font-size:calc(18px * var(--ui-scale));}
+#runtime-hud .hud .nick{font-size:calc(15px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+#runtime-hud .hud .badge{font-size:calc(12px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+#runtime-hud .hud-more{font-size:calc(20px * var(--ui-scale));}
 
-#game-screen .top-right-ui{top:var(--ui-pad-y);right:var(--ui-pad-x);gap:var(--ui-hud-gap);}
-#game-screen .coin-hud{padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
-#game-screen .coin-hud .coin-ico{font-size:calc(20px * var(--ui-scale));}
-#game-screen .coin-hud.multi{gap:calc(14px * var(--ui-scale));padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));}
-#game-screen .coin-hud.multi .cur-item{font-size:calc(15px * var(--ui-scale));}
-#game-screen .coin-hud.multi .cur-item .ci{font-size:calc(18px * var(--ui-scale));}
+#runtime-hud .top-right-ui{top:var(--ui-pad-y);right:var(--ui-pad-x);gap:var(--ui-hud-gap);}
+#runtime-hud .coin-hud{padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));font-size:calc(15px * var(--ui-scale));}
+#runtime-hud .coin-hud .coin-ico{font-size:calc(20px * var(--ui-scale));}
+#runtime-hud .coin-hud.multi{gap:calc(14px * var(--ui-scale));padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));}
+#runtime-hud .coin-hud.multi .cur-item{font-size:calc(15px * var(--ui-scale));}
+#runtime-hud .coin-hud.multi .cur-item .ci{font-size:calc(18px * var(--ui-scale));}
 
-#game-screen .left-ui{left:var(--ui-pad-x);gap:var(--ui-btn-gap);}
-#game-screen .ui-btn{width:var(--ui-btn-size);height:var(--ui-btn-size);border-radius:calc(18px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
-#game-screen .ui-btn .ico{font-size:calc(22px * var(--ui-scale));}
+#runtime-hud .left-ui{left:var(--ui-pad-x);gap:var(--ui-btn-gap);}
+#runtime-hud .ui-btn{width:var(--ui-btn-size);height:var(--ui-btn-size);border-radius:calc(18px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+#runtime-hud .ui-btn .ico{font-size:calc(22px * var(--ui-scale));}
 
-#game-screen .joystick{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc(clamp(28px,6vh,48px) * var(--ui-scale));width:var(--ui-joy-size);height:var(--ui-joy-size);}
-#game-screen .joy-knob{width:calc(56px * var(--ui-scale));height:calc(56px * var(--ui-scale));margin:calc(-28px * var(--ui-scale)) 0 0 calc(-28px * var(--ui-scale));}
-#game-screen .joy-ring{inset:calc(14px * var(--ui-scale));}
-#game-screen .joy-hint{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc((clamp(28px,6vh,48px) + 140px) * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
+/* 摇杆：大厅与关卡共用同一套尺寸（只缩尺寸，不挪位置） */
+.joystick{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc(clamp(28px,6vh,48px) * var(--ui-scale));width:var(--ui-joy-size);height:var(--ui-joy-size);}
+.joy-knob{width:calc(56px * var(--ui-scale));height:calc(56px * var(--ui-scale));margin:calc(-28px * var(--ui-scale)) 0 0 calc(-28px * var(--ui-scale));}
+.joy-ring{inset:calc(14px * var(--ui-scale));}
+.joy-hint{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc((clamp(28px,6vh,48px) + 140px) * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
 
 #game-screen .building-pop .bname{font-size:calc(15px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale));}
 #game-screen .building-pop .enter{font-size:calc(14px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));}
@@ -766,9 +776,22 @@ input{font-family:inherit;outline:none;}
 
 /* 极矮横屏（手机横屏 高度<480）：只收紧间距，方向一律不动 */
 @media (max-height: 480px) and (orientation: landscape) {
-  #game-screen .left-ui{ gap: calc(5px * var(--ui-scale)); }
-  #game-screen .joy-hint{ font-size: calc(11px * var(--ui-scale)); }
+  #runtime-hud .left-ui{ gap: calc(5px * var(--ui-scale)); }
+  .joy-hint{ font-size: calc(11px * var(--ui-scale)); }
   .wardrobe-layout{ height: 96vh; }
+  /* 名字卡片：压缩高度，保证「📅 签到日历」一定在屏内可点 */
+  .profile-card{ max-height:94vh; padding:18px 22px; }
+  .profile-head{ gap:14px; margin-bottom:12px; }
+  .profile-avatar-wrap{ width:96px; height:118px; }
+  .profile-stats{ gap:8px; margin-bottom:10px; }
+  .profile-stats .stat{ padding:8px 6px; }
+  .stat-val{ font-size:16px; }
+  .profile-hide{ margin-bottom:10px; padding:9px 12px; }
+  .profile-checkin,.profile-earn{ padding:10px; font-size:14px; }
+  /* 签到日历：极矮横屏下同样要能滚到奖励说明 */
+  .checkin-card{ padding:16px 16px; }
+  .checkin-info{ padding:8px; margin-bottom:8px; }
+  .checkin-rewards{ margin-top:8px; }
 }
 
 /* 竖屏窄屏（手机竖屏意外进入）：仅登录页退化为上下卡片 */
@@ -897,32 +920,6 @@ input{font-family:inherit;outline:none;}
 <div id="game-screen" class="screen hidden" style="display:block;" data-page-node-id="ATuohDJKRyDWDhnMHSknkq">
   <canvas id="lobby-canvas" data-page-node-id="kkBy8x9MAl9TMX08AnL1Nd"></canvas>
 
-  <div class="hud clickable" id="hud-card" data-page-node-id="Fi6Yw9dlmHw97GywOeWBcT">
-    <div class="avatar" id="hud-avatar" data-page-node-id="ahDIGbUn9xZ0wIDrxMyL5Z">?</div>
-    <div class="info" data-page-node-id="kNLxN18YIKdBGC2VCcYhKH">
-      <span class="nick" id="hud-nick" data-page-node-id="0QtvUKrW8suvXBeH2Mcdkb"></span>
-      <span class="badge" id="hud-badge" data-page-node-id="aMYvjqnpdXgmosJbqNYEyA"></span>
-    </div>
-    <span class="hud-more">›</span>
-  </div>
-
-  <div class="top-right-ui">
-    <button class="coin-hud multi" id="btn-coins" title="货币">
-      <span class="cur-item"><span class="ci">🪙</span><span id="hud-coin">0</span></span>
-      <span class="cur-item"><span class="ci">💎</span><span id="hud-diamond">0</span></span>
-      <span class="cur-item"><span class="ci">🦪</span><span id="hud-pearl">0</span></span>
-    </button>
-    <button class="coin-hud home" id="btn-home"><span class="coin-ico">🏠</span><span>家园</span></button>
-  </div>
-
-  <div class="left-ui" data-page-node-id="GkwX6q7ttpNJdkC5wF3BRw">
-    <button class="ui-btn hot" id="btn-wardrobe" data-page-node-id="IQSYS83k8l6cEy2RY47E7q"><span class="ico" data-page-node-id="CyBLAunipiATmUNJ2gqmHv">👗</span>衣橱</button>
-    <button class="ui-btn" id="btn-map"><span class="ico">🗺</span>地图</button>
-    <button class="ui-btn" id="btn-friends" data-page-node-id="GVhNRQUY0h4zcncW7mQIG0"><span class="ico" data-page-node-id="CtAukaIBZDjANOzzXqWZID">👥</span>好友</button>
-    <button class="ui-btn" id="btn-logout" data-page-node-id="mEGmeO4RSRafTlZn4sYQvE"><span class="ico" data-page-node-id="lezJKolZv4NWL6QwCXCDjg">🚪</span>退出</button>
-    <button class="ui-btn" id="btn-settings" data-page-node-id="SetBtn001"><span class="ico" data-page-node-id="SetBtn002">⚙️</span>设置</button>
-  </div>
-
   <!-- ===== 大厅布置（背景图 / 自由摆装饰 / 交互） ===== -->
   <div class="deco-bar hidden" id="deco-bar">
     <span class="deco-tip" id="deco-tip">布置模式：拖动装饰移动 · 拖右下角缩放 · 点空白处取消选中</span>
@@ -989,35 +986,6 @@ input{font-family:inherit;outline:none;}
     <button class="enter" id="bp-enter">点击进入</button>
   </div>
 
-  <!-- 好友抽屉 -->
-  <div class="drawer" id="friends-drawer" data-page-node-id="glBI7zKssyCRdCy6tx3yBg">
-    <div class="drawer-head" data-page-node-id="lVBWN7Blm5nrX9GIzWpub3">
-      <h3 data-page-node-id="KjkhZ0k0fxAXUFQnawjxt9">好友</h3>
-      <button class="drawer-close" data-close="friends" data-page-node-id="qksMuPqkJiponHU40LpXVS">✕</button>
-    </div>
-    <div class="drawer-body" data-page-node-id="9uN8kPqoQCCLljhqftc3k4">
-      <div class="add-friend" data-page-node-id="fsVAcPKAKeTRE5LSOv3YTn">
-        <input id="friend-input" placeholder="输入对方账号名添加" autocomplete="off" data-page-node-id="FiwGDHBUd5GGn5osDvDXX4">
-        <button id="friend-add" data-page-node-id="9Dh8jkvYxlwo3a3nttNM1E">添加</button>
-      </div>
-      <div id="friend-list" data-page-node-id="6HzsM6TrWo7cSY1g498Vwh"></div>
-      <div class="online-label" data-page-node-id="TB4gICzft5rsDANYzg4DE3">—— 在线玩家（模拟数据） ——</div>
-      <div id="online-list" data-page-node-id="sEm1JSqzOgWywsoHVXXFmC"></div>
-    </div>
-  </div>
-
-  <div class="drawer" id="settings-drawer" data-page-node-id="SetDrawer001">
-    <div class="drawer-head" data-page-node-id="SetDrawer002">
-      <h3 data-page-node-id="SetDrawer003">设置</h3>
-      <button class="drawer-close" data-close="settings" data-page-node-id="SetDrawer004">✕</button>
-    </div>
-    <div class="drawer-body" data-page-node-id="SetDrawer005">
-      <div class="set-section" data-page-node-id="SetDrawer006">
-        <div class="set-label" data-page-node-id="SetDrawer007">🎨 界面配色</div>
-        <div class="theme-grid" id="theme-grid" data-page-node-id="SetDrawer008"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ===== 衣橱独立页面（暖暖式全屏） ===== -->
@@ -1098,10 +1066,14 @@ input{font-family:inherit;outline:none;}
     <button class="checkin-close" id="checkin-close">✕</button>
     <div class="checkin-title">📅 每日签到</div>
     <div class="checkin-sub">点击日历里的任意日期即可签到（未来日期不可选）</div>
+    <!-- ⚠️ #checkin-cards 是必需的：renderCheckin() 会写它，
+         以前这段 HTML 漏了这个节点 → $('checkin-cards') 是 null → 写 .textContent 直接抛错
+         → openCheckin() 后面的「显示日历」永远执行不到 → 表现就是"签到页面打不开"。 -->
     <div class="checkin-info">
       <div><div class="label">🔥 连签</div><div class="val" id="checkin-streak">0 天</div></div>
       <div><div class="label">📆 累计</div><div class="val" id="checkin-total">0 天</div></div>
       <div><div class="label">🗓 本月</div><div class="val" id="checkin-month">0 天</div></div>
+      <div><div class="label">🎫 补签卡</div><div class="val" id="checkin-cards">0 张</div></div>
     </div>
     <div class="checkin-nav">
       <button id="checkin-prev" title="上个月">‹</button>
@@ -1122,11 +1094,9 @@ input{font-family:inherit;outline:none;}
 <div id="map-screen" class="screen hidden">
   <canvas id="map-canvas"></canvas>
 
-  <div class="map-topbar">
-    <button class="map-nav-btn" id="map-back">← 返回</button>
-    <button class="map-nav-btn world hidden" id="map-world" title="打开世界地图，直接前往任意地点">🌍 世界地图</button>
-    <button class="map-nav-btn" id="map-profile" title="打开名字卡片：看财富 / 签到日历 / 设置">👤 卡片</button>
-  </div>
+  <!-- 关卡里不再放「返回学校 / 世界地图」页签：
+       左上角卡片、右上角货币、左侧功能栏由全局 #runtime-hud 提供，
+       地图本身是左侧「🗺 地图」呼出的一张卡片（可开可关）。 -->
 
   <!-- 触发区提示气泡（confirm 模式点「进入」；auto 模式一闪而过） -->
   <div class="map-pop hidden" id="map-pop">
@@ -1143,6 +1113,71 @@ input{font-family:inherit;outline:none;}
   </div>
 
   <div class="map-tipbar" id="map-tipbar">走到 🚪 门口即可传送</div>
+</div>
+
+<!-- ===== 运行时通用 HUD =====
+     大厅与关卡共用同一份：左上名字卡片、右上货币/家园、左侧功能栏、好友与设置抽屉。
+     只有 #game-screen / #map-screen 显示，其它全屏面板（衣橱/塔罗/登录）自动隐藏。
+     由 showScreen() 统一切换，避免"进关卡 UI 全被吞"。 -->
+<div id="runtime-hud" class="hidden">
+
+  <div class="hud clickable" id="hud-card" title="名字卡片：等级 / 财富 / 签到日历 / 设置" data-page-node-id="Fi6Yw9dlmHw97GywOeWBcT">
+    <div class="avatar" id="hud-avatar" data-page-node-id="ahDIGbUn9xZ0wIDrxMyL5Z">?</div>
+    <div class="info" data-page-node-id="kNLxN18YIKdBGC2VCcYhKH">
+      <span class="nick" id="hud-nick" data-page-node-id="0QtvUKrW8suvXBeH2Mcdkb"></span>
+      <span class="badge" id="hud-badge" data-page-node-id="aMYvjqnpdXgmosJbqNYEyA"></span>
+    </div>
+    <span class="hud-more">›</span>
+  </div>
+
+  <div class="top-right-ui">
+    <button class="coin-hud multi" id="btn-coins" title="货币">
+      <span class="cur-item"><span class="ci">🪙</span><span id="hud-coin">0</span></span>
+      <span class="cur-item"><span class="ci">💎</span><span id="hud-diamond">0</span></span>
+      <span class="cur-item"><span class="ci">🦪</span><span id="hud-pearl">0</span></span>
+    </button>
+    <button class="coin-hud home" id="btn-home" title="打开地图卡片：家园 / 学校 / 服装店"><span class="coin-ico">🏠</span><span>家园</span></button>
+  </div>
+
+  <div class="left-ui" id="runtime-left-ui" data-page-node-id="GkwX6q7ttpNJdkC5wF3BRw">
+    <button class="ui-btn hot" id="btn-wardrobe" data-page-node-id="IQSYS83k8l6cEy2RY47E7q"><span class="ico" data-page-node-id="CyBLAunipiATmUNJ2gqmHv">👗</span>衣橱</button>
+    <button class="ui-btn" id="btn-map" title="打开地图卡片"><span class="ico">🗺</span>地图</button>
+    <button class="ui-btn" id="btn-checkin" title="每日签到日历"><span class="ico">📅</span>签到</button>
+    <button class="ui-btn" id="btn-friends" data-page-node-id="GVhNRQUY0h4zcncW7mQIG0"><span class="ico" data-page-node-id="CtAukaIBZDjANOzzXqWZID">👥</span>好友</button>
+    <button class="ui-btn" id="btn-settings" data-page-node-id="SetBtn001"><span class="ico" data-page-node-id="SetBtn002">⚙️</span>设置</button>
+    <button class="ui-btn" id="btn-logout" data-page-node-id="mEGmeO4RSRafTlZn4sYQvE"><span class="ico" data-page-node-id="lezJKolZv4NWL6QwCXCDjg">🚪</span>退出</button>
+  </div>
+
+  <!-- 好友抽屉 -->
+  <div class="drawer" id="friends-drawer" data-page-node-id="glBI7zKssyCRdCy6tx3yBg">
+    <div class="drawer-head" data-page-node-id="lVBWN7Blm5nrX9GIzWpub3">
+      <h3 data-page-node-id="KjkhZ0k0fxAXUFQnawjxt9">好友</h3>
+      <button class="drawer-close" data-close="friends" data-page-node-id="qksMuPqkJiponHU40LpXVS">✕</button>
+    </div>
+    <div class="drawer-body" data-page-node-id="9uN8kPqoQCCLljhqftc3k4">
+      <div class="add-friend" data-page-node-id="fsVAcPKAKeTRE5LSOv3YTn">
+        <input id="friend-input" placeholder="输入对方账号名添加" autocomplete="off" data-page-node-id="FiwGDHBUd5GGn5osDvDXX4">
+        <button id="friend-add" data-page-node-id="9Dh8jkvYxlwo3a3nttNM1E">添加</button>
+      </div>
+      <div id="friend-list" data-page-node-id="6HzsM6TrWo7cSY1g498Vwh"></div>
+      <div class="online-label" data-page-node-id="TB4gICzft5rsDANYzg4DE3">—— 在线玩家（模拟数据） ——</div>
+      <div id="online-list" data-page-node-id="sEm1JSqzOgWywsoHVXXFmC"></div>
+    </div>
+  </div>
+
+  <div class="drawer" id="settings-drawer" data-page-node-id="SetDrawer001">
+    <div class="drawer-head" data-page-node-id="SetDrawer002">
+      <h3 data-page-node-id="SetDrawer003">设置</h3>
+      <button class="drawer-close" data-close="settings" data-page-node-id="SetDrawer004">✕</button>
+    </div>
+    <div class="drawer-body" data-page-node-id="SetDrawer005">
+      <div class="set-section" data-page-node-id="SetDrawer006">
+        <div class="set-label" data-page-node-id="SetDrawer007">🎨 界面配色</div>
+        <div class="theme-grid" id="theme-grid" data-page-node-id="SetDrawer008"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
@@ -1894,24 +1929,31 @@ function hintBar(msg, btn){
   if(b) b.remove();
   b = document.createElement('div');
   b.id = 'hint-bar';
-  b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:9998;'
-    + 'max-width:min(680px,92vw);background:linear-gradient(135deg,#6b4fa8,#8a6fc4);color:#fff;'
-    + 'font-size:13px;line-height:1.7;padding:12px 16px;border-radius:14px;'
-    + 'box-shadow:0 12px 32px rgba(60,40,110,.35);display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+  /* z-index 从 9998 降到 100：以前它盖在地图卡片 / 名字卡片 / 签到日历（120~130）之上，
+     而且整条都吃点击事件，导致"提示条下面的按钮点不动"。现在压到面板之下，
+     并且整条 pointer-events:none、只有里面的按钮可点。 */
+  /* 位置：从「屏幕底部居中」挪到「顶部居中」。
+     底部正好是角色出生点（0.5, 0.85）和关卡提示条，以前这条提示直接把主角盖住了，
+     看起来就像"角色没渲染出来"。顶部中间在名字卡片和货币之间，是唯一一块空白。 */
+  b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:62px;bottom:auto;z-index:100;'
+    + 'pointer-events:none;'
+    + 'max-width:min(400px,44vw);background:linear-gradient(135deg,#6b4fa8,#8a6fc4);color:#fff;'
+    + 'font-size:12px;line-height:1.6;padding:9px 12px;border-radius:12px;'
+    + 'box-shadow:0 12px 32px rgba(60,40,110,.35);display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
   const sp = document.createElement('span');
-  sp.style.cssText = 'flex:1;min-width:200px';
+  sp.style.cssText = 'flex:1;min-width:150px';
   sp.innerHTML = '🎨 ' + msg;
   b.appendChild(sp);
   if(btn && btn.href){
     const a = document.createElement('a');
     a.href = btn.href; a.textContent = btn.text;
-    a.style.cssText = 'background:rgba(255,255,255,.22);border:0;color:#fff;border-radius:8px;'
+    a.style.cssText = 'pointer-events:auto;background:rgba(255,255,255,.22);border:0;color:#fff;border-radius:8px;'
       + 'padding:6px 14px;cursor:pointer;text-decoration:none;white-space:nowrap;font-weight:700;font-size:13px';
     b.appendChild(a);
   }
   const x = document.createElement('button');
   x.textContent = '知道了';
-  x.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;'
+  x.style.cssText = 'pointer-events:auto;background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;'
     + 'border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap;font-size:12px';
   x.onclick = function(){ b.remove(); };
   b.appendChild(x);
@@ -1921,9 +1963,8 @@ function checkCharacterSource(){
   try{
     if(engine.bodyReady){
       if(engine.builtin){
-        hintBar('主角现在跑的是<b>内置初始素体模板</b>（黑短发 / 红 T 恤 / 牛仔裤 那套）。'
-              + '想换成自己的素材：去服装编辑引擎做好素体与衣服，<b>保存</b>后回来刷新即可自动接管。',
-                { text:'打开服装编辑引擎', href:'服装编辑引擎.html' });
+        hintBar('主角跑的是<b>内置素体模板</b> · 换成自己的素材请去服装引擎保存后刷新',
+                { text:'打开引擎', href:'服装编辑引擎.html' });
       }
       return false;
     }
@@ -1939,11 +1980,9 @@ function checkCharacterSource(){
           if(!s || !s.imgSrc || !(+s.w > 0)) miss.push(x.label);
         });
       }catch(e){ miss.push('数据损坏'); }
-      msg = '角色还是<b>占位小人</b>：素体数据不完整（缺 ' + (miss.join('、') || '未知部件') + '）。'
-          + '回服装编辑引擎把缺的部件补上，<b>重新保存</b>一次即可。';
+      msg = '现在是<b>内置素体模板</b>（缺 ' + (miss.join('、') || '未知部件') + '）· 补齐后重存即自动接管';
     } else {
-      msg = '角色还是<b>占位小人</b>：还没配置素体。去「服装编辑引擎 → 素体工坊」把 '
-          + '<b>头 / 身体 / 左臂 / 右臂 / 左腿 / 右腿</b> 六块对齐保存，回来刷新就是你自己的素材了。';
+      msg = '现在是<b>内置素体模板</b> · 去「素体工坊」做好六块并保存，刷新即自动接管';
     }
     hintBar(msg, { text:'去服装编辑引擎', href:'服装编辑引擎.html' });
     return true;
@@ -1992,6 +2031,11 @@ function toast(msg){
 function showScreen(id){
   ['auth-screen','nickname-screen','element-screen','game-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'].forEach(s=>$(s).classList.add('hidden'));
   $(id).classList.remove('hidden');
+  /* 大厅与关卡共用同一份 HUD（名字卡片 / 货币 / 左侧功能栏 / 抽屉）。
+     其它全屏面板（衣橱 / 塔罗 / 登录 / 中枢）一律收起，避免"UI 被吞"或"面板上糊一层按钮"。 */
+  const hud = $('runtime-hud');
+  if(hud) hud.classList.toggle('hidden', !(id==='game-screen' || id==='map-screen'));
+  if(id!=='game-screen' && id!=='map-screen'){ try{ closeFriends(); closeSettings(); }catch(e){} }
   if(id==='admin-hub-screen') buildAdminHub();
   if(id==='game-screen'){ $('game-screen').style.display='block'; resizeLobby(); }
   if(id==='wardrobe-screen'){ initPreviewBg(); buildWardrobe(); }
@@ -2235,6 +2279,14 @@ function w2sy(y){ return y * WORLD.k + WORLD.vy; }
 function s2wx(x){ return (x - WORLD.vx) / WORLD.k; }  // 屏幕 → 世界
 function s2wy(y){ return (y - WORLD.vy) / WORLD.k; }
 function stopLoop(){ if(loopId){ cancelAnimationFrame(loopId); loopId = 0; } }
+/* 强制重开渲染循环。
+   stopLoop 之外还要这个：以前 loop() 里 throw 会把 loopId 留在非 0 的"僵尸态"，
+   导致后续 `if(!loopId)` 判断为假、循环再也起不来（进关卡全白就是这个原因）。 */
+function restartLoop(){
+  if(loopId){ cancelAnimationFrame(loopId); loopId = 0; }
+  if(!currentUser) return;
+  loopId = requestAnimationFrame(loop);
+}
 
 /* ---- 地图运行时状态（v2：可行走） ---- */
 let mapRun = {
@@ -2247,15 +2299,21 @@ let mapRun = {
   standing:null,lastFired:null,
 };
 
+/* 左上名字卡片 + 五行徽章：全局 HUD，大厅与关卡共用一份，进入任何场景都要先刷新 */
+function refreshHud(){
+  if(!currentUser) return;
+  const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
+  const nick = currentUser.nickname || '旅行者';
+  $('hud-nick').textContent = nick;
+  $('hud-avatar').style.background = e.color;
+  $('hud-avatar').textContent = nick.slice(0,1);
+  $('hud-badge').style.background = e.color;
+  $('hud-badge').textContent = '五行·' + e.name;
+}
 function enterLobby(){
   ensureBody();
   showScreen('game-screen');
-  const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
-  $('hud-nick').textContent = currentUser.nickname;
-  $('hud-avatar').style.background = e.color;
-  $('hud-avatar').textContent = currentUser.nickname.slice(0,1);
-  $('hud-badge').style.background = e.color;
-  $('hud-badge').textContent = '五行·' + e.name;
+  refreshHud();
   refreshProfile();          // 载入/建档 PlayerProfile，并刷新三货币 HUD
   initLobbyCanvas();
   lobby.px = lobby.w/2; lobby.py = lobby.h*0.62;
@@ -2438,11 +2496,25 @@ enableFloatJoystick('map-screen', 'map-joystick', 'map-joy-knob', mapRun.joy, fu
   }catch(e){ return false; }
 });
 
-/* ---- 游戏循环（大厅 / 地图二选一） ---- */
+/* ---- 游戏循环（大厅 / 地图二选一） ----
+   ⚠️ 关键：一帧里的绘制异常【绝不能】打断循环。
+   以前 drawLobby() 抛 ReferenceError（decoBgImg / drawDecoItems 已删除但仍在调用），
+   异常直接冒泡出 loop()，`loopId = requestAnimationFrame(loop)` 这一行永远执行不到，
+   循环就此死亡且 loopId 残留非 0 —— 于是 enterMap 里 `if(!loopId)` 判false、不会重启，
+   结果就是：切进关卡后画面永远是空的（角色 / 地块 / 背景全不画）。
+   现在用 try/catch 把每帧包住，任何绘制错误只记日志，循环继续跑。 */
+let _loopErrAt = 0;
 function loop(now){
   if(!currentUser){ loopId = 0; return; }
-  if(mapRun.active){ stepMap(now); drawMap(); }
-  else { stepLobby(now); drawLobby(); }
+  try{
+    if(mapRun.active){ stepMap(now); drawMap(); }
+    else { stepLobby(now); drawLobby(); }
+  }catch(err){
+    if(now - _loopErrAt > 1000){       // 同类错误每秒最多刷一条，避免刷爆控制台
+      _loopErrAt = now;
+      console.error('[render] 绘制异常（已跳过，循环继续）:', err);
+    }
+  }
   loopId = requestAnimationFrame(loop);
 }
 function stepLobby(now){
@@ -2477,8 +2549,7 @@ function drawLobby(){
   const g = c.createLinearGradient(0,0,0,h);
   g.addColorStop(0,'#f3eef9'); g.addColorStop(1,'#e6ddf4');
   c.fillStyle = g; c.fillRect(0,0,w,h);
-  // 大厅自定义背景（陛下在「🛠 布置」里上传的画）——铺满整屏
-  if(decoBgImg && decoBgImg.complete && decoBgImg.naturalWidth) drawCover(c, decoBgImg, w, h);
+  // （旧的「🛠 布置」自定义背景 / 装饰系统已下线，这里不再引用 decoBgImg）
   // 地板：整屏宽度，地平线跟随缩放后的世界（左右不留空）
   const floorY = w2sy(h*0.68);
   c.fillStyle = 'rgba(255,255,255,.5)';
@@ -2499,8 +2570,7 @@ function drawLobby(){
   c.beginPath(); c.arc(w*0.16, h*0.6, 22, 0, Math.PI*2); c.fill(); // 绿植
   // 建筑（占位）
   drawBuildings();
-  // 自定义装饰（商店 / NPC / 传送点 / 纯摆设）
-  drawDecoItems(c);
+  // （自定义装饰已下线：drawDecoItems 在旧版被删除，调用它会直接抛错）
   // 大厅水印
   c.fillStyle='rgba(120,130,150,.25)';
   c.font='600 14px "Microsoft YaHei"'; c.textAlign='center';
@@ -2715,15 +2785,26 @@ function openFriends(){ $('friends-drawer').classList.add('open'); buildFriends(
 function closeFriends(){ $('friends-drawer').classList.remove('open'); }
 function openSettings(){ buildThemeGrid(); $('settings-drawer').classList.add('open'); }
 function closeSettings(){ $('settings-drawer').classList.remove('open'); }
-$('btn-wardrobe').onclick = ()=>showScreen('wardrobe-screen');
+$('btn-wardrobe').onclick = ()=>{
+  wbZoneFilter = null;                          // 左侧入口 = 全部衣橱，不按商店分区过滤
+  wbTitle = '';                                 // 标题回归朴素「衣橱」
+  panelReturn = mapRun.active ? 'map' : 'lobby';
+  showScreen('wardrobe-screen');
+};
 $('btn-friends').onclick = ()=>openFriends();
 $('btn-settings').onclick = ()=>openSettings();
+const _btnCheckin = $('btn-checkin');           // 左侧功能栏的「📅 签到」直达入口
+if(_btnCheckin) _btnCheckin.onclick = ()=>openCheckin();
 document.querySelectorAll('.drawer-close').forEach(b=>b.onclick=()=>{
   const t = b.dataset.close;
   if(t==='friends') closeFriends();
   if(t==='settings') closeSettings();
 });
-$('wb-back').onclick = ()=>showScreen('game-screen');
+/* 衣橱「返回」：从关卡进来的就回那张地图，从大厅进来的就回大厅 */
+$('wb-back').onclick = ()=>{
+  if(panelReturn==='map'){ panelReturn='lobby'; backToMap(); }
+  else showScreen('game-screen');
+};
 
 /* ================= 预览区背景切换事件 ================= */
 $('btn-bg').onclick = ()=>{
@@ -2785,6 +2866,14 @@ function ownedItemsOf(cat){
   return (engine.lib[cat]||[]).filter(it=>owns(it.id))
     .sort((a,b)=> purchasedAtOf(b.id) - purchasedAtOf(a.id));
 }
+/* ⚠️ 这三个以前是「隐式全局」——只在 openPanelNode() 里赋值，
+   从左侧「👗 衣橱」按钮直接进衣橱时【从没被赋值过】，一读就 ReferenceError：
+   「wbZoneFilter is not defined」→ buildWardrobe 中断 → 衣橱一片空白打不开。
+   现在显式声明，并给出安全默认值。 */
+let wbZoneFilter = null;   // null = 不过滤（显示全部已拥有）；数组 = 只看这几档商店分区
+let wbTitle = '';          // 衣橱标题（面板入口会带 emoji + 名字）
+let panelReturn = 'lobby'; // 全屏面板关掉后回哪：'lobby' → 大厅；'map' → 刚才那张地图
+
 /* 按商店分区过滤（地图面板：普通/高级/贵宾三档衣橱） */
 function ownedItemsFiltered(cat){
   const list = ownedItemsOf(cat);
@@ -2802,6 +2891,9 @@ function buildWardrobe(){
   if(curCat==='set' && !engineMode) curCat = catList[0];
   if(curCat!=='set' && !catList.includes(curCat)) curCat = catList[0];
   if(!profile) refreshProfile();
+  // 标题：面板入口带 emoji + 名字（💎 高级时装衣橱），从左侧按钮进就是朴素的「衣橱」
+  const wbTitleEl = $('wb-title');
+  if(wbTitleEl) wbTitleEl.innerHTML = (wbTitle || '👗 衣橱') + '<span class="wb-title-sub">点击格子实时上身</span>';
   // 分类侧边栏（竖向一列）· 顶部固定一个「套装」tab
   const col = $('cat-col'); col.innerHTML='';
   if(engineMode){
@@ -3286,7 +3378,12 @@ function renderCoins(){
   const set = (id,v)=>{ const el=$(id); if(el) el.textContent = v; };
   set('hud-coin', c.coin); set('hud-diamond', c.diamond); set('hud-pearl', c.pearl);
 }
-function openProfile(){ renderProfile(); $('profile-mask').classList.remove('hidden'); }
+function openProfile(){
+  if(!currentUser){ toast('请先登录'); return; }
+  refreshProfile();                       // 先同步等级 / 三货币，再渲染卡片
+  renderProfile();
+  $('profile-mask').classList.remove('hidden');
+}
 function closeProfile(){ $('profile-mask').classList.add('hidden'); }
 function renderProfile(){
   const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
@@ -3350,8 +3447,10 @@ function openCheckin(){
   refreshProfile();
   const now = new Date();
   _checkinView = { year: now.getFullYear(), month: now.getMonth() };
-  renderCheckin();
-  $('checkin-mask').classList.remove('hidden');
+  // 先开面板再渲染：哪怕渲染出岔子，日历也一定打得开
+  const mask = $('checkin-mask');
+  if(mask) mask.classList.remove('hidden');
+  try{ renderCheckin(); }catch(e){ console.error('[checkin] render failed:', e); }
 }
 function closeCheckin(){ $('checkin-mask').classList.add('hidden'); }
 function renderCheckin(){
@@ -3364,11 +3463,14 @@ function renderCheckin(){
   const monthPrefix = y+'-'+_pad2(m+1);
   let monthCount = 0;
   dates.forEach(d=>{ if(d.startsWith(monthPrefix)) monthCount++; });
-  $('checkin-streak').textContent = streak + ' 天';
-  $('checkin-total').textContent = total + ' 天';
-  $('checkin-month').textContent = monthCount + ' 天';
-  $('checkin-cards').textContent = (profile.checkin.missCards||0) + ' 张';
-  $('checkin-ym').textContent = y + ' 年 ' + (m+1) + ' 月';
+  /* 用 null 安全的写值：以后就算某个统计节点被删/改名，也只是少显示一个数字，
+     绝不能再让整个签到面板打不开（这正是之前的故障原因）。 */
+  const put = (id,v)=>{ const el=$(id); if(el) el.textContent = v; };
+  put('checkin-streak', streak + ' 天');
+  put('checkin-total', total + ' 天');
+  put('checkin-month', monthCount + ' 天');
+  put('checkin-cards', ((profile.checkin && profile.checkin.missCards) || 0) + ' 张');
+  put('checkin-ym', y + ' 年 ' + (m+1) + ' 月');
 
   const grid = $('checkin-grid');
   grid.innerHTML = '';
@@ -4010,7 +4112,9 @@ function enterMap(id,spawnId){
     const sx=Math.max(0.05,Math.min(0.95,Number(sp.x)||0.5)),sy=Math.max(0.05,Math.min(0.95,Number(sp.y)||0.85));
     mapRun.px=sx*W;mapRun.py=sy*H;mapRun.facing=1;mapRun.walkPhase=0;mapRun.moving=false;mapRun.cool=0.6;
     mapRun.standing=triggerAt(mapRun.px,mapRun.py);mapRun.lastFired=mapRun.standing?mapRun.standing.id:null;
-    hideMapPop();mapRun.active=true;mapRun.lastT=performance.now();refreshMapTopbar();if(!loopId)loopId=requestAnimationFrame(loop);
+    hideMapPop();refreshHud();refreshProfile();
+    mapRun.active=true;mapRun.lastT=performance.now();refreshMapTopbar();
+    restartLoop();
   };
   requestAnimationFrame(place);
 }
@@ -4036,8 +4140,9 @@ function backToMap(){
   if(mapRun.standing) mapRun.lastFired = mapRun.standing.id;  // 别一回来又被弹一次
   mapRun.active = true;
   mapRun.lastT = performance.now();
+  refreshHud(); refreshProfile();
   refreshMapTopbar();
-  if(!loopId) loopId = requestAnimationFrame(loop);
+  restartLoop();
 }
 
 /* ---- 面板组件（衣橱 / 塔罗 / 许愿池…） ---- */
@@ -4057,31 +4162,40 @@ function openPanelNode(node){
   toast((info ? info.em + ' ' : '') + label);
 }
 
-/* ---- 顶栏 / 世界地图 ---- */
+/* ---- 关卡底部提示 + 地图卡片的入口目标 ----
+   关卡里不再有「← 返回学校」「🌍 世界地图」两个页签：
+   名字卡片在左上角、货币在右上角、功能栏在左侧，地图本身改成左侧「🗺 地图」呼出的一张卡片。 */
+function parentNavMapOf(id){
+  const d = ensureMaps();
+  const m = d.maps[id || mapState.currentId];
+  if(m && m.parent && isMapNode(d.maps[m.parent])) return d.maps[m.parent];
+  return d.maps[d.rootMapId];
+}
+/* 当前该打开哪张地图卡片：
+   · 在大厅 → 世界地图（rootMapId）
+   · 在关卡 → 它的父 Map（阶梯教室 → 学校），卡片里再「⬆️ 上一级」逐层往上到世界地图 */
+function currentNavMapId(){
+  const d = ensureMaps();
+  if(!mapRun.active) return d.rootMapId;
+  const m = d.maps[mapState.currentId];
+  if(m && m.parent && isMapNode(d.maps[m.parent])) return m.parent;
+  return d.rootMapId;
+}
 function refreshMapTopbar(){
   const d = ensureMaps();
   const m = d.maps[mapState.currentId]; if(!m) return;
-  const back = $('map-back');
-  const parentMap=m.parent&&isMapNode(d.maps[m.parent])?d.maps[m.parent]:d.maps[d.rootMapId];
-  back.textContent=parentMap?'← '+parentMap.name:'← 返回';
-  back.onclick=()=>{if(parentMap)openMapNavigator(parentMap.id);else showScreen('game-screen');};
-  const wm=$('map-world');
-  const canWM=(m.allowWorldMap!==false);
-  wm.classList.toggle('hidden',!canWM);
-  wm.onclick=()=>openWorldMap(d.rootMapId,false);
-  /* 👤 名字卡片按钮 — 陛下登录进地图后也能直接开 profile / 签到日历 */
-  const prof = $('map-profile');
-  if(prof) prof.onclick = ()=>{
-    refreshProfile();                // 先把三货币 / 等级 同步
-    renderProfile();
-    $('profile-mask').classList.remove('hidden');
-  };
   const tip = $('map-tipbar');
-  const canOut = (m.allowTeleportOut !== false);
-  tip.textContent = canWM
-    ? (canOut ? '摇杆 / WASD 行走 · 走到 🚪 门口自动传送 · 也可以直接点门口'
-              : '摇杆 / WASD 行走 · 此处不能传送，只能步行')
-    : '这里不能打开世界地图 · 只能步行前往出口';
+  if(tip){
+    const canOut = (m.allowTeleportOut !== false);
+    tip.textContent = canOut
+      ? '摇杆 / WASD 行走 · 走到 🚪 门口自动传送 · 也可以直接点门口'
+      : '此处不能直接传送 · 用左侧「🗺 地图」打开地图卡片离开';
+  }
+  const bm = $('btn-map');
+  if(bm){
+    const host = d.maps[currentNavMapId()];
+    bm.title = '打开地图卡片 · ' + (host ? host.name : '地图');
+  }
 }
 /* 世界地图 = 一张图 + 上面的 POI 点（不再是一排文件夹卡片）。
    坐标来源：优先用「父地图里指向它的地块」的位置；
@@ -4105,13 +4219,25 @@ function openWorldMap(mapId,force){
   const mask = document.createElement('div');
   mask.className = 'map-mask'; mask.id = 'map-modal-mask';
   const box = document.createElement('div'); box.className = 'map-modal';
+  /* 这是一张「可开可关」的地图卡片：
+     · 中间是这一层 Map 的地图 + 上面的地点
+     · 底部「⬆️ 上一级」逐层往上（关卡 → 学校 → 家园 → 世界地图）
+     · 或者直接「🌍 世界地图」一步到位；「关闭」原样回到刚才的位置 */
+  const upMap = (navMap && navMap.parent && isMapNode(d.maps[navMap.parent])) ? d.maps[navMap.parent] : null;
+  const isRoot = !!(navMap && navMap.id === d.rootMapId);
   box.innerHTML='<h3>🗺 '+esc(navMap?navMap.name:'地图导航')+'</h3>'
-    +'<div class="sub">当前位置：'+esc(m?m.name:'—')+' · Map 只导航，点建筑进入子地图或关卡</div>'
+    +'<div class="sub">当前位置：'+esc(m?m.name:'—')+' · 点上面的地点即可前往</div>'
     + '<div class="wm-stage"><canvas id="wm-canvas"></canvas></div>'
     + '<div class="wm-legend" id="wm-legend"></div>'
-    + '<div class="map-foot"><button class="map-btn" id="wm-close">关闭</button></div>';
+    + '<div class="map-foot">'
+    +   (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
+    +   ((!isRoot) ? '<button class="map-btn ghost" id="wm-root">🌍 世界地图</button>' : '')
+    +   '<button class="map-btn" id="wm-close">关闭</button>'
+    + '</div>';
   mask.appendChild(box); document.body.appendChild(mask);
   $('wm-close').onclick = ()=> mask.remove();
+  if(upMap) $('wm-up').onclick = ()=>{ mask.remove(); openMapNavigator(upMap.id); };
+  if($('wm-root')) $('wm-root').onclick = ()=>{ mask.remove(); openMapNavigator(d.rootMapId); };
   mask.addEventListener('click', e=>{ if(e.target === mask) mask.remove(); });
 
   const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
@@ -4502,7 +4628,11 @@ function drawMap(){
 })();
 
 /* ---- 地图 / 家园入口 ---- */
-$('btn-map').onclick=()=>{const d=ensureMaps();openMapNavigator(d.rootMapId);};
+/* 🗺 地图 = 打开一张「可开可关」的地图卡片。
+   · 大厅里 → 世界地图；关卡里 → 当前关卡的父 Map（阶梯教室→学校），卡片里还能逐层往上。
+   原本关卡顶栏那两个「← 学校 / 🌍 世界地图」页签已按陛下要求撤掉。 */
+$('btn-map').onclick=()=>{ openMapNavigator(currentNavMapId()); };
+/* 🏠 家园 = 直接跳到家园那一层的地图卡片 */
 $('btn-home').onclick=()=>{const d=ensureMaps();openMapNavigator(isMapNode(d.maps.home)?'home':d.rootMapId);};
 
 /* ================= 退出 ================= */
