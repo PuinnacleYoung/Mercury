@@ -327,8 +327,9 @@
       </select>
       <button class="pill" id="me-ui-toggle" title="在画布上叠加显示游戏运行时顶栏/底条/摇杆 UI 的真实位置" data-page-node-id="me-ui-toggle">📐 UI 预览</button>
       <span class="pill-divider"></span>
+      <button class="pill" id="me-attach-hub" title="把所有无父级的关卡挂到「🌍 世界地图」枢纽上 · 陛下要求" data-page-node-id="me-attach-hub">📌 挂靠世界地图</button>
       <button class="pill" id="me-fix-links" title="扫描所有节点，把'父级指向不存在或指自己'的孤儿自动提到顶层，配 toast 报告" data-page-node-id="me-fix-links">🔗 校验挂靠</button>
-      <button class="pill" id="me-merge-panels" title="把左侧的'面板'节点合并成父地图里的'触发地块'（action=panel）。合并后会删除原面板节点，迁移到建筑地块" data-page-node-id="me-merge-panels">📦 面板→触发</button>
+      <button class="pill" id="me-merge-panels" title="把左侧的 'panel' 节点（纯界面）合并成父地图里的 '触发地块'。关卡地图不会被合并" data-page-node-id="me-merge-panels">📦 面板→触发</button>
     </div>
     <div class="stage-frame device-none" id="stage-frame" data-page-node-id="stage-frame">
       <div class="device-name" id="device-name">🖥 全屏预览</div>
@@ -652,10 +653,48 @@ function ensureMaps(){
   const before = JSON.stringify(d).length;
   migrateMaps(d);
   normalizeTiles(d);
-  if(JSON.stringify(d).length !== before) saveMapsData(d);
+  /* 🌎 父级自愈：把所有无父级/父级失效的关卡挂到「🌍 世界地图」枢纽上
+     （与 index.html 的 autoAssignWorldMapParent 共享逻辑；这里再跑一份以防别的入口） */
+  const healed = autoAssignWorldMapParent(d);
+  if(JSON.stringify(d).length !== before || healed) saveMapsData(d);
   return d;
 }
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
+
+/* 与 index.html 同款：把无父级/父级失效的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上 */
+function autoAssignWorldMapParent(d){
+  if(!d || !d.maps) return false;
+  const HUB_ID = 'world-hub';
+  let hub = d.maps[HUB_ID];
+  if(!hub){
+    hub = {
+      id: HUB_ID, name: '🌍 世界地图', type: 'map', parent: null,
+      bg: null, bgColor: '#d4dff7',
+      nodes: [], spawns: [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }],
+      allowWorldMap: true, allowTeleportOut: true
+    };
+    d.maps[HUB_ID] = hub;
+  }else{
+    hub.type = 'map';
+    if(typeof hub.allowWorldMap !== 'boolean') hub.allowWorldMap = true;
+    if(typeof hub.allowTeleportOut !== 'boolean') hub.allowTeleportOut = true;
+    if(!Array.isArray(hub.nodes)) hub.nodes = [];
+    if(!Array.isArray(hub.spawns) || !hub.spawns.length) hub.spawns = [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }];
+  }
+  let changed = false;
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.id === HUB_ID) return;
+    if((m.type||'map') !== 'map') return;
+    const p = m.parent ? d.maps[m.parent] : null;
+    if(p && p.type !== 'panel' && p.id !== m.id) return;
+    m.parent = HUB_ID; changed = true;
+  });
+  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
+    const fb = Object.keys(d.maps).find(k => d.maps[k] && d.maps[k].type !== 'panel' && k !== HUB_ID);
+    if(fb){ d.root = fb; changed = true; }else if(hub){ d.root = HUB_ID; changed = true; }
+  }
+  return changed;
+}
 
 /* =========================================================
    🌍 世界地图 vs 🎯 关卡地图（v3 · 按子地图判断，而不是按 tile）
@@ -1513,8 +1552,18 @@ $('me-fix-links').onclick = ()=>{
   else { saveMapsData(d); buildTree(); renderEditor(); renderProps(); }
 };
 $('me-merge-panels').onclick = ()=>{
-  if(!confirm('把左侧所有"面板"节点都合并到它的父地图里作为触发器（action=panel）？\n\n合并后面板节点会被删除，事件由父地图上的触发器接管。\n\n继续吗？')) return;
+  if(!confirm('把左侧所有"纯界面面板"节点（塔罗 / 衣橱 / 许愿池）合并到它的父地图里作为触发地块？\n\n判定规则：\n· 节点类型 = panel（不是 map！）  ← 陛下要求「能走的关卡」不会被合并成触发\n· 父级是一张真实地图\n· 该地图存在\n\n合并后面板节点会被删除，事件由父地图上的触发地块接管。\n\n继续吗？')) return;
   mergePanelsIntoTriggers();
+};
+/* 📌 挂靠世界地图：把所有无父级/挂错的关卡统一挂到「🌍 世界地图」上 */
+$('me-attach-hub').onclick = ()=>{
+  const d = ensureMaps();
+  const before = JSON.stringify(d);
+  const healed = autoAssignWorldMapParent(d);
+  saveMapsData(d); invalidateMaps && invalidateMaps();
+  buildTree(); renderEditor(); renderProps();
+  if(JSON.stringify(d) === before) toast('📌 所有关卡都已挂在「🌍 世界地图」下，无需改动 ✓');
+  else toast('📌 父级自愈完成 · 已统一挂到「🌍 世界地图」');
 };
 $('btn-copy-all').onclick = copyAllMapsData;
 $('btn-paste-all').onclick = pasteAllMapsData;
@@ -1856,12 +1905,22 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   syncAllPairs(d); saveMapsData(d);
   if(!d.maps[d.root]) d.root = Object.keys(d.maps)[0];
   editState.nodeId = d.root;
-  /* 默认：🛡安全区开 + 🟢可编辑区高亮开 —— 默认画布就给你看红区和绿框 */
+  /* 默认：🛡安全区开 + 🟢可编辑区高亮开 + 📱 UI 预览开 + 🛰安全区提示条高亮 —— 让陛下强制横屏下一眼看见 */
   SafeArea.on = true;
   $('edit-stage').classList.remove('safe-off');
   $('me-safe-toggle').classList.add('on');
   $('edit-stage').classList.add('edit-glow');
   $('me-edit-glow').classList.add('on');
+  document.body.classList.add('show-ui');
+  const uiBtn = $('me-ui-toggle'); if(uiBtn) uiBtn.classList.add('on');
+  /* 启动红条：告诉陛下"🟥 红区 = UI 会被遮的地方，🟩 绿框 = 东西要放这里" */
+  const banner = document.createElement('div');
+  banner.id = 'me-safebanner';
+  banner.innerHTML = '👀 <b>红斜纹</b>=UI 侵入区（顶栏 / 底条 / 摇杆会盖） · <b>绿框</b>=东西放这里 · <b>蓝十字</b>=门口可点';
+  banner.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;background:linear-gradient(135deg,#fff3a3,#ffd86b);color:#3a2a08;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.3);border:1px solid #b58a18;letter-spacing:.4px;';
+  document.body.appendChild(banner);
+  setTimeout(()=>{ banner.style.transition='opacity .6s'; banner.style.opacity='.25'; }, 6000);
+  setTimeout(()=> banner.remove(), 14000);
   buildTree(); renderEditor(); renderProps();
   /* 启动时悄悄校验一次挂靠，有问题就 toast 提示 */
   const repaired = validateAndRepairMapLinks(d, /*silent*/ true);

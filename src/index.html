@@ -1125,6 +1125,7 @@ input{font-family:inherit;outline:none;}
   <div class="map-topbar">
     <button class="map-nav-btn" id="map-back">← 返回</button>
     <button class="map-nav-btn world hidden" id="map-world" title="打开世界地图，直接前往任意地点">🌍 世界地图</button>
+    <button class="map-nav-btn" id="map-profile" title="打开名字卡片：看财富 / 签到日历 / 设置">👤 卡片</button>
   </div>
 
   <!-- 触发区提示气泡（confirm 模式点「进入」；auto 模式一闪而过） -->
@@ -3763,8 +3764,63 @@ function ensureMaps(){
   if(_mapsCache && _mapsCache.root && _mapsCache.maps) return _mapsCache;
   let d = getMapsData();
   if(!d || !d.root || !d.maps){ d = seedMaps(); saveMapsData(d); return _mapsCache; }
-  if((d.version||1) < 2){ d = migrateMaps(d) || d; saveMapsData(d); return _mapsCache; }
+  if((d.version||1) < 2){ d = migrateMaps(d) || d; saveMapsData(d); }
+  /* 🌎 父级自愈：把所有"原本该挂但 parent 失效"的关卡提到一张「🌍 世界地图」枢纽上 */
+  const healed = autoAssignWorldMapParent(d);
+  if(healed) saveMapsData(d);
   _mapsCache = d; return _mapsCache;
+}
+/* 把所有无父级 / 父级失效的关卡统一挂到一张「🌍 世界地图」枢纽（id='world-hub'）上。
+   帝皇要求：关卡必须有父级，世界地图也要存在一张。
+   · 没 hub 就自动建一张当 hub（不挂在任何东西之下）
+   · 已挂着的关卡不动
+   · 入口（d.root）若是关卡也照样挂上 hub，入口只是"角色第一步踏进哪张图"，与父级不冲突
+   返回值：true = 数据被改动并需要 saveMapsData；false = 无需改动
+*/
+function autoAssignWorldMapParent(d){
+  if(!d || !d.maps) return false;
+  /* 确保 hub 存在 */
+  const HUB_ID = 'world-hub';
+  let hub = d.maps[HUB_ID];
+  if(!hub){
+    hub = {
+      id: HUB_ID, name: '🌍 世界地图', type: 'map', parent: null,
+      bg: null, bgColor: '#d4dff7',
+      nodes: [], spawns: [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }],
+      allowWorldMap: true, allowTeleportOut: true,
+      description: '世界地图枢纽 — 所有关卡都挂在这儿（陛下强制要求）'
+    };
+    d.maps[HUB_ID] = hub;
+  }else{
+    /* hub 被错改成 panel / 拼错 → 修回 type=map */
+    hub.type = 'map';
+    if(typeof hub.allowWorldMap !== 'boolean') hub.allowWorldMap = true;
+    if(typeof hub.allowTeleportOut !== 'boolean') hub.allowTeleportOut = true;
+    if(!Array.isArray(hub.nodes)) hub.nodes = [];
+    if(!Array.isArray(hub.spawns) || !hub.spawns.length) hub.spawns = [{ id:'spawn_default', name:'世界起点', x:0.5, y:0.5 }];
+  }
+  let changed = false;
+  Object.values(d.maps).forEach(m=>{
+    if(!m || m.id === HUB_ID) return;                  // hub 自己就别挂自己了
+    if((m.type||'map') !== 'map') return;              // panel 节点不需要父级
+    const p = m.parent ? d.maps[m.parent] : null;
+    if(p && p.type !== 'panel' && p.id !== m.id) return; // 父级是有效关卡 — 保留
+    /* 父级失效 / 没有 → 挂到 hub */
+    m.parent = HUB_ID;
+    changed = true;
+  });
+  /* 入口 d.root 若是 panel / 不存在 → 强制设到第一张关卡 */
+  if(!d.root || !d.maps[d.root] || d.maps[d.root].type === 'panel'){
+    const fb = Object.keys(d.maps).find(k => d.maps[k] && d.maps[k].type !== 'panel' && k !== HUB_ID);
+    if(fb){
+      d.root = fb;
+      changed = true;
+    }else if(hub){
+      d.root = HUB_ID;
+      changed = true;
+    }
+  }
+  return changed;
 }
 function getMap(id){ return ensureMaps().maps[id]; }
 function mainMapId(){ const d = ensureMaps(); return d.maps[d.root] ? d.root : Object.keys(d.maps)[0]; }
@@ -3810,13 +3866,45 @@ function tileAt(px, py){
   return hit;
 }
 
-/* ---- 进入 / 传送 ---- */
+/* 「这个地图是否有子关卡」—— 走子地图集合里有没有 m.parent === id 的
+   （panel 不算子关卡，且自己永远不是自己的子）。陛下要的是"世界地图 = 有子关卡"。 */
+function winHasChildMaps(id, d){
+  if(!d || !d.maps) return false;
+  return Object.values(d.maps).some(m=>m && m.id !== id && m.parent === id && (m.type||'map') === 'map');
+}
+/* 找一个叶子关卡：先在以 rootId 为根的树里沿子节点挑 isLeaf（hasChildMaps===false），
+   没找到再走第一张 type=map 的兜底。返回 id 或 null。 */
+function firstLeafMapId(d, rootId){
+  if(!d || !d.maps) return null;
+  const queue = [rootId].filter(Boolean);
+  const seen = new Set();
+  while(queue.length){
+    const cur = queue.shift();
+    if(!cur || seen.has(cur)) continue;
+    seen.add(cur);
+    const m = d.maps[cur];
+    if(!m || m.type === 'panel') continue;
+    const kids = Object.values(d.maps).filter(x=>x && x.parent === cur && (x.type||'map')==='map');
+    if(kids.length === 0) return cur;        // 叶子
+    queue.push(...kids.map(k=>k.id));
+  }
+  /* 兜底：返回第一张地图 id */
+  const fb = Object.keys(d.maps).find(k => (d.maps[k].type||'map') === 'map');
+  return fb || null;
+}
+
+/* ---- 进入 / 传送 ----
+   extra fix：
+   · 是 panel → 落到 openPanelNode 而不是切屏
+   · 是世界地图（非关卡）→ 走 fallback：自动挑第一个「可走的关卡（hasChildMaps or 已是地图）」
+   · 关卡没 spawns → 兜底 (0.5, 0.85)
+*/
 function enterMap(id, spawnId){
   ensureBody();
   const d = ensureMaps();
   let map = d.maps[id];
+  /* 目标不存在 → 落到 root / 第一张地图 */
   if(!map){
-    // 目标不存在 → 回落到全局入口 / 第一张地图，避免直接空屏
     const fbId = d.maps[d.root] ? d.root : Object.keys(d.maps)[0];
     map = d.maps[fbId];
     if(!map){ toast('⚠️ 地图数据损坏，请去《地图编辑引擎》重建'); showScreen('game-screen'); return; }
@@ -3824,6 +3912,20 @@ function enterMap(id, spawnId){
     id = fbId;
   }
   if(map.type === 'panel'){ openPanelNode(map); return; }   // 面板节点直接打开面板
+  /* 🌎 兜底：当前节点是「世界地图（挂着子关卡）」 → 不能把角色摆在上面，改去第一个关卡 */
+  if(winHasChildMaps(id, d)){
+    const leafId = firstLeafMapId(d, id);
+    if(leafId && leafId !== id){
+      toast('🌎 "'+map.name+'"是世界地图（挂着子关卡），自动跳到第一个关卡 · 去《地图编辑引擎》改根节点');
+      id = leafId; map = d.maps[id];
+      if(!map){ showScreen('game-screen'); return; }
+    }
+  }
+  /* 关卡没 spawns → 临时兜底 (0.5, 0.85)，并落盘，让陛下之后不会没头苍蝇 */
+  if(map.type !== 'panel' && (!Array.isArray(map.spawns) || !map.spawns.length)){
+    map.spawns = [{ id:'spawn_default', name:'默认入口', x:0.5, y:0.85 }];
+    saveMapsData(d);
+  }
   mapState.currentId = id; mapState.spawnId = spawnId || null;
   showScreen('map-screen');
   // 延一帧再算尺寸：map-screen 刚从 hidden 切显，某些浏览器上首帧 innerWidth/Height 还没稳
@@ -3898,12 +4000,25 @@ function refreshMapTopbar(){
   const d = ensureMaps();
   const m = d.maps[mapState.currentId]; if(!m) return;
   const back = $('map-back');
-  back.textContent = m.parent ? '← 返回' : '← 回大厅';
-  back.onclick = ()=>{ if(m.parent) enterMap(m.parent); else showScreen('game-screen'); };
+  back.textContent = m.parent ? '← 返回' : '← 返回入口';
+  back.onclick = ()=>{
+    if(m.parent){ enterMap(m.parent); return; }
+    // 没父级 = 顶层关卡，回到全局入口
+    const rootId = d.root && d.maps[d.root] ? d.root : mainMapId();
+    if(rootId && rootId !== mapState.currentId) enterMap(rootId);
+    else showScreen('game-screen');
+  };
   const wm = $('map-world');
   const canWM = (m.allowWorldMap !== false);
   wm.classList.toggle('hidden', !canWM);
   wm.onclick = openWorldMap;
+  /* 👤 名字卡片按钮 — 陛下登录进地图后也能直接开 profile / 签到日历 */
+  const prof = $('map-profile');
+  if(prof) prof.onclick = ()=>{
+    refreshProfile();                // 先把三货币 / 等级 同步
+    renderProfile();
+    $('profile-mask').classList.remove('hidden');
+  };
   const tip = $('map-tipbar');
   const canOut = (m.allowTeleportOut !== false);
   tip.textContent = canWM
