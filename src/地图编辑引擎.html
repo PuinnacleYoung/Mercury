@@ -184,6 +184,9 @@
   .ed-trigger.sel{box-shadow:0 0 0 3px var(--gold),0 6px 18px rgba(240,165,0,.35);}
   .ed-spawn{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--mint);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:move;touch-action:none;z-index:8;box-shadow:0 4px 10px rgba(0,0,0,.3);}
   .ed-spawn.sel{box-shadow:0 0 0 3px var(--mint),0 4px 12px rgba(55,200,176,.5);}
+  .ed-npc{position:absolute;border-radius:14px;border:2px solid #b49ae0;background:rgba(127,102,196,.22);display:flex;align-items:center;justify-content:center;cursor:move;touch-action:none;font-size:30px;z-index:6;box-shadow:0 6px 16px rgba(0,0,0,.28);}
+  .ed-npc.sel{box-shadow:0 0 0 3px #b49ae0,0 8px 20px rgba(127,102,196,.4);}
+  .ed-npc.locked{cursor:not-allowed;box-shadow:0 0 0 3px #f5c542,0 6px 16px rgba(0,0,0,.28)!important;}
   .ed-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.96);color:#2a2140;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.18);}
   .ed-resize{position:absolute;right:-7px;bottom:-7px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;}
 
@@ -384,6 +387,7 @@
       <button class="pill grad" id="me-add-tile" data-page-node-id="2IurPbY8wRFxhOagnQHkdp">＋ 建筑地块</button>
       <button class="pill gold" id="me-add-trigger" data-page-node-id="MGq0bn1WO6kVy3objXg3ny">＋ 触发事件</button>
       <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 出生点</button>
+      <button class="pill" id="me-add-npc" title="从《NPC 引擎》建好的 NPC 里挑一个放到关卡里" data-page-node-id="me-add-npc">👤 放置 NPC</button>
       <button class="pill" id="me-walk" data-page-node-id="me-walk">🚶 行走区</button>
       <span class="pill-tip hidden" id="me-leaf-tip"></span>
       <button class="pill" id="me-set-root" title="全局唯一入口：进入游戏时角色首先出现在这里，通常是码头/大厅这样的枢纽" data-page-node-id="o6IC5kLZgD92YXlb8PI47u">🏝 设为全局入口</button>
@@ -564,6 +568,19 @@
       <div class="warn" data-page-node-id="y4bHIe6dK3a5UWifO05cBk">入口点是「传送落地坐标」。别处的触发区可以指定落到这个点上。</div>
       <div class="chk-row" data-page-node-id="spLockRow01"><input type="checkbox" id="sp-lock" data-page-node-id="spLockChk01"><span>🔒 锁定这个入口点</span></div>
       <button class="del-tile" id="sp-del" data-page-node-id="2gMbyY492udggiKvxJ2FqY">🗑 删除入口点</button>
+    </div>
+
+    <!-- NPC 属性 -->
+    <div class="props-tile hidden" id="p-npc" data-page-node-id="pNpcPanel01">
+      <h3 data-page-node-id="pNpcH301">👤 NPC 配置</h3>
+      <div class="npc-pick" id="np-pick" data-page-node-id="npPick01"></div>
+      <div class="sec-title" data-page-node-id="npSec021">触发方式</div>
+      <label data-page-node-id="npModeLbl01">怎么触发<select id="np-mode" data-page-node-id="npModeSel01">
+        <option value="click" data-page-node-id="npModeClick01">点击 NPC 触发</option>
+        <option value="onEnter" data-page-node-id="npModeEnter01">走近自动触发</option>
+      </select></label>
+      <div class="chk-row" data-page-node-id="npLockRow01"><input type="checkbox" id="np-lock" data-page-node-id="npLockChk01"><span>🔒 锁定这个 NPC</span></div>
+      <button class="del-tile" id="np-del" data-page-node-id="npDelBtn01">🗑 移除 NPC</button>
     </div>
   </aside>
 </main>
@@ -781,6 +798,16 @@ function mkTrigger(name, x, y, w, h, extra){
     triggerMode:'auto', tip:'', locked:false }, extra||{});
 }
 function mkSpawn(name, x, y){ return { id:'s'+uid(), name, x, y, locked:false }; }
+function mkNpc(npcId, x, y){
+  return { id:'n'+uid(), kind:'npc', npcId, x, y, w:0.14, h:0.20, triggerMode:'click', locked:false };
+}
+/* ---- 读取《NPC 引擎》产出的 NPC 库（同源 localStorage） ---- */
+const LS_NPCS = 'engine_npcs_v1';
+function getNpcs(){
+  try{ const raw=localStorage.getItem(LS_NPCS); const a=raw?(JSON.parse(raw)||[]):[]; return Array.isArray(a)?a:[]; }
+  catch(e){ return []; }
+}
+function npcById(id){ return getNpcs().find(n=>n.id===id) || null; }
 
 function seedMaps(){
   const maps={};const add=m=>{maps[m.id]=m;return m;};
@@ -1395,7 +1422,8 @@ function renderEditor(){
 
   /* ---------- 资产（世界坐标） ---------- */
   (map.nodes||[]).forEach(n=>{
-    if(n.kind==='trigger') world.appendChild(buildTriggerEl(d, map, n));
+    if(n.kind==='npc') world.appendChild(buildNpcEl(d, map, n));
+    else if(n.kind==='trigger') world.appendChild(buildTriggerEl(d, map, n));
     else world.appendChild(buildTileEl(d, map, n));
   });
   updateCanvasForLeaf(map);
@@ -1446,7 +1474,7 @@ function selClass(kind, id){
 function selectNode(kind, id){
   editState.sel = { kind, id };
   if(kind!=='bglayer') editState.bgSel = null;
-  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn,#edit-stage .ed-bg-layer')
+  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn,#edit-stage .ed-npc,#edit-stage .ed-bg-layer')
     .forEach(el=>el.classList.remove('sel'));
   const el = document.querySelector(`#edit-stage [data-nid="${id}"]`);
   if(el) el.classList.add('sel');
@@ -1501,6 +1529,19 @@ function buildSpawnEl(map, s){
   if(s.locked) lockBadge(el);
   const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=s.name; el.appendChild(lb);
   bindDrag(el, ()=>s, 'spawn', map);
+  return el;
+}
+function buildNpcEl(d, map, n){
+  const el = document.createElement('div');
+  el.className = 'ed-npc' + selClass('npc', n.id) + (n.locked?' locked':'');
+  el.dataset.nid = n.id; el.dataset.kind = 'npc';
+  setBox(el, n);
+  const npc = npcById(n.npcId);
+  const s = document.createElement('span'); s.textContent = npc ? (npc.icon||'🧍') : '❓';
+  el.appendChild(s);
+  if(n.locked) lockBadge(el);
+  const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=npc?npc.name:'(NPC 已删除)'; el.appendChild(lb);
+  bindDrag(el, ()=>n, 'npc', map);
   return el;
 }
 
@@ -1831,8 +1872,24 @@ function renderWorldAspect(map){
     + '<br><span style="color:#ff9c6e">外圈压暗的部分就是被「铺满裁切」吃掉的，任何机型都不保证可见。</span>';
 }
 function showPane(id){
-  ['p-map','p-panel','p-tile','p-trigger','p-spawn'].forEach(p=>$(p).classList.toggle('hidden', p!==id));
+  ['p-map','p-panel','p-tile','p-trigger','p-spawn','p-npc'].forEach(p=>$(p).classList.toggle('hidden', p!==id));
   $('me-props-empty').classList.toggle('hidden', !!id);
+}
+/* 属性面板里：从 NPC 库挑一个绑定到当前 NPC 物件 */
+function renderNpcPick(d, n){
+  const box=$('np-pick'); box.innerHTML='';
+  const npcs=getNpcs();
+  if(npcs.length===0){
+    box.innerHTML='<div class="warn">还没有 NPC。先去《NPC 引擎》创建并保存几个。</div>';
+    return;
+  }
+  const sel=document.createElement('select');
+  sel.id='np-select';
+  sel.innerHTML='';
+  const none=document.createElement('option'); none.value=''; none.textContent='（未选择）'; sel.appendChild(none);
+  npcs.forEach(npc=>{ const o=document.createElement('option'); o.value=npc.id; o.textContent='👤 '+npc.name; if(npc.id===n.npcId) o.selected=true; sel.appendChild(o); });
+  sel.onchange=()=>{ n.npcId=sel.value||null; saveMapsData(d); renderEditor(); renderProps(); };
+  box.appendChild(sel);
 }
 function renderProps(){
   const d = ensureMaps();
@@ -1943,6 +2000,25 @@ function renderProps(){
     $('tl-del').onclick = ()=>{
       map.nodes=(map.nodes||[]).filter(n=>n.id!==t.id);if(isMapNode(map))map.navTiles=map.nodes;else map.entities=map.nodes;
       editState.sel=null;saveMapsData(d);buildTree();renderEditor();renderProps();toast('已删除地块');
+    };
+    return;
+  }
+
+  if(sel.kind==='npc'){
+    const n = (map.nodes||[]).find(x=>x.id===sel.id);
+    if(!n){ editState.sel=null; showPane(null); return; }
+    showPane('p-npc');
+    renderNpcPick(d, n);
+    $('np-mode').value=n.triggerMode||'click';
+    $('np-lock').checked=!!n.locked;
+    $('np-mode').onchange = ()=>{ n.triggerMode=$('np-mode').value; saveMapsData(d); };
+    $('np-lock').onchange = ()=>{
+      n.locked=$('np-lock').checked; saveMapsData(d); renderEditor(); renderProps();
+      toast(n.locked?'🔒 已锁定这个 NPC':'🔓 已解锁');
+    };
+    $('np-del').onclick = ()=>{
+      map.nodes=(map.nodes||[]).filter(x=>x.id!==n.id); if(isMapNode(map))map.navTiles=map.nodes; else map.entities=map.nodes;
+      editState.sel=null; saveMapsData(d); buildTree(); renderEditor(); renderProps(); toast('已移除 NPC');
     };
     return;
   }
@@ -2089,6 +2165,18 @@ $('me-add-spawn').onclick = ()=>{
   const s = mkSpawn('入口'+(map.spawns.length+1), 0.5, 0.8);
   map.spawns.push(s); editState.sel={kind:'spawn', id:s.id};
   saveMapsData(d); buildTree(); renderEditor(); renderProps();
+};
+$('me-add-npc').onclick = ()=>{
+  const d=ensureMaps(); const map=d.maps[editState.nodeId];
+  if(!isLevelNode(map)){toast('只有 Level 关卡才能放置 NPC');return;}
+  const npcs=getNpcs();
+  if(npcs.length===0){ toast('⚠️ 还没有 NPC · 先去《NPC 引擎》创建'); return; }
+  map.entities=map.nodes=map.entities||[];
+  const first=npcs[0];
+  const n=mkNpc(first.id, 0.5, 0.6);
+  map.entities.push(n); editState.sel={kind:'npc', id:n.id};
+  saveMapsData(d); buildTree(); renderEditor(); renderProps();
+  toast('👤 已放置「'+first.name+'」· 在右侧属性面板换人');
 };
 $('me-safe-toggle').onclick = ()=>{
   const on = SafeArea.toggle();

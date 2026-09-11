@@ -1547,6 +1547,18 @@ const CAT_ICONS = {
 const ENG_LS = { body:'engine_body_v4', lib:'engine_lib_v3', anim:'engine_anim_cfg' };
 const ENG_BASE_H = 100;   // 引擎角色换算到游戏后的基准高度（约 100px，原色块小人同尺寸）
 
+/* ================= NPC 引擎同步（读取 engine_npcs_v1） ================= */
+const LS_NPCS = 'engine_npcs_v1';
+function getNpcs(){
+  try{
+    const raw = localStorage.getItem(LS_NPCS);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function npcById(id){ return getNpcs().find(n=>n && n.id===id) || null; }
+
 const ENG_CATEGORIES = [
   { id:'hair',     label:'头发',   em:'💇', layers:[
     { key:'front', name:'前发片', z:25, anchor:'head' },
@@ -2131,7 +2143,7 @@ const ENGINES = [
   { ico:'🃏', nm:'塔罗牌编辑引擎',  ds:'78 张定制牌面 · 花边模板 · 牌背 · 导出 ZIP 素材包',    file:'塔罗编辑引擎.html' },
   { ico:'🗺', nm:'地图编辑引擎',    ds:'世界 → 国家 → 城市 层层嵌套 · 地块摆放与连线',        file:'地图编辑引擎.html' },
   { ico:'💾', nm:'数据备份与迁移',  ds:'导出/导入 JSON · 在 file:// 与 localhost 之间搬运数据', file:'数据备份与迁移.html' },
-  { ico:'👤', nm:'NPC 引擎',        ds:'占位 · 后续开发', file:null },
+  { ico:'👤', nm:'NPC 引擎',        ds:'创建 NPC · 搭配服装 · 挂事件', file:'NPC编辑引擎.html' },
   { ico:'📋', nm:'任务引擎',        ds:'占位 · 后续开发', file:null },
 ];
 function buildAdminHub(){
@@ -4131,6 +4143,38 @@ function fireTrigger(t){
   if(t.targetSpawn&&!(target.spawns||[]).some(s=>s.id===t.targetSpawn)){toast('❌ TARGET_SPAWN_INVALID：目标出生点不存在');return;}
   mapRun.lastFired=t.id;enterMap(tid,t.targetSpawn);toast('→ '+target.name);
 }
+/* ---- NPC 事件分发（NPC 引擎里给 NPC 挂的事件） ----
+   type: none / tarot / dialogue / collect / gameplay */
+function fireNpcEvent(npc, node){
+  if(!npc || !npc.event) return;
+  const ev = npc.event, type = ev.type || 'none';
+  if(type==='tarot'){ showScreen('tarot-screen'); return; }
+  if(type==='dialogue'){
+    const lines = (Array.isArray(npc.dialogue) && npc.dialogue.length) ? npc.dialogue : ['你好呀！'];
+    showNpcDialogue(npc.name || 'NPC', lines);
+    return;
+  }
+  if(type==='collect'){ toast(ev.param || '✨ 收集成功'); return; }
+  if(type==='gameplay'){ toast(ev.param || '🎮 玩法事件'); return; }
+  // none 或未挂事件：还是说句话，别让玩家觉得点了没反应
+  toast('「' + (npc.name||'NPC') + '」暂时没有可触发的事件');
+}
+/* NPC 多句对话：气泡逐句播放，点一下下一句 */
+function showNpcDialogue(name, lines){
+  const pop = $('map-pop'); if(!pop) return;
+  $('mp-name').textContent = '👤 ' + name;
+  const tipEl = $('mp-tip');
+  tipEl.style.display = '';
+  let i = 0;
+  tipEl.textContent = lines[0];
+  pop.classList.remove('hidden');
+  $('mp-enter').textContent = lines.length > 1 ? '下一句 ▸' : '好';
+  $('mp-enter').onclick = ()=>{
+    i++;
+    if(i < lines.length){ tipEl.textContent = lines[i]; $('mp-enter').textContent = (i===lines.length-1) ? '好' : '下一句 ▸'; }
+    else { hideMapPop(); $('mp-enter').textContent = '进入'; }
+  };
+}
 /* 从全屏面板回到刚才那张地图（位置保留） */
 function backToMap(){
   if(!mapState.currentId){ showScreen('game-screen'); return; }
@@ -4621,6 +4665,24 @@ function drawMap(){
   });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H); });
   (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
+  // NPC：从《NPC 引擎》挑好的人，用游戏同款换装管线画出来
+  (m.nodes||[]).forEach(n=>{
+    if(n.kind!=='npc') return;
+    const npc = npcById(n.npcId); if(!npc) return;
+    const h = (typeof n.h==='number' && n.h>0) ? n.h : 0.20;
+    const px = n.x*W, py = n.y*H;
+    // 名字牌（悬在头顶）
+    c.save(); c.textAlign='center'; c.textBaseline='bottom';
+    c.font = '700 12px "Microsoft YaHei"';
+    const nm = (npc.name||'NPC') + (npc.event && npc.event.type==='tarot' ? ' 🔮' : '');
+    c.fillStyle = 'rgba(0,0,0,.28)';
+    c.fillText(nm, px+1, py - h*H*0.55 + 1);
+    c.fillStyle = '#fff';
+    c.fillText(nm, px, py - h*H*0.55);
+    c.restore();
+    // 立绘（NPC 一律朝左面向玩家）
+    drawCharacter(c, px, py, npc.outfit || {}, -1, 0, h*H/ENG_BASE_H);
+  });
   // 角色出生点 NaN 兜底：直接落到世界中央偏下
   if(!isFinite(mapRun.px) || !isFinite(mapRun.py)){ mapRun.px = W/2; mapRun.py = H*0.7; }
   /* currentUser 为空时（没登录就直接进地图）绝不能抛 —— 抛一次就会把 rAF 循环一起带走，
@@ -4647,6 +4709,10 @@ function drawMap(){
     let hitT = null;
     (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger' && nodeIsHot(n) && inRect(x,y,nodeRect(n,W,H))) hitT = n; });
     if(hitT){ hideMapPop(); mapRun.lastFired = hitT.id; fireTrigger(hitT); return; }
+    /* NPC：点一下触发它挂的事件（塔罗 / 对话 / 收集…） */
+    let hitN = null;
+    (m.nodes||[]).forEach(n=>{ if(n.kind==='npc' && npcById(n.npcId) && inRect(x,y,nodeRect(n,W,H))) hitN = n; });
+    if(hitN){ hideMapPop(); fireNpcEvent(npcById(hitN.npcId), hitN); return; }
     /* 地块本身就是触发点：点一下就按它的行为走 */
     let hit = tileAt(x, y);
     if(!hit) return;

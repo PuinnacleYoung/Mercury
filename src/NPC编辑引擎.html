@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NPC 编辑引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#7f66c4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<style>
+  :root{
+    --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+    --line:#e6ddf4; --line2:#efeaf8;
+    --paper:rgba(255,253,252,.95); --paper2:#faf7ff;
+    --bg1:#f3eef9; --bg2:#e9e1f5; --bg3:#ddd2f0;
+    --accent:#7f66c4; --accent-soft:#d6caf0; --accent-tint:#ece4fa;
+    --amber:#b8860b; --mint:#6b9080; --danger:#c75050;
+    --shadow-sm:0 4px 14px rgba(110,90,160,.10);
+    --shadow-md:0 10px 30px rgba(110,90,160,.16);
+    --shadow-lg:0 20px 50px rgba(110,90,160,.22);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:12px;
+    padding:12px 20px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    box-shadow:var(--shadow-sm);
+  }
+  .topbar h1{margin:0;font-size:19px;letter-spacing:1px;white-space:nowrap;}
+  .topbar .sub{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .topbar .spacer{flex:1;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:9px 16px;border-radius:12px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);font-size:13px;font-weight:800;cursor:pointer;
+    box-shadow:var(--shadow-sm);transition:.15s;white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);}
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border-color:transparent;}
+  .btn.danger{color:var(--danger);border-color:rgba(199,80,80,.3);}
+  .btn.ghost{background:transparent;box-shadow:none;}
+  .btn.small{padding:6px 12px;font-size:12px;border-radius:10px;}
+
+  .wrap{display:flex;gap:16px;padding:16px 20px;max-width:1400px;margin:0 auto;align-items:flex-start;}
+
+  /* 左栏：NPC 列表 */
+  .col-left{flex:0 0 300px;position:sticky;top:76px;max-height:calc(100vh - 92px);display:flex;flex-direction:column;gap:12px;}
+  .card{
+    background:var(--paper);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow-sm);padding:14px;
+  }
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .card-head h2{margin:0;font-size:15px;}
+  .npclist{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;min-height:0;padding-right:2px;}
+  .npc-row{
+    display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;
+    border:1px solid var(--line);background:#fff;cursor:pointer;transition:.13s;
+  }
+  .npc-row:hover{border-color:var(--accent-soft);background:var(--accent-tint);}
+  .npc-row.on{border-color:var(--accent);background:var(--accent-tint);box-shadow:var(--shadow-sm);}
+  .npc-ava{
+    flex:0 0 auto;width:40px;height:40px;border-radius:10px;overflow:hidden;
+    background:var(--accent-tint);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+  }
+  .npc-ava canvas{width:100%;height:100%;}
+  .npc-meta{flex:1;min-width:0;}
+  .npc-name{font-size:13.5px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .npc-sub{font-size:11px;color:var(--sub);font-weight:600;}
+  .npc-del{
+    flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--danger);cursor:pointer;font-size:13px;line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .npc-del:hover{background:#fdecec;}
+  .empty-hint{text-align:center;color:var(--hint);font-size:12px;padding:20px 8px;line-height:1.8;}
+
+  /* 右栏：编辑区 */
+  .col-right{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;}
+  .edit-grid{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;align-items:start;}
+
+  /* 预览 */
+  .preview-card{display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .stage{
+    position:relative;width:100%;max-width:340px;aspect-ratio:3/4.6;
+    background:
+      radial-gradient(circle at 50% 30%,rgba(255,255,255,.9),transparent 60%),
+      linear-gradient(160deg,#f7f2ff,#e9e1f5);
+    border-radius:18px;border:1px solid var(--line);
+    box-shadow:inset 0 0 30px rgba(127,102,196,.12);
+    overflow:hidden;
+  }
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .stage .tip{
+    position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+    font-size:11px;color:var(--sub);font-weight:700;background:rgba(255,255,255,.7);
+    padding:3px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .name-row{display:flex;gap:8px;width:100%;max-width:340px;}
+  .name-row input{
+    flex:1;min-width:0;padding:10px 14px;border-radius:12px;border:1px solid var(--line);
+    font-size:14px;font-weight:800;color:var(--ink);background:#fff;outline:none;
+  }
+  .name-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint);}
+
+  /* 搭配区 */
+  .cat-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .cat-tab{
+    padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;
+    font-size:12.5px;font-weight:800;color:var(--sub);cursor:pointer;transition:.13s;
+  }
+  .cat-tab.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;max-height:360px;overflow-y:auto;padding-right:2px;}
+  .item-cell{
+    position:relative;border:2px solid var(--line);border-radius:12px;background:#fff;
+    padding:6px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:.13s;
+  }
+  .item-cell:hover{border-color:var(--accent-soft);}
+  .item-cell.on{border-color:var(--accent);background:var(--accent-tint);box-shadow:var(--shadow-sm);}
+  .item-thumb{width:100%;aspect-ratio:1;border-radius:8px;background:var(--accent-tint);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;}
+  .item-thumb canvas,.item-thumb img{width:100%;height:100%;object-fit:contain;}
+  .item-nm{font-size:10.5px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;width:100%;}
+  .item-none{border-style:dashed;color:var(--hint);}
+  .item-none .item-thumb{font-size:20px;color:var(--hint);}
+
+  /* 对话 & 事件 */
+  .sec-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900;margin:2px 0 10px;}
+  .sec-title .line{flex:1;height:1px;background:var(--line);}
+  .dialogue-list{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+  .dlg-row{display:flex;gap:8px;align-items:center;}
+  .dlg-row input{
+    flex:1;min-width:0;padding:8px 12px;border-radius:10px;border:1px solid var(--line);
+    font-size:12.5px;color:var(--ink);background:#fff;outline:none;
+  }
+  .dlg-row input:focus{border-color:var(--accent);}
+  .dlg-del{
+    flex:0 0 auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--danger);cursor:pointer;font-size:13px;line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .event-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .event-row select,.event-row input{
+    padding:9px 12px;border-radius:10px;border:1px solid var(--line);
+    font-size:12.5px;color:var(--ink);background:#fff;outline:none;
+  }
+  .event-row select:focus,.event-row input:focus{border-color:var(--accent);}
+  .event-row select{min-width:160px;}
+  .event-row input{flex:1;min-width:120px;}
+  .event-hint{font-size:11px;color:var(--sub);font-weight:600;margin-top:8px;line-height:1.6;}
+  .event-hint b{color:var(--accent);}
+
+  .savebar{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;}
+  .savebar .status{font-size:12px;color:var(--sub);font-weight:700;margin-right:auto;}
+
+  /* toast */
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#2b2440;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:700;
+    box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.25s;z-index:999;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:900px){
+    .wrap{flex-direction:column;padding:12px;}
+    .col-left{position:static;flex:0 0 auto;max-height:none;}
+    .npclist{max-height:180px;}
+    .edit-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>👤 NPC 引擎</h1>
+  <span class="sub">从衣橱选衣服给 NPC 穿搭 · 命名保存 · 挂到关卡触发玩法</span>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="btn-back" title="回到游戏中枢">← 返回</button>
+</div>
+
+<div class="wrap">
+  <!-- 左栏：NPC 列表 -->
+  <div class="col-left">
+    <div class="card" style="display:flex;flex-direction:column;flex:1;">
+      <div class="card-head">
+        <h2>📇 NPC 列表 <span class="sub" id="npc-count"></span></h2>
+      </div>
+      <div class="npclist" id="npc-list"></div>
+      <button class="btn primary" id="btn-new" style="margin-top:10px;">＋ 新建 NPC</button>
+    </div>
+  </div>
+
+  <!-- 右栏：编辑 -->
+  <div class="col-right" id="edit-area">
+    <div class="empty-hint" id="edit-empty" style="text-align:center;color:var(--hint);font-size:13px;padding:40px;">
+      先在左边「＋ 新建 NPC」，或点选一个已有 NPC 开始编辑
+    </div>
+
+    <div id="edit-panel" style="display:none;">
+      <div class="edit-grid">
+        <!-- 预览 -->
+        <div class="card preview-card">
+          <div class="stage" id="npc-stage"><canvas id="npc-canvas"></canvas><span class="tip">NPC 试衣预览</span></div>
+          <div class="name-row">
+            <input id="npc-name" placeholder="给 NPC 起个名字" maxlength="20">
+          </div>
+          <div class="savebar" style="width:100%;max-width:340px;">
+            <span class="status" id="save-status"></span>
+            <button class="btn primary" id="btn-save">💾 保存</button>
+          </div>
+        </div>
+
+        <!-- 搭配 + 对话 + 事件 -->
+        <div class="card">
+          <div class="sec-title">👗 衣橱搭配<span class="line"></span></div>
+          <div class="cat-tabs" id="cat-tabs"></div>
+          <div class="item-grid" id="item-grid"></div>
+
+          <div class="sec-title" style="margin-top:18px;">💬 对话台词<span class="line"></span></div>
+          <div class="dialogue-list" id="dlg-list"></div>
+          <button class="btn small" id="btn-add-dlg">＋ 加一句</button>
+
+          <div class="sec-title" style="margin-top:18px;">⚡ 触发事件<span class="line"></span></div>
+          <div class="event-row">
+            <select id="event-type">
+              <option value="none">— 无事件 —</option>
+              <option value="tarot">🔮 塔罗占卜</option>
+              <option value="dialogue">💬 对话</option>
+              <option value="collect">✨ 收集奖励</option>
+              <option value="gameplay">🎮 自定义玩法</option>
+            </select>
+            <input id="event-param" placeholder="事件参数（如面板 id / 奖励文本）">
+          </div>
+          <div class="event-hint" id="event-hint"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="./legacy-body-v4.js"></script>
+<script src="./body-template.js"></script>
+<script>
+/* ================= 存储兜底 ================= */
+const _MEM_STORE = Object.create(null);
+function _mkStore(real){
+  try{ const k='__probe__'; real.setItem(k,'1'); real.removeItem(k); return real; }
+  catch(e){
+    window.__storageFallback = true;
+    return {
+      getItem: k => (k in _MEM_STORE ? _MEM_STORE[k] : null),
+      setItem: (k,v)=>{ _MEM_STORE[k]=String(v); },
+      removeItem: k=>{ delete _MEM_STORE[k]; },
+      clear: ()=>{ for(const k in _MEM_STORE) delete _MEM_STORE[k]; },
+      key: ()=>null, get length(){ return Object.keys(_MEM_STORE).length; }
+    };
+  }
+}
+const localStorage   = _mkStore(window.localStorage);
+const sessionStorage = _mkStore(window.sessionStorage);
+
+/* 管理员门禁（与其它引擎一致） */
+if(sessionStorage.getItem('adminLogin')!=='true'){ location.replace('index.html'); }
+
+const $ = id => document.getElementById(id);
+function uid(){ return Date.now().toString(36)+'_'+Math.floor(Math.random()*46656).toString(36); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= 存储键（与服装/地图引擎共用同源 localStorage） ================= */
+const LS = {
+  npcs:  'engine_npcs_v1',       // 本引擎产出
+  lib:   'engine_lib_v3',        // 服装库（读）
+  sets:  'engine_outfitsets_v1', // 套装库（读）
+  body:  'engine_body_v4',       // 素体（读）
+};
+
+/* ================= 服装分类（与服装引擎/游戏保持一致） ================= */
+const ENG_CATEGORIES = [
+  { id:'hair',     label:'头发',   em:'💇' },
+  { id:'face',     label:'妆容',   em:'💄' },
+  { id:'headwear', label:'头饰',   em:'👑' },
+  { id:'earring',  label:'耳饰',   em:'💎' },
+  { id:'backwear', label:'背饰',   em:'🪽' },
+  { id:'top',      label:'上衣',   em:'👕' },
+  { id:'gloves',   label:'手套',   em:'🧤' },
+  { id:'handheld', label:'手把件', em:'💐' },
+  { id:'bottom',   label:'下衣',   em:'👖' },
+  { id:'socks',    label:'袜子',   em:'🧦' },
+  { id:'shoes',    label:'鞋子',   em:'👟' },
+];
+const ENG_CAT_MAP = {}; ENG_CATEGORIES.forEach(c=>ENG_CAT_MAP[c.id]=c);
+
+/* ================= 数据层 ================= */
+let npcs = [];            // NPC 列表
+let currentId = null;     // 当前编辑的 NPC id
+let curCat = 'top';       // 当前搭配分类
+let dirty = false;        // 是否有未保存改动
+
+function loadNpcs(){
+  try{ const raw=localStorage.getItem(LS.npcs); npcs = raw ? (JSON.parse(raw)||[]) : []; }
+  catch(e){ npcs = []; }
+  if(!Array.isArray(npcs)) npcs = [];
+  // 迁移兜底：确保每个 npc 有 outfit/dialogue/event
+  npcs.forEach(n=>{
+    if(!n.outfit || typeof n.outfit!=='object') n.outfit = {};
+    if(!Array.isArray(n.dialogue)) n.dialogue = [];
+    if(!n.event) n.event = { type:'none', param:'' };
+    if(n.event.type===undefined) n.event.type='none';
+  });
+}
+function saveNpcs(){
+  try{ localStorage.setItem(LS.npcs, JSON.stringify(npcs)); return true; }
+  catch(e){ toast('⚠️ 保存失败：本地空间不足'); return false; }
+}
+function curNpc(){ return npcs.find(n=>n.id===currentId) || null; }
+
+function loadLib(){
+  const lib = {};
+  ENG_CATEGORIES.forEach(c=>lib[c.id]=[]);
+  try{
+    const raw=localStorage.getItem(LS.lib);
+    const d=raw?(JSON.parse(raw)||{}):{};
+    ENG_CATEGORIES.forEach(c=>{ lib[c.id]=Array.isArray(d[c.id])?d[c.id]:[]; });
+  }catch(e){}
+  return lib;
+}
+function loadSets(){
+  try{ const raw=localStorage.getItem(LS.sets); return raw?(JSON.parse(raw)||[]):[]; }
+  catch(e){ return []; }
+}
+
+/* ================= 素体 + 服装渲染（精简版，与游戏 drawEngineCharacter 同源） ================= */
+const ENG_PART_DEFS = [
+  { key:'head', hasJoint:false },
+  { key:'body', hasJoint:false },
+  { key:'armL', hasJoint:true  },
+  { key:'armR', hasJoint:true  },
+  { key:'legL', hasJoint:true  },
+  { key:'legR', hasJoint:true  },
+];
+const ENG_BODY_Z = { armL:5, armR:5, legL:5, legR:5, body:6, head:7 };
+const ENG_ANCHOR_JOINT = { head:'head', earL:'head', earR:'head', torso:'body', hip:'body', armL:'armL', armR:'armR', handL:'armL', handR:'armR', legL:'legL', legR:'legR', footL:'legL', footR:'legR' };
+const ENG_SLOT_BOX = {
+  'hair/front':   { w:100, h:70,  ox:0, oy:-10 },
+  'hair/back':    { w:110, h:90,  ox:0, oy:10  },
+  'face/face':    { w:70,  h:56,  ox:0, oy:5   },
+  'headwear/main':{ w:90,  h:52,  ox:0, oy:-30 },
+  'earring/L':    { w:16,  h:26,  ox:0, oy:0   },
+  'earring/R':    { w:16,  h:26,  ox:0, oy:0   },
+  'backwear/main':{ w:130, h:120, ox:0, oy:20  },
+  'top/body':     { w:88,  h:80,  ox:0, oy:0   },
+  'top/sleeveL':  { w:34,  h:62,  ox:0, oy:10  },
+  'top/sleeveR':  { w:34,  h:62,  ox:0, oy:10  },
+  'gloves/L':     { w:26,  h:28,  ox:0, oy:0   },
+  'gloves/R':     { w:26,  h:28,  ox:0, oy:0   },
+  'handheld/L':   { w:32,  h:48,  ox:0, oy:10  },
+  'handheld/R':   { w:32,  h:48,  ox:0, oy:10  },
+  'bottom/body':  { w:72,  h:70,  ox:0, oy:0   },
+  'bottom/legL':  { w:34,  h:60,  ox:0, oy:6   },
+  'bottom/legR':  { w:34,  h:60,  ox:0, oy:6   },
+  'socks/L':      { w:30,  h:40,  ox:0, oy:5   },
+  'socks/R':      { w:30,  h:40,  ox:0, oy:5   },
+  'shoes/L':      { w:36,  h:26,  ox:0, oy:0   },
+  'shoes/R':      { w:36,  h:26,  ox:0, oy:0   },
+};
+/* 每个分类的 layer 定义（渲染顺序 + 锚点 + 镜像） */
+const ENG_LAYERS = {
+  hair:     [ { key:'front', z:25, anchor:'head' }, { key:'back', z:0, anchor:'head' } ],
+  face:     [ { key:'face',  z:15, anchor:'head' } ],
+  headwear: [ { key:'main',  z:26, anchor:'head' } ],
+  earring:  [ { key:'L', z:26, anchor:'earL' }, { key:'R', z:26, anchor:'earR', mirrorOf:'L' } ],
+  backwear: [ { key:'main',  z:-10, anchor:'torso' } ],
+  top:      [ { key:'body', z:22, anchor:'torso' }, { key:'sleeveL', z:23, anchor:'armL' }, { key:'sleeveR', z:23, anchor:'armR', mirrorOf:'sleeveL' } ],
+  gloves:   [ { key:'L', z:24, anchor:'handL' }, { key:'R', z:24, anchor:'handR', mirrorOf:'L' } ],
+  handheld: [ { key:'L', z:27, anchor:'handL' }, { key:'R', z:27, anchor:'handR' } ],
+  bottom:   [ { key:'body', z:21, anchor:'hip' }, { key:'legL', z:20, anchor:'legL' }, { key:'legR', z:20, anchor:'legR', mirrorOf:'legL' } ],
+  socks:    [ { key:'L', z:18, anchor:'legL' }, { key:'R', z:18, anchor:'legR', mirrorOf:'L' } ],
+  shoes:    [ { key:'L', z:19, anchor:'footL' }, { key:'R', z:19, anchor:'footR', mirrorOf:'L' } ],
+};
+const ENGINE_BASE_H = 200;
+
+const engine = {
+  parts: {}, lib: {}, bodyReady:false,
+  _imgs: new Map(), _composed: new Map(),
+};
+let _engPending = 0, _engReadyCbs = [];
+function _engDec(){ _engPending--; if(_engPending<=0){ _engPending=0; const c=_engReadyCbs; _engReadyCbs=[]; c.forEach(f=>{try{f();}catch(e){}}); } }
+function engImg(src){
+  if(!src) return null;
+  let im=engine._imgs.get(src);
+  if(!im){ im=new Image(); engine._imgs.set(src,im); _engPending++; im.addEventListener('load',_engDec); im.addEventListener('error',_engDec); im.src=src; }
+  return im;
+}
+function afterEngineReady(cb){ if(_engPending<=0) cb(); else _engReadyCbs.push(cb); }
+function hydrateBody(d){
+  try{
+    const parts={};
+    ENG_PART_DEFS.forEach(def=>{ const s=d&&d[def.key]; if(!s) return;
+      parts[def.key]={ x:+s.x||0, y:+s.y||0, w:+s.w||0, h:+s.h||0, rot:+s.rot||0, flipH:!!s.flipH, jointPct:s.jointPct||null, img:engImg(s.imgSrc) };
+    });
+    engine.parts=parts;
+    engine.bodyReady=ENG_PART_DEFS.every(def=>parts[def.key]&&parts[def.key].img&&parts[def.key].w>0);
+  }catch(e){ engine.parts={}; engine.bodyReady=false; }
+}
+function loadBody(){
+  try{
+    const raw=localStorage.getItem(LS.body);
+    if(!raw){ engine.parts={}; engine.bodyReady=false; return; }
+    hydrateBody(JSON.parse(raw)||{});
+  }catch(e){ engine.parts={}; engine.bodyReady=false; }
+}
+function ensureBody(){
+  if(engine.bodyReady) return true;
+  let hasImg=false;
+  try{ const raw=localStorage.getItem(LS.body); if(raw){ const st=JSON.parse(raw); hasImg=!!(st&&Object.keys(st).some(k=>st[k]&&st[k].imgSrc)); } }catch(e){}
+  if(hasImg){ loadBody(); return engine.bodyReady; }
+  if(window.LegacyBodyV4 && LegacyBodyV4.build){
+    try{ const parts=LegacyBodyV4.build(); localStorage.setItem(LS.body,JSON.stringify(parts)); hydrateBody(parts); return engine.bodyReady; }catch(e){}
+  }
+  if(window.BodyTemplate && window.BodyTemplate.build){
+    try{ const parts=BodyTemplate.build(); localStorage.setItem(LS.body,JSON.stringify(parts)); hydrateBody(parts); return engine.bodyReady; }catch(e){}
+  }
+  return false;
+}
+function refreshEngineData(){ loadBody(); engine.lib=loadLib(); engine._composed.clear(); }
+function findEngineItem(catId,id){ if(!id) return null; return (engine.lib[catId]||[]).find(x=>x.id===id)||null; }
+
+function engGetAnchors(){
+  const h=engine.parts.head,b=engine.parts.body,aL=engine.parts.armL,aR=engine.parts.armR,lL=engine.parts.legL,lR=engine.parts.legR;
+  if(!h||!b||!aL||!aR||!lL||!lR) return null;
+  return {
+    head:{x:h.x+h.w/2,y:h.y+h.h*0.5}, earL:{x:h.x+h.w*0.08,y:h.y+h.h*0.55}, earR:{x:h.x+h.w*0.92,y:h.y+h.h*0.55},
+    torso:{x:b.x+b.w/2,y:b.y+b.h*0.42}, hip:{x:b.x+b.w/2,y:b.y+b.h*0.92},
+    armL:{x:aL.x+aL.w/2,y:aL.y+aL.h*0.15}, armR:{x:aR.x+aR.w/2,y:aR.y+aR.h*0.15},
+    handL:{x:aL.x+aL.w/2,y:aL.y+aL.h*0.88}, handR:{x:aR.x+aR.w/2,y:aR.y+aR.h*0.88},
+    legL:{x:lL.x+lL.w/2,y:lL.y+lL.h*0.45}, legR:{x:lR.x+lR.w/2,y:lR.y+lR.h*0.45},
+    footL:{x:lL.x+lL.w/2,y:lL.y+lL.h*0.96}, footR:{x:lR.x+lR.w/2,y:lR.y+lR.h*0.96},
+  };
+}
+function engBounds(){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  ENG_PART_DEFS.forEach(d=>{ const p=engine.parts[d.key]; if(!p) return;
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y; if(p.x+p.w>maxX)maxX=p.x+p.w; if(p.y+p.h>maxY)maxY=p.y+p.h; });
+  if(!isFinite(minX)) return null;
+  return { minX,minY,maxX,maxY, cx:(minX+maxX)/2, feetY:maxY };
+}
+function engComposeLayer(pieces, box){
+  if(!pieces||pieces.length===0) return null;
+  const W=Math.max(80,Math.round(box.w*3)), H=Math.max(80,Math.round(box.h*3));
+  const cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+  const ctx=cvs.getContext('2d'); const scale=W/box.w;
+  pieces.forEach(pc=>{
+    const cx=W/2+pc.ox*scale, cy=H/2+pc.oy*scale, w=pc.w*scale, h=pc.h*scale;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate((pc.rot||0)*Math.PI/180); if(pc.flipH) ctx.scale(-1,1);
+    const img=engImg(pc.imgSrc);
+    if(img&&img.complete&&img.naturalWidth) ctx.drawImage(img,-w/2,-h/2,w,h);
+    else { ctx.fillStyle='rgba(160,150,190,.5)'; ctx.fillRect(-w/2,-h/2,w,h); }
+    ctx.restore();
+  });
+  let data; try{ data=ctx.getImageData(0,0,W,H).data; }catch(e){ return null; }
+  let minX=W,minY=H,maxX=0,maxY=0,found=false;
+  for(let y=0;y<H;y++){ for(let x=0;x<W;x++){ const a=data[(y*W+x)*4+3]; if(a>8){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; found=true; } } }
+  if(!found) return null;
+  const pad=2; minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad); maxX=Math.min(W-1,maxX+pad); maxY=Math.min(H-1,maxY+pad);
+  const cw=maxX-minX+1, ch=maxY-minY+1, sz=Math.max(cw,ch);
+  const finalSz=Math.min(sz,Math.round(Math.max(box.w,box.h)*2));
+  const out=document.createElement('canvas'); out.width=finalSz; out.height=finalSz;
+  out.getContext('2d').drawImage(cvs,minX-(sz-cw)/2,minY-(sz-ch)/2,sz,sz,0,0,finalSz,finalSz);
+  return { dataUrl:out.toDataURL('image/png') };
+}
+function engCacheComposed(key, pieces, box){
+  let c=engine._composed.get(key);
+  if(!c){ c={ready:false,building:false}; engine._composed.set(key,c); }
+  if(c.ready) return { dataUrl:c.dataUrl };
+  if(c.building||!pieces||!pieces.length) return null;
+  for(let i=0;i<pieces.length;i++){ const im=engImg(pieces[i].imgSrc); if(!im||!im.complete||!im.naturalWidth) return null; }
+  c.building=true; const res=engComposeLayer(pieces,box); c.building=false;
+  if(res){ c.dataUrl=res.dataUrl; c.ready=true; }
+  return c.ready?{dataUrl:c.dataUrl}:null;
+}
+function engItemThumb(item){
+  const cat=ENG_CAT_MAP[item.category]; if(!cat||!item.layers) return null;
+  const layers=ENG_LAYERS[cat.id]||[]; const L=layers[0]; const sub=item.layers[L.key]; if(!sub) return null;
+  return (sub.composed)?sub.composed.dataUrl:(sub.pieces&&sub.pieces[0]?sub.pieces[0].imgSrc:null);
+}
+
+/* ================= 绘制 NPC 到画布 ================= */
+function drawNpc(canvas, outfit){
+  const ctx=canvas.getContext('2d');
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const W=canvas.clientWidth||canvas.width, H=canvas.clientHeight||canvas.height;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  if(!ensureBody()){ drawFallback(ctx,W,H,outfit); return; }
+  const anchors=engGetAnchors(); const b=engBounds();
+  if(!anchors||!b){ drawFallback(ctx,W,H,outfit); return; }
+
+  const scale=(ENGINE_BASE_H/Math.max(1,(b.maxY-b.minY)));
+  const cx=W/2, cy=H*0.82;
+  // 影子
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(0,-2,20,7,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(scale,scale);
+  const list=[];
+  ENG_PART_DEFS.forEach(d=>{ const p=engine.parts[d.key]; if(!p||!p.img) return; list.push({z:ENG_BODY_Z[d.key],kind:'body',p,def:d,deg:0}); });
+  ENG_CATEGORIES.forEach(cat=>{
+    const id=outfit?outfit[cat.id]:null; if(!id) return;
+    const item=findEngineItem(cat.id,id); if(!item||!item.layers) return;
+    (ENG_LAYERS[cat.id]||[]).forEach(L=>{
+      const box=ENG_SLOT_BOX[cat.id+'/'+L.key]; if(!box) return;
+      const sub=item.layers[L.key]; if(!sub) return;
+      let composed=sub.composed, mirror=false;
+      if(L.mirrorOf && sub.mirrorEnabled){
+        const src=item.layers[L.mirrorOf]; if(!src) return;
+        composed=src.composed; mirror=true;
+        if(!composed&&src.pieces&&src.pieces.length) composed=engCacheComposed(item.id+'|'+L.mirrorOf,src.pieces,ENG_SLOT_BOX[cat.id+'/'+L.mirrorOf]);
+      } else if(!composed&&sub.pieces&&sub.pieces.length){
+        composed=engCacheComposed(item.id+'|'+L.key,sub.pieces,box);
+      }
+      if(!composed||!composed.dataUrl) return;
+      const img=engImg(composed.dataUrl); if(!img) return;
+      const a=anchors[L.anchor]; if(!a) return;
+      list.push({z:L.z,kind:'cloth',img,box,a,mirror,deg:0});
+    });
+  });
+  list.sort((x,y)=>x.z-y.z);
+  list.forEach(it=>{
+    if(it.kind==='body') drawBodyPart(ctx,it.p,it.def,b.cx,b.maxY);
+    else drawCloth(ctx,it.img,it.box,it.a,it.mirror,0,b.cx,b.maxY);
+  });
+  ctx.restore();
+}
+function drawBodyPart(ctx,p,def,bx,fy){
+  if(!p.img||!p.img.complete||!p.img.naturalWidth) return;
+  const hasJoint=def.hasJoint&&p.jointPct;
+  const ox=hasJoint?engVisAnchorX(p):0.5, oy=hasJoint?p.jointPct.y:0.5;
+  const r=p.rot||0, px=p.x-bx, py=p.y-fy;
+  ctx.save(); ctx.translate(px+ox*p.w,py+oy*p.h); ctx.rotate((p.flipH?-r:r)*Math.PI/180);
+  if(p.flipH){ ctx.translate(0.5*p.w-ox*p.w,0.5*p.h-oy*p.h); ctx.scale(-1,1); ctx.drawImage(p.img,-0.5*p.w,-0.5*p.h,p.w,p.h); }
+  else { ctx.translate(-ox*p.w,-oy*p.h); ctx.drawImage(p.img,0,0,p.w,p.h); }
+  ctx.restore();
+}
+function engVisAnchorX(p){ return (p.flipH&&p.jointPct)?(1-p.jointPct.x):(p.jointPct?p.jointPct.x:0.5); }
+function drawCloth(ctx,img,box,a,mirror,deg,bx,fy){
+  if(!img||!img.complete||!img.naturalWidth) return;
+  const left=a.x-box.w/2+box.ox, top=a.y-box.h/2+box.oy;
+  ctx.save(); ctx.translate(a.x-bx,a.y-fy); ctx.rotate((mirror?-deg:deg)*Math.PI/180);
+  if(mirror){ ctx.translate(left+box.w/2-a.x,top+box.h/2-a.y); ctx.scale(-1,1); ctx.drawImage(img,-box.w/2,-box.h/2,box.w,box.h); }
+  else { ctx.translate(left-a.x,top-a.y); ctx.drawImage(img,0,0,box.w,box.h); }
+  ctx.restore();
+}
+/* 纯色兜底小人（没有素体时也能看个大概） */
+function drawFallback(ctx,W,H,outfit){
+  const colors={ hair:'#5a4632', top:'#e06c6c', bottom:'#4a6cc0', shoes:'#3a3a3a', skin:'#ffd9b3' };
+  const cx=W/2, cy=H*0.7, s=Math.min(W,H)/120;
+  ctx.save(); ctx.translate(cx,cy); ctx.scale(s,s);
+  ctx.fillStyle='rgba(0,0,0,.15)'; ctx.beginPath(); ctx.ellipse(0,30,22,8,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=colors.bottom; ctx.fillRect(-10,0,9,28); ctx.fillRect(1,0,9,28);
+  ctx.fillStyle=colors.shoes; ctx.fillRect(-12,26,13,7); ctx.fillRect(-1,26,13,7);
+  ctx.fillStyle=colors.top; roundRectF(ctx,-14,-24,28,28,8); ctx.fill();
+  ctx.fillStyle=colors.skin; ctx.beginPath(); ctx.arc(0,-38,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=colors.hair; ctx.beginPath(); ctx.arc(0,-42,14.5,Math.PI,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2c2418'; ctx.beginPath(); ctx.arc(4,-38,1.8,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(10,-38,1.8,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function roundRectF(ctx,x,y,w,h,r){ ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); }
+
+/* ================= 渲染 UI ================= */
+function renderList(){
+  const list=$('npc-list');
+  $('npc-count').textContent='（'+npcs.length+'）';
+  if(npcs.length===0){ list.innerHTML='<div class="empty-hint">还没有 NPC<br>点下方「＋ 新建 NPC」<br>从衣橱给它搭一身衣服</div>'; return; }
+  list.innerHTML='';
+  npcs.forEach(n=>{
+    const row=document.createElement('div');
+    row.className='npc-row'+(n.id===currentId?' on':'');
+    const ava=document.createElement('div'); ava.className='npc-ava';
+    const cv=document.createElement('canvas'); cv.width=40; cv.height=40; ava.appendChild(cv);
+    const meta=document.createElement('div'); meta.className='npc-meta';
+    meta.innerHTML='<div class="npc-name">'+esc(n.name)+'</div><div class="npc-sub">'+eventLabel(n.event)+'</div>';
+    const del=document.createElement('button'); del.className='npc-del'; del.textContent='✕'; del.title='删除';
+    del.onclick=e=>{ e.stopPropagation(); if(confirm('删除 NPC「'+n.name+'」？')){ npcs=npcs.filter(x=>x.id!==n.id); if(currentId===n.id){ currentId=null; } saveNpcs(); renderAll(); toast('已删除'); } };
+    row.onclick=()=>{ selectNpc(n.id); };
+    row.appendChild(ava); row.appendChild(meta); row.appendChild(del);
+    list.appendChild(row);
+    // 异步画头像缩略图
+    requestAnimationFrame(()=>drawNpc(cv,n.outfit));
+  });
+}
+function eventLabel(ev){
+  if(!ev||ev.type==='none'||!ev.type) return '无事件';
+  const map={ tarot:'🔮 塔罗占卜', dialogue:'💬 对话', collect:'✨ 收集', gameplay:'🎮 玩法' };
+  return map[ev.type]||ev.type;
+}
+
+function renderCatTabs(){
+  const tabs=$('cat-tabs'); tabs.innerHTML='';
+  ENG_CATEGORIES.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cat-tab'+(c.id===curCat?' on':'');
+    b.textContent=c.em+' '+c.label;
+    b.onclick=()=>{ curCat=c.id; renderCatTabs(); renderItems(); };
+    tabs.appendChild(b);
+  });
+}
+function renderItems(){
+  const grid=$('item-grid'); grid.innerHTML='';
+  const npc=curNpc(); const outfit=npc?npc.outfit:{};
+  // 「不穿」选项
+  const none=document.createElement('div');
+  none.className='item-cell item-none'+(outfit[curCat]?'' : ' on');
+  none.innerHTML='<div class="item-thumb">🚫</div><div class="item-nm">不穿</div>';
+  none.onclick=()=>{ if(!npc) return; delete outfit[curCat]; dirty=true; renderItems(); drawPreview(); };
+  grid.appendChild(none);
+
+  const items=engine.lib[curCat]||[];
+  if(items.length===0){
+    grid.innerHTML='<div class="empty-hint" style="grid-column:1/-1;">这个分类还没有服装<br>先去《服装编辑引擎》做几件</div>';
+    return;
+  }
+  items.forEach(it=>{
+    const cell=document.createElement('div');
+    cell.className='item-cell'+(outfit[curCat]===it.id?' on':'');
+    const thumb=document.createElement('div'); thumb.className='item-thumb';
+    const src=engItemThumb(it);
+    if(src){ const img=document.createElement('img'); img.src=src; img.alt=''; thumb.appendChild(img); }
+    else { thumb.textContent=ENG_CAT_MAP[curCat].em; }
+    const nm=document.createElement('div'); nm.className='item-nm'; nm.textContent=it.name;
+    cell.appendChild(thumb); cell.appendChild(nm);
+    cell.onclick=()=>{ if(!npc) return; outfit[curCat]=it.id; dirty=true; renderItems(); drawPreview(); };
+    grid.appendChild(cell);
+  });
+}
+
+function renderDialogue(){
+  const list=$('dlg-list'); list.innerHTML='';
+  const npc=curNpc(); if(!npc) return;
+  npc.dialogue.forEach((d,i)=>{
+    const row=document.createElement('div'); row.className='dlg-row';
+    const inp=document.createElement('input'); inp.value=d; inp.placeholder='这句台词…'; inp.maxlength=60;
+    inp.oninput=()=>{ npc.dialogue[i]=inp.value; dirty=true; };
+    const del=document.createElement('button'); del.className='dlg-del'; del.textContent='✕';
+    del.onclick=()=>{ npc.dialogue.splice(i,1); dirty=true; renderDialogue(); };
+    row.appendChild(inp); row.appendChild(del); list.appendChild(row);
+  });
+  if(npc.dialogue.length===0){ list.innerHTML='<div class="empty-hint" style="padding:8px;">还没有台词 · 点「＋ 加一句」</div>'; }
+}
+function renderEvent(){
+  const npc=curNpc(); if(!npc) return;
+  $('event-type').value=npc.event.type||'none';
+  $('event-param').value=npc.event.param||'';
+  updateEventHint(npc.event.type);
+}
+function updateEventHint(type){
+  const h=$('event-hint');
+  const map={
+    none:'NPC 只会站着，不触发任何事件。',
+    tarot:'点击 NPC 后进入 <b>塔罗占卜</b>玩法（牌面由《塔罗编辑引擎》提供）。',
+    dialogue:'点击 NPC 后依次播放上方台词。',
+    collect:'点击 NPC 触发收集奖励。',
+    gameplay:'点击 NPC 触发自定义玩法（参数里填面板 id）。',
+  };
+  h.innerHTML=map[type]||'';
+}
+
+function drawPreview(){
+  const npc=curNpc(); if(!npc){ return; }
+  const cv=$('npc-canvas');
+  requestAnimationFrame(()=>drawNpc(cv,npc.outfit));
+}
+
+function selectNpc(id){
+  currentId=id; dirty=false;
+  const npc=curNpc();
+  if(!npc){ return; }
+  $('npc-name').value=npc.name;
+  $('save-status').textContent='';
+  renderAll();
+}
+
+function renderAll(){
+  renderList();
+  const npc=curNpc();
+  $('edit-panel').style.display=npc?'':'none';
+  $('edit-empty').style.display=npc?'none':'';
+  if(!npc) return;
+  renderCatTabs();
+  renderItems();
+  renderDialogue();
+  renderEvent();
+  drawPreview();
+}
+
+/* ================= 事件绑定 ================= */
+$('btn-back').onclick=()=>{ location.href='index.html'; };
+$('btn-new').onclick=()=>{
+  const n={
+    id:'npc_'+uid(), name:'新 NPC '+(npcs.length+1), outfit:{}, dialogue:['你好呀！'],
+    event:{ type:'none', param:'' }
+  };
+  npcs.push(n); saveNpcs(); selectNpc(n.id); renderAll(); toast('已新建 NPC');
+};
+$('npc-name').oninput=e=>{ const n=curNpc(); if(!n) return; n.name=e.target.value; dirty=true; };
+$('btn-save').onclick=()=>{
+  const n=curNpc(); if(!n) return;
+  n.name=$('npc-name').value.trim()||('NPC '+(npcs.indexOf(n)+1));
+  n.event.type=$('event-type').value;
+  n.event.param=$('event-param').value.trim();
+  if(saveNpcs()){ dirty=false; $('save-status').textContent='✓ 已保存 '+new Date().toLocaleTimeString(); renderList(); toast('已保存「'+n.name+'」'); }
+};
+$('btn-add-dlg').onclick=()=>{ const n=curNpc(); if(!n) return; n.dialogue.push(''); dirty=true; renderDialogue(); const rows=$('dlg-list').querySelectorAll('input'); if(rows.length) rows[rows.length-1].focus(); };
+$('event-type').onchange=e=>{ const n=curNpc(); if(!n) return; n.event.type=e.target.value; dirty=true; updateEventHint(e.target.value); };
+$('event-param').oninput=e=>{ const n=curNpc(); if(!n) return; n.event.param=e.target.value; dirty=true; };
+
+/* 离开前未保存提醒 */
+window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
+/* 跨标签页同步：服装引擎改了衣服，这里实时刷新 */
+window.addEventListener('storage',e=>{ if(e.key===LS.lib||e.key===LS.sets){ refreshEngineData(); renderItems(); drawPreview(); } });
+
+/* ================= 启动 ================= */
+function boot(){
+  loadNpcs();
+  refreshEngineData();
+  if(npcs.length){ selectNpc(npcs[0].id); }
+  else { renderAll(); }
+  // 等图片加载完再刷一次预览
+  afterEngineReady(()=>{ renderAll(); });
+  // 窗口变化重绘预览
+  window.addEventListener('resize',()=>{ drawPreview(); });
+}
+boot();
+</script>
+</body>
+</html>

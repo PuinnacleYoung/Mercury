@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const files = [
   path.resolve(__dirname, '..', 'src', 'index.html'),
-  path.resolve(__dirname, '..', 'src', '地图编辑引擎.html')
+  path.resolve(__dirname, '..', 'src', '地图编辑引擎.html'),
+  path.resolve(__dirname, '..', 'src', 'NPC编辑引擎.html')
 ];
 for (const f of files) {
   const html = fs.readFileSync(f, 'utf8');
