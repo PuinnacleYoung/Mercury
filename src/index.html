@@ -4364,15 +4364,42 @@ function showMapPop(t){
 function hideMapPop(){ const pop = $('map-pop'); if(pop) pop.classList.add('hidden'); }
 
 /* ---- 绘制 ---- */
-/* ---- 世界画布：固定 16:9，contain 等比缩放居中（安全区方案 §2） ----
-   地图节点存的是 0~1 归一化坐标，若直接乘屏幕宽高 = 拉伸变形
-   （16:9 的设计稿在 21:9 手机上会被拉扁）。
-   改成 contain：短边贴合、等比不拉伸，多出来的部分留边（letterbox），
-   留边正好落在 UI 禁区上，视觉上看不出来。                                */
-const WORLD_ASPECT = 16/9;
+/* ---- 世界画布：铺满裁切（cover），世界比例由地图数据决定 ----
+   地图节点存的是 0~1 归一化坐标（世界坐标）。以前是 contain：短边贴合、多出来的部分留边，
+   结果「背景用 cover 铺满屏幕、内容却 contain 居中」——两者对不齐，机型一换资产就相对背景漂移/变形。
+   现在是同一个仿射变换：等比缩放 + 居中偏移，世界始终盖住屏幕，短边被裁掉。
+       · 背景 → 同一个矩形里画满（背景自身也用 cover，绝不拉伸）
+       · 资产 → 同一矩形里的归一化坐标
+   于任何机型上，资产相对背景的位置都像素级一致，且谁都不会被拉扁。
+   代价（陛下已确认）：极端比例会裁掉世界最外圈约 12%~15%。                       */
+const WORLD_ASPECT_FALLBACK = 16/9;
+const _imgAspect = Object.create(null);
+/* 背景图真实比例（异步探针 + 缓存；量出来就重算一次世界矩形） */
+function aspectOfImg(src){
+  if(!src) return null;
+  if(_imgAspect[src] != null) return _imgAspect[src];
+  const im = new Image();
+  im.onload  = ()=>{ _imgAspect[src] = (im.naturalWidth||1)/(im.naturalHeight||1); try{ resizeMap(); drawMap(); }catch(e){} };
+  im.onerror = ()=>{ _imgAspect[src] = WORLD_ASPECT_FALLBACK; };
+  im.src = src;
+  return null;
+}
+/* 世界比例：地图显式声明 > 背景图真实比例 > 16:9 */
+function currentWorldAspect(){
+  let m = null;
+  try{
+    const d = ensureMaps();
+    m = (d && mapState.currentId) ? d.maps[mapState.currentId] : null;
+  }catch(e){ m = null; }
+  if(m && m.worldAspect) return m.worldAspect;
+  if(m && m.bg){ const a = aspectOfImg(m.bg); if(a) return a; }
+  return WORLD_ASPECT_FALLBACK;
+}
+/* 铺满裁切：世界始终盖住屏幕，宽高比守恒 ⇒ 零拉伸 */
 function worldFit(W, H){
-  let w = W, h = W / WORLD_ASPECT;
-  if(h > H){ h = H; w = H * WORLD_ASPECT; }
+  const wa = currentWorldAspect();
+  const scale = Math.max(W / wa, H);
+  const w = wa * scale, h = scale;
   return { w:Math.round(w), h:Math.round(h), ox:Math.round((W-w)/2), oy:Math.round((H-h)/2) };
 }
 function resizeMap(){
@@ -4385,7 +4412,7 @@ function resizeMap(){
   const f = worldFit(W, H);
   const oldW = mapRun.w, oldH = mapRun.h;
   mapRun.dpr = Math.min(window.devicePixelRatio||1, 2);
-  /* fw/fh = 全屏（背景铺满，留边也有底）  w/h = 世界画布（内容等比居中） */
+  /* fw/fh = 全屏（背景铺满，外圈被裁）  w/h = 世界画布（铺满裁切，与背景同一变换） */
   mapRun.fw = W; mapRun.fh = H;
   mapRun.w = f.w; mapRun.h = f.h;
   mapRun.ox = f.ox; mapRun.oy = f.oy;
@@ -4408,7 +4435,8 @@ function loadMapBg(m){
   mapRun.bgSrc = src; mapRun.bgImg = null;
   if(!src) return;
   const im = new Image();
-  im.onload = ()=>{ if(mapRun.bgSrc === src) mapRun.bgImg = im; };
+  /* 背景一加载出来就知道真实比例了 → 世界矩形重算一次（铺满裁切的基准） */
+  im.onload = ()=>{ if(mapRun.bgSrc === src){ mapRun.bgImg = im; try{ resizeMap(); }catch(e){} } };
   im.onerror = ()=>{ if(mapRun.bgSrc === src){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(src).slice(0,60)); } };
   im.src = src;
 }
@@ -4595,7 +4623,9 @@ function drawMap(){
   (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
   // 角色出生点 NaN 兜底：直接落到世界中央偏下
   if(!isFinite(mapRun.px) || !isFinite(mapRun.py)){ mapRun.px = W/2; mapRun.py = H*0.7; }
-  drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
+  /* currentUser 为空时（没登录就直接进地图）绝不能抛 —— 抛一次就会把 rAF 循环一起带走，
+     表现就是「角色永远看不见」。 */
+  if(currentUser) drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
   c.restore();
   // 空地图明确提示，防止用户以为是渲染坏了
   const nodeCount = (m.nodes||[]).length, spawnCount = (m.spawns||[]).length;

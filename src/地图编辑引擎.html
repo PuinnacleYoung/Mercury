@@ -163,6 +163,14 @@
   .ui-stick{display:grid;place-items:center;width:44%;aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#fff,#a7b0c5);color:#211930;font-size:clamp(9px,1.1vw,12px);font-weight:1000;box-shadow:0 4px 12px rgba(0,0,0,.58);}
   .ui-action{position:absolute;right:4%;bottom:23%;display:grid;place-items:center;width:clamp(48px,7.5%,70px);aspect-ratio:1;border-radius:50%;background:linear-gradient(135deg,#f5c542,#f08b32);border:3px solid rgba(255,255,255,.8);color:#3a2c05;font-size:clamp(10px,1.2vw,13px);font-weight:1000;box-shadow:0 5px 18px rgba(0,0,0,.45);}
   .ui-orientation-badge{position:absolute;left:50%;top:13%;transform:translateX(-50%);padding:4px 12px;border-radius:999px;background:rgba(39,190,159,.94);color:#042f28;font-size:clamp(9px,1.1vw,12px);font-weight:1000;box-shadow:0 3px 10px rgba(0,0,0,.3);white-space:nowrap;}
+  /* 与 index.html #runtime-hud 对齐的真实 HUD 形状 */
+  .ui-hudcard{position:absolute;left:2%;top:2.5%;display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(17,10,35,.92);border:2px solid rgba(255,255,255,.32);color:#fff;font-size:clamp(10px,1.3vw,13px);font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,.42);}
+  .ui-hudcard .ava{width:1.7em;height:1.7em;border-radius:50%;background:#f5c542;color:#3a2c05;display:grid;place-items:center;font-size:.85em;}
+  .ui-coins{position:absolute;right:2%;top:2.5%;display:flex;gap:6px;}
+  .ui-coins span{padding:5px 10px;border-radius:999px;background:rgba(17,10,35,.92);border:2px solid rgba(255,255,255,.32);color:#fff;font-size:clamp(9px,1.2vw,12px);font-weight:900;white-space:nowrap;}
+  .ui-leftrail{position:absolute;left:1.6%;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;}
+  .ui-leftrail b{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:10px;background:rgba(17,10,35,.92);border:2px solid rgba(255,255,255,.3);color:#fff;font-size:clamp(9px,1.15vw,12px);font-weight:900;white-space:nowrap;}
+  .ui-leftrail b.hot{background:linear-gradient(135deg,#f5c542,#f08b32);color:#3a2c05;border-color:rgba(255,255,255,.7);}
   .bn-close{margin-left:6px;background:#3a2a08;color:#fff3a3;border:none;width:22px;height:22px;border-radius:50%;font-size:14px;font-weight:900;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;}
   .bn-close:hover{background:#1f1704;}
   .stage-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;font-weight:600;text-align:center;padding:0 24px;line-height:1.8;}
@@ -209,6 +217,52 @@
   .sz-bot{left:0;right:0;bottom:0;height:15%;}
   .sz-joy{left:0;bottom:0;width:26%;height:32%;border-radius:0 70% 0 0;}
   .safe-note{position:absolute;right:2%;top:12%;background:#231835;color:#ffe5b9;border:2px solid #f5c542;font-size:clamp(9px,1.1vw,12px);font-weight:1000;padding:4px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.48);}
+
+  /* =========================================================
+     世界容器 + 世界空间参考框
+     .world-box 是「世界」在 stage 上的投影：铺满裁切后它比 stage 大，
+     超出部分被 stage 的 overflow:hidden 裁掉。背景和所有资产都住在这里面，
+     所以它们只共享一个仿射变换 —— 永不拉伸，相对位置像素级恒定。
+     ========================================================= */
+  .world-box{position:absolute;overflow:hidden;}
+  .world-bg{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
+  .bg-stack{position:absolute;inset:0;pointer-events:none;}
+  .ed-bg-layer{position:absolute;background-repeat:no-repeat;background-position:center;background-size:100% 100%;cursor:move;touch-action:none;z-index:1;pointer-events:auto;}
+  .ed-bg-layer.sel{outline:3px solid var(--accent);outline-offset:-3px;}
+  .ed-bg-layer.locked{cursor:not-allowed;}
+  .ed-bg-layer.hidden-layer{opacity:.22;filter:grayscale(1);}
+  .crop-layer{position:absolute;inset:0;z-index:38;pointer-events:none;}
+  .crop-band{position:absolute;background:rgba(8,4,16,.62);background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 9px,transparent 9px 18px);}
+  .safe-world-layer{position:absolute;inset:0;z-index:40;pointer-events:none;}
+  .safe-off .safe-world-layer{display:none!important;}
+  .safe-world-box{position:absolute;box-sizing:border-box;}
+  .safe-world-box>i{position:absolute;left:6px;top:6px;font-size:clamp(8px,1vw,11px);font-weight:1000;font-style:normal;padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .safe-world-box.vis{border:3px dashed #37e3ff;background:rgba(55,227,255,.07);}
+  .safe-world-box.vis>i{background:#37e3ff;color:#04262e;top:auto;bottom:6px;}
+  .safe-world-box.ui{border:3px solid #23e0a5;background:rgba(35,224,165,.09);}
+  .safe-world-box.ui>i{background:#23e0a5;color:#062f25;left:auto;right:6px;top:6px;}
+  /* 锁定态：不可拖、不可缩，手柄消失，右上角挂一把锁 */
+  .ed-tile.locked,.ed-trigger.locked{cursor:not-allowed;box-shadow:0 0 0 3px #f5c542,0 6px 16px rgba(0,0,0,.28)!important;}
+  .ed-spawn.locked{cursor:not-allowed;box-shadow:0 0 0 3px #f5c542,0 4px 10px rgba(0,0,0,.3)!important;}
+  .ed-lock{position:absolute;top:-9px;left:-9px;min-width:20px;height:20px;padding:0 4px;border-radius:999px;background:#f5c542;color:#3a2c05;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;}
+  /* 属性面板里的层列表：两行布局，按钮做大 —— 挤成一行会小到看不见 */
+  .blk-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+  .blk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 10px;border:2px solid var(--line);border-radius:11px;background:rgba(255,255,255,.04);cursor:pointer;}
+  .blk-row:hover{border-color:rgba(255,255,255,.24);}
+  .blk-row.on{border-color:var(--accent);background:rgba(167,140,217,.18);}
+  .blk-row .blk-th{width:46px;height:32px;border-radius:7px;background:rgba(0,0,0,.35) center/cover no-repeat;flex:0 0 auto;border:1px solid var(--line);}
+  .blk-row .blk-nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .blk-ops{flex:1 1 100%;display:flex;gap:6px;justify-content:flex-end;}
+  .blk-row .blk-btn{min-width:30px;height:28px;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.07);color:var(--ink);font-size:13px;font-weight:900;cursor:pointer;line-height:1;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;}
+  .blk-row .blk-btn:hover{background:rgba(255,255,255,.18);}
+  .blk-row .blk-btn.lock.on{background:#f5c542;color:#3a2c05;border-color:#f5c542;}
+  .blk-row .blk-btn.eye.off{opacity:.45;}
+  .blk-actions{display:flex;gap:7px;flex-wrap:wrap;}
+  .blk-meta{font-size:11px;line-height:1.65;color:var(--sub);font-weight:700;margin:-2px 0 8px;}
+  .mini-btn{padding:8px 12px;border:2px solid var(--line);border-radius:9px;background:rgba(255,255,255,.06);color:var(--ink);font-size:12px;font-weight:800;cursor:pointer;}
+  .mini-btn:hover{background:rgba(255,255,255,.15);}
+  .mini-btn.grad{background:linear-gradient(135deg,var(--accent),#8b5cf6);color:#fff;border-color:transparent;}
+  .mini-btn.mint{background:linear-gradient(135deg,#a8e8da,#7fd6c2);color:#04322c;border-color:transparent;}
   /* 行走区可视化 */
   .walk-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.36;filter:invert(1) sepia(1) hue-rotate(70deg) saturate(6);mix-blend-mode:screen;z-index:20;}
   /* 安全区说明弹窗 */
@@ -326,7 +380,7 @@
   <section class="panel canvas-wrap" data-page-node-id="yKGICVo7Koa6bLCdiEiS0H">
     <div class="canvas-head" id="canvas-head" data-page-node-id="jzn4zGlF2zBt3Uyx4Fp2XC">
       <input class="name-input" id="me-map-name" placeholder="名称" data-page-node-id="aOC1RVxrP156MzUQB9c77Y">
-      <label class="pill" id="me-bg-pill" data-page-node-id="beuOjAKdiqMLMzHq9YBv1w">🖼 上传背景<input type="file" id="me-bg-file" accept="image/*" data-page-node-id="KalzlMvrYxAwWima5UVUU8"></label>
+      <label class="pill" id="me-bg-pill" title="上传一张 PNG 作为新的背景层；多层会按世界坐标叠加，点「🧩 合成背景」烤成一张给游戏用" data-page-node-id="beuOjAKdiqMLMzHq9YBv1w">🖼 上传背景<input type="file" id="me-bg-file" accept="image/*" data-page-node-id="KalzlMvrYxAwWima5UVUU8"></label>
       <button class="pill grad" id="me-add-tile" data-page-node-id="2IurPbY8wRFxhOagnQHkdp">＋ 建筑地块</button>
       <button class="pill gold" id="me-add-trigger" data-page-node-id="MGq0bn1WO6kVy3objXg3ny">＋ 触发事件</button>
       <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 出生点</button>
@@ -354,6 +408,9 @@
       <button class="pill" id="me-diag" title="按 Schema v3 检查类型、父级、入口、导航与触发引用" data-page-node-id="me-diag">🩺 Schema 诊断</button>
       <button class="pill" id="me-fix-links" title="按 Schema v3 校验 Map / Level 父级关系" data-page-node-id="me-fix-links">🔗 校验层级</button>
       <button class="pill" id="me-merge-panels" title="查看独立 Panel 注册表；Panel 不进入地图树" data-page-node-id="me-merge-panels">🧩 面板注册表</button>
+      <span class="pill-divider"></span>
+      <button class="pill" id="me-lock-all" title="把这张地图里所有物件 / 触发区 / 入口点 / 背景层全部锁上，防止编辑时误触" data-page-node-id="me-lock-all">🔒 全部锁定</button>
+      <button class="pill" id="me-unlock-all" title="全部解锁（解锁后才能拖动和缩放）" data-page-node-id="me-unlock-all">🔓 全部解锁</button>
     </div>
     <div class="stage-frame device-iphone-15pm" id="stage-frame" data-page-node-id="stage-frame">
       <div class="device-name" id="device-name">📱 iPhone 15 Pro Max · 横屏 932×430</div>
@@ -379,6 +436,42 @@
       <div class="chk-row" data-page-node-id="N4lCHYouwMDfsO29kCPyKv"><input type="checkbox" id="mp-worldmap" data-page-node-id="Wn3tlC5cfFf7lgJO7bBz66"><span data-page-node-id="wP4vFIXSHNwMDl2mGpQtSj">在此地图可按「世界地图」传送</span></div>
       <div class="chk-row" data-page-node-id="1Ez8FzMH2bLpPQIxiz0VHb"><input type="checkbox" id="mp-teleout" data-page-node-id="ueRssjXmL3MtZ1oNX7CD1v"><span data-page-node-id="9viIY4bLnTJVyhafcdSNDN">允许从此处传送去别处</span></div>
       <div class="warn" id="mp-tip" data-page-node-id="gneGE6j5k2ECXmqb7FLzsz"></div>
+
+      <!-- ===== 🧱 背景层：多层 PNG，合成后给游戏读一张 ===== -->
+      <div class="sec-title">🧱 背景层 · 多层 PNG 叠出世界底图</div>
+      <div class="blk-meta" id="mp-bg-meta">—</div>
+      <div class="blk-list" id="mp-bg-list"></div>
+      <div class="blk-actions">
+        <button class="mini-btn" id="mp-bg-add" title="上传一张 PNG 作为新的背景层（会自动按原图比例铺进世界，不变形）">＋ 加一层 PNG</button>
+        <button class="mini-btn grad" id="mp-bg-compose" title="把所有可见层按世界坐标烤成一张 PNG 写回 map.bg —— 游戏只读这一张">🧩 合成背景</button>
+        <button class="mini-btn" id="mp-bg-clear" title="清空所有背景层（合成图 map.bg 保留）">🧹 清空层</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--sub);margin:8px 0 2px">合成宽度
+        <select id="mp-bg-w" style="flex:1;padding:6px 9px;border:2px solid var(--line);border-radius:9px;background:rgba(255,255,255,.05);color:var(--ink);font-size:11.5px;font-weight:800">
+          <option value="1024">1024 px</option>
+          <option value="1600" selected>1600 px（推荐）</option>
+          <option value="2048">2048 px</option>
+          <option value="2560">2560 px</option>
+        </select>
+      </label>
+      <div id="mp-bg-detail"></div>
+      <input type="file" id="mp-bg-file" accept="image/*" style="display:none" data-page-node-id="mpBgFile01">
+
+      <div class="sec-title">📐 世界比例（铺满裁切的基准）</div>
+      <div class="blk-actions">
+        <button class="mini-btn mint" id="mp-aspect-auto" title="按当前背景图的真实像素比重算世界比例">按背景图重算</button>
+        <button class="mini-btn" id="mp-aspect-169">16:9</button>
+        <button class="mini-btn" id="mp-aspect-43">4:3</button>
+        <button class="mini-btn" id="mp-aspect-219">19.5:9</button>
+      </div>
+      <div class="blk-meta" id="mp-aspect-meta">—</div>
+
+      <div class="sec-title">🔒 批量锁</div>
+      <div class="blk-actions">
+        <button class="mini-btn" id="mp-lock-all" title="锁上这张地图里所有物件 / 触发区 / 入口点 / 背景层">🔒 全部锁定</button>
+        <button class="mini-btn" id="mp-unlock-all" title="全部解锁">🔓 全部解锁</button>
+      </div>
+
       <div class="sec-title">🎵 背景音乐</div>
       <div class="bgm-block" id="mp-bgm"></div>
     </div>
@@ -423,6 +516,7 @@
       </select></label>
       <label data-page-node-id="y4yHTqkfhE77dN548tFIdY">提示语<input type="text" id="tl-tip" placeholder="例：推开木门，进去看看吧" data-page-node-id="wHEWKeYotsxALBJnjFtYaC"></label>
       <label data-page-node-id="X56vWS7ZFyJTw3kP20d8QY">备用图标（没贴图时才显示）<input type="text" id="tl-icon" data-page-node-id="44gxugtct6cryxmuvJLsGF"></label>
+      <div class="chk-row" data-page-node-id="tlLockRow01"><input type="checkbox" id="tl-lock" data-page-node-id="tlLockChk01"><span>🔒 锁定这个物件（调好参数后防误触）</span></div>
       <button class="del-tile" id="tl-del" data-page-node-id="YNe7S9IFG2xJRTHRQtaRMW">🗑 删除地块</button>
     </div>
 
@@ -459,6 +553,7 @@
         <option value="click" data-page-node-id="ME9R94gB3u6bW1hyBrGvLp">点击后触发</option>
       </select></label>
       <label data-page-node-id="ElNKPZnc6Go4G31VdbpHhg">提示文字<input type="text" id="tg-tip" placeholder="例如：进入图书馆" data-page-node-id="KAZV5d0VPgxFkU7bCDtMaR"></label>
+      <div class="chk-row" data-page-node-id="tgLockRow01"><input type="checkbox" id="tg-lock" data-page-node-id="tgLockChk01"><span>🔒 锁定这个触发区</span></div>
       <button class="del-tile" id="tg-del" data-page-node-id="NNrNmgw1uPyK7WaYFEEkuB">🗑 删除触发区</button>
     </div>
 
@@ -467,6 +562,7 @@
       <h3 data-page-node-id="WAOBE2i938BZqSC23PTYn3">🚩 入口点配置</h3>
       <label data-page-node-id="4fhFGnqWPZLFicqR2EqDf3">名称<input type="text" id="sp-name" data-page-node-id="wYjQB5XepzVGz4Fvc6Md4X"></label>
       <div class="warn" data-page-node-id="y4bHIe6dK3a5UWifO05cBk">入口点是「传送落地坐标」。别处的触发区可以指定落到这个点上。</div>
+      <div class="chk-row" data-page-node-id="spLockRow01"><input type="checkbox" id="sp-lock" data-page-node-id="spLockChk01"><span>🔒 锁定这个入口点</span></div>
       <button class="del-tile" id="sp-del" data-page-node-id="2gMbyY492udggiKvxJ2FqY">🗑 删除入口点</button>
     </div>
   </aside>
@@ -538,13 +634,30 @@ function panelEm(id){ const p=PANEL_KINDS.find(x=>x.id===id); return p?p.em:'�
 
 /* ================= 数据层（与游戏共用 game_maps） ================= */
 const LS_MAPS = 'game_maps';
-let editState = { nodeId:null, sel:null };   // sel = {kind:'tile'|'trigger'|'spawn', id}
+let editState = { nodeId:null, sel:null, bgSel:null };   // sel = {kind:'tile'|'trigger'|'spawn'|'bglayer', id}；bgSel = 背景层 id
 
 function getMapsData(){ try{ return JSON.parse(localStorage.getItem(LS_MAPS)||'null'); }catch(e){ return null; } }
+
+/* =========================================================================
+   【根因修复 · 背景上传消失 / 改名丢失】
+   以前 ensureMaps() 每次都重新 JSON.parse(localStorage)，返回的是一个「全新对象」。
+   于是这种写法：
+        const map = curMap();          // 对象 A
+        map.bg = url;                  // 只改到对象 A
+        saveMapsData(ensureMaps());    // 又解析出对象 B，把没有 bg 的 B 写回磁盘
+    —— 改动永远写在 A 上，却把 B 存盘，背景/名称全部静默丢失。
+   现在 ensureMaps() 命中同一份内存对象（_mapsCache），所有就地修改都落在被保存的那份上。
+   ========================================================================= */
+let _mapsCache = null;
 function saveMapsData(d){
+  if(!d) return;
+  _mapsCache = d;                       // 一旦写盘，这份就是最新内存态
   try{ localStorage.setItem(LS_MAPS, JSON.stringify(d)); }
-  catch(e){ toast('⚠️ 存储已满，请先「导出 JSON」备份'); }
+  catch(e){ toast('⚠️ 存储已满（当前约 '+storageKB()+' KB），请先「导出 JSON」备份或精简背景图'); }
 }
+function storageKB(){ try{ return Math.round((localStorage.getItem(LS_MAPS)||'').length/1024); }catch(e){ return -1; } }
+/* 外部直接改过 localStorage（导入 JSON / 粘贴替换）之后调用，强制丢弃内存态重新读 */
+function reloadMaps(){ _mapsCache = null; return ensureMaps(); }
 
 /* ================= 地图 Schema v3 =================
    Map 只导航；Level 才运行；Panel 独立 registry。运行时/编辑器均只读显式 nodeType。 */
@@ -659,15 +772,15 @@ function mkTile(name, icon, color, x, y, w, h, linkTo){
            linkTo:link, img: (ph ? ph.src : null),
            action: link ? 'teleport' : 'none',
            targetMap: link, targetSpawn:null,
-           panel:null, triggerMode:'click', tip:'' };
+           panel:null, triggerMode:'click', tip:'', locked:false };
 }
 function mkTrigger(name, x, y, w, h, extra){
   return Object.assign({ id:'g'+uid(), kind:'trigger', name, icon:'🚪',
     x, y, w, h, action:'teleport', targetMap:null, targetSpawn:null,
     bidirectional:false, backName:'返回', backId:null, pairId:null,
-    triggerMode:'auto', tip:'' }, extra||{});
+    triggerMode:'auto', tip:'', locked:false }, extra||{});
 }
-function mkSpawn(name, x, y){ return { id:'s'+uid(), name, x, y }; }
+function mkSpawn(name, x, y){ return { id:'s'+uid(), name, x, y, locked:false }; }
 
 function seedMaps(){
   const maps={};const add=m=>{maps[m.id]=m;return m;};
@@ -692,13 +805,15 @@ function seedMaps(){
 }
 
 function ensureMaps(){
+  if(_mapsCache) return _mapsCache;      // ← 同一份对象，就地修改才保存得住
   let d=getMapsData();
   if(!d||!d.maps)d=seedMaps();
   const before=JSON.stringify(d);
   d=migrateMaps(d)||d;
   normalizeTiles(d);
+  _mapsCache=d;
   if(JSON.stringify(d)!==before||!getMapsData())saveMapsData(d);
-  return d;
+  return _mapsCache;
 }
 function curMap(){ const d=ensureMaps(); return d.maps[editState.nodeId]; }
 
@@ -923,6 +1038,94 @@ function setBox(el, o){
 }
 function setPoint(el, o){ el.style.left=(o.x*100)+'%'; el.style.top=(o.y*100)+'%'; }
 
+/* =========================================================================
+   世界坐标系 —— 铺满裁切（cover）
+   -------------------------------------------------------------------------
+   陛下要的是：背景和 UI 资产在任何机型上都不拉伸，资产相对背景的位置不变。
+
+   做法：全世界只有「一个」仿射变换 —— 等比缩放 + 居中偏移，决不做非等比缩放。
+       世界比例 wa（宽/高）优先取背景图真实像素比，兜底 16:9。
+       cover 缩放：scale = max(屏宽/wa, 屏高)   → 世界始终铺满屏幕，短边被裁掉。
+   于是：
+       · 背景   = 同一个矩形里画满          → 不拉伸
+       · 资产   = 同一矩形里的归一化坐标    → 不拉伸，且相对背景像素级不变
+   代价（陛下已确认接受）：极端比例会裁掉世界最外圈约 12%~15%。
+   ========================================================================= */
+const WORLD_ASPECT_FALLBACK = 16/9;
+function coverFit(vw, vh, wa){
+  wa = (wa && isFinite(wa) && wa > 0) ? wa : WORLD_ASPECT_FALLBACK;
+  const scale = Math.max(vw / wa, vh);
+  const w = wa * scale, h = scale;
+  return { w, h, ox:(vw - w)/2, oy:(vh - h)/2, scale };
+}
+/* 运行时真实会遇到的横屏比例 —— 用来算「全机型可见区 / 全机型 UI 安全区」的交集 */
+const RUNTIME_ASPECTS = [667/375, 932/430, 844/390, 19.5/9, 915/412, 1280/720, 4/3];
+/* 世界坐标里：所有机型都看得见的那块（纯裁切，不含 UI 遮挡） */
+function worldVisibleBox(wa){
+  let u0=0,u1=1,v0=0,v1=1;
+  RUNTIME_ASPECTS.forEach(sa=>{
+    const f = coverFit(sa, 1, wa);
+    u0 = Math.max(u0, (0  - f.ox)/f.w); u1 = Math.min(u1, (sa - f.ox)/f.w);
+    v0 = Math.max(v0, (0  - f.oy)/f.h); v1 = Math.min(v1, (1  - f.oy)/f.h);
+  });
+  return { u0, u1, v0, v1 };
+}
+/* 世界坐标里：所有机型都不被 UI 挡住的更严一块（顶栏 / 底条 / 摇杆） */
+const UI_SCREEN_SAFE = { x0:0.04, y0:0.10, x1:0.96, y1:0.85 };
+function worldSafeBox(wa){
+  let x0=0,x1=1,y0=0,y1=1;
+  RUNTIME_ASPECTS.forEach(sa=>{
+    const f = coverFit(sa, 1, wa);
+    x0 = Math.max(x0, (UI_SCREEN_SAFE.x0*sa - f.ox)/f.w);
+    x1 = Math.min(x1, (UI_SCREEN_SAFE.x1*sa - f.ox)/f.w);
+    y0 = Math.max(y0, (UI_SCREEN_SAFE.y0    - f.oy)/f.h);
+    y1 = Math.min(y1, (UI_SCREEN_SAFE.y1    - f.oy)/f.h);
+  });
+  return { x0, y0, x1, y1 };
+}
+const World = {
+  _aspect:Object.create(null),          // url -> 真实宽高比
+  /* 异步探针：拿到图片真实比例后写进缓存，并回调 */
+  probe(url, cb){
+    if(url!=null && this._aspect[url]!=null) return this._aspect[url];
+    const im = new Image();
+    im.onload  = ()=>{ this._aspect[url] = (im.naturalWidth||1)/(im.naturalHeight||1); if(cb) cb(this._aspect[url], true); };
+    im.onerror = ()=>{ this._aspect[url] = WORLD_ASPECT_FALLBACK;             if(cb) cb(WORLD_ASPECT_FALLBACK, false); };
+    im.src = url;
+    return null;                        // 还没量出来
+  },
+  /* 这张地图的世界比例：显式值 > 背景图真实比例 > 16:9 */
+  aspect(map){
+    if(map && map.worldAspect) return map.worldAspect;
+    if(map && map.bg){ const a=this._aspect[map.bg]; if(a) return a; }
+    return WORLD_ASPECT_FALLBACK;
+  },
+  /* 把宽高比写进地图数据（只写一次，之后以用户手动设定为准） */
+  adoptAspect(map, url){
+    if(!map || map.worldAspect) return;
+    const set = a=>{
+      if(map.worldAspect) return;
+      map.worldAspect = Math.round(a*1000)/1000;
+      saveMapsData(ensureMaps()); renderEditor(); renderProps();
+      toast('📐 世界比例已按背景图设为 ' + Math.round(map.worldAspect*1000)/1000 + '（' + Math.round(map.worldAspect*100)+' : 100）');
+    };
+    const known = this._aspect[url!=null?url:map.bg];
+    if(known) set(known); else this.probe(url!=null?url:map.bg, set);
+  },
+  /* world-box 在 stage 内的几何（%）。left/top 可为负、width/height 可 >100 —— 超出部分就是被裁掉的。 */
+  boxPct(map){
+    const st = $('edit-stage');
+    const vw = (st && st.clientWidth)  || 1600;
+    const vh = (st && st.clientHeight) || 900;
+    const f  = coverFit(vw, vh, this.aspect(map));
+    return { left:(f.ox/vw)*100, top:(f.oy/vh)*100, width:(f.w/vw)*100, height:(f.h/vh)*100 };
+  },
+  /* 世界归一化坐标 (u,v) → stage 内的 % 坐标（只用于对照显示，不做布局） */
+  toStagePct(map, u, v){ const b=this.boxPct(map); return { x:b.left+u*b.width, y:b.top+v*b.height }; },
+  /* 当前 stage 的宽高比 */
+  stageAspect(){ const st=$('edit-stage'); const w=(st&&st.clientWidth)||1600, h=(st&&st.clientHeight)||900; return w/h; }
+};
+
 /* ================= 安全区 =================
    不是拍脑袋的「中央 3/4」，是把 19 种市面机型逐个实算出来的：
      画布 = 16:9 contain 居中；UI（顶栏 / 底部提示条 / 左下摇杆）叠在屏幕上。
@@ -935,8 +1138,18 @@ function setPoint(el, o){ el.style.left=(o.x*100)+'%'; el.style.top=(o.y*100)+'%
 const SafeArea = {
   SPEC:{ x0:0.04, y0:0.10, x1:0.96, y1:0.85, joyX:0.26, joyY:0.68 },
   on:true,
-  box(){ const s=this.SPEC; return { x0:s.x0, y0:s.y0, x1:s.x1, y1:s.y1 }; },
-  inJoy(x,y){ const s=this.SPEC; return x < s.joyX && y > s.joyY; },
+  _wb:null,
+  /* 世界坐标下的安全盒：把所有机型的「屏幕安全矩形 → 世界坐标」取交集。
+     这是物件 / 出生点真正的活动边界（以前是屏幕 %，铺满裁切之后屏幕 % 已经不等于世界 %）。 */
+  worldBox(){
+    const map = (typeof curMap==='function') ? curMap() : null;
+    const wa  = World.aspect(map);
+    if(!this._wb || this._wb.wa!==wa) this._wb = { wa, box:worldSafeBox(wa) };
+    return this._wb.box;
+  },
+  box(){ return this.worldBox(); },
+  /* 世界模式下摇杆禁区已被 worldSafeBox 的余量吸收，不再单独挖角 */
+  inJoy(){ return false; },
   /* 说明弹窗用的实测表：[机型, 屏幕, 画布与黑边, 顶栏侵入, 底条起点, 摇杆顶, 摇杆右] */
   DEVICES:[
     ['iPhone SE / 8','667×375','画布铺满 无黑边','8.2%','86.8%','70.2%','19.2%'],
@@ -959,22 +1172,55 @@ const SafeArea = {
     ['PC 1920','1920×1080','画布铺满 无黑边','4.7%','95.4%','79.5%','17.7%'],
     ['PC 2560','2560×1440','画布铺满 无黑边','3.5%','96.6%','83.1%','16.0%']
   ],
+  /* 屏幕空间的 UI 禁区（按机型精确对齐，因为世界现在是铺满的，stage 就是屏幕） */
   layer(map){
     const wrap=document.createElement('div');wrap.className='safe-layer';
     if(!this.on)return wrap;
-    const s=this.SPEC;
     const mk=(cls,txt)=>{const d=document.createElement('div');d.className='safe-zone '+cls;d.innerHTML='<i>'+txt+'</i>';return d;};
     wrap.appendChild(mk('sz-top','🚫 顶栏禁区'));
     wrap.appendChild(mk('sz-bot bottom','🚫 底条禁区'));
     if(isLevelNode(map))wrap.appendChild(mk('sz-joy joy','🚫 摇杆禁区'));
-    const ed=document.createElement('div'); ed.className='safe-edit';
-    ed.setAttribute('data-pct','x 4%~96% · y 10%~85%');
-    wrap.appendChild(ed);
     const note=document.createElement('div'); note.className='safe-note';
-    note.textContent='🛡红区被 UI 挡住 · NPC / 传送 / 玩法入口别放这里';
+    note.textContent='🛡红区会被 UI 挡住 · 绿框才是「全机型都看得到」的世界范围';
     wrap.appendChild(note);
     return wrap;
   },
+  /* 世界空间的参考框（放进 world-box 里，和资产同一坐标系，所以绝对对得上） */
+  worldLayer(map){
+    const wrap=document.createElement('div'); wrap.className='safe-world-layer';
+    if(!this.on) return wrap;
+    const wa = World.aspect(map);
+    const vis = worldVisibleBox(wa), saf = worldSafeBox(wa);
+    const mkBox=(x0,y0,x1,y1,cls,txt)=>{
+      const d=document.createElement('div'); d.className='safe-world-box '+cls;
+      d.style.left=(x0*100)+'%'; d.style.top=(y0*100)+'%';
+      d.style.width=((x1-x0)*100)+'%'; d.style.height=((y1-y0)*100)+'%';
+      d.innerHTML='<i>'+txt+'</i>'; return d;
+    };
+    wrap.appendChild(mkBox(vis.u0,vis.v0,vis.u1,vis.v1,'vis','📺 全机型可见区'));
+    wrap.appendChild(mkBox(saf.x0,saf.y0,saf.x1,saf.y1,'ui','🛡 全机型 UI 安全区'));
+    return wrap;
+  },
+  /* 铺满裁切会吃掉世界最外圈 —— 把当前机型裁掉的部分压暗，一眼看清 */
+  cropLayer(map){
+    const wrap=document.createElement('div'); wrap.className='crop-layer';
+    const wa = World.aspect(map), f = coverFit(this._stageAspect(), 1, wa);
+    const u0=Math.max(0,(0-f.ox)/f.w), u1=Math.min(1,(1-f.ox)/f.w);
+    const v0=Math.max(0,(0-f.oy)/f.h), v1=Math.min(1,(1-f.oy)/f.h);
+    const band=(l,t,w,h)=>{
+      if(w<=0||h<=0) return;
+      const d=document.createElement('div'); d.className='crop-band';
+      d.style.left=(l*100)+'%'; d.style.top=(t*100)+'%';
+      d.style.width=(w*100)+'%'; d.style.height=(h*100)+'%';
+      wrap.appendChild(d);
+    };
+    band(0,0,1,v0);            // 上
+    band(0,v1,1,1-v1);         // 下
+    band(0,v0,u0,v1-v0);       // 左
+    band(u1,v0,1-u1,v1-v0);    // 右
+    return wrap;
+  },
+  _stageAspect(){ const st=$('edit-stage'); const w=(st&&st.clientWidth)||1600,h=(st&&st.clientHeight)||900; return w/h; },
   clamp(o, isPoint){
     if(!this.on || !o) return o;
     const b=this.box();
@@ -1096,9 +1342,16 @@ function openSafeNote(){
 function buildRuntimeUiPreview(map){
   const ui=document.createElement('div');ui.className='ui-overlay';ui.id='ui-overlay';
   const levelUi=isLevelNode(map)?'<div class="ui-joystick"><div class="ui-stick">摇杆</div></div><div class="ui-action">交互</div>':'';
-  ui.innerHTML='<div class="ui-topbar"><div class="ui-profile"><span class="ui-avatar">🐹</span><span>暮眠</span></div><div class="ui-currency"><span class="ui-chip">🪙 12,345</span><span class="ui-chip">💎 88</span><span class="ui-chip">🔮 5</span></div></div>'
-    +'<div class="ui-orientation-badge">📱 '+(isMapNode(map)?'Map 导航':'Level 运行')+' · 手机强制横屏</div>'+levelUi
-    +'<div class="ui-bottomnav"><span class="ui-navbtn">← 返回</span><span class="ui-navbtn">🌍 世界地图</span><span class="ui-navbtn">👤 卡片</span></div>';
+  /* 与 index.html 的 #runtime-hud 保持一致：左上名字卡 / 右上货币+家园 / 左侧竖排 6 个按钮。
+     以前这里画的是一条「底栏：返回 · 世界地图 · 卡片」—— 运行时早就没有那条底栏了，画出来反而误导。 */
+  const rail = ['👗 衣橱','🗺 地图','📅 签到','👥 好友','⚙️ 设置','🚪 退出']
+    .map((t,i)=>'<b class="'+(i===0?'hot':'')+'">'+t+'</b>').join('');
+  ui.innerHTML =
+      '<div class="ui-hudcard"><span class="ava">🐹</span><span>暮眠</span><span style="opacity:.7">›</span></div>'
+    + '<div class="ui-coins"><span>🪙 12,345</span><span>💎 88</span><span>🦪 5</span><span>🏠 家园</span></div>'
+    + '<div class="ui-leftrail">'+rail+'</div>'
+    + '<div class="ui-orientation-badge">📱 '+(isMapNode(map)?'Map 导航':'Level 运行')+' · 手机强制横屏 · 铺满裁切</div>'
+    + levelUi;
   return ui;
 }
 function renderEditor(){
@@ -1109,37 +1362,81 @@ function renderEditor(){
   if(!map)return;
   $('me-map-name').value=map.name;
   if(isLevelNode(map))WalkMask.load(map);else WalkMask.load(null);
+  const waTxt = (Math.round(World.aspect(map)*100)/100)+' : 1';
   $('stage-hint').textContent=isMapNode(map)
-    ? 'Map 只编辑导航建筑 · 点击建筑进入子地图或关卡 · 玩家不会出现在这里'
-    : 'Level 编辑场景物件 / 入口 / 行走区 / 运行时触发';
-  stage.style.background = map.bg ? `url(${map.bg}) center/cover no-repeat`
+    ? '铺满裁切 · 世界比例 '+waTxt+' · Map 只编辑导航建筑 · 玩家不会出现在这里'
+    : '铺满裁切 · 世界比例 '+waTxt+' · 拖动移动 / 拖右下角缩放 / 点元素在右侧配置';
+  /* 世界底：有背景图就交给 .world-bg，没有才铺渐变 */
+  stage.style.background = map.bg ? 'transparent'
     : `linear-gradient(160deg, ${map.bgColor||'#a9c9e8'}, ${darken(map.bgColor||'#a9c9e8',0.4)})`;
 
+  /* ---------- 世界容器：背景和资产共享同一个仿射变换 ---------- */
+  const world = document.createElement('div');
+  world.className='world-box'; world.id='world-box';
+  const bp = World.boxPct(map);
+  world.style.left=bp.left+'%'; world.style.top=bp.top+'%';
+  world.style.width=bp.width+'%'; world.style.height=bp.height+'%';
+  stage.appendChild(world);
+
+  /* ---------- 背景：有层就用层，没层就用合成图 / 底色 ---------- */
+  const stack = document.createElement('div'); stack.className='bg-stack';
+  const layers = map.bgLayers||[];
+  if(layers.length){
+    layers.forEach(l=>stack.appendChild(buildBgLayerEl(map, l)));
+  }else{
+    const bg = document.createElement('div'); bg.className='world-bg';
+    if(map.bg) bg.style.backgroundImage = 'url('+map.bg+')';
+    else bg.style.background = `linear-gradient(160deg, ${map.bgColor||'#a9c9e8'}, ${darken(map.bgColor||'#a9c9e8',0.4)})`;
+    stack.appendChild(bg);
+  }
+  world.appendChild(stack);
+  /* 被裁掉的外圈压暗 */
+  world.appendChild(SafeArea.cropLayer(map));
+
+  /* ---------- 资产（世界坐标） ---------- */
   (map.nodes||[]).forEach(n=>{
-    if(n.kind==='trigger') stage.appendChild(buildTriggerEl(d, map, n));
-    else stage.appendChild(buildTileEl(d, map, n));
+    if(n.kind==='trigger') world.appendChild(buildTriggerEl(d, map, n));
+    else world.appendChild(buildTileEl(d, map, n));
   });
   updateCanvasForLeaf(map);
   /* 出生点严格只属于显式 Level。 */
-  if(isLevelNode(map))(map.spawns||[]).forEach(s=>stage.appendChild(buildSpawnEl(map,s)));
-  /* SafeArea 是顶层 const，不会成为 window.SafeArea；旧判断永远为 false，导致蒙版从未插入 DOM */
-  if(typeof SafeArea!=='undefined'&&SafeArea.layer)stage.appendChild(SafeArea.layer(map));
+  if(isLevelNode(map))(map.spawns||[]).forEach(s=>world.appendChild(buildSpawnEl(map,s)));
   /* 行走区只属于 Level。 */
   if(isLevelNode(map) && map.walk && map.walk.data){
     const wImg = document.createElement('img');
     wImg.className = 'walk-overlay';
     wImg.src = map.walk.data;
     wImg.alt = '';
-    stage.appendChild(wImg);
+    world.appendChild(wImg);
   }
+  /* ---------- 世界空间参考框（和资产同一坐标系，所以绝对对得上） ---------- */
+  if(typeof SafeArea!=='undefined'&&SafeArea.worldLayer) world.appendChild(SafeArea.worldLayer(map));
+  /* ---------- 屏幕空间层：UI 禁区 + 运行时 UI 预览 ---------- */
+  if(typeof SafeArea!=='undefined'&&SafeArea.layer) stage.appendChild(SafeArea.layer(map));
   /* UI 最后追加，层级固定在 safe-layer 之上；每次 render 都重建，所以绝不会再被 innerHTML 清掉 */
   stage.appendChild(buildRuntimeUiPreview(map));
 
-  if(!(map.nodes||[]).length && (!isLevelNode(map) || !(map.spawns||[]).length)){
+  if(!layers.length && !(map.nodes||[]).length && (!isLevelNode(map) || !(map.spawns||[]).length)){
     const empty=document.createElement('div');empty.className='stage-empty';
     empty.textContent=isMapNode(map)?'这张 Map 还没有导航建筑\n点上方「＋ 导航建筑」':'这张 Level 还是空的\n点上方「＋ 场景物件 / ＋ 触发区」';
     stage.appendChild(empty);
   }
+}
+
+/* 背景层元素：住 world-box 里，用世界归一化坐标；锁了就拖不动 */
+function buildBgLayerEl(map, l){
+  const el = document.createElement('div');
+  el.className = 'ed-bg-layer' + (l.id===editState.bgSel ? ' sel' : '')
+               + (l.locked ? ' locked' : '') + (l.visible===false ? ' hidden-layer' : '');
+  el.dataset.nid = l.id; el.dataset.kind = 'bglayer';
+  setBox(el, l);
+  el.style.opacity = (l.opacity==null?1:l.opacity);
+  if(l.img) el.style.backgroundImage = 'url('+l.img+')';
+  if(l.locked){
+    const lk=document.createElement('div'); lk.className='ed-lock'; lk.textContent='🔒'; el.appendChild(lk);
+  }
+  bindLayerDrag(el, ()=>l, map);
+  return el;
 }
 
 function selClass(kind, id){
@@ -1148,16 +1445,20 @@ function selClass(kind, id){
 }
 function selectNode(kind, id){
   editState.sel = { kind, id };
-  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn')
+  if(kind!=='bglayer') editState.bgSel = null;
+  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn,#edit-stage .ed-bg-layer')
     .forEach(el=>el.classList.remove('sel'));
   const el = document.querySelector(`#edit-stage [data-nid="${id}"]`);
   if(el) el.classList.add('sel');
   renderProps();
 }
+function lockBadge(el){ const lk=document.createElement('div'); lk.className='ed-lock'; lk.textContent='🔒'; el.appendChild(lk); }
+/* 拖拽 / 缩放用的坐标系：资产住在 world-box 里，所以位移必须除以 world-box 的尺寸 */
+function dragHost(){ return $('world-box') || $('edit-stage'); }
 
 function buildTileEl(d, map, t){
   const el = document.createElement('div');
-  el.className = 'ed-tile' + selClass('tile', t.id);
+  el.className = 'ed-tile' + selClass('tile', t.id) + (t.locked?' locked':'');
   el.dataset.nid = t.id; el.dataset.kind = 'tile';
   setBox(el, t);
   const src = tileImg(t);
@@ -1170,6 +1471,7 @@ function buildTileEl(d, map, t){
     b.title=(act==='navigate'||act==='teleport'||act==='teleportLevel')?'前往：'+(((d.maps||{})[itemTargetId(t)]||{}).name||'未设置'):'打开面板';
     el.appendChild(b);
   }
+  if(t.locked) lockBadge(el);
   const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=t.name; el.appendChild(lb);
   bindDrag(el, ()=>t, 'tile', map);
   return el;
@@ -1177,12 +1479,13 @@ function buildTileEl(d, map, t){
 function buildTriggerEl(d, map, g){
   const el = document.createElement('div');
   const kindCls = g.action==='panel' ? 'panel' : (g.action==='none' ? 'none' : '');
-  el.className = 'ed-trigger ' + kindCls + selClass('trigger', g.id);
+  el.className = 'ed-trigger ' + kindCls + selClass('trigger', g.id) + (g.locked?' locked':'');
   el.dataset.nid = g.id; el.dataset.kind = 'trigger';
   setBox(el, g);
   let em = g.icon || '🚪';
   if(g.action==='panel') em = panelEm(g.panel);
   const s=document.createElement('span'); s.textContent = em; el.appendChild(s);
+  if(g.locked) lockBadge(el);
   const lb=document.createElement('div');lb.className='ed-label';
   const targetId=itemTargetId(g);lb.textContent=g.name+((g.action==='teleport'||g.action==='teleportLevel')&&targetId?' → '+((d.maps[targetId]||{}).name||'?'):'');
   el.appendChild(lb);
@@ -1191,10 +1494,11 @@ function buildTriggerEl(d, map, g){
 }
 function buildSpawnEl(map, s){
   const el = document.createElement('div');
-  el.className = 'ed-spawn' + selClass('spawn', s.id);
+  el.className = 'ed-spawn' + selClass('spawn', s.id) + (s.locked?' locked':'');
   el.dataset.nid = s.id; el.dataset.kind = 'spawn';
   setPoint(el, s);
   el.textContent = '🚩';
+  if(s.locked) lockBadge(el);
   const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=s.name; el.appendChild(lb);
   bindDrag(el, ()=>s, 'spawn', map);
   return el;
@@ -1206,7 +1510,8 @@ function bindDrag(el, getObj, kind, map){
     e.preventDefault(); e.stopPropagation();
     const o = getObj(); if(!o) return;
     selectNode(kind, o.id);
-    const stage=$('edit-stage'); const rect=stage.getBoundingClientRect();
+    if(o.locked){ toast('🔒 「'+(o.name||'这个元素')+'」已锁定 · 先解锁再拖（右侧属性面板）'); return; }
+    const rect=dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
     /* 行走区约束：关卡地图有 walk 数据时，不能拖到不可走像素 */
     const constrainWalk=!!(isLevelNode(map)&&map.walk&&map.walk.data);
@@ -1230,13 +1535,18 @@ function bindDrag(el, getObj, kind, map){
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
   if(kind==='spawn') return;
+  if(getObj() && getObj().locked) return;   // 锁定态不给缩放手柄
   const h=document.createElement('div'); h.className='ed-resize'; el.appendChild(h);
   h.addEventListener('pointerdown', e=>{
     e.preventDefault(); e.stopPropagation();
     const o=getObj(); if(!o) return;
     selectNode(kind, o.id);
-    const stage=$('edit-stage'); const rect=stage.getBoundingClientRect();
+    if(o.locked){ toast('🔒 已锁定 · 先解锁再缩放'); return; }
+    const rect=dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ow=o.w, oh=tileH(o);
+    /* 以前这里引用了外层 pointerdown 里的 constrainWalk —— 那个作用域根本看不到它，
+       pointerup 一跑就 ReferenceError，缩放结果于是永远不落盘。现在自己算一份。 */
+    const constrainWalk=!!(isLevelNode(map)&&map.walk&&map.walk.data);
     const move=ev=>{
       o.w = clamp(0.03, 0.95, ow + (ev.clientX-sx)/rect.width);
       o.h = clamp(0.03, 0.95, oh + (ev.clientY-sy)/rect.height);
@@ -1247,6 +1557,38 @@ function bindDrag(el, getObj, kind, map){
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
 }
+/* 背景层拖拽 / 缩放：不参与安全区与行走区约束（背景本来就该铺满世界） */
+function bindLayerDrag(el, getObj, map){
+  el.addEventListener('pointerdown', e=>{
+    if(e.target.classList.contains('ed-resize')) return;
+    e.preventDefault(); e.stopPropagation();
+    const o=getObj(); if(!o) return;
+    selectNode('bglayer', o.id);
+    if(o.locked){ toast('🔒 「'+(o.name||'这一层')+'」已锁定 · 先解锁再拖'); return; }
+    const rect=dragHost().getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
+    const move=ev=>{ o.x = ox + (ev.clientX-sx)/rect.width; o.y = oy + (ev.clientY-sy)/rect.height; setBox(el,o); };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); markBgDirty(map); commit(); renderProps(); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+  });
+  if(getObj() && getObj().locked) return;
+  const h=document.createElement('div'); h.className='ed-resize'; el.appendChild(h);
+  h.addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    const o=getObj(); if(!o) return;
+    selectNode('bglayer', o.id);
+    if(o.locked){ toast('🔒 已锁定 · 先解锁再缩放'); return; }
+    const rect=dragHost().getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, ow=o.w, oh=tileH(o);
+    const move=ev=>{
+      o.w = Math.max(0.02, ow + (ev.clientX-sx)/rect.width);
+      o.h = Math.max(0.02, oh + (ev.clientY-sy)/rect.height);
+      setBox(el,o);
+    };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); markBgDirty(map); commit(); renderProps(); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+  });
+}
 function commit(){
   const d = ensureMaps();
   syncAllPairs(d);
@@ -1254,7 +1596,240 @@ function commit(){
   buildTree();
 }
 
+/* =========================================================================
+   背景层系统（对齐《服装编辑引擎》的做法）
+   —— 多层 PNG 各自 x / y / w / h / opacity / visible / locked，编辑器里实时叠着看；
+   —— 「🧩 合成背景」按世界坐标把它们烤成一张 PNG 写回 map.bg，游戏只读那一张。
+   —— 每张图的初始 w/h 按原图比例 contain 进世界 ⇒ 一开始就不变形。
+   ========================================================================= */
+function bgAspectFit(ia, wa){
+  if(!ia || !isFinite(ia) || ia<=0) return { w:1, h:1 };
+  if(ia >= wa) return { w:1, h:wa/ia };      // 图更宽 → 占满世界宽，上下留空
+  return { w:ia/wa, h:1 };                   // 图更高 → 占满世界高，左右留空
+}
+function markBgDirty(map){ if(map) map.bgDirty = true; }
+function newBgLayer(name, img){
+  return { id:'bg'+uid(), name:name||'背景层', img:img||null,
+           x:0.5, y:0.5, w:1, h:1, opacity:1, visible:true, locked:false };
+}
+function addBgLayerFromFile(e){
+  const map = curMap(); if(!map){ toast('先在左边选一张地图'); return; }
+  const file = e.target.files[0];
+  if(file && file.size > 2*1024*1024){ toast('图片太大，控制在 2MB 内'); e.target.value=''; return; }
+  pickImage(e, url=>{
+    const d = ensureMaps();
+    const put = ia=>{
+      /* 顺序很重要：先用这张图定世界比例，再按新比例算「不变形」的 w/h。
+         反过来的话，第一张 4:3 图会按旧的 16:9 兜底算尺寸 → 上屏就是压扁的。 */
+      if(!map.worldAspect) map.worldAspect = Math.round(ia*1000)/1000;
+      const wa = World.aspect(map);
+      const fit = bgAspectFit(ia, wa);
+      const l = newBgLayer('背景层 ' + ((map.bgLayers||[]).length+1), url);
+      l.w = fit.w; l.h = fit.h;
+      (map.bgLayers = map.bgLayers || []).push(l);
+      editState.bgSel = l.id; editState.sel = null;
+      markBgDirty(map);
+      saveMapsData(d); buildTree(); renderEditor(); renderProps();
+      toast('🖼 已加入「'+l.name+'」· 世界比例 '+(Math.round(wa*1000)/1000)+' · 在画布上拖它 / 拖右下角缩放');
+    };
+    const known = World._aspect[url];
+    if(known) put(known); else World.probe(url, ia=>put(ia));
+  });
+}
+function removeBgLayer(id){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  map.bgLayers = (map.bgLayers||[]).filter(l=>l.id!==id);
+  if(editState.bgSel===id) editState.bgSel=null;
+  markBgDirty(map); saveMapsData(d); renderEditor(); renderProps(); toast('已删除背景层');
+}
+function moveBgLayer(id, dir){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const arr = map.bgLayers||[]; const i = arr.findIndex(l=>l.id===id); if(i<0) return;
+  const j = i+dir; if(j<0||j>=arr.length) return;
+  const t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+  markBgDirty(map); saveMapsData(d); renderEditor(); renderProps();
+}
+function fitBgLayer(id){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const l=(map.bgLayers||[]).find(x=>x.id===id); if(!l) return;
+  const apply = ia=>{
+    const fit = bgAspectFit(ia, World.aspect(map));
+    l.w=fit.w; l.h=fit.h;
+    markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    toast('📐 已按原图比例整层铺满世界（不变形）');
+  };
+  const known = World._aspect[l.img];
+  if(known) apply(known); else World.probe(l.img, apply);
+}
+function clearBgLayers(){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  if(!(map.bgLayers||[]).length){ toast('本来就没有背景层'); return; }
+  if(!confirm('清空 '+(map.bgLayers||[]).length+' 个背景层？\n（合成出来的 map.bg 会保留，游戏不受影响）')) return;
+  map.bgLayers=[]; editState.bgSel=null; editState.sel=null;
+  saveMapsData(d); renderEditor(); renderProps(); toast('🧹 背景层已清空');
+}
+/* 一键合成：所有可见层按世界坐标烤成一张 PNG → map.bg（游戏只读这一张） */
+function composeBackground(){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const layers=(map.bgLayers||[]).filter(l=>l.visible!==false && l.img);
+  if(!layers.length){ toast('这张地图还没有可合成的背景层'); return; }
+  const wa = World.aspect(map);
+  const sel = $('mp-bg-w');
+  const outW = Math.max(256, Math.min(4096, parseInt((sel&&sel.value)||'1600',10)||1600));
+  const outH = Math.max(2, Math.round(outW/wa));
+  const cv=document.createElement('canvas'); cv.width=outW; cv.height=outH;
+  const ctx=cv.getContext('2d');
+  let i=0;
+  const step=()=>{
+    if(i>=layers.length){
+      let url=null;
+      try{ url = cv.toDataURL('image/png'); }
+      catch(err){ toast('⚠️ 合成失败：'+(err&&err.message||err)); return; }
+      map.bg = url; map.bgWidth=outW; map.bgHeight=outH; map.bgDirty=false;
+      try{ saveMapsData(d); }
+      catch(err){ toast('⚠️ 合成成功但存不下：'+(err&&err.message||err)); }
+      renderEditor(); renderProps();
+      toast('🧩 已合成 '+outW+'×'+outH+'（约 '+Math.round(url.length/1024)+' KB）· 游戏现在读的就是这一张');
+      return;
+    }
+    const l=layers[i++];
+    const im=new Image();
+    im.onload=()=>{
+      ctx.save();
+      ctx.globalAlpha = (l.opacity==null?1:l.opacity);
+      ctx.drawImage(im, (l.x-l.w/2)*outW, (l.y-l.h/2)*outH, l.w*outW, l.h*outH);
+      ctx.restore(); step();
+    };
+    im.onerror=()=>step();
+    im.src=l.img;
+  };
+  step();
+}
+/* 批量锁定 */
+function setAllLocks(map, locked){
+  if(!map) return 0;
+  let n=0;
+  (map.nodes||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
+  (map.spawns||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
+  (map.bgLayers||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
+  return n;
+}
+
 /* ================= 属性面板 ================= */
+/* 🧱 背景层列表：每层都有 显示 / 锁定 / 上移 / 下移 / 删除，点一层出精细参数 */
+function renderBgLayers(map){
+  const list=$('mp-bg-list'), meta=$('mp-bg-meta'), det=$('mp-bg-detail');
+  if(!list) return;
+  const layers = map.bgLayers||[];
+  const kb = storageKB();
+  let head = layers.length
+    ? '共 <b>'+layers.length+'</b> 层 · 游戏读的是「合成图」'
+      + (map.bgDirty ? ' <span style="color:#ff9c6e">⚠ 改过但还没重新合成</span>'
+                     : (map.bg ? ' <span style="color:#7fd6c2">✓ 合成图已是最新</span>' : ''))
+      + '<br>画布上直接拖它 / 拖右下角缩放'
+    : '还没有背景层。点下面「＋ 加一层 PNG」，或顶栏「🖼 上传背景」。';
+  if(kb>=0) head += '<br>localStorage 占用约 <b>'+kb+' KB</b>'+(kb>4096?' <span style="color:#ff9c6e">⚠ 接近 5MB 上限</span>':'');
+  meta.innerHTML = head;
+
+  list.innerHTML='';
+  layers.forEach((l,idx)=>{
+    const row=document.createElement('div');
+    row.className='blk-row'+(l.id===editState.bgSel?' on':'');
+    const th=document.createElement('span'); th.className='blk-th';
+    if(l.img) th.style.backgroundImage='url('+l.img+')';
+    row.appendChild(th);
+    const nm=document.createElement('span'); nm.className='blk-nm';
+    nm.textContent=(idx+1)+'. '+(l.name||'背景层');
+    nm.title=l.name||'';
+    row.appendChild(nm);
+    const mkBtn=(cls,txt,title,fn)=>{
+      const b=document.createElement('button'); b.type='button';
+      b.className='blk-btn '+cls; b.textContent=txt; b.title=title;
+      b.onclick=ev=>{ ev.stopPropagation(); fn(); };
+      return b;
+    };
+    const ops=document.createElement('div'); ops.className='blk-ops';
+    ops.appendChild(mkBtn('eye'+(l.visible===false?' off':''), l.visible===false?'🚫':'👁', '显示 / 隐藏这一层', ()=>{
+      l.visible = (l.visible===false); markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    }));
+    ops.appendChild(mkBtn('lock'+(l.locked?' on':''), l.locked?'🔒':'🔓', '锁定 / 解锁这一层', ()=>{
+      l.locked=!l.locked; saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    }));
+    ops.appendChild(mkBtn('','▲','上移一层（越靠上越后画）', ()=>moveBgLayer(l.id,-1)));
+    ops.appendChild(mkBtn('','▼','下移一层', ()=>moveBgLayer(l.id,+1)));
+    ops.appendChild(mkBtn('','🗑','删除这一层', ()=>removeBgLayer(l.id)));
+    row.appendChild(ops);
+    row.onclick=()=>{ editState.bgSel=l.id; editState.sel={kind:'bglayer', id:l.id}; renderEditor(); renderProps(); };
+    list.appendChild(row);
+  });
+
+  det.innerHTML='';
+  const cur = layers.find(l=>l.id===editState.bgSel);
+  if(!cur){
+    det.innerHTML = layers.length ? '<div class="blk-meta">点上面任意一层，这里会出现它的精细参数。</div>' : '';
+    return;
+  }
+  const op = Math.round((cur.opacity==null?1:cur.opacity)*100);
+  det.innerHTML =
+      '<div class="sec-title" style="margin-top:8px">选中的层</div>'
+    + '<label>名称<input type="text" id="mb-name" value="'+escapeHtml(cur.name||'')+'"></label>'
+    + '<label>不透明度 <b id="mb-op-val">'+op+'%</b>'
+    +   '<input type="range" id="mb-op" min="0" max="100" value="'+op+'" style="width:100%;margin-top:6px">'
+    + '</label>'
+    + '<div class="blk-actions">'
+    +   '<button class="mini-btn" id="mb-fit" title="按这张图的原图比例铺进世界，绝不变形">📐 铺满世界</button>'
+    +   '<button class="mini-btn" id="mb-center">🎯 居中</button>'
+    +   '<button class="mini-btn" id="mb-swap">🖼 换图</button>'
+    +   '<button class="mini-btn" id="mb-lock">'+(cur.locked?'🔓 解锁':'🔒 锁定')+'</button>'
+    + '</div>'
+    + '<div class="blk-actions" style="margin-top:8px">'
+    +   '<button class="mini-btn grad" id="mb-compose">🧩 合成背景 → 给游戏用</button>'
+    + '</div>'
+    + '<div class="blk-meta" style="margin-top:8px">世界坐标 x '+(cur.x*100).toFixed(1)+'% · y '+(cur.y*100).toFixed(1)+'% · 宽 '+(cur.w*100).toFixed(1)+'% · 高 '+(tileH(cur)*100).toFixed(1)+'%</div>';
+
+  $('mb-name').oninput = ()=>{ cur.name=$('mb-name').value; saveMapsData(ensureMaps()); renderBgLayers(map); };
+  $('mb-op').oninput = ()=>{
+    cur.opacity = parseInt($('mb-op').value,10)/100;
+    $('mb-op-val').textContent = $('mb-op').value+'%';
+    const el=document.querySelector('#edit-stage [data-nid="'+cur.id+'"]');
+    if(el) el.style.opacity = cur.opacity;
+    markBgDirty(map);
+  };
+  $('mb-op').onchange = ()=>{ saveMapsData(ensureMaps()); renderProps(); };
+  $('mb-fit').onclick = ()=>fitBgLayer(cur.id);
+  $('mb-center').onclick = ()=>{ cur.x=0.5; cur.y=0.5; markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps(); };
+  $('mb-lock').onclick = ()=>{ cur.locked=!cur.locked; saveMapsData(ensureMaps()); renderEditor(); renderProps(); };
+  $('mb-compose').onclick = ()=>composeBackground();
+  $('mb-swap').onclick = ()=>{
+    const inp=$('mp-bg-file');
+    if(!inp) return;
+    inp.onchange = ev=>{
+      const f=ev.target.files[0]; if(!f) return;
+      if(f.size>2*1024*1024){ toast('图片太大，控制在 2MB 内'); inp.value=''; return; }
+      pickImage(ev, url=>{
+        cur.img=url;
+        const apply = ia=>{ const fit=bgAspectFit(ia, World.aspect(map)); cur.w=fit.w; cur.h=fit.h; markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps(); toast('🖼 这一层的图已替换'); };
+        const known=World._aspect[url];
+        if(known) apply(known); else World.probe(url, apply);
+      });
+      inp.onchange = null;
+    };
+    inp.click();
+  };
+}
+/* 📐 世界比例 + 全机型可见区 / UI 安全区 实测数字 */
+function renderWorldAspect(map){
+  const meta=$('mp-aspect-meta'); if(!meta) return;
+  const wa = World.aspect(map);
+  const src = map.worldAspect ? '手动设定' : (map.bg ? '按背景图实测' : '默认 16:9');
+  const vis = worldVisibleBox(wa), saf = worldSafeBox(wa);
+  const pc = v=>((v*100).toFixed(1)+'%');
+  meta.innerHTML =
+      '当前 <b>'+(Math.round(wa*1000)/1000)+'</b> · '+src
+    + '<br>📺 全机型可见区：x '+pc(vis.u0)+'~'+pc(vis.u1)+' · y '+pc(vis.v0)+'~'+pc(vis.v1)
+    + '<br>🛡 全机型 UI 安全区：x '+pc(saf.x0)+'~'+pc(saf.x1)+' · y '+pc(saf.y0)+'~'+pc(saf.y1)
+    + '<br><span style="color:#ff9c6e">外圈压暗的部分就是被「铺满裁切」吃掉的，任何机型都不保证可见。</span>';
+}
 function showPane(id){
   ['p-map','p-panel','p-tile','p-trigger','p-spawn'].forEach(p=>$(p).classList.toggle('hidden', p!==id));
   $('me-props-empty').classList.toggle('hidden', !!id);
@@ -1263,11 +1838,12 @@ function renderProps(){
   const d = ensureMaps();
   const map = d.maps[editState.nodeId];
   const sel = editState.sel;
+  if(sel && sel.kind==='bglayer') editState.bgSel = sel.id;
   // 切了节点就停试听（同一节点内的属性刷新不停）
   if(_bgmPreview.audio && _bgmPreview.obj !== map) stopBgmPreview();
   if(!map){ showPane(null); return; }
 
-  if(!sel){
+  if(!sel || sel.kind==='bglayer'){
     showPane('p-map');
     $('mp-heading').textContent=isMapNode(map)?'🗺 Map 地图设置':'🎯 Level 关卡设置';
     $('mp-type').value=map.nodeType;
@@ -1285,6 +1861,8 @@ function renderProps(){
     $('mp-parent').onchange=()=>{map.parent=$('mp-parent').value||null;saveMapsData(d);buildTree();renderProps();};
     $('mp-worldmap').onchange=()=>{map.allowWorldMap=$('mp-worldmap').checked;saveMapsData(d);};
     $('mp-teleout').onchange=()=>{map.allowTeleportOut=$('mp-teleout').checked;saveMapsData(d);};
+    renderBgLayers(map);
+    renderWorldAspect(map);
     renderBgmBlock('mp-bgm',map);
     return;
   }
@@ -1338,6 +1916,11 @@ function renderProps(){
     $('tl-name').oninput = ()=>{ t.name=$('tl-name').value; saveMapsData(d); renderEditor(); };
     $('tl-icon').oninput = ()=>{ t.icon=$('tl-icon').value; saveMapsData(d); renderEditor(); };
     $('tl-tip').oninput  = ()=>{ t.tip=$('tl-tip').value; saveMapsData(d); };
+    $('tl-lock').checked = !!t.locked;
+    $('tl-lock').onchange = ()=>{
+      t.locked=$('tl-lock').checked; saveMapsData(d); renderEditor(); renderProps();
+      toast(t.locked?('🔒 已锁定「'+t.name+'」· 画布上拖不动了'):'🔓 已解锁');
+    };
     $('tl-action').onchange=()=>{
       if(isMapNode(map)){t.action='navigate';return;}
       t.action=$('tl-action').value;
@@ -1390,6 +1973,11 @@ function renderProps(){
     $('tg-action').onchange = ()=>{ g.action=$('tg-action').value; commit(); renderEditor(); renderProps(); };
     $('tg-mode').onchange = ()=>{ g.triggerMode=$('tg-mode').value; saveMapsData(d); };
     $('tg-tip').oninput = ()=>{ g.tip=$('tg-tip').value; saveMapsData(d); };
+    $('tg-lock').checked = !!g.locked;
+    $('tg-lock').onchange = ()=>{
+      g.locked=$('tg-lock').checked; saveMapsData(d); renderEditor(); renderProps();
+      toast(g.locked?('🔒 已锁定「'+g.name+'」'):'🔓 已解锁');
+    };
     $('tg-panel').onchange=()=>{g.panelId=$('tg-panel').value;g.panel=g.panelId;saveMapsData(d);renderEditor();};
     ms.onchange=()=>{g.targetLevelId=ms.value||null;g.targetMap=g.targetLevelId;g.targetSpawn=null;commit();renderEditor();renderProps();};
     $('tg-spawn').onchange = ()=>{ g.targetSpawn=$('tg-spawn').value||null; commit(); };
@@ -1416,6 +2004,11 @@ function renderProps(){
     showPane('p-spawn');
     $('sp-name').value=s.name;
     $('sp-name').oninput = ()=>{ s.name=$('sp-name').value; saveMapsData(d); renderEditor(); };
+    $('sp-lock').checked = !!s.locked;
+    $('sp-lock').onchange = ()=>{
+      s.locked=$('sp-lock').checked; saveMapsData(d); renderEditor(); renderProps();
+      toast(s.locked?('🔒 已锁定入口点「'+s.name+'」'):'🔓 已解锁');
+    };
     $('sp-del').onclick = ()=>{
       map.spawns=(map.spawns||[]).filter(n=>n.id!==s.id);
       editState.sel=null; saveMapsData(d); buildTree(); renderEditor(); renderProps(); toast('已删除入口点');
@@ -1462,13 +2055,12 @@ function pickImage(e, cb){
 
 /* ================= 工具条 ================= */
 $('me-map-name').oninput = e=>{
-  const map=curMap(); if(!map) return;
-  map.name=e.target.value; saveMapsData(ensureMaps()); buildTree();
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  /* 以前是 saveMapsData(ensureMaps()) —— 存的是另一个对象，名字改动其实没落盘 */
+  map.name=e.target.value; saveMapsData(d); buildTree();
 };
-$('me-bg-file').onchange = e=>{
-  const map=curMap(); if(!map) return;
-  pickImage(e, url=>{ map.bg=url; saveMapsData(ensureMaps()); renderEditor(); });
-};
+/* 上传背景＝新增一个背景层（多层 PNG 叠加，点「🧩 合成背景」烤成一张给游戏读） */
+$('me-bg-file').onchange = e=> addBgLayerFromFile(e);
 $('me-add-tile').onclick=()=>{
   const d=ensureMaps(),map=d.maps[editState.nodeId];if(!map){toast('请先选择节点');return;}
   if(isMapNode(map)){
@@ -1534,8 +2126,8 @@ function setDevice(dev){
   frame.classList.add('device-' + dev);
   $('device-name').textContent = DEVICE_LABELS[dev] || '自定义';
   $('me-device').value = dev;
-  /* 切回全屏时跑一次 resizeMap() 让画布重新 16:9 撑满 */
-  setTimeout(()=>{ window.dispatchEvent(new Event('resize')); }, 60);
+  /* 机型一变 stage 的宽高比就变了 —— 世界容器必须按新比例重算（铺满裁切） */
+  setTimeout(()=>{ try{ renderEditor(); renderProps(); }catch(e){ console.warn(e); } }, 30);
 }
 $('me-device').onchange = ()=> setDevice($('me-device').value);
 /* ====== UI 预览开关 ====== */
@@ -1634,6 +2226,38 @@ $('me-set-root').onclick=()=>{
   d.entryLevelId=map.id;d.root=map.id;saveMapsData(d);buildTree();renderProps();renderEditor();
   toast('🏝 已把「'+map.name+'」设为登录入口 · parent 仍是「'+parent.name+'」');
 };
+
+/* ====== 🧱 背景层 / 📐 世界比例 / 🔒 批量锁 的按钮 ====== */
+$('mp-bg-add').onclick = ()=>{ const inp=$('mp-bg-file'); if(!inp) return; inp.onchange = e=>addBgLayerFromFile(e); inp.click(); };
+$('mp-bg-compose').onclick = ()=>composeBackground();
+$('mp-bg-clear').onclick = ()=>clearBgLayers();
+$('mp-aspect-auto').onclick = ()=>{
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const url = map.bg || ((map.bgLayers||[]).slice(-1)[0]||{}).img;
+  if(!url){ toast('这张地图还没有背景图，没法按图重算'); return; }
+  map.worldAspect=null;
+  World.adoptAspect(map, url);
+  if(!World._aspect[url]) World.probe(url, ()=>{});
+  saveMapsData(d); renderEditor(); renderProps();
+};
+const setAspectBtn=(id,v)=>{ const b=$(id); if(b) b.onclick=()=>{
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  map.worldAspect=v; saveMapsData(d); renderEditor(); renderProps();
+  toast('📐 世界比例已设为 '+(Math.round(v*100)/100)+' : 1');
+}; };
+setAspectBtn('mp-aspect-169', 16/9);
+setAspectBtn('mp-aspect-43', 4/3);
+setAspectBtn('mp-aspect-219', 19.5/9);
+const doLockAll=(locked)=>{
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map){ toast('先在左边选一张地图'); return; }
+  const n = setAllLocks(map, locked);
+  saveMapsData(d); renderEditor(); renderProps();
+  toast(locked ? ('🔒 已锁定 '+n+' 个元素 · 编辑时不会再误拖了') : ('🔓 已解锁 '+n+' 个元素'));
+};
+$('mp-lock-all').onclick   = ()=>doLockAll(true);
+$('mp-unlock-all').onclick = ()=>doLockAll(false);
+$('me-lock-all').onclick   = ()=>doLockAll(true);
+$('me-unlock-all').onclick = ()=>doLockAll(false);
 
 /* =========================================================
    行走区画笔：给「可走的最底层关卡」直接刷出能走的范围
@@ -1954,7 +2578,7 @@ $('edit-stage').addEventListener('pointerdown', e=>{
     banner.id = 'me-safebanner';
     document.body.appendChild(banner);
   }
-  banner.innerHTML = '<b>👀 红斜纹</b>=UI 侵入区（顶栏/底条/摇杆会盖） · <b>绿框</b>=东西放这里 · <b>蓝十字</b>=门口可点 <button type="button" class="bn-close" aria-label="关闭">✕</button>';
+  banner.innerHTML = '<b>🟦 蓝虚框</b>=全机型可见区 · <b>🟩 绿框</b>=全机型 UI 安全区（物件会被收回这里）· <b>暗纹</b>=铺满裁切吃掉的外圈 · 背景与资产共用一个变换，永不拉伸 <button type="button" class="bn-close" aria-label="关闭">✕</button>';
   banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:1000;background:linear-gradient(135deg,#fff3a3,#ffd86b);color:#3a2a08;padding:8px 16px 8px 18px;border-radius:999px;font-size:13px;font-weight:800;box-shadow:0 6px 22px rgba(0,0,0,.35);border:1px solid #b58a18;letter-spacing:.4px;display:flex;align-items:center;gap:10px;white-space:nowrap;max-width:92vw;';
   banner.querySelector('.bn-close').onclick = ()=> banner.remove();
   buildTree(); renderEditor(); renderProps();
@@ -1962,6 +2586,13 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   const report=validateSchemaV3(d);
   if(report.errors.length){console.group('🩺 Schema v3 阻断问题');report.errors.forEach(x=>console.error(x));console.groupEnd();toast('🩺 地图数据有 '+report.errors.length+' 个问题，请点「诊断」查看',4000);}
 })();
+
+/* 窗口 / 容器尺寸变了 → 世界容器必须按新的 stage 比例重算（铺满裁切） */
+let _reWorldT = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_reWorldT);
+  _reWorldT = setTimeout(()=>{ try{ renderEditor(); renderProps(); }catch(e){ console.warn('[world] resize 重算失败:', e); } }, 140);
+});
 
 /* =========================================================
    🔗 validateAndRepairMapLinks — 扫描所有节点，把"父级指向不存在或指向自己"
