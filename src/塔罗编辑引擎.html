@@ -822,9 +822,9 @@ let _defBackCache = null;
 const BUILTIN_BACK_URL = 'assets/tarot/back-mercury-1x.webp';
 /* 默认花边库（陛下上传的 4 张 5:8 装饰背景，中央留白可叠牌面） */
 const BUILTIN_FRAMES = [
-  { url: 'assets/tarot/frame-azure-clouds-1x.webp',  id: 'frame-azure-clouds',  name: '蓝云繁花' },
-  { url: 'assets/tarot/frame-moon-phases-1x.webp',   id: 'frame-moon-phases',   name: '月相花语' },
+  { url: 'assets/tarot/frame-azure-clouds-1x.webp',  id: 'frame-azure-clouds',  name: '蓝云月相' },
   { url: 'assets/tarot/frame-cloud-irises-1x.webp',  id: 'frame-cloud-irises',  name: '云海鸢尾' },
+  { url: 'assets/tarot/frame-moon-phases-1x.webp',   id: 'frame-moon-phases',   name: '月相花语' },
   { url: 'assets/tarot/frame-stellar-orbit-1x.webp', id: 'frame-stellar-orbit', name: '星轨花环' },
 ];
 let _builtinFrameCache = null;
@@ -880,7 +880,7 @@ function cardBaseSrc(cd, c){
    牌面内容 = 游戏里现在渲染的那套（emoji + 牌名 + 正位关键词），改哪张就从哪张的默认值往上加。 */
 const SEED_VER = 1;                       // 以后默认牌面样式升级就 +1，只刷新「还没自己改过」的牌
 const BACK_SEED_VER = 2;                  // 默认牌背素材升级就 +1（同时换 BUILTIN_BACK_URL），只刷新「还没自己改过」牌背用户
-const FRAME_SEED_VER = 1;                 // 默认花边素材升级就 +1（同时换 BUILTIN_FRAMES 列表），只刷新「陛下没改过对应花边」的
+const FRAME_SEED_VER = 2;                 // 默认花边素材升级就 +1（同时换 BUILTIN_FRAMES 列表），只刷新「陛下没改过对应花边」的
 async function seedBuiltinFrames(){
   let added = 0;
   for(const fd of BUILTIN_FRAMES){
