@@ -3398,11 +3398,15 @@ function renderShuffle(el){
   const deck = document.createElement('div'); deck.className='shuffle-deck';
   for(let i=0;i<10;i++){
     const c = document.createElement('div'); c.className='deck-card';
-    c.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:30px;';
+    c.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;';
     c.style.background = 'linear-gradient(145deg,#5c4a8a,#332a4a)';
     c.style.border = '2px solid rgba(var(--accent-rgb),.35)';
     c.style.transform = `translate(${(Math.random()-0.5)*8}px, ${-i*0.6}px) rotate(${(Math.random()-0.5)*6}deg)`;
-    c.textContent = '🔮';
+    /* 洗牌/切牌的牌堆也用真牌背素材（塔罗编辑引擎 > 素材包 > 内置 Mercury），拿不到才退 🔮 */
+    const _bs = tarotBackSrc(dpr2x());
+    c.innerHTML = _bs
+      ? `<img src="${_bs}" alt="牌背" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentNode.textContent='🔮';">`
+      : '🔮';
     deck.appendChild(c);
   }
   el.appendChild(deck);
@@ -3447,7 +3451,7 @@ function renderDraw(el){
   if(tarot.drawn.length){
     const row = document.createElement('div'); row.style.cssText='display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:6px;';
     tarot.drawn.forEach(d=>{
-      const c = document.createElement('div'); c.className='tcard drawn'; c.innerHTML=`<div class="back">🔮</div>`;
+      const c = document.createElement('div'); c.className='tcard drawn'; c.innerHTML = tarotBackHtml();
       row.appendChild(c);
     });
     el.appendChild(row);

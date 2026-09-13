@@ -604,6 +604,7 @@ const state = {
   back: null,           // {layers:[{id,name,src,x,y,w,h,rot,flipH,opacity,visible,locked}]}
   frames: {},           // id -> {id,name,layers:[]}
   currentFrameId: null,
+  defaultFrameId: null, // 全局默认花边：一张牌自己没指定（frameId 为空）就用这个，给 78 张一次套上
   cards: {},            // cardId -> {name,en,upright,reversed,desc,frameId,layers:[]}
   currentCardId: null,
   // 每页选中的图层
@@ -874,6 +875,24 @@ function cardBaseSrc(cd, c){
   if(!cd) return null;
   return (c && c.composed) || (c && c.composed2x) || defaultFaceSrc(cd);
 }
+/* 一张牌实际用的花边：自己指定了用自己的；没指定（空）就用全局默认；显式 '__none__' = 就不要花边 */
+function effFrameId(c){
+  if(!c) return state.defaultFrameId || null;
+  if(c.frameId === '__none__') return null;
+  return c.frameId || state.defaultFrameId || null;
+}
+function effFrame(c){
+  const id = effFrameId(c);
+  return id ? (state.frames[id] || null) : null;
+}
+/* 舞台显示尺寸（375×600）≠ 逻辑坐标（500×800）。
+   图层一律按逻辑坐标存（合成时用），渲染到屏幕上必须乘这个系数，
+   否则 500 宽的图层画在 375 宽的舞台上会被裁掉右边和下边（看着像「只显示左上角」）。 */
+function viewScale(stageEl){
+  const r = stageEl.getBoundingClientRect();
+  const w = (r && r.width) || stageEl.clientWidth || STAGE_W;
+  return (w > 0 ? w : STAGE_W) / STAGE_W;
+}
 
 /* ================= 默认牌面 = 游戏里现在用的那一套 ================= */
 /* 打开编辑器就自动铺好 78 张 + 牌背，陛下不用点任何按钮；
@@ -989,6 +1008,7 @@ async function saveAll(){
   await dbSet(DB_META, 'back', state.back);
   await dbSet(DB_META, 'frames', state.frames);
   await dbSet(DB_META, 'cards', state.cards);
+  await dbSet(DB_META, 'defaultFrameId', state.defaultFrameId);
   /* 版本号：游戏进塔罗页时比对这个，变了才重读，做到「改完立刻生效」 */
   try{ localStorage.setItem('tarot_editor_rev', String(Date.now())); }catch(e){}
   updateMeta();
@@ -1000,6 +1020,8 @@ async function loadAll(){
   if(b) state.back = b; else state.back = { layers: [] };
   if(f) state.frames = f; else state.frames = {};
   if(c) state.cards = c;
+  const _df = await dbGet(DB_META, 'defaultFrameId');
+  if(_df) state.defaultFrameId = _df;
   // 补齐 79 张牌数据结构
   ALL_CARDS.forEach(cd => {
     const dl = DEFAULT_LORE[cd.id] || {upright:'', reversed:'', desc:''};
@@ -1039,13 +1061,14 @@ function makeEditor(stageEl, getLayers, getSelId, setSelId, afterChange, extra){
     // 图层：数组顺序 0=最上层，倒序渲染让下标 0 在最上
     const layers = getLayers();
     const selId = getSelId();
+    const vk = viewScale(stageEl);          // 逻辑坐标 → 屏幕像素
     for(let i = layers.length-1; i >= 0; i--){
       const L = layers[i];
       const el = document.createElement('div');
       el.className = 'layer' + (L.visible===false ? ' hidden-l' : '') + (L.locked ? ' locked' : '') + (L.id===selId ? ' selected' : '');
       el.dataset.id = L.id;
-      el.style.left = L.x + 'px'; el.style.top = L.y + 'px';
-      el.style.width = L.w + 'px'; el.style.height = L.h + 'px';
+      el.style.left = (L.x*vk) + 'px'; el.style.top = (L.y*vk) + 'px';
+      el.style.width = (L.w*vk) + 'px'; el.style.height = (L.h*vk) + 'px';
       el.style.transform = `rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''}`;
       el.style.opacity = L.opacity != null ? L.opacity : 1;
       el.style.zIndex = layers.length - i;   // 数组前面的元素叠得更高
@@ -1418,7 +1441,7 @@ function renderFrameList(){
     const f = state.frames[id];
     const d = document.createElement('div');
     d.className = 'list-item' + (id===state.currentFrameId?' on':'');
-    d.innerHTML = `<span class="idx">🎨</span><span>${escapeHtml(f.name)}</span><span class="st">${f.layers.length}层</span>`;
+    d.innerHTML = `<span class="idx">🎨</span><span>${escapeHtml(f.name)}${id===state.defaultFrameId?' <b style="color:var(--violet)">🌐</b>':''}</span><span class="st">${f.layers.length}层</span>`;
     d.onclick = () => {
       state.currentFrameId = id; state.selLayer.frame = null;
       renderFrameList(); editorFrame.renderStage(); renderFramePanel();
@@ -1454,9 +1477,51 @@ function renderFramePanel(){
         <div class="btn-row" style="margin-top:10px;">
           <button class="btn mint small" id="__frameSave">💾 保存合成</button>
           <button class="btn danger small" id="__frameDel">🗑 删除模板</button>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:8px;">
+          <b style="color:var(--ink)">给全部 78 张套花边？</b><br>
+          点下面这颗按钮，这张花边就是「全局默认」——所有<b>没单独指定花边</b>的牌都会用上，
+          预览页、牌面编辑、点「保存合成图」后的成品都跟着变，<b>不用一张张改</b>。
+        </div>
+        <div class="btn-row">
+          <button class="btn small" id="__frameGlobalOn">🌐 设为全局默认（78张）</button>
+          <button class="btn small" id="__frameGlobalOff">✖ 取消全局默认</button>
+        </div>
+        <div class="btn-row" style="margin-top:6px;">
+          <button class="btn small" id="__frameApplyAll">📇 逐张写入全部牌（不跟随）</button>
+          <button class="btn small" id="__frameClearAll">🧹 清空全部牌的花边</button>
         </div>`
     }
   });
+  const gOn  = $('panel-frame').querySelector('#__frameGlobalOn');
+  const gOff = $('panel-frame').querySelector('#__frameGlobalOff');
+  if(gOn)  gOn.onclick  = async () => {
+    state.defaultFrameId = f.id;
+    await saveAll(); renderFrameList(); renderFramePanel(); renderPreviewGrid();
+    toast('已设为全局默认：' + f.name + ' · 78 张全部生效');
+  };
+  if(gOff) gOff.onclick = async () => {
+    if(state.defaultFrameId !== f.id){ toast('这张本来就不是全局默认'); return; }
+    state.defaultFrameId = null;
+    await saveAll(); renderFrameList(); renderFramePanel(); renderPreviewGrid();
+    toast('已取消全局默认');
+  };
+  const apB = $('panel-frame').querySelector('#__frameApplyAll');
+  if(apB) apB.onclick = async () => {
+    if(!confirm('把「'+f.name+'」逐张写进全部 78 张牌？\n（写死之后就不再跟随全局默认了）')) return;
+    ALL_CARDS.forEach(cd => { const cc = state.cards[cd.id]; if(cc) cc.frameId = f.id; });
+    await saveAll(); renderPreviewGrid();
+    toast('已写入 78 张 · 合成后游戏里才生效');
+  };
+  const clB = $('panel-frame').querySelector('#__frameClearAll');
+  if(clB) clB.onclick = async () => {
+    if(!confirm('清空全部 78 张牌的花边？\n（全局默认也一起取消）')) return;
+    ALL_CARDS.forEach(cd => { const cc = state.cards[cd.id]; if(cc) cc.frameId = null; });
+    state.defaultFrameId = null;
+    await saveAll(); renderPreviewGrid(); renderCardPanel();
+    toast('已清空全部花边');
+  };
   const nameI = $('panel-frame').querySelector('#__frameName');
   if(nameI){
     nameI.onchange = () => { f.name = nameI.value || '未命名'; saveAll(); renderFrameList(); $('frameTitle').textContent = f.name; };
@@ -1509,8 +1574,7 @@ function initCard(){
       overlay: (stage) => {
         // 顶层贴花边预览
         const c = state.cards[state.currentCardId];
-        if(!c || !c.frameId) return;
-        const f = state.frames[c.frameId]; if(!f) return;
+        const f = effFrame(c); if(!f) return;
         const ov = document.createElement('div');
         ov.className = 'frame-overlay';
         // 用 composed 优先，否则实时叠层
@@ -1521,13 +1585,14 @@ function initCard(){
           ov.appendChild(im);
         } else {
           // 逐层叠
+          const vk = viewScale(stage);
           const arr = f.layers.slice().reverse();
           arr.forEach(L => {
             if(L.visible === false || !L.src) return;
             const im = document.createElement('img'); im.src = L.src;
             im.style.position = 'absolute';
-            im.style.left = L.x + 'px'; im.style.top = L.y + 'px';
-            im.style.width = L.w + 'px'; im.style.height = L.h + 'px';
+            im.style.left = (L.x*vk) + 'px'; im.style.top = (L.y*vk) + 'px';
+            im.style.width = (L.w*vk) + 'px'; im.style.height = (L.h*vk) + 'px';
             im.style.transform = `rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''}`;
             im.style.transformOrigin = 'center center';
             im.style.opacity = L.opacity != null ? L.opacity : 1;
@@ -1579,9 +1644,15 @@ function renderCardPanel(){
   }
   $('cardTitle').textContent = c.name + ' · ' + c.en;
   $('cardBadge').textContent = c.id;
-  $('cardSub').textContent = '牌面主图在下 · 花边模板：' + (c.frameId ? (state.frames[c.frameId]?.name || '?') : '（未选）');
+  const _ef = effFrame(c);
+  $('cardSub').textContent = '牌面主图在下 · 花边：' + (_ef ? _ef.name : '（无）')
+    + (state.defaultFrameId && !c.frameId ? '（跟随全局）' : '');
 
-  const frameOptions = ['<option value="">— 无花边 —</option>']
+  const _defName = state.defaultFrameId ? (state.frames[state.defaultFrameId]?.name || '?') : null;
+  const frameOptions = [
+      `<option value="" ${(!c.frameId||c.frameId==='')?'selected':''}>${_defName ? '跟随全局默认：'+escapeHtml(_defName) : '— 无花边 —'}</option>`,
+      `<option value="__none__" ${c.frameId==='__none__'?'selected':''}>🚫 明确不要花边</option>`
+    ]
     .concat(Object.values(state.frames).map(f => `<option value="${f.id}" ${c.frameId===f.id?'selected':''}>${escapeHtml(f.name)}</option>`))
     .join('');
 
@@ -1612,7 +1683,7 @@ function renderCardPanel(){
     }
   });
   const p = $('panel-card');
-  const bind = (sel, key) => { const el = p.querySelector(sel); if(el) el.onchange = () => { c[key] = el.value; saveAll(); if(sel==='#__cardName') renderCardList(); if(sel==='#__cardFrame') editorCard.renderStage(); $('cardSub').textContent = '牌面主图在下 · 花边模板：'+(c.frameId?(state.frames[c.frameId]?.name||'?'):'（未选）'); }; };
+  const bind = (sel, key) => { const el = p.querySelector(sel); if(el) el.onchange = () => { c[key] = el.value; saveAll(); if(sel==='#__cardName') renderCardList(); if(sel==='#__cardFrame'){ editorCard.renderStage(); renderCardPanel(); renderPreviewGrid(); } }; };
   bind('#__cardFrame','frameId'); bind('#__cardName','name'); bind('#__cardEn','en');
   bind('#__cardUp','upright'); bind('#__cardRev','reversed'); bind('#__cardDesc','desc');
   const sbEl = p.querySelector('#__cardShowBase');
@@ -1638,8 +1709,9 @@ function renderCardPanel(){
     toast('合成中…');
     // 主图先合成
     const mainLayers = c.layers;
-    // 顶层加花边（如果有）
-    const frameLayers = c.frameId && state.frames[c.frameId] ? state.frames[c.frameId].layers : [];
+    // 顶层加花边（自己指定的优先，没指定就跟随全局默认）
+    const _fr = effFrame(c);
+    const frameLayers = _fr ? _fr.layers : [];
     // 合起来（花边在上）
     let merged = frameLayers.concat(mainLayers);
     // 最底下垫上「默认牌面」本体（陛下盖的图层是"加"在默认牌面上的，不是替换）
@@ -1672,6 +1744,18 @@ function renderCardPanel(){
 }
 
 /* ============== 页面 4：预览 ============== */
+/* 预览里实时叠花边：不用重新合成，改花边/换全局默认，回预览页立刻看得见 */
+function frameOverlayHtml(c){
+  const f = effFrame(c);
+  if(!f) return '';
+  const pc = v => (v*100).toFixed(3);
+  if(f.composed){
+    return `<img class="gc-fr" src="${f.composed}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:1;">`;
+  }
+  return f.layers.slice().reverse().filter(L => L.visible !== false && L.src).map(L =>
+    `<img class="gc-fr" src="${L.src}" style="position:absolute;left:${pc(L.x/STAGE_W)}%;top:${pc(L.y/STAGE_H)}%;width:${pc(L.w/STAGE_W)}%;height:${pc(L.h/STAGE_H)}%;object-fit:fill;transform:rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''};transform-origin:center center;opacity:${L.opacity!=null?L.opacity:1};pointer-events:none;z-index:1;">`
+  ).join('');
+}
 function renderPreviewGrid(){
   const g = $('grid-preview');
   g.innerHTML = '';
@@ -1686,18 +1770,20 @@ function renderPreviewGrid(){
     const gc = document.createElement('div'); gc.className = 'grid-card';
     if(c && c.composed){
       done++;
-      gc.innerHTML = `<img src="${c.composed}"><div class="badge-done">✓</div><div class="caption">${escapeHtml(cd.name)}</div>`;
+      gc.innerHTML = `<img src="${c.composed}">${frameOverlayHtml(c)}<div class="badge-done">✓</div><div class="caption">${escapeHtml(cd.name)}</div>`;
     } else if(c && c.layers.length){
       gc.innerHTML = `<div class="badge-empty">${escapeHtml(cd.name)}<br>未合成</div><div class="caption">${escapeHtml(cd.name)}</div>`;
     } else {
       gc.innerHTML = state.back.composed
-        ? `<img src="${state.back.composed}"><div class="caption">${escapeHtml(cd.name)}</div>`
+        ? `<img src="${state.back.composed}">${frameOverlayHtml(c)}<div class="caption">${escapeHtml(cd.name)}</div>`
         : `<div class="badge-empty">${escapeHtml(cd.name)}</div><div class="caption">${escapeHtml(cd.name)}</div>`;
     }
     gc.onclick = () => { state.currentCardId = cd.id; state.selLayer.card = null; switchPage('card'); };
     g.appendChild(gc);
   });
-  $('previewSub').textContent = `已合成 ${done} / 78 张 · 点卡片进入编辑`;
+  const _gf = state.defaultFrameId ? state.frames[state.defaultFrameId] : null;
+  $('previewSub').innerHTML = `已合成 ${done} / 78 张 · 点卡片进入编辑`
+    + (_gf ? ` · 全局花边：<b style="color:var(--violet)">${escapeHtml(_gf.name)}</b>（在「花边库」页设置）` : '');
 }
 
 /* ============== 导出 zip ============== */
