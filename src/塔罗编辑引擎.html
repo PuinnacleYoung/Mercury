@@ -855,11 +855,12 @@ function cardBaseSrc(cd, c){
 /* 打开编辑器就自动铺好 78 张 + 牌背，陛下不用点任何按钮；
    牌面内容 = 游戏里现在渲染的那套（emoji + 牌名 + 正位关键词），改哪张就从哪张的默认值往上加。 */
 const SEED_VER = 1;                       // 以后默认牌面样式升级就 +1，只刷新「还没自己改过」的牌
-const BACK_SEED_VER = 1;                  // 默认牌背素材升级就 +1（同时换 BUILTIN_BACK_URL），只刷新「还没自己改过」牌背用户
+const BACK_SEED_VER = 2;                  // 默认牌背素材升级就 +1（同时换 BUILTIN_BACK_URL），只刷新「还没自己改过」牌背用户
 async function generatePlaceholders(opts){
   opts = opts || {};
   const forceDefault = !!opts.forceDefault;        // true：连「仍是默认牌面」的一起刷新
   const faceOnly     = !!opts.faceOnly;            // true：只刷牌背，不动 78 张牌面（back 升级专用）
+  const forceBack    = !!opts.back;                // true：牌背强制重刷（素材升级 / 陛下手动点重置）
   let n = 0;
   if(!faceOnly){
     const todo = ALL_CARDS.filter(cd => {
