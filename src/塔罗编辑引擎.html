@@ -196,6 +196,8 @@ header{
 .btn.small{padding:5px 10px; font-size:11px; border-radius:8px;}
 .btn.on{background:linear-gradient(135deg,var(--violet),var(--pink)); border-color:transparent; color:#fff;}
 .btn-row{display:flex; gap:6px; flex-wrap:wrap;}
+.chk-line{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--sub);cursor:pointer;user-select:none;}
+.chk-line input{width:15px;height:15px;accent-color:var(--violet);cursor:pointer;flex:0 0 auto;}
 /* 游戏同步状态条 */
 .sync-bar{display:flex;align-items:center;gap:9px;margin:0 0 14px;padding:11px 15px;border-radius:12px;background:linear-gradient(135deg,rgba(139,111,216,.10),rgba(255,107,157,.08));border:1px solid rgba(139,111,216,.22);font-size:13px;color:var(--sub);line-height:1.6;}
 .sync-bar .sb-ico{font-size:17px;line-height:1;flex:0 0 auto;}
@@ -347,7 +349,7 @@ input[type=range]::-moz-range-thumb{width:14px; height:14px; border:0; border-ra
     <div class="card-head" data-page-node-id="BtdHvDi20EBsvOrbVEWBqr">
       <div data-page-node-id="xgu5jwnz6Pb4iV8OVMkw4B"><h2 data-page-node-id="lrc8RiOqTdD0EsEleEMWD3">👁 <span class="accent" data-page-node-id="xuG30sPwHgamXcxBDFYmQK">全套预览</span></h2><div class="card-sub" id="previewSub" data-page-node-id="4pcqion9jlWXa46FmJWt3D">已完成的牌显示合成图，未完成的显示牌背 · 点击进入编辑</div></div>
       <div class="btn-row" data-page-node-id="ue69WCsU20pr2dAFA49opv">
-        <button class="btn gold" id="btn-genPlaceholder" title="把游戏里现在用的 emoji 占位符画成 500×800 真牌面，作为这一整套牌的默认值" data-page-node-id="btnGenPlaceholder">🎴 生成占位牌面</button>
+        <button class="btn gold" id="btn-genPlaceholder" title="整套牌恢复成默认牌面（就是游戏里现在用的那套）。打开编辑器时已自动铺好，这里只在改乱了想整体还原时才需要点" data-page-node-id="btnGenPlaceholder">↺ 恢复默认牌面</button>
         <button class="btn violet" id="btn-exportZip" data-page-node-id="675BzWYVmdZ4Vm70V07tmF">📦 导出 ZIP（含 79 张 WebP + JSON）</button>
         <button class="btn mint" id="btn-exportJson" data-page-node-id="lncLtSAstOAR99Iahqz3Ag">💾 只导出 JSON 元数据</button>
         <button class="btn" id="btn-reload" data-page-node-id="jWpAw3c1lmfllAdQaMgKpz">↻ 刷新</button>
@@ -813,29 +815,79 @@ function placeholderBackCanvas(W, H){
 }
 function canvasToWebp(cvs, q){ return cvs.toDataURL('image/webp', q || WEBP_Q); }
 
-/* 一键给还没牌面的牌生成占位牌面（默认值 = 游戏里现在用的那套 emoji 占位符） */
-async function generatePlaceholders(onlyMissing){
-  const todo = ALL_CARDS.filter(cd => !onlyMissing || !(state.cards[cd.id] && state.cards[cd.id].composed));
-  if(!todo.length){ toast('78 张牌都已经有牌面了'); return 0; }
+/* ---- 默认牌面/牌背取图：优先已合成的，没有就现画一张（保证打开任何一张都不是空白） ---- */
+const _defFaceCache = new Map();
+let _defBackCache = null;
+function defaultFaceSrc(cd){
+  if(_defFaceCache.has(cd.id)) return _defFaceCache.get(cd.id);
+  const s = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
+  _defFaceCache.set(cd.id, s);
+  return s;
+}
+function defaultBackSrc(){
+  if(_defBackCache) return _defBackCache;
+  _defBackCache = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
+  return _defBackCache;
+}
+function cardById(id){ return ALL_CARDS.find(x => x.id === id) || null; }
+function cardBaseSrc(cd, c){
+  if(!cd) return null;
+  return (c && c.composed) || (c && c.composed2x) || defaultFaceSrc(cd);
+}
+
+/* ================= 默认牌面 = 游戏里现在用的那一套 ================= */
+/* 打开编辑器就自动铺好 78 张 + 牌背，陛下不用点任何按钮；
+   牌面内容 = 游戏里现在渲染的那套（emoji + 牌名 + 正位关键词），改哪张就从哪张的默认值往上加。 */
+const SEED_VER = 1;                       // 以后默认牌面样式升级就 +1，只刷新「还没自己改过」的牌
+async function generatePlaceholders(opts){
+  opts = opts || {};
+  const forceDefault = !!opts.forceDefault;        // true：连「仍是默认牌面」的一起刷新
+  const todo = ALL_CARDS.filter(cd => {
+    const c = state.cards[cd.id];
+    if(!c || !c.composed) return true;             // 没牌面 → 补默认
+    return forceDefault && c.isDefault !== false;  // 升级样式 → 只动陛下没改过的
+  });
+  if(!todo.length) return 0;
   let n = 0;
   for(let i=0; i<todo.length; i++){
     const cd = todo[i];
     const c = state.cards[cd.id] || (state.cards[cd.id] = {id:cd.id, name:cd.name, en:cd.en, frameId:null, layers:[]});
     c.name = c.name || cd.name; c.en = c.en || cd.en;
+    /* 默认牌面只出 1x（500×800 已远超实际显示尺寸），78 张一起存才不至于撑爆库；
+       陛下自己合成的那张仍会出 2x，导出 ZIP 时缺 2x 的会自动补一张放大的。 */
     c.composed   = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
-    c.composed2x = canvasToWebp(placeholderFaceCanvas(cd, OUT_2X.w, OUT_2X.h));
+    c.composed2x = null;
+    c.isDefault  = true;
+    if(!c.layers) c.layers = [];
     n++;
-    if(i % 8 === 7){
-      toast('生成中 ' + (i+1) + ' / ' + todo.length);
-      await new Promise(r => setTimeout(r, 0));   // 让出一帧，别卡死界面
+    if(i % 6 === 5){
+      toast('准备默认牌面 ' + (i+1) + ' / ' + todo.length);
+      await new Promise(r => setTimeout(r, 0));    // 让出一帧，别卡死界面
     }
   }
-  if(!state.back.composed){
+  if(!state.back.composed || forceDefault){
     state.back.composed   = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
-    state.back.composed2x = canvasToWebp(placeholderBackCanvas(OUT_2X.w, OUT_2X.h));
+    state.back.composed2x = null;          // 同上，导出时自动补放大的 2x
+    state.back.isDefault  = true;
   }
   await saveAll();
   return n;
+}
+/* 启动自检：库里没牌面就自动铺一套，铺完各页重绘一遍 */
+async function ensureSeeded(){
+  let seed = null;
+  try{ seed = await dbGet(DB_META, 'seed'); }catch(e){}
+  const missing = ALL_CARDS.some(cd => !(state.cards[cd.id] && state.cards[cd.id].composed));
+  if(seed && seed.ver === SEED_VER && !missing && state.back.composed) return;
+  const upgraded = !seed || seed.ver !== SEED_VER;
+  const n = await generatePlaceholders({ forceDefault: upgraded });
+  try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, at: Date.now() }); }catch(e){}
+  try{ renderPreviewGrid(); }catch(e){}
+  try{ renderCardList(); }catch(e){}
+  if(typeof editorCard  !== 'undefined' && editorCard)  editorCard.renderStage();
+  if(typeof editorBack  !== 'undefined' && editorBack)  editorBack.renderStage();
+  updateMeta();
+  if(n) toast('默认牌面已就绪：' + n + ' 张 · 就是游戏里现在用的那套');
 }
 
 /* ============== 存/取 ============== */
@@ -1182,7 +1234,20 @@ function initBack(){
     () => state.back.layers,
     () => state.selLayer.back,
     id => state.selLayer.back = id,
-    ({end}) => { editorBack.renderStage(); renderBackPanel(); if(end) saveAll(); }
+    ({end}) => { editorBack.renderStage(); renderBackPanel(); if(end) saveAll(); },
+    {
+      underlay: (stage) => {
+        // 最底层铺默认牌背（游戏里现在用的那个），别让页面空白
+        const old = stage.querySelector('.card-underlay'); if(old) old.remove();
+        const src = state.back.composed || defaultBackSrc();
+        if(!src) return;
+        const im = document.createElement('img');
+        im.className = 'card-underlay';
+        im.src = src;
+        im.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;z-index:0;pointer-events:none;';
+        stage.appendChild(im);
+      }
+    }
   );
   editorBack.renderStage();
   renderBackPanel();
@@ -1201,8 +1266,11 @@ function renderBackPanel(){
   const b = $('panel-back').querySelector('#__saveBack');
   if(b) b.onclick = async () => {
     toast('合成中…');
-    const c1 = await composeLayers(state.back.layers, OUT_1X.w, OUT_1X.h, WEBP_Q);
-    const c2 = await composeLayers(state.back.layers, OUT_2X.w, OUT_2X.h, WEBP_Q);
+    // 垫一层默认牌背，免得没加图层就合成出一张全透明的
+    const bl = state.back.layers.slice();
+    bl.push({ id:'__base', src: defaultBackSrc(), x:0, y:0, w:STAGE_W, h:STAGE_H, opacity:1, visible:true, rot:0, flipH:false });
+    const c1 = await composeLayers(bl, OUT_1X.w, OUT_1X.h, WEBP_Q);
+    const c2 = await composeLayers(bl, OUT_2X.w, OUT_2X.h, WEBP_Q);
     state.back.composed = c1 ? c1.dataUrl : null;
     state.back.composed2x = c2 ? c2.dataUrl : null;
     await saveAll();
@@ -1317,6 +1385,20 @@ function initCard(){
     id => state.selLayer.card = id,
     ({end}) => { editorCard.renderStage(); renderCardPanel(); if(end) saveAll(); },
     {
+      underlay: (stage) => {
+        // 最底层铺上这张牌的默认牌面（游戏里现在用的那张），陛下看到的不再是空白
+        const old = stage.querySelector('.card-underlay'); if(old) old.remove();
+        const cd = cardById(state.currentCardId);
+        const c  = state.cards[state.currentCardId];
+        if(!cd || !c || c.showBase === false) return;
+        const src = cardBaseSrc(cd, c);
+        if(!src) return;
+        const im = document.createElement('img');
+        im.className = 'card-underlay';
+        im.src = src;
+        im.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;z-index:0;pointer-events:none;';
+        stage.appendChild(im);
+      },
       overlay: (stage) => {
         // 顶层贴花边预览
         const c = state.cards[state.currentCardId];
@@ -1360,7 +1442,7 @@ function renderCardList(){
   function group(title){ const d = document.createElement('div'); d.className = 'group-title'; d.textContent = title; list.appendChild(d); }
   function item(cd, tag){
     const c = state.cards[cd.id] || {};
-    const done = (c.layers && c.layers.length) ? '✅' : '';
+    const done = c.composed ? (c.isDefault === false ? '✅' : '✔') : '';
     const d = document.createElement('div');
     d.className = 'list-item' + (cd.id===state.currentCardId?' on':'');
     d.innerHTML = `<span class="idx">${tag}</span><span>${escapeHtml(cd.name)}</span><span class="st">${done}</span>`;
@@ -1426,6 +1508,24 @@ function renderCardPanel(){
   const bind = (sel, key) => { const el = p.querySelector(sel); if(el) el.onchange = () => { c[key] = el.value; saveAll(); if(sel==='#__cardName') renderCardList(); if(sel==='#__cardFrame') editorCard.renderStage(); $('cardSub').textContent = '牌面主图在下 · 花边模板：'+(c.frameId?(state.frames[c.frameId]?.name||'?'):'（未选）'); }; };
   bind('#__cardFrame','frameId'); bind('#__cardName','name'); bind('#__cardEn','en');
   bind('#__cardUp','upright'); bind('#__cardRev','reversed'); bind('#__cardDesc','desc');
+  const sbEl = p.querySelector('#__cardShowBase');
+  if(sbEl) sbEl.onchange = () => {
+    c.showBase = sbEl.checked;
+    saveAll(); editorCard.renderStage();
+    toast(c.showBase ? '底图：默认牌面' : '底图：已关闭，从空白开始画');
+  };
+  const rfB = p.querySelector('#__cardResetFace');
+  if(rfB) rfB.onclick = async () => {
+    const cd = cardById(state.currentCardId); if(!cd) return;
+    if(!confirm('把「' + (c.name || cd.name) + '」重置为默认牌面？\n（这张牌上自己加的图层会被清掉）')) return;
+    c.composed   = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
+    c.composed2x = null;
+    c.layers = []; c.isDefault = true; c.showBase = true; state.selLayer.card = null;
+    _defFaceCache.delete(cd.id);
+    await saveAll();
+    editorCard.renderStage(); renderCardPanel(); renderCardList(); renderPreviewGrid();
+    toast('已重置为默认牌面');
+  };
   const saveB = p.querySelector('#__cardSave');
   if(saveB) saveB.onclick = async () => {
     toast('合成中…');
@@ -1434,9 +1534,20 @@ function renderCardPanel(){
     // 顶层加花边（如果有）
     const frameLayers = c.frameId && state.frames[c.frameId] ? state.frames[c.frameId].layers : [];
     // 合起来（花边在上）
-    const merged = frameLayers.concat(mainLayers);
+    let merged = frameLayers.concat(mainLayers);
+    // 最底下垫上「默认牌面」本体（陛下盖的图层是"加"在默认牌面上的，不是替换）
+    // 注意：这里必须用重新画的那张默认图，不能用 c.composed —— 否则会把上次合成结果又垫一层，图层越叠越重
+    const cd0 = cardById(state.currentCardId);
+    const baseSrc = (c.showBase !== false && cd0) ? defaultFaceSrc(cd0) : null;
+    if(baseSrc){
+      merged = merged.concat([{
+        id:'__base', src:baseSrc, x:0, y:0, w:STAGE_W, h:STAGE_H,
+        opacity:1, visible:true, rot:0, flipH:false
+      }]);
+    }
     const c1 = await composeLayers(merged, OUT_1X.w, OUT_1X.h, WEBP_Q);
     const c2 = await composeLayers(merged, OUT_2X.w, OUT_2X.h, WEBP_Q);
+    c.isDefault = !!(baseSrc && !mainLayers.length && !frameLayers.length);
     c.composed = c1 ? c1.dataUrl : null;
     c.composed2x = c2 ? c2.dataUrl : null;
     await saveAll();
@@ -1497,13 +1608,16 @@ async function exportZip(){
   files.push({ name:'meta.json', data: new TextEncoder().encode(JSON.stringify(meta, null, 2)) });
   // 牌背
   if(state.back.composed) files.push({ name:'back.webp', data: dataUrlToU8(state.back.composed) });
-  if(state.back.composed2x) files.push({ name:'back@2x.webp', data: dataUrlToU8(state.back.composed2x) });
-  // 79 张
-  ALL_CARDS.forEach(cd => {
+  const back2x = state.back.composed2x || (state.back.composed ? await upscale2x(state.back.composed) : null);
+  if(back2x) files.push({ name:'back@2x.webp', data: dataUrlToU8(back2x) });
+  // 78 张（默认牌面只有 1x，这里补一张放大的 2x，保证导出包完整）
+  for(const cd of ALL_CARDS){
     const c = state.cards[cd.id];
     if(c && c.composed) files.push({ name:'cards/'+cd.id+'.webp', data: dataUrlToU8(c.composed) });
-    if(c && c.composed2x) files.push({ name:'cards/'+cd.id+'@2x.webp', data: dataUrlToU8(c.composed2x) });
-  });
+    const s2 = (c && c.composed2x) || (c && c.composed ? await upscale2x(c.composed) : null);
+    if(s2) files.push({ name:'cards/'+cd.id+'@2x.webp', data: dataUrlToU8(s2) });
+  }
+  toast('准备中 · 图片处理完毕');
   // 花边合成
   Object.values(state.frames).forEach(f => {
     if(f.composed) files.push({ name:'frames/'+f.id+'.webp', data: dataUrlToU8(f.composed) });
@@ -1516,6 +1630,18 @@ async function exportZip(){
   a.href = url; a.download = 'tarot_assets_'+Date.now()+'.zip'; a.click();
   setTimeout(()=>URL.revokeObjectURL(url), 3000);
   toast('已导出 · '+files.length+' 个文件');
+}
+/* 缺 2x 时把 1x 放大一张（默认牌面只存了 1x，导出时补） */
+async function upscale2x(dataUrl){
+  if(!dataUrl) return null;
+  try{
+    const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    if(im.naturalWidth >= OUT_2X.w) return dataUrl;
+    const c = document.createElement('canvas'); c.width = OUT_2X.w; c.height = OUT_2X.h;
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(im, 0, 0, OUT_2X.w, OUT_2X.h);
+    return c.toDataURL('image/webp', WEBP_Q);
+  }catch(e){ return dataUrl; }
 }
 function dataUrlToU8(dataUrl){
   const base64 = dataUrl.split(',')[1];
@@ -1635,26 +1761,28 @@ function updateSyncBar(done){
   if(typeof done !== 'number') done = ALL_CARDS.filter(cd => state.cards[cd.id] && state.cards[cd.id].composed).length;
   const backOk = !!state.back.composed;
   el.innerHTML = done > 0
-    ? `已跟游戏打通 · 游戏会<b>直接读取</b>这里的 <b>${done}</b>/78 张牌面${backOk ? ' + 牌背' : '（牌背还没做，游戏用渐变兜底）'}。改完合成后，<b>回到游戏进塔罗页即刻生效</b>，不用导出 ZIP。`
-    : `还没生成任何牌面，游戏现在显示的是内置 emoji 占位。点上面 <b>🎴 生成占位牌面</b>，把这套占位符固化成 78 张真牌面当默认值，之后想改哪张点进去改就行。`;
+    ? `已跟游戏打通 · 游戏会<b>直接读取</b>这里的 <b>${done}</b>/78 张牌面${backOk ? ' + 牌背' : '（牌背还没做，游戏用渐变兜底）'}。默认牌面就是游戏里现在用的那套，改哪张、合成后，<b>回到游戏进塔罗页即刻生效</b>，不用导出 ZIP。`
+    : `正在准备默认牌面…（就是游戏里现在用的那套，稍等几秒自动铺满 78 张）`;
 }
 
-/* ============== 生成占位牌面 ============== */
+/* ============== 整套恢复默认牌面（平时用不上，打开编辑器已自动铺好） ============== */
 $('btn-genPlaceholder').onclick = async ()=>{
   const btn = $('btn-genPlaceholder');
   const missing = ALL_CARDS.filter(cd => !(state.cards[cd.id] && state.cards[cd.id].composed)).length;
-  let redoAll = false;
-  if(missing === 0){
-    if(!confirm('78 张牌都已经有牌面了。\n\n要全部重新生成一遍吗？（现有牌面会被占位符覆盖）')) return;
-    redoAll = true;
-  } else if(!confirm('将为 ' + missing + ' 张还没有牌面的牌生成 emoji 占位牌面。\n\n这就是游戏里现在用的那套占位符，生成后可以随时点进去逐张替换成真图。\n\n继续？')) return;
-  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  const forceDefault = (missing === 0);
+  if(forceDefault){
+    if(!confirm('78 张牌都已经有牌面了。\n\n要整套恢复成默认牌面吗？\n（陛下自己改过的牌也会被覆盖）')) return;
+  } else if(!confirm('将为 ' + missing + ' 张还没牌面的牌补上默认牌面（游戏里现在用的那套）。\n\n继续？')) return;
+  btn.disabled = true; btn.textContent = '⏳ 恢复中…';
   try{
-    const n = await generatePlaceholders(!redoAll);
-    renderPreviewGrid(); updateMeta();
-    toast(n ? ('✅ 已生成 ' + n + ' 张占位牌面，游戏里立刻生效') : '没有需要生成的牌');
-  }catch(e){ toast('生成失败：' + ((e && e.message) || e)); }
-  btn.disabled = false; btn.textContent = '🎴 生成占位牌面';
+    const n = await generatePlaceholders({ forceDefault });
+    renderPreviewGrid();
+    try{ renderCardList(); }catch(e){}
+    if(typeof editorCard !== 'undefined' && editorCard) editorCard.renderStage();
+    updateMeta();
+    toast(n ? ('✅ 已恢复 ' + n + ' 张默认牌面，游戏里立刻生效') : '没有需要恢复的牌');
+  }catch(e){ toast('恢复失败：' + ((e && e.message) || e)); }
+  btn.disabled = false; btn.textContent = '↺ 恢复默认牌面';
 };
 
 /* ============== 导出按钮 ============== */
@@ -1671,6 +1799,8 @@ $('btn-hub-back').onclick = () => { location.href = 'index.html?hub=1'; };
   state.currentFrameId = Object.keys(state.frames)[0] || null;
   initBack(); initFrame(); initCard();
   updateMeta();
+  // 首次打开（或默认牌面升级）自动铺整套，陛下不用点按钮
+  await ensureSeeded();
 })().catch(err => { console.error(err); toast('启动失败：'+err.message); });
 
 })();

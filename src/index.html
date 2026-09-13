@@ -1544,14 +1544,22 @@ function tarotBackHtml(){
     ? `<div class="back"><img src="${src}" alt="牌背" onerror="this.style.display='none';this.parentNode.textContent='🔮';"></div>`
     : `<div class="back">🔮</div>`;
 }
-/* 牌面 HTML（真图 + 失败回落 emoji） */
+/* 图挂了就退回 emoji 占位那一套 */
+function tarotImgFallback(img){
+  const p = img.parentNode; if(!p) return;
+  img.style.display = 'none';
+  p.classList.remove('has-img');
+  const ic = p.querySelector('.f-ico'); if(ic) ic.style.display = 'block';
+  const nm = p.querySelector('.f-name'); if(nm) nm.style.display = 'block';
+}
+/* 牌面 HTML（真图 + 失败回落 emoji）。真图上已经画了牌名，这里只叠正/逆位，别重复 */
 function tarotFaceHtml(card, reversed){
   const src = tarotImgSrc(card.id, dpr2x());
   if(src){
     return `<div class="face has-img">` +
-      `<img src="${src}" alt="${escapeHtml(card.name)}" onerror="this.style.display='none';this.parentNode.classList.remove('has-img');this.parentNode.querySelector('.f-ico').style.display='block';">` +
+      `<img src="${src}" alt="${escapeHtml(card.name)}" onerror="tarotImgFallback(this)">` +
       `<div class="f-ico" style="display:none">${card.icon}</div>` +
-      `<div class="f-name">${escapeHtml(card.name)}</div>` +
+      `<div class="f-name" style="display:none">${escapeHtml(card.name)}</div>` +
       `<div class="f-pos">${reversed?'逆位':'正位'}</div>` +
     `</div>`;
   }
