@@ -178,6 +178,8 @@ header{
 
 .slider-row{display:flex; align-items:center; gap:8px; font-size:11px;}
 .slider-row input[type=range]{flex:1;}
+.slider-row input[type=number]{width:62px; padding:3px 6px; border-radius:6px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--ink); font:600 12px ui-monospace,monospace; text-align:right;}
+.slider-row input[type=number]:focus{outline:none; border-color:var(--violet);}
 .slider-row .v{min-width:36px; text-align:right; color:var(--sub); font-family:ui-monospace,monospace;}
 
 /* 按钮 */
@@ -228,9 +230,15 @@ header{
   position:absolute; bottom:0; left:0; right:0; padding:6px 8px;
   background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);
   color:#fff; font-size:11px; font-weight:700;
+  z-index:2;   /* 花边在牌面之上是对的（镂空画框），但不能把 ✓ 徽章和牌名盖住 */
 }
-.grid-card .badge-done{position:absolute; top:6px; right:6px; background:var(--mint); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; font-weight:800;}
-.grid-card .badge-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:11px;}
+.grid-card .badge-done{position:absolute; top:6px; right:6px; background:var(--mint); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; font-weight:800; z-index:2;}
+.grid-card .badge-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:11px; z-index:2;}
+.gc-fr{z-index:1;}            /* 牌面(z:0)之上、徽章/牌名(z:2)之下：维持「花边框住牌面」的视觉 */
+.preview-toolbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:4px 0 10px; padding:8px 10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:12px; color:var(--sub);}
+.preview-toolbar .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.2);}
+.preview-toolbar .seg button{background:transparent; border:0; color:var(--sub); padding:5px 10px; cursor:pointer; font-weight:700; font-size:12px;}
+.preview-toolbar .seg button.on{background:var(--violet); color:#fff;}
 
 #toast{
   position:fixed; left:50%; top:22px; transform:translateX(-50%) translateY(-80px);
@@ -347,7 +355,17 @@ input[type=range]::-moz-range-thumb{width:14px; height:14px; border:0; border-ra
 <div class="page" id="page-preview" data-page-node-id="qXqiZaF5MieuOEW5HcKQIl">
   <div class="card" style="width:min(1400px,100%); margin:0 auto;" data-page-node-id="GuNWyaDyEx4AYb9JhYS5FW">
     <div class="card-head" data-page-node-id="BtdHvDi20EBsvOrbVEWBqr">
-      <div data-page-node-id="xgu5jwnz6Pb4iV8OVMkw4B"><h2 data-page-node-id="lrc8RiOqTdD0EsEleEMWD3">👁 <span class="accent" data-page-node-id="xuG30sPwHgamXcxBDFYmQK">全套预览</span></h2><div class="card-sub" id="previewSub" data-page-node-id="4pcqion9jlWXa46FmJWt3D">已完成的牌显示合成图，未完成的显示牌背 · 点击进入编辑</div></div>
+      <div data-page-node-id="xgu5jwnz6Pb4iV8OVMkw4B"><h2 data-page-node-id="lrc8RiOqTdD0EsEleEMWD3">👁 <span class="accent" data-page-node-id="xuG30sPwHgamXcxBDFYmQK">全套预览</span></h2><div class="card-sub" id="previewSub" data-page-node-id="4pcqion9jlWXa46FmJWt3D">已完成的牌显示合成图，未完成的显示牌背 · 点击进入编辑</div>
+        <div class="preview-toolbar" id="previewToolbar">
+          <span style="font-weight:800;color:var(--ink);">🔲 花边预览</span>
+          <div class="seg" id="segFramePreview">
+            <button data-on="1" class="on">显示</button>
+            <button data-on="0">隐藏</button>
+          </div>
+          <span style="opacity:.5;">·</span>
+          <span style="font-size:11px;">隐藏后预览只剩牌面，方便看每张图本身</span>
+        </div>
+      </div>
       <div class="btn-row" data-page-node-id="ue69WCsU20pr2dAFA49opv">
         <button class="btn gold" id="btn-genPlaceholder" title="整套牌恢复成默认牌面（就是游戏里现在用的那套）。打开编辑器时已自动铺好，这里只在改乱了想整体还原时才需要点" data-page-node-id="btnGenPlaceholder">↺ 恢复默认牌面</button>
         <button class="btn violet" id="btn-exportZip" data-page-node-id="675BzWYVmdZ4Vm70V07tmF">📦 导出 ZIP（含 79 张 WebP + JSON）</button>
@@ -605,6 +623,7 @@ const state = {
   frames: {},           // id -> {id,name,layers:[]}
   currentFrameId: null,
   defaultFrameId: null, // 全局默认花边：一张牌自己没指定（frameId 为空）就用这个，给 78 张一次套上
+  previewFrameOn: true, // 预览页是否叠花边（陛下要：能一键关掉只看牌面，不影响牌本身合成图）
   cards: {},            // cardId -> {name,en,upright,reversed,desc,frameId,layers:[]}
   currentCardId: null,
   // 每页选中的图层
@@ -994,6 +1013,7 @@ async function ensureSeeded(){
   }
   /* 自己合成过的也算「已处理」，别每次开局都弹一遍 */
   try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, frameVer: FRAME_SEED_VER, at: Date.now() }); }catch(e){}
+  try{ bindFramePreviewToggle(); }catch(e){}
   try{ renderPreviewGrid(); }catch(e){}
   try{ renderCardList(); }catch(e){}
   if(typeof editorCard  !== 'undefined' && editorCard)  editorCard.renderStage();
@@ -1310,12 +1330,15 @@ function renderLayerPanel(panelEl, ctx){
       <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:8px;">🎯 当前图层：${escapeHtml(sel.name)}</div>
       <div class="slider-row"><label style="min-width:32px;font-size:11px;">缩放</label>
         <input type="range" id="__scale" min="0.1" max="3" step="0.01" value="${(sel.w/STAGE_W).toFixed(2)}">
+        <input type="number" id="__scaleN" min="0.1" max="3" step="0.01" value="${(sel.w/STAGE_W).toFixed(2)}" title="缩放（直接键入精确值）">
         <span class="v" id="__scaleV">${(sel.w/STAGE_W).toFixed(2)}x</span></div>
       <div class="slider-row" style="margin-top:6px;"><label style="min-width:32px;font-size:11px;">旋转</label>
         <input type="range" id="__rot" min="-180" max="180" step="1" value="${sel.rot||0}">
+        <input type="number" id="__rotN" min="-180" max="180" step="1" value="${Math.round(sel.rot||0)}" title="旋转角度">
         <span class="v" id="__rotV">${Math.round(sel.rot||0)}°</span></div>
       <div class="slider-row" style="margin-top:6px;"><label style="min-width:32px;font-size:11px;">不透明</label>
         <input type="range" id="__op" min="0" max="1" step="0.02" value="${sel.opacity!=null?sel.opacity:1}">
+        <input type="number" id="__opN" min="0" max="1" step="0.02" value="${(sel.opacity!=null?sel.opacity:1).toFixed(2)}" title="不透明度（0~1）">
         <span class="v" id="__opV">${Math.round((sel.opacity!=null?sel.opacity:1)*100)}%</span></div>
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn small" id="__flip">↔ 镜像</button>
@@ -1323,20 +1346,42 @@ function renderLayerPanel(panelEl, ctx){
         <button class="btn small" id="__reset">↺ 复位</button>
       </div>`;
     panelEl.appendChild(props);
-    const scaleI = props.querySelector('#__scale'), scaleV = props.querySelector('#__scaleV');
-    scaleI.oninput = () => {
-      const k = parseFloat(scaleI.value);
+    const scaleI = props.querySelector('#__scale'), scaleV = props.querySelector('#__scaleV'), scaleN = props.querySelector('#__scaleN');
+    const applyScale = (k, src) => {
+      k = Math.max(0.1, Math.min(3, +k || 0.1));
       const cx = sel.x + sel.w/2, cy = sel.y + sel.h/2;
       const ratio = sel.h/sel.w;
       sel.w = STAGE_W * k; sel.h = sel.w * ratio;
       sel.x = cx - sel.w/2; sel.y = cy - sel.h/2;
       scaleV.textContent = k.toFixed(2)+'x';
-      ctx.afterChange({liveDrag:true});
+      if(src!=='n') scaleN.value = k.toFixed(2);
+      if(src!=='s') scaleI.value = k.toFixed(2);
+      ctx.afterChange({liveDrag: src==='s'});
     };
-    const rotI = props.querySelector('#__rot'), rotV = props.querySelector('#__rotV');
-    rotI.oninput = () => { sel.rot = parseFloat(rotI.value); rotV.textContent = Math.round(sel.rot)+'°'; ctx.afterChange({liveDrag:true}); };
-    const opI = props.querySelector('#__op'), opV = props.querySelector('#__opV');
-    opI.oninput = () => { sel.opacity = parseFloat(opI.value); opV.textContent = Math.round(sel.opacity*100)+'%'; ctx.afterChange({liveDrag:true}); };
+    scaleI.oninput = () => applyScale(scaleI.value, 's');
+    scaleN.onchange = () => applyScale(scaleN.value, 'n');   // 敲完回车 / 失焦才提交
+
+    const rotI = props.querySelector('#__rot'), rotV = props.querySelector('#__rotV'), rotN = props.querySelector('#__rotN');
+    const applyRot = (v, src) => {
+      v = Math.max(-180, Math.min(180, +v || 0));
+      sel.rot = v; rotV.textContent = Math.round(v)+'°';
+      if(src!=='n') rotN.value = Math.round(v);
+      if(src!=='s') rotI.value = Math.round(v);
+      ctx.afterChange({liveDrag: src==='s'});
+    };
+    rotI.oninput = () => applyRot(rotI.value, 's');
+    rotN.onchange = () => applyRot(rotN.value, 'n');
+
+    const opI = props.querySelector('#__op'), opV = props.querySelector('#__opV'), opN = props.querySelector('#__opN');
+    const applyOp = (v, src) => {
+      v = Math.max(0, Math.min(1, +v || 0));
+      sel.opacity = v; opV.textContent = Math.round(v*100)+'%';
+      if(src!=='n') opN.value = v.toFixed(2);
+      if(src!=='s') opI.value = v.toFixed(2);
+      ctx.afterChange({liveDrag: src==='s'});
+    };
+    opI.oninput = () => applyOp(opI.value, 's');
+    opN.onchange = () => applyOp(opN.value, 'n');
     props.querySelector('#__flip').onclick = () => { sel.flipH = !sel.flipH; ctx.afterChange({end:true}); };
     props.querySelector('#__center').onclick = () => { sel.x = (STAGE_W-sel.w)/2; sel.y = (STAGE_H-sel.h)/2; ctx.afterChange({end:true}); };
     props.querySelector('#__reset').onclick = () => { sel.rot = 0; sel.flipH = false; sel.opacity = 1; ctx.afterChange({end:true}); };
@@ -1746,14 +1791,15 @@ function renderCardPanel(){
 /* ============== 页面 4：预览 ============== */
 /* 预览里实时叠花边：不用重新合成，改花边/换全局默认，回预览页立刻看得见 */
 function frameOverlayHtml(c){
+  if(!state.previewFrameOn) return '';
   const f = effFrame(c);
   if(!f) return '';
   const pc = v => (v*100).toFixed(3);
   if(f.composed){
-    return `<img class="gc-fr" src="${f.composed}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:1;">`;
+    return `<img class="gc-fr" src="${f.composed}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;pointer-events:none;">`;
   }
   return f.layers.slice().reverse().filter(L => L.visible !== false && L.src).map(L =>
-    `<img class="gc-fr" src="${L.src}" style="position:absolute;left:${pc(L.x/STAGE_W)}%;top:${pc(L.y/STAGE_H)}%;width:${pc(L.w/STAGE_W)}%;height:${pc(L.h/STAGE_H)}%;object-fit:fill;transform:rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''};transform-origin:center center;opacity:${L.opacity!=null?L.opacity:1};pointer-events:none;z-index:1;">`
+    `<img class="gc-fr" src="${L.src}" style="position:absolute;left:${pc(L.x/STAGE_W)}%;top:${pc(L.y/STAGE_H)}%;width:${pc(L.w/STAGE_W)}%;height:${pc(L.h/STAGE_H)}%;object-fit:fill;transform:rotate(${L.rot||0}deg)${L.flipH?' scaleX(-1)':''};transform-origin:center center;opacity:${L.opacity!=null?L.opacity:1};pointer-events:none;">`
   ).join('');
 }
 function renderPreviewGrid(){
@@ -1783,7 +1829,27 @@ function renderPreviewGrid(){
   });
   const _gf = state.defaultFrameId ? state.frames[state.defaultFrameId] : null;
   $('previewSub').innerHTML = `已合成 ${done} / 78 张 · 点卡片进入编辑`
-    + (_gf ? ` · 全局花边：<b style="color:var(--violet)">${escapeHtml(_gf.name)}</b>（在「花边库」页设置）` : '');
+    + (_gf ? ` · 全局花边：<b style="color:var(--violet)">${escapeHtml(_gf.name)}</b>（在「花边库」页设置）` : '')
+    + (!state.previewFrameOn ? ' · <b style="color:var(--orange)">花边预览已关</b>' : '');
+  // 同步花边预览开关的状态显示
+  const seg = $('segFramePreview');
+  if(seg){
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(state.previewFrameOn?1:0) === b.dataset.on));
+  }
+}
+
+/* 花边预览开关：仅影响预览页叠不叠花边，牌面合成图本身不动。
+   陛下要的是「想看纯牌面就一键关，关了预览页只剩 78 张牌面」 */
+function bindFramePreviewToggle(){
+  const seg = $('segFramePreview'); if(!seg || seg._bind) return; seg._bind = true;
+  seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+    state.previewFrameOn = b.dataset.on === '1';
+    try{ localStorage.setItem('tarot_preview_frame_on', state.previewFrameOn?'1':'0'); }catch(_){}
+    renderPreviewGrid();
+  });
+  // 启动时读上次选择
+  try{ const v = localStorage.getItem('tarot_preview_frame_on'); if(v!=null) state.previewFrameOn = v==='1'; }catch(_){}
+  seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(state.previewFrameOn?1:0) === b.dataset.on));
 }
 
 /* ============== 导出 zip ============== */

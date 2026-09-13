@@ -96,40 +96,7 @@ input{font-family:inherit;outline:none;}
 /* 竖屏持续提示（小角标） */
 #portrait-toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;background:rgba(0,0,0,.75);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;display:none;align-items:center;gap:8px;}
 
-/* ---------- 大厅布置（背景 / 装饰 / 交互） ---------- */
-.deco-bar{position:absolute;left:50%;bottom:calc(16px * var(--ui-scale));transform:translateX(-50%);z-index:30;
-  display:flex;align-items:center;gap:calc(8px * var(--ui-scale));flex-wrap:wrap;justify-content:center;
-  max-width:96vw;padding:calc(10px * var(--ui-scale)) calc(14px * var(--ui-scale));
-  background:rgba(var(--glass-rgb),.82);backdrop-filter:blur(18px) saturate(180%);
-  border:1px solid rgba(var(--accent-rgb),.18);border-radius:calc(18px * var(--ui-scale));
-  box-shadow:0 10px 30px rgba(var(--shadow-rgb),.18);}
-.deco-tip{font-size:calc(12px * var(--ui-scale));color:var(--c-sub);margin-right:calc(6px * var(--ui-scale));}
-.deco-b{border:none;border-radius:calc(12px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
-  font-size:calc(13px * var(--ui-scale));font-weight:700;cursor:pointer;color:#fff;
-  background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));box-shadow:0 4px 12px var(--gold-glow);}
-.deco-b:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
-.deco-b.ghost{background:rgba(var(--accent-rgb),.14);color:var(--c-ink);box-shadow:none;}
-.deco-b.danger{background:linear-gradient(135deg,#e05a5a,#c0392b);box-shadow:none;}
-.deco-b.ok{background:linear-gradient(135deg,#4caf50,#2e7d32);box-shadow:none;}
-.deco-mask{position:fixed;inset:0;z-index:200;background:rgba(20,14,32,.55);backdrop-filter:blur(6px);
-  display:flex;align-items:center;justify-content:center;padding:16px;}
-.deco-card{width:min(420px,94vw);max-height:88vh;overflow:auto;background:var(--c-bg);color:var(--c-ink);
-  border-radius:calc(20px * var(--ui-scale));padding:calc(22px * var(--ui-scale)) calc(24px * var(--ui-scale));
-  box-shadow:0 24px 60px rgba(0,0,0,.32);border:1px solid rgba(var(--accent-rgb),.2);}
-.deco-card h3{margin:0 0 calc(14px * var(--ui-scale));font-size:calc(18px * var(--ui-scale));}
-.dp-row{display:flex;flex-direction:column;gap:calc(5px * var(--ui-scale));margin-bottom:calc(12px * var(--ui-scale));
-  font-size:calc(13px * var(--ui-scale));color:var(--c-sub);font-weight:700;}
-.dp-row input,.dp-row select,.dp-row textarea{width:100%;padding:calc(8px * var(--ui-scale));
-  border-radius:calc(10px * var(--ui-scale));border:1px solid rgba(var(--accent-rgb),.25);
-  background:rgba(var(--glass-rgb),.7);color:var(--c-ink);font-size:calc(14px * var(--ui-scale));resize:vertical;}
-.dp-btns{display:flex;gap:calc(10px * var(--ui-scale));justify-content:flex-end;margin-top:calc(8px * var(--ui-scale));}
-.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:calc(6px * var(--ui-scale));margin-bottom:calc(14px * var(--ui-scale));}
-.emoji-grid button{font-size:calc(22px * var(--ui-scale));padding:calc(6px * var(--ui-scale));border:none;cursor:pointer;
-  border-radius:calc(10px * var(--ui-scale));background:rgba(var(--accent-rgb),.1);}
-.emoji-grid button:hover{background:rgba(var(--accent-rgb),.26);}
-.deco-card.talk{width:min(520px,94vw);}
-.talk-name{font-weight:800;font-size:calc(16px * var(--ui-scale));color:var(--c-accent);margin-bottom:calc(10px * var(--ui-scale));}
-.talk-text{font-size:calc(15px * var(--ui-scale));line-height:1.8;min-height:calc(70px * var(--ui-scale));white-space:pre-wrap;}
+/* ---------- （旧大厅布置 / 装饰 / NPC 对话弹窗 样式已随旧大厅下线） ---------- */
 
 /* ---------- 通用卡片/表单 ---------- */
 .panel{background:rgba(var(--glass-rgb),.55);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(var(--accent-rgb),.15);border-radius:22px;box-shadow:0 20px 60px rgba(var(--shadow-rgb),.15),0 0 0 1px rgba(var(--accent-rgb),.08);padding:32px 34px;width:min(440px,92vw);}
@@ -185,9 +152,7 @@ input{font-family:inherit;outline:none;}
 .element-card.sel{border-color:currentColor;box-shadow:0 6px 18px rgba(0,0,0,.10);}
 .element-tip{text-align:center;font-size:13px;color:var(--c-sub);margin-top:14px;}
 
-/* ---------- 游戏主界面 ---------- */
-#game-screen{background:linear-gradient(135deg,var(--c-bg) 0%,var(--c-bg2) 100%);}
-#lobby-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+/* ---------- 游戏主界面（旧 #game-screen / #lobby-canvas 已下线） ---------- */
 .hud{position:absolute;top:14px;left:16px;z-index:10;display:flex;align-items:center;gap:10px;}
 .hud .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.18);}
 .hud .info{display:flex;flex-direction:column;gap:2px;}
@@ -310,10 +275,6 @@ input{font-family:inherit;outline:none;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 
 /* ---------- 建筑名字浮标 ---------- */
-.building-pop{position:absolute;z-index:12;display:flex;flex-direction:column;align-items:center;gap:6px;transform:translate(-50%,-118%);pointer-events:none;}
-.building-pop .bname{background:rgba(255,255,255,.96);color:var(--c-ink);padding:7px 16px;border-radius:999px;font-size:15px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.2);white-space:nowrap;}
-.building-pop .enter{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;padding:7px 18px;border-radius:999px;font-size:14px;font-weight:800;box-shadow:0 6px 18px var(--gold-glow);pointer-events:auto;cursor:pointer;letter-spacing:1px;}
-.building-pop .enter:active{transform:scale(.95);}
 
 /* ---------- 塔罗占卜 ---------- */
 #tarot-screen{background:radial-gradient(circle at 50% 18%,#4a3a6a 0%,#332a4a 58%,#241d38 100%);color:#efeaf8;}
@@ -614,8 +575,6 @@ input{font-family:inherit;outline:none;}
 .joy-ring{inset:calc(14px * var(--ui-scale));}
 .joy-hint{left:calc(clamp(84px,11vw,140px) * var(--ui-scale));bottom:calc((clamp(28px,6vh,48px) + 140px) * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
 
-#game-screen .building-pop .bname{font-size:calc(15px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale));}
-#game-screen .building-pop .enter{font-size:calc(14px * var(--ui-scale));padding:calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));}
 
 /* ---- 登录 / 昵称页 split ---- */
 .split .brand .logo{width:calc(88px * var(--ui-scale));height:calc(88px * var(--ui-scale));font-size:calc(44px * var(--ui-scale));border-radius:calc(26px * var(--ui-scale));}
@@ -926,77 +885,9 @@ input{font-family:inherit;outline:none;}
   </div>
 </div>
 
-<!-- ===== 游戏主界面 ===== -->
-<div id="game-screen" class="screen hidden" style="display:block;" data-page-node-id="ATuohDJKRyDWDhnMHSknkq">
-  <canvas id="lobby-canvas" data-page-node-id="kkBy8x9MAl9TMX08AnL1Nd"></canvas>
-
-  <!-- ===== 大厅布置（背景图 / 自由摆装饰 / 交互） ===== -->
-  <div class="deco-bar hidden" id="deco-bar">
-    <span class="deco-tip" id="deco-tip">布置模式：拖动装饰移动 · 拖右下角缩放 · 点空白处取消选中</span>
-    <button class="deco-b" id="deco-add-img">＋图片</button>
-    <button class="deco-b" id="deco-add-emoji">＋图标</button>
-    <button class="deco-b" id="deco-bg">🖼 背景图</button>
-    <button class="deco-b" id="deco-prop" disabled>⚙ 属性</button>
-    <button class="deco-b danger" id="deco-del" disabled>🗑 删除</button>
-    <button class="deco-b ok" id="deco-save">💾 保存</button>
-    <button class="deco-b ghost" id="deco-done">✓ 完成</button>
-  </div>
-  <input type="file" id="deco-file" accept="image/*" style="display:none">
-  <input type="file" id="deco-bg-file" accept="image/*" style="display:none">
-
-  <div class="deco-mask hidden" id="deco-emoji-mask">
-    <div class="deco-card">
-      <h3>选一个图标当装饰</h3>
-      <div class="emoji-grid" id="deco-emoji-grid"></div>
-      <button class="deco-b ghost" id="deco-emoji-close">取消</button>
-    </div>
-  </div>
-
-  <div class="deco-mask hidden" id="deco-modal">
-    <div class="deco-card">
-      <h3>装饰属性</h3>
-      <label class="dp-row"><span>名称</span><input id="dp-name" placeholder="例如：时装店 / 守卫阿七"></label>
-      <label class="dp-row"><span>点它会</span>
-        <select id="dp-action">
-          <option value="none">什么都不做（纯装饰）</option>
-          <option value="shop">打开商店</option>
-          <option value="talk">NPC 说话</option>
-          <option value="map">传送到地图</option>
-          <option value="panel">打开面板</option>
-        </select>
-      </label>
-      <label class="dp-row hidden" id="dp-target-wrap"><span>目标</span><select id="dp-target"></select></label>
-      <label class="dp-row hidden" id="dp-text-wrap"><span>说的话</span><textarea id="dp-text" rows="3" placeholder="一行一句，会逐句显示"></textarea></label>
-      <label class="dp-row"><span>大小</span><input type="range" id="dp-size" min="0.03" max="0.7" step="0.01"></label>
-      <div class="dp-btns">
-        <button class="deco-b ok" id="dp-ok">确定</button>
-        <button class="deco-b ghost" id="dp-cancel">取消</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="deco-mask hidden" id="talk-mask">
-    <div class="deco-card talk">
-      <div class="talk-name" id="talk-name">NPC</div>
-      <div class="talk-text" id="talk-text"></div>
-      <div class="dp-btns"><button class="deco-b ok" id="talk-next">继续</button><button class="deco-b ghost" id="talk-close">关闭</button></div>
-    </div>
-  </div>
-
-  <div class="joy-hint" data-page-node-id="D9gQ324MbeofTTRr0gG6tx">拖动摇杆移动</div>
-  <div class="joystick" id="joystick" data-page-node-id="IJmFhqQgxFCSHfyrJhUUmk">
-    <div class="joy-base" id="joy-base" data-page-node-id="NAuaPDAx4KidCgLK8ZAY0R"></div>
-    <div class="joy-ring" data-page-node-id="RveuRMOOnnnEJNXpbHCyxE"></div>
-    <div class="joy-knob" id="joy-knob" data-page-node-id="TZ744WDiLDokllSpY7HGLl"></div>
-  </div>
-
-  <!-- 建筑名字浮标 -->
-  <div class="building-pop hidden" id="building-pop">
-    <div class="bname" id="bp-name">塔罗占卜</div>
-    <button class="enter" id="bp-enter">点击进入</button>
-  </div>
-
-</div>
+<!-- ===== 旧版「大厅」（麻将 / 五子棋 / 斗地主 / 时装店占位建筑）已整体下线 =====
+     陛下要求：那座大厅根本不在地图里，早就该删。现在登录后直接进地图关卡，
+     塔罗 / 衣橱玩完也一律回到「进来的那张地图」，不再存在第二个家。 -->
 
 <!-- ===== 衣橱独立页面（暖暖式全屏） ===== -->
 <div id="wardrobe-screen" class="screen hidden">
@@ -1023,7 +914,7 @@ input{font-family:inherit;outline:none;}
     <div class="wb-panel">
       <div class="wb-head">
         <h2 id="wb-title">衣橱<span class="wb-title-sub">点击格子实时上身</span></h2>
-        <button class="wb-back" id="wb-back">← 返回大厅</button>
+        <button class="wb-back" id="wb-back">← 返回地图</button>
       </div>
       <div class="item-grid" id="item-grid"></div>
     </div>
@@ -1036,7 +927,7 @@ input{font-family:inherit;outline:none;}
     <div class="tarot-head">
       <h2>🔮 塔罗占卜</h2>
       <span class="t-src" id="tarot-src" title="牌面来源：塔罗编辑引擎 > 素材包 > 占位符"></span>
-      <button class="t-back" id="tarot-back">← 返回大厅</button>
+      <button class="t-back" id="tarot-back">← 返回地图</button>
     </div>
     <div class="tarot-stage" id="tarot-stage"></div>
   </div>
@@ -1128,7 +1019,7 @@ input{font-family:inherit;outline:none;}
 
 <!-- ===== 运行时通用 HUD =====
      大厅与关卡共用同一份：左上名字卡片、右上货币/家园、左侧功能栏、好友与设置抽屉。
-     只有 #game-screen / #map-screen 显示，其它全屏面板（衣橱/塔罗/登录）自动隐藏。
+     只有 #map-screen 显示，其它全屏面板（衣橱/塔罗/登录）自动隐藏。
      由 showScreen() 统一切换，避免"进关卡 UI 全被吞"。 -->
 <div id="runtime-hud" class="hidden">
 
@@ -1260,7 +1151,7 @@ setTimeout(()=>{
     const ov = document.getElementById('landscape-overlay');
     const stuck = !!(ov && !ov.classList.contains('hidden'));
     if(stuck) ov.classList.add('hidden');
-    const ids = ['auth-screen','nickname-screen','element-screen','game-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'];
+    const ids = ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'];
     const any = ids.some(function(id){ const el=document.getElementById(id); return el && !el.classList.contains('hidden'); });
     if(any && !stuck) return;                       // 一切正常，别打扰陛下
     if(!any){
@@ -1302,33 +1193,7 @@ const SHOP_ZONES = [
   {id:'outfit',  name:'套装', em:'👗'},
 ];
 
-/* ================= 大厅建筑（占位） ================= */
-const BUILDINGS = [
-  {id:'tarot',   name:'塔罗占卜',   icon:'🔮', color:'#8b6914', w:132, h:108},
-  {id:'ddz',     name:'斗地主',     icon:'🃏', color:'#d9534f', w:132, h:108},
-  {id:'mahjong', name:'麻将',       icon:'🀄', color:'#3f9d6e', w:132, h:108},
-  {id:'gomoku',  name:'五子棋',     icon:'⚫', color:'#4a90d9', w:132, h:108},
-  // 服装商店（多建筑：每个绑定 shopTags 子集，§1 陛下补充）
-  {id:'shop',    name:'时装店',     icon:'👗', color:'#e0568a', w:132, h:108,
-   shopTags:['common','premium','special','limited','outfit']},
-  {id:'shop_vip',name:'高级时装店', icon:'💎', color:'#7b5bd6', w:132, h:108,
-   shopTags:['premium','limited','outfit']},
-];
-function getBuildingPositions(){
-  const w = lobby.w, h = lobby.h;
-  // 矮屏（手机横屏）纵向收拢，别顶到顶部 HUD 和左下角摇杆
-  const short = h < 560;
-  const LX = short ? [0.14,0.86,0.14,0.86,0.50,0.50] : [0.16,0.84,0.16,0.84,0.50,0.50];
-  const LY = short ? [0.32,0.32,0.66,0.66,0.30,0.70] : [0.30,0.30,0.72,0.72,0.22,0.84];
-  return BUILDINGS.map((b,i)=> Object.assign({}, b, { x:w*LX[i], y:h*LY[i] }));
-}
-function darken(hex, amt){
-  amt = (amt==null)?0.22:amt;
-  const n = parseInt(hex.slice(1),16);
-  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
-  r=Math.round(r*(1-amt)); g=Math.round(g*(1-amt)); b=Math.round(b*(1-amt));
-  return 'rgb('+r+','+g+','+b+')';
-}
+/* （旧大厅的占位建筑：塔罗 / 斗地主 / 麻将 / 五子棋 / 时装店 —— 已随旧大厅一起下线） */
 
 /* ================= 塔罗占卜 · 数据 ================= */
 const MAJOR_ARCANA = [
@@ -2083,7 +1948,7 @@ window.addEventListener('storage', e=>{
     refreshEngineData();
     if(typeof currentUser!=='undefined' && currentUser){
       currentUser.outfit = normalizeOutfit(currentUser.outfit);
-      if(typeof drawLobby==='function' && !$('game-screen').classList.contains('hidden')) drawLobby();
+      if(mapRun.active) drawMap();   // 旧大厅已下线：直接重绘当前地图
       if(typeof buildWardrobe==='function' && !$('wardrobe-screen').classList.contains('hidden')) buildWardrobe();
     }
   }
@@ -2197,13 +2062,13 @@ function toast(msg){
   clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800);
 }
 function showScreen(id){
-  ['auth-screen','nickname-screen','element-screen','game-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'].forEach(s=>$(s).classList.add('hidden'));
+  ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'].forEach(s=>$(s).classList.add('hidden'));
   $(id).classList.remove('hidden');
   /* 大厅与关卡共用同一份 HUD（名字卡片 / 货币 / 左侧功能栏 / 抽屉）。
      其它全屏面板（衣橱 / 塔罗 / 登录 / 中枢）一律收起，避免"UI 被吞"或"面板上糊一层按钮"。 */
   const hud = $('runtime-hud');
-  if(hud) hud.classList.toggle('hidden', !(id==='game-screen' || id==='map-screen'));
-  if(id!=='game-screen' && id!=='map-screen'){ try{ closeFriends(); closeSettings(); }catch(e){} }
+  if(hud) hud.classList.toggle('hidden', id!=='map-screen');
+  if(id!=='map-screen'){ try{ closeFriends(); closeSettings(); }catch(e){} }
   if(id==='admin-hub-screen') buildAdminHub();
   if(id==='nickname-screen'){
     // 恢复上次选的头像（或默认第一个），再渲染头像网格
@@ -2211,7 +2076,6 @@ function showScreen(id){
     renderAvatars();
     setNickAvatarPreview();
   }
-  if(id==='game-screen'){ $('game-screen').style.display='block'; resizeLobby(); }
   if(id==='wardrobe-screen'){ initPreviewBg(); buildWardrobe(); }
   if(id==='tarot-screen'){
     /* 每次进塔罗先跟编辑引擎对一次版本号，改过牌面就重读，陛下不用手动刷新页面 */
@@ -2446,15 +2310,7 @@ function renderElements(){
   $('element-tip').after(btn);
 }
 
-/* ================= 大厅 ================= */
-let lobby = {
-  canvas:null, ctx:null, dpr:1, w:0, h:0,
-  px:0, py:0, facing:1, walkPhase:0, moving:false,
-  keys:{up:false,down:false,left:false,right:false},
-  joy:{active:false, dx:0, dy:0},
-  lastT:0,
-};
-const MOVE_SPEED = 220; // px/s
+/* （旧大厅 canvas 已下线，这里不再有 lobby 运行时状态） */
 const MAP_SPEED  = 230; // 地图内行走速度 px/s
 let loopId = 0;
 
@@ -2519,50 +2375,39 @@ function refreshHud(){
   $('hud-badge').style.background = e.color;
   $('hud-badge').textContent = '五行·' + e.name;
 }
+/* 旧版「大厅 canvas」已整体下线：登录后不再有第二个家，直接进地图里配置的入口关卡。
+   地图没配 entryLevelId 时，退到「世界地图卡片」让玩家自己挑一个关卡进。 */
 function enterLobby(){
   ensureBody();
-  showScreen('game-screen');
   refreshHud();
   refreshProfile();          // 载入/建档 PlayerProfile，并刷新三货币 HUD
-  initLobbyCanvas();
-  lobby.px = lobby.w/2; lobby.py = lobby.h*0.62;
-  lobby.lastT = performance.now();
   stopLoop();
-  loopId = requestAnimationFrame(loop);
-  // 【陛下要求】登录后如果配置了全局入口，直接跳入入口关卡地图，不停留在大厅 canvas
+  let entryId = null;
   try{
     const d = ensureMaps();
-    const entryId=d&&d.entryLevelId&&isLevelNode(d.maps[d.entryLevelId])?d.entryLevelId:null;
-    if(entryId)requestAnimationFrame(()=>enterMap(entryId));
-  }catch(err){ console.warn('auto enter root map failed:', err); }
+    entryId = d && d.entryLevelId && isLevelNode(d.maps[d.entryLevelId]) ? d.entryLevelId : null;
+  }catch(err){ console.warn('resolve entry level failed:', err); }
+  if(entryId){ requestAnimationFrame(()=>enterMap(entryId)); return; }
+  // 没配入口关卡：停在地图页，并把世界地图卡片弹出来让玩家选
+  try{
+    const d = ensureMaps();
+    const root = d && d.rootMapId && d.maps[d.rootMapId] ? d.rootMapId : null;
+    showScreen('map-screen'); resizeMap();
+    if(root) openMapNavigator(root);
+    else toast('⚠️ 还没有可进入的关卡，先去「地图编辑引擎」建一张');
+  }catch(err){ console.warn('fallback map failed:', err); }
 }
-function initLobbyCanvas(){
-  lobby.canvas = $('lobby-canvas');
-  lobby.ctx = lobby.canvas.getContext('2d');
-  resizeLobby();
-}
-function resizeLobby(){
-  if(!lobby.canvas) return;
-  updateWorldView();
-  lobby.dpr = Math.min(window.devicePixelRatio||1, 2);
-  lobby.w = window.innerWidth; lobby.h = window.innerHeight;
-  lobby.canvas.width = lobby.w * lobby.dpr;
-  lobby.canvas.height = lobby.h * lobby.dpr;
-  lobby.canvas.style.width = lobby.w+'px';
-  lobby.canvas.style.height = lobby.h+'px';
-  lobby.ctx.setTransform(lobby.dpr,0,0,lobby.dpr,0,0);
-}
-window.addEventListener('resize', ()=>{ resizeLobby(); resizeMap(); });
+window.addEventListener('resize', ()=>{ resizeMap(); });
 
 /* ---- 输入 ---- */
 const KEYMAP = {w:'up',a:'left',s:'down',d:'right',arrowup:'up',arrowdown:'down',arrowleft:'left',arrowright:'right'};
 window.addEventListener('keydown', e=>{
   const d = KEYMAP[e.key.toLowerCase()]; if(!d) return;
-  lobby.keys[d]=true; mapRun.keys[d]=true; e.preventDefault();
+  mapRun.keys[d]=true; e.preventDefault();
 });
 window.addEventListener('keyup', e=>{
   const d = KEYMAP[e.key.toLowerCase()]; if(!d) return;
-  lobby.keys[d]=false; mapRun.keys[d]=false;
+  mapRun.keys[d]=false;
 });
 /* 地图诊断快捷键：地图页按 F9 打印当前地图运行时快照 —— 出现空白时用来定位。
    （以前绑在 D 上，和 WASD 的「向右走」撞车，一走就弹诊断，已改键） */
@@ -2628,7 +2473,6 @@ function bindJoystick(zoneId, knobId, joy){
   zone.addEventListener('pointerup', e=>{ if(e.pointerId === pointerId) reset(); });
   zone.addEventListener('pointercancel', e=>{ if(e.pointerId === pointerId) reset(); });
 }
-bindJoystick('joystick', 'joy-knob', lobby.joy);
 bindJoystick('map-joystick', 'map-joy-knob', mapRun.joy);
 
 /* ---- 就地呼出摇杆 ----
@@ -2690,13 +2534,6 @@ function enableFloatJoystick(screenId, zoneId, knobId, joy, skipFn){
     if(eatClick){ eatClick = false; e.stopPropagation(); e.preventDefault(); }
   }, true);
 }
-enableFloatJoystick('game-screen', 'joystick', 'joy-knob', lobby.joy, function(x, y){
-  // 大厅：按在建筑上 → 让原来的「走近/点建筑」生效
-  try{
-    const wx = s2wx(x), wy = s2wy(y);
-    return getBuildingPositions().some(b=> Math.hypot(wx-b.x, wy-b.y) < Math.max(70, Math.max(b.w||0, b.h||0)*0.62));
-  }catch(e){ return false; }
-});
 enableFloatJoystick('map-screen', 'map-joystick', 'map-joy-knob', mapRun.joy, function(x, y){
   // 地图：按在门口/地块/入口上 → 让原来的「点一下就传送」生效
   try{
@@ -2719,7 +2556,7 @@ function loop(now){
   if(!currentUser){ loopId = 0; return; }
   try{
     if(mapRun.active){ stepMap(now); drawMap(); }
-    else { stepLobby(now); drawLobby(); }
+    // 旧大厅分支已下线：不在地图里就不画任何东西
   }catch(err){
     if(now - _loopErrAt > 1000){       // 同类错误每秒最多刷一条，避免刷爆控制台
       _loopErrAt = now;
@@ -2728,127 +2565,9 @@ function loop(now){
   }
   loopId = requestAnimationFrame(loop);
 }
-function stepLobby(now){
-  const dt = Math.min((now - lobby.lastT)/1000, 0.05);
-  lobby.lastT = now;
-  let dx=0, dy=0;
-  if(lobby.joy.active){ dx = lobby.joy.dx; dy = lobby.joy.dy; }
-  else {
-    if(lobby.keys.left) dx-=1;
-    if(lobby.keys.right) dx+=1;
-    if(lobby.keys.up) dy-=1;
-    if(lobby.keys.down) dy+=1;
-  }
-  lobby.moving = (dx!==0 || dy!==0);
-  if(lobby.moving){
-    const len = Math.hypot(dx,dy); dx/=len; dy/=len;
-    lobby.px += dx*MOVE_SPEED*dt;
-    lobby.py += dy*MOVE_SPEED*dt;
-    if(dx>0) lobby.facing=1; else if(dx<0) lobby.facing=-1;
-    lobby.walkPhase += dt*12;
-  }
-  // 边界
-  lobby.px = Math.max(40, Math.min(lobby.w-40, lobby.px));
-  lobby.py = Math.max(60, Math.min(lobby.h-20, lobby.py));
-  updateBuildingPop();
-}
-
-function drawLobby(){
-  const c = lobby.ctx, w=lobby.w, h=lobby.h;
-  const k = WORLD.k;
-  // 背景渐变铺满整屏（不缩放，避免出现空白边）
-  const g = c.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'#f3eef9'); g.addColorStop(1,'#e6ddf4');
-  c.fillStyle = g; c.fillRect(0,0,w,h);
-  // （旧的「🛠 布置」自定义背景 / 装饰系统已下线，这里不再引用 decoBgImg）
-  // 地板：整屏宽度，地平线跟随缩放后的世界（左右不留空）
-  const floorY = w2sy(h*0.68);
-  c.fillStyle = 'rgba(255,255,255,.5)';
-  c.fillRect(0, floorY, w, h - floorY);
-  c.strokeStyle = 'rgba(120,130,150,.12)';
-  c.lineWidth = 1;
-  const grid = Math.max(26, 60*k);
-  for(let x=0;x<w;x+=grid){ c.beginPath(); c.moveTo(x,floorY); c.lineTo(x,h); c.stroke(); }
-  for(let y=floorY;y<h;y+=grid){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
-  // 以下内容整体缩放，缩进中间的可玩区
-  c.save();
-  c.translate(WORLD.vx, WORLD.vy);
-  c.scale(k, k);
-  // 装饰色块（大厅纯色 + 几块示意）
-  c.fillStyle='rgba(var(--accent-rgb),.9)'; c.fillRect(w*0.08, h*0.2, 90, 16); // 门框示意
-  c.fillStyle='rgba(176,137,104,.65)'; c.fillRect(w*0.82, h*0.28, 60, 90); // 装饰柱
-  c.fillStyle='rgba(120,200,120,.7)';
-  c.beginPath(); c.arc(w*0.16, h*0.6, 22, 0, Math.PI*2); c.fill(); // 绿植
-  // 建筑（占位）
-  drawBuildings();
-  // （自定义装饰已下线：drawDecoItems 在旧版被删除，调用它会直接抛错）
-  // 大厅水印
-  c.fillStyle='rgba(120,130,150,.25)';
-  c.font='600 14px "Microsoft YaHei"'; c.textAlign='center';
-  c.fillText('走近建筑，开启小游戏', w/2, h*0.95);
-  // 角色
-  drawCharacter(c, lobby.px, lobby.py, currentUser.outfit, lobby.facing, lobby.moving?lobby.walkPhase:0, 1.15);
-  c.restore();
-}
-
-/* ---- 建筑绘制 + 靠近检测 ---- */
-function drawBuildings(){
-  const c = lobby.ctx;
-  getBuildingPositions().forEach(b=>{
-    const x=b.x, y=b.y, w=b.w, h=b.h;
-    c.save();
-    // 阴影
-    c.fillStyle='rgba(0,0,0,.13)';
-    c.beginPath(); c.ellipse(x, y+h/2+8, w/2, 12, 0, 0, Math.PI*2); c.fill();
-    // 屋顶（三角）
-    c.fillStyle = darken(b.color, .3);
-    c.beginPath(); c.moveTo(x-w/2-6, y-h/2+8); c.lineTo(x, y-h/2-34); c.lineTo(x+w/2+6, y-h/2+8); c.closePath(); c.fill();
-    // 主体
-    c.fillStyle = b.color;
-    roundRect(c, x-w/2, y-h/2, w, h, 12); c.fill();
-    // 门
-    c.fillStyle='rgba(255,255,255,.4)';
-    roundRect(c, x-13, y+h/2-26, 26, 26, 6); c.fill();
-    // 图标
-    c.fillStyle='#fff';
-    c.font='34px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
-    c.fillText(b.icon, x, y-4);
-    c.restore();
-  });
-}
-let lastNearId = null;
-function updateBuildingPop(){
-  let near = null;
-  getBuildingPositions().forEach(b=>{
-    if(Math.hypot(lobby.px-b.x, lobby.py-b.y) < 100) near = b;
-  });
-  const id = near ? near.id : null;
-  if(id === lastNearId) return;
-  lastNearId = id;
-  const pop = $('building-pop');
-  if(near){
-    lobby.nearBuilding = near;
-    pop.classList.remove('hidden');
-    pop.style.left = w2sx(near.x) + 'px';
-    pop.style.top  = (w2sy(near.y) - near.h/2*WORLD.k - 8) + 'px';
-    $('bp-name').textContent = near.name;
-  } else {
-    lobby.nearBuilding = null;
-    pop.classList.add('hidden');
-  }
-}
-function enterBuilding(id){
-  if(id==='tarot'){ showScreen('tarot-screen'); }
-  else if(id==='shop' || id==='shop_vip'){
-    const b = BUILDINGS.find(x=>x.id===id);
-    openShop(b || {id:id, name:'时装店', icon:'👗', shopTags:SHOP_ZONES.map(z=>z.id)});
-  }
-  else {
-    const b = BUILDINGS.find(x=>x.id===id);
-    toast('「'+(b?b.name:id)+'」开发中，敬请期待');
-  }
-}
-$('bp-enter').onclick = ()=>{ if(lobby.nearBuilding) enterBuilding(lobby.nearBuilding.id); };
+/* 旧大厅的 stepLobby / drawLobby / drawBuildings / updateBuildingPop / enterBuilding 已整体下线。
+   换装后旧代码会调 drawLobby() 刷新立绘，这里改成重绘当前地图，保证换装立刻看得见。 */
+function drawLobby(){ if(mapRun.active) drawMap(); }
 
 /* ================= 角色绘制（素材引擎优先，色块兜底） ================= */
 function drawCharacter(ctx, cx, cy, outfit, facing, walk, scale){
@@ -2999,7 +2718,7 @@ function closeSettings(){ $('settings-drawer').classList.remove('open'); }
 $('btn-wardrobe').onclick = ()=>{
   wbZoneFilter = null;                          // 左侧入口 = 全部衣橱，不按商店分区过滤
   wbTitle = '';                                 // 标题回归朴素「衣橱」
-  panelReturn = mapRun.active ? 'map' : 'lobby';
+  panelReturn = 'map';
   showScreen('wardrobe-screen');
 };
 $('btn-friends').onclick = ()=>openFriends();
@@ -3011,10 +2730,11 @@ document.querySelectorAll('.drawer-close').forEach(b=>b.onclick=()=>{
   if(t==='friends') closeFriends();
   if(t==='settings') closeSettings();
 });
-/* 衣橱「返回」：从关卡进来的就回那张地图，从大厅进来的就回大厅 */
+/* 衣橱「返回」：一律回到进来时的那张地图（旧大厅已下线） */
 $('wb-back').onclick = ()=>{
-  if(panelReturn==='map'){ panelReturn='lobby'; backToMap(); }
-  else showScreen('game-screen');
+  panelReturn = 'map';
+  if(mapState.currentId){ backToMap(); return; }
+  enterLobby();
 };
 
 /* ================= 预览区背景切换事件 ================= */
@@ -3083,7 +2803,7 @@ function ownedItemsOf(cat){
    现在显式声明，并给出安全默认值。 */
 let wbZoneFilter = null;   // null = 不过滤（显示全部已拥有）；数组 = 只看这几档商店分区
 let wbTitle = '';          // 衣橱标题（面板入口会带 emoji + 名字）
-let panelReturn = 'lobby'; // 全屏面板关掉后回哪：'lobby' → 大厅；'map' → 刚才那张地图
+let panelReturn = 'map';   // 全屏面板关掉后回哪：'map' → 刚才那张地图（旧大厅已下线，不再有 'lobby'）
 
 /* 按商店分区过滤（地图面板：普通/高级/贵宾三档衣橱） */
 function ownedItemsFiltered(cat){
@@ -3148,7 +2868,7 @@ function buildWardrobe(){
     if(!sets.length){
       emptyTip(wbZoneFilter
         ? '这个衣橱里还没有套装。<br>去「服装引擎 → 商店编辑」把套装上架到对应分区～'
-        : '还没有拥有的套装。<br>去大厅的<span style="font-weight:800">👗 时装店</span> →「套装」区买一套吧～');
+        : '还没有拥有的套装。<br>去地图里的<span style="font-weight:800">👗 时装店</span> →「套装」区买一套吧～');
       drawPreview(); return;
     }
     sets.forEach(s=>{
@@ -3178,7 +2898,7 @@ function buildWardrobe(){
     grid.appendChild(noneItem);
     const list = ownedItemsOf(curCat);
     if(!list.length){
-      emptyTip('这个分类还没有衣服。<br>去大厅的<span style="font-weight:800">👗 时装店</span>看看～');
+      emptyTip('这个分类还没有衣服。<br>去地图里的<span style="font-weight:800">👗 时装店</span>看看～');
     }
     list.forEach(item=>{
       const isEq = equipped===item.id;
@@ -3513,10 +3233,27 @@ function showReading(){
   container.appendChild(center);
 }
 
-$('tarot-back').onclick = ()=>{
-  if(panelReturn==='map'){ panelReturn='lobby'; backToMap(); }
-  else showScreen('game-screen');
-};
+/* ---- 塔罗进出：从「当前所在的那张关卡」进，也回到那张关卡 ----
+   以前的坑：从 NPC 事件进塔罗时没记来源，退出时 panelReturn 还是旧值 'lobby'，
+   于是把陛下甩回那座早已废弃的旧大厅（麻将 / 五子棋 / 斗地主那版）——可它根本不在地图里。
+   现在所有入口统一走 enterTarot()，退出统一走 exitTarot()，返回目标永远是进来的那张地图。 */
+let tarotFrom = { mapId:'', spawnId:'' };
+function enterTarot(){
+  tarotFrom = { mapId: mapState.currentId || '', spawnId: mapState.spawnId || '' };
+  panelReturn = 'map';
+  showScreen('tarot-screen');
+}
+function exitTarot(){
+  panelReturn = 'map';
+  let d = null; try{ d = ensureMaps(); }catch(e){}
+  const fromId = tarotFrom.mapId || mapState.currentId || (d && d.entryLevelId) || '';
+  if(d && fromId && isLevelNode(d.maps[fromId])){
+    if(fromId === mapState.currentId){ backToMap(); return; }   // 原地返回，位置和朝向都保留
+    enterMap(fromId, tarotFrom.spawnId); return;
+  }
+  enterLobby();   // 兜底：重新走登录入口关卡
+}
+$('tarot-back').onclick = ()=>exitTarot();
 
 /* ================= 玩家档案 PlayerProfile（Q2.3 / §6） ================= */
 const LS_PROFILE = 'player_profile_';
@@ -4360,7 +4097,7 @@ function fireTrigger(t){
 function fireNpcEvent(npc, node){
   if(!npc || !npc.event) return;
   const ev = npc.event, type = ev.type || 'none';
-  if(type==='tarot'){ showScreen('tarot-screen'); return; }
+  if(type==='tarot'){ enterTarot(); return; }
   if(type==='dialogue'){
     const lines = (Array.isArray(npc.dialogue) && npc.dialogue.length) ? npc.dialogue : ['你好呀！'];
     showNpcDialogue(npc.name || 'NPC', lines);
@@ -4389,7 +4126,7 @@ function showNpcDialogue(name, lines){
 }
 /* 从全屏面板回到刚才那张地图（位置保留） */
 function backToMap(){
-  if(!mapState.currentId){ showScreen('game-screen'); return; }
+  if(!mapState.currentId){ enterLobby(); return; }
   showScreen('map-screen');
   resizeMap();
   mapRun.cool = 0.35;
@@ -4408,7 +4145,7 @@ function openPanelNode(node){
   const info = panelInfo(kind);
   const label = info ? info.name.replace(/^\S+\s/, '') : (node.name || '组件');
   panelReturn = 'map';
-  if(kind==='tarot'){showScreen('tarot-screen');return;}
+  if(kind==='tarot'){enterTarot();return;}
   if(kind==='checkin'){openCheckin();return;}
   if(kind==='wish'){toast('⛲ 许愿池还在开发中');return;}
   // 三档衣橱：按商店分区自动过滤

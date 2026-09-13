@@ -159,6 +159,26 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
     </div>
     <div class="tip">改完记得<b>回游戏端硬刷一次</b>（<code>Ctrl+F5</code>），因为 Service Worker 会缓存旧文件。</div>
   </div>
+
+  <div class="card">
+    <h2><span class="n">6</span>🔮 塔罗编辑引擎（IndexedDB）</h2>
+    <div class="tip" style="margin-top:0">
+      塔罗数据存在 IndexedDB <code>tarot_editor_v1</code>，<b>不是</b> localStorage —— 上面那张表扫不到它。专门用这里恢复：
+      <b>牌背</b> / <b>花边库</b> / <b>78 张牌</b> / <b>全局默认花边</b>。<br>
+      「云端快照」键名是 <code>tarot_snapshot_v1</code>（放在 <code>cloud-defaults.json</code> 的 <code>data</code> 字段下）。
+      如果云端还没装过这份，<b>先点「📤 生成塔罗快照下载」</b>，把下载的 JSON 字段合到 <code>cloud-defaults.json</code> 并提交推送，再回来点恢复就有云端默认了。
+    </div>
+    <table>
+      <thead><tr><th>数据项</th><th style="width:96px">本机</th><th style="width:96px">云端</th><th style="width:96px">状态</th></tr></thead>
+      <tbody id="tarotTbl"></tbody>
+    </table>
+    <div class="btns">
+      <button class="primary" id="btnTarotRestore">📥 把塔罗数据恢复成云端默认</button>
+      <button id="btnTarotGen">📤 生成塔罗快照下载（用作云端默认）</button>
+      <button class="danger" id="btnTarotClear">🗑 清空本机塔罗数据（不可撤销）</button>
+    </div>
+    <div class="msg" id="tarotMsg"></div>
+  </div>
 </div>
 
 <script src="./legacy-body-v4.js"></script>
@@ -422,6 +442,152 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
   $('btnReload').onclick= function(){ location.reload(); };
 
   loadCloud(function(){ renderCloud(); render(); $('btnAllCloud').click(); });
+
+  /* ============== 塔罗编辑引擎（IndexedDB） ==============
+     这块数据存在 IndexedDB `tarot_editor_v1`，跟 localStorage 完全两套。
+     上面那张表（localStorage 键）扫不到，必须单独处理。 */
+  var TDB_NAME = 'tarot_editor_v1', TDB_STORE = 'blobs', TDB_META = 'meta';
+  var T_META_KEYS = ['seed', 'back', 'frames', 'cards', 'defaultFrameId'];
+  var T_SNAP_KEY  = 'tarot_snapshot_v1';
+  function tdb(){
+    return new Promise(function(res, rej){
+      var req = indexedDB.open(TDB_NAME, 1);
+      req.onupgradeneeded = function(e){
+        var d = e.target.result;
+        if(!d.objectStoreNames.contains(TDB_STORE)) d.createObjectStore(TDB_STORE);
+        if(!d.objectStoreNames.contains(TDB_META))    d.createObjectStore(TDB_META);
+      };
+      req.onsuccess = function(e){ res(e.target.result); };
+      req.onerror   = function(e){ rej(e); };
+    });
+  }
+  function tdbAll(store){
+    return tdb().then(function(d){
+      return new Promise(function(res, rej){
+        var tx = d.transaction(store, 'readonly'), out = {};
+        var r = tx.objectStore(store).openCursor();
+        r.onsuccess = function(e){ var c = e.target.result; if(!c){ res(out); return; } out[c.key] = c.value; c.continue(); };
+        r.onerror   = function(e){ rej(e); };
+      });
+    });
+  }
+  function tdbSet(store, key, val){
+    return tdb().then(function(d){
+      return new Promise(function(res, rej){
+        var tx = d.transaction(store, 'readwrite');
+        tx.objectStore(store).put(val, key);
+        tx.oncomplete = function(){ res(); };
+        tx.onerror    = function(e){ rej(e); };
+      });
+    });
+  }
+  function tdbDel(store, key){
+    return tdb().then(function(d){
+      return new Promise(function(res, rej){
+        var tx = d.transaction(store, 'readwrite');
+        if(key == null){ tx.objectStore(store).clear(); }
+        else { tx.objectStore(store).delete(key); }
+        tx.oncomplete = function(){ res(); };
+        tx.onerror    = function(e){ rej(e); };
+      });
+    });
+  }
+  function tdbClearAll(){
+    return tdbDel(TDB_META, null).then(function(){ return tdbDel(TDB_STORE, null); });
+  }
+
+  function tarotMetaSummary(meta){
+    var out = { back:false, frames:0, cards:0, defaultFrame:false };
+    if(!meta) return out;
+    out.back = !!meta.back;
+    if(meta.frames && typeof meta.frames === 'object') out.frames = Object.keys(meta.frames).length;
+    if(meta.cards && typeof meta.cards === 'object') out.cards = Object.keys(meta.cards).length;
+    out.defaultFrame = !!meta.defaultFrameId;
+    return out;
+  }
+  function renderTarot(){
+    var tb = $('tarotTbl'); tb.innerHTML = '';
+    var snap = CLOUD && CLOUD.data && CLOUD.data[T_SNAP_KEY];
+    var snapMeta = null;
+    if(snap){ try{ snapMeta = JSON.parse(snap); }catch(e){} }
+    var cloudSum = tarotMetaSummary(snapMeta);
+    tdbAll(TDB_META).then(function(meta){
+      var sum = tarotMetaSummary(meta);
+      var rows = [
+        ['🔙', '牌背',                sum.back,                  cloudSum.back],
+        ['🖼', '花边库（'+sum.frames+' 张）',  sum.frames>0,           cloudSum.frames],
+        ['🃏', '78 张牌（已做 '+sum.cards+'）', sum.cards>0,            cloudSum.cards],
+        ['🌐', '全局默认花边',        sum.defaultFrame,           cloudSum.defaultFrame]
+      ];
+      rows.forEach(function(r){
+        var hasLocal = r[2], hasCloud = r[3];
+        var st;
+        if(!hasLocal && !hasCloud) st = pill('两端都没有', 'none');
+        else if(!hasLocal)         st = pill('本机没有', 'warn');
+        else if(!hasCloud)         st = pill('无云端默认', 'none');
+        else                       st = pill('已一致 ✅', 'ok');
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><div class="nm">'+r[0]+' '+r[1]+'</div></td>' +
+          '<td class="sz">'+(hasLocal?'有':'—')+'</td>' +
+          '<td class="sz">'+(hasCloud?'有':'—')+'</td>' +
+          '<td>'+st+'</td>';
+        tb.appendChild(tr);
+      });
+    }).catch(function(e){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="4">⚠️ 读取塔罗 IndexedDB 失败：'+ (e && e.message || e) +'</td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  function showTarotMsg(msg, cls){
+    var m = $('tarotMsg'); m.className = 'msg ' + (cls||''); m.innerHTML = msg || '';
+  }
+
+  $('btnTarotRestore').onclick = function(){
+    var snap = CLOUD && CLOUD.data && CLOUD.data[T_SNAP_KEY];
+    if(!snap){ showTarotMsg('⚠️ 云端还没有 <code>'+T_SNAP_KEY+'</code> 字段。请先点「📤 生成塔罗快照下载」，把下载的 JSON 合到 <code>cloud-defaults.json</code> 提交推送，再回来恢复。', 'warn'); return; }
+    var meta;
+    try{ meta = JSON.parse(snap); }catch(e){ showTarotMsg('❌ 云端快照不是合法 JSON：'+e.message, 'bad'); return; }
+    if(!confirm('将把塔罗数据从云端快照恢复（覆盖本机牌背/花边/78张牌/全局默认），不可撤销。\n确定继续？')) return;
+    var tasks = [];
+    T_META_KEYS.forEach(function(k){
+      if(k in meta) tasks.push(tdbSet(TDB_META, k, meta[k]));
+    });
+    Promise.all(tasks).then(function(){
+      showTarotMsg('✅ 塔罗已恢复成云端默认。回游戏端 Ctrl+F5 硬刷一次就能看到。', 'ok');
+      renderTarot();
+    }).catch(function(e){
+      showTarotMsg('❌ 恢复失败：'+ (e && e.message || e), 'bad');
+    });
+  };
+
+  $('btnTarotGen').onclick = function(){
+    tdbAll(TDB_META).then(function(meta){
+      var size = JSON.stringify(meta).length;
+      var blob = new Blob([JSON.stringify({ _note:'把这个对象塞到 cloud-defaults.json 的 data["'+T_SNAP_KEY+'"] 字段下，再提交推送', _generatedAt:new Date().toISOString(), snapshot: meta }, null, 2)], { type:'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'tarot-snapshot-'+ Date.now() +'.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      showTarotMsg('📤 已下载快照文件（约 '+fmtBytes(size)+'）。把 <code>snapshot</code> 字段下的内容合并到 <code>cloud-defaults.json</code> 的 <code>data["'+T_SNAP_KEY+'"]</code>，然后 <code>ghpush.js</code> 推送一次，下一台机器点「📥 恢复」就有云端默认了。', 'ok');
+    }).catch(function(e){ showTarotMsg('❌ 读取 IDB 失败：'+ (e && e.message || e), 'bad'); });
+  };
+
+  $('btnTarotClear').onclick = function(){
+    if(!confirm('确定清空本机塔罗数据？牌背 / 花边 / 78 张牌 / 全局默认都会从 IndexedDB 删除，下次打开编辑引擎会重新走默认。不可撤销。')) return;
+    if(!confirm('再确认一次：真的清空吗？')) return;
+    tdbClearAll().then(function(){
+      showTarotMsg('✅ 已清空本机塔罗数据。', 'ok');
+      renderTarot();
+    }).catch(function(e){ showTarotMsg('❌ 清空失败：'+ (e && e.message || e), 'bad'); });
+  };
+
+  // 初次渲染 + 云端加载完后刷新一次
+  renderTarot();
+  loadCloud(function(){ renderTarot(); });
 })();
 </script>
 </body>
