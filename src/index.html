@@ -4382,9 +4382,12 @@ function updateMapPop(){
   mapRun.standing = t;
   if(!t){ if(prevId) hideMapPop(); mapRun.lastFired = null; return; }
   if(nowId === prevId) return;
-  if(mapRun.lastFired === nowId) return;
-  if((t.triggerMode||'onEnter')!=='onEnter')return;
-  mapRun.lastFired=nowId;fireTrigger(t);
+  /* 【陛下要求】踩进触发区不再「自动传送/自动弹面板」——先弹一个确认按钮，玩家点了才真的触发。
+     以前的坑：走路路过触发区就被瞬移走，玩家完全没准备。
+     现在：onEnter 的触发区靠近就显示「进入 / 打开 / 对话」按钮，点一下才 fireTrigger；
+     triggerMode='click' 的仍然只能靠点击地块触发，走近时不去打扰玩家。 */
+  if((t.triggerMode||'onEnter')!=='onEnter') return;
+  showMapPop(t);
 }
 function showMapPop(t){
   const pop = $('map-pop'); if(!pop) return;
@@ -4394,6 +4397,13 @@ function showMapPop(t){
   let _def = '前往另一张地图';
   if(_act === 'panel'){ const _pi = (typeof panelInfo==='function') ? panelInfo(t.panel) : null; _def = '打开' + (_pi ? _pi.name.replace(/^\S+\s/,'') : '界面'); }
   tipEl.textContent = t.tip || _def;
+  /* 按钮文案跟着行为走：进入 / 打开 / 对话 / 拾取 —— 玩家一眼知道点了会发生什么 */
+  $('mp-enter').textContent =
+      _act === 'panel'    ? '打开'
+    : _act === 'dialogue' ? '对话'
+    : _act === 'collect'  ? '拾取'
+    : _act === 'gameplay' ? '开始'
+    : '进入';
   tipEl.style.display = (t.tip && String(t.tip).trim()) ? '' : 'none';
   pop.classList.remove('hidden');
   // 地图用「世界画布 + contain 居中偏移」的变换，不是大厅的 WORLD.k
