@@ -2310,6 +2310,19 @@ function renderElements(){
   $('element-tip').after(btn);
 }
 
+/* 颜色加深工具（把 #rrggbb 按比例压暗，返回 rgb() 字符串）。
+   【踩过的坑】它原先写在大厅建筑那段里，拆大厅时被一起删了，
+   结果 loadMapBg / drawMap / 关卡节点绘制 三处还在调 → ReferenceError
+   → 渲染循环里 throw 被 try/catch 吞掉 → 整个场景全白、角色也不画。
+   凡是"拆功能"时，被删符号必须全局搜调用点，不能只看定义。 */
+function darken(hex, amt){
+  amt = (amt==null)?0.22:amt;
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  r=Math.round(r*(1-amt)); g=Math.round(g*(1-amt)); b=Math.round(b*(1-amt));
+  return 'rgb('+r+','+g+','+b+')';
+}
+
 /* （旧大厅 canvas 已下线，这里不再有 lobby 运行时状态） */
 const MAP_SPEED  = 230; // 地图内行走速度 px/s
 let loopId = 0;

@@ -513,14 +513,25 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
     var cloudSum = tarotMetaSummary(snapMeta);
     tdbAll(TDB_META).then(function(meta){
       var sum = tarotMetaSummary(meta);
+      /* 「有云端默认」的判定：云端快照里**明确写了这个字段**就算有。
+       出厂快照里 cards 是 {}（78 张由引擎内置占位生成）、defaultFrameId 是 null（默认不套花边），
+       这都叫「云端定义了默认」，不能因为值是空的就显示「无云端默认」吓唬人。 */
+      function cloudOf(key){
+        if(!snapMeta || !(key in snapMeta)) return { has:false, label:'—' };
+        var v = snapMeta[key];
+        if(key === 'frames')  return { has:true, label:(v && Object.keys(v).length) || 0 };
+        if(key === 'cards')   return { has:true, label: snapMeta.__builtin ? '内置生成' : ((v && Object.keys(v).length) || 0) };
+        if(key === 'defaultFrameId') return { has:true, label: v ? '有' : '（默认不套）' };
+        return { has:!!v, label: v ? '有' : '—' };
+      }
       var rows = [
-        ['🔙', '牌背',                sum.back,                  cloudSum.back],
-        ['🖼', '花边库（'+sum.frames+' 张）',  sum.frames>0,           cloudSum.frames],
-        ['🃏', '78 张牌（已做 '+sum.cards+'）', sum.cards>0,            cloudSum.cards],
-        ['🌐', '全局默认花边',        sum.defaultFrame,           cloudSum.defaultFrame]
+        ['🔙', '牌背',                sum.back,                  cloudOf('back')],
+        ['🖼', '花边库（'+sum.frames+' 张）',  sum.frames>0,           cloudOf('frames')],
+        ['🃏', '78 张牌（已做 '+sum.cards+'）', sum.cards>0,            cloudOf('cards')],
+        ['🌐', '全局默认花边',        sum.defaultFrame,           cloudOf('defaultFrameId')]
       ];
       rows.forEach(function(r){
-        var hasLocal = r[2], hasCloud = r[3];
+        var hasLocal = r[2], cv = r[3], hasCloud = !!cv.has;
         var st;
         if(!hasLocal && !hasCloud) st = pill('两端都没有', 'none');
         else if(!hasLocal)         st = pill('本机没有', 'warn');
@@ -530,7 +541,7 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
         tr.innerHTML =
           '<td><div class="nm">'+r[0]+' '+r[1]+'</div></td>' +
           '<td class="sz">'+(hasLocal?'有':'—')+'</td>' +
-          '<td class="sz">'+(hasCloud?'有':'—')+'</td>' +
+          '<td class="sz">'+(hasCloud?cv.label:'—')+'</td>' +
           '<td>'+st+'</td>';
         tb.appendChild(tr);
       });
@@ -555,8 +566,17 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
     T_META_KEYS.forEach(function(k){
       if(k in meta) tasks.push(tdbSet(TDB_META, k, meta[k]));
     });
+    /* 出厂快照带 __resetSeed：连 seed 版本戳和 78 张旧牌面一起清掉。
+       不清 seed 的话，本机版本号还在，ensureSeeded() 会以为「都铺过了」直接跳过，
+       78 张牌面就永远是旧的 —— 恢复完看着像没生效。 */
+    if(meta && meta.__resetSeed){
+      tasks.push(tdbDel(TDB_META, 'seed'));
+      tasks.push(tdbDel(TDB_META, 'cards'));
+    }
     Promise.all(tasks).then(function(){
-      showTarotMsg('✅ 塔罗已恢复成云端默认。回游戏端 Ctrl+F5 硬刷一次就能看到。', 'ok');
+      showTarotMsg('✅ 塔罗已恢复成云端出厂默认'
+        + (meta && meta.__resetSeed ? '（78 张牌面会在下次打开编辑引擎时重新生成）' : '')
+        + '。回游戏端 Ctrl+F5 硬刷一次就能看到。', 'ok');
       renderTarot();
     }).catch(function(e){
       showTarotMsg('❌ 恢复失败：'+ (e && e.message || e), 'bad');

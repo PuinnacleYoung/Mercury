@@ -223,18 +223,25 @@ header{
   aspect-ratio:5/8; border-radius:12px; overflow:hidden; position:relative;
   background:linear-gradient(135deg,#3d2c56,#5b3f78); box-shadow:var(--shadow-sm); cursor:pointer;
   border:2px solid transparent; transition:.18s;
+  /* 【关键】每张卡片 = 一个独立层叠上下文（牌面 + 花边 + 徽章 + 牌名 打包成一个单元）。
+     少了这句，卡片里 z-index:1 的花边会「逃」出去，跑到整个网格的层级里比较，
+     于是 A 卡的花边盖住 B 卡的牌面 —— 看着就像「花边浮在所有东西上面」。
+     有了它，卡片内部怎么叠都只在自己这张牌里生效；卡片与卡片之间按 DOM 顺序叠放。 */
+  isolation:isolate;
 }
 .grid-card:hover{transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--pink);}
 .grid-card img{width:100%; height:100%; object-fit:cover;}
+/* 卡片内部的层级一律靠「渲染顺序（DOM 先后）」决定，不再写 z-index：
+   后画的盖住先画的。HTML 顺序固定为  牌面 → 花边 → ✓徽章 → 牌名
+   ⇒ 花边盖在牌面上（镂空正好框住牌面），牌名浮在最上面不会被花边吃掉。
+   以前用 z-index:1/2 去排，反而会把层级从卡片里「顶」出去，越排越乱。 */
 .grid-card .caption{
   position:absolute; bottom:0; left:0; right:0; padding:6px 8px;
   background:linear-gradient(0deg,rgba(0,0,0,.7),transparent);
   color:#fff; font-size:11px; font-weight:700;
-  z-index:2;   /* 花边在牌面之上是对的（镂空画框），但不能把 ✓ 徽章和牌名盖住 */
 }
-.grid-card .badge-done{position:absolute; top:6px; right:6px; background:var(--mint); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; font-weight:800; z-index:2;}
-.grid-card .badge-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:11px; z-index:2;}
-.gc-fr{z-index:1;}            /* 牌面(z:0)之上、徽章/牌名(z:2)之下：维持「花边框住牌面」的视觉 */
+.grid-card .badge-done{position:absolute; top:6px; right:6px; background:var(--mint); color:#fff; font-size:10px; padding:2px 6px; border-radius:6px; font-weight:800;}
+.grid-card .badge-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:11px;}
 .preview-toolbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:4px 0 10px; padding:8px 10px; background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:10px; font-size:12px; color:var(--sub);}
 .preview-toolbar .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.2);}
 .preview-toolbar .seg button{background:transparent; border:0; color:var(--sub); padding:5px 10px; cursor:pointer; font-weight:700; font-size:12px;}
@@ -1811,9 +1818,13 @@ function renderPreviewGrid(){
   gcBack.onclick = () => switchPage('back');
   g.appendChild(gcBack);
   let done = 0;
-  ALL_CARDS.forEach(cd => {
+  /* 卡片单元按牌序叠放：后面的牌盖住前面的牌。
+     序号越大 z-index 越高，万一将来改成扇形/牌堆式重叠布局，顺序也不会乱。 */
+  gcBack.style.zIndex = '0';
+  ALL_CARDS.forEach((cd, ci) => {
     const c = state.cards[cd.id];
     const gc = document.createElement('div'); gc.className = 'grid-card';
+    gc.style.zIndex = String(ci + 1);   // 0 = 牌背垫底，1..78 依次往上叠
     if(c && c.composed){
       done++;
       gc.innerHTML = `<img src="${c.composed}">${frameOverlayHtml(c)}<div class="badge-done">✓</div><div class="caption">${escapeHtml(cd.name)}</div>`;
