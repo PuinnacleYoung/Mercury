@@ -1215,9 +1215,15 @@ const sessionStorage = _mkStore(window.sessionStorage);
   /* 上传图片统一处理：裁透明边 + 缩图（最长边 > MAX_IMG_DIM 等比缩小），
      防止高清原图 base64 撑爆 localStorage（5MB 上限）。三步合一：读图→裁边→缩图 */
   const MAX_IMG_DIM=1024;   // 舞台 300px / slot 最大 130px，1024 已 ~2x 高清冗余
+  /* GIF 判定：动图一旦 drawImage → toDataURL，动画就死在第一帧了 */
+  function isGifSrc(u){ return !!u && (/^data:image\/gif/i.test(u) || /\.gif(?:\?|#|$)/i.test(u)); }
   function processImage(img, rawDataUrl){
     const iw=img.naturalWidth, ih=img.naturalHeight;
     if(!iw || !ih) return { dataUrl:rawDataUrl||img.src, width:iw, height:ih };
+    /* GIF：原样存下（不裁透明边、不缩尺寸、不转 PNG），动画信息完整保留 */
+    if(isGifSrc(rawDataUrl) || isGifSrc(img.src)){
+      return { dataUrl:rawDataUrl||img.src, width:iw, height:ih, gif:true };
+    }
     const cvs=document.createElement('canvas'); cvs.width=iw; cvs.height=ih;
     const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0);
     let data;
@@ -1249,6 +1255,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
       img.onload=()=>{
         const iw=img.naturalWidth||1, ih=img.naturalHeight||1;
         const max=Math.max(iw,ih);
+        if(isGifSrc(dataUrl)){ resolve(dataUrl); return; }   // GIF 一压就静止，宁可占空间
         if(max<=maxDim){ resolve(dataUrl); return; }
         const s=maxDim/max;
         const dw=Math.max(1,Math.round(iw*s)), dh=Math.max(1,Math.round(ih*s));
@@ -1749,7 +1756,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     const box=SLOT_BOX[cat.id+'/'+L.key];
     let done=0, total=0;
     Array.from(files).forEach(f=>{ if(f.type.startsWith('image/')) total++; });
-    if(total===0){ toast('请选 PNG 图片'); return; }
+    if(total===0){ toast('请选 PNG 或 GIF 图片'); return; }
     Array.from(files).forEach(f=>{
       if(!f.type.startsWith('image/')) return;
       const rd=new FileReader();

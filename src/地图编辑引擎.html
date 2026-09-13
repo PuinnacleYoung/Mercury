@@ -238,6 +238,14 @@
   .ed-bg-layer.sel{outline:3px solid var(--accent);outline-offset:-3px;}
   .ed-bg-layer.locked{cursor:not-allowed;}
   .ed-bg-layer.hidden-layer{opacity:.22;filter:grayscale(1);}
+  /* 前景层：盖在角色 / NPC / 物件之上（z 9 > spawn 8），UI 与行走区遮罩之下。
+     用 DOM 而不是 canvas —— 这样 GIF 能真的循环播放。
+     默认 pointer-events:none：铺满整屏的雨 / 光斑不会挡住下面物件的点击；
+     只有被选中（右侧层列表点它）时才接管鼠标，好让人拖动和缩放。 */
+  .ed-fg-layer{position:absolute;background-repeat:no-repeat;background-position:center;background-size:100% 100%;cursor:move;touch-action:none;z-index:9;pointer-events:none;}
+  .ed-fg-layer.sel{outline:3px solid var(--accent);outline-offset:-3px;pointer-events:auto;}
+  .ed-fg-layer.locked{cursor:not-allowed;}
+  .ed-fg-layer.hidden-layer{opacity:.22;filter:grayscale(1);}
   .crop-layer{position:absolute;inset:0;z-index:38;pointer-events:none;}
   .crop-band{position:absolute;background:rgba(8,4,16,.62);background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 9px,transparent 9px 18px);}
   .safe-world-layer{position:absolute;inset:0;z-index:40;pointer-events:none;}
@@ -416,6 +424,7 @@
     <div class="canvas-head" id="canvas-head" data-page-node-id="jzn4zGlF2zBt3Uyx4Fp2XC">
       <input class="name-input" id="me-map-name" placeholder="名称" data-page-node-id="aOC1RVxrP156MzUQB9c77Y">
       <label class="pill" id="me-bg-pill" title="上传一张 PNG 作为新的背景层；多层会按世界坐标叠加，点「🧩 合成背景」烤成一张给游戏用" data-page-node-id="beuOjAKdiqMLMzHq9YBv1w">🖼 上传背景<input type="file" id="me-bg-file" accept="image/*" data-page-node-id="KalzlMvrYxAwWima5UVUU8"></label>
+      <label class="pill" id="me-fg-pill" title="上传 PNG / GIF 作为前景层：会盖在角色、NPC、建筑之上，在按钮和 HUD 之下。GIF 会循环播放" style="font-weight:900;">🌈 上传前景<input type="file" id="me-fg-file" accept="image/*" style="display:none"></label>
       <button class="pill grad" id="me-add-tile" data-page-node-id="2IurPbY8wRFxhOagnQHkdp">＋ 建筑地块</button>
       <button class="pill gold" id="me-add-trigger" data-page-node-id="MGq0bn1WO6kVy3objXg3ny">＋ 触发事件</button>
       <button class="pill mint" id="me-add-spawn" data-page-node-id="QFc4v70Tkmvd6qj6zvzzmn">＋ 出生点</button>
@@ -494,6 +503,18 @@
       <div id="mp-bg-detail"></div>
       <input type="file" id="mp-bg-file" accept="image/*" style="display:none" data-page-node-id="mpBgFile01">
 
+      <!-- ===== 🌈 前景层：盖在角色 / NPC / 物件之上，UI 之下 ===== -->
+      <div class="sec-title">🌈 前景层 · 盖在角色和物件之上</div>
+      <div class="blk-meta" id="mp-fg-meta">—</div>
+      <div class="blk-list" id="mp-fg-list"></div>
+      <div class="blk-actions">
+        <button class="mini-btn" id="mp-fg-add" title="上传 PNG / GIF 作为前景层。GIF 会原样保留并循环播放（不会裁边、不会烤成静态图）">＋ 加一层前景</button>
+        <button class="mini-btn" id="mp-fg-clear" title="清空这张地图的所有前景层">🧹 清空</button>
+      </div>
+      <div class="warn" style="margin-top:6px">下雨 / 彩虹 / 烟花 / 光斑这类氛围效果放这层。<br>它在角色、NPC、建筑<b>之上</b>，在摇杆、按钮、HUD<b>之下</b>，不会挡操作。</div>
+      <div id="mp-fg-detail"></div>
+      <input type="file" id="mp-fg-file" accept="image/*" style="display:none">
+
       <div class="sec-title">📐 世界比例（铺满裁切的基准）</div>
       <div class="blk-actions">
         <button class="mini-btn mint" id="mp-aspect-auto" title="按当前背景图的真实像素比重算世界比例">按背景图重算</button>
@@ -532,11 +553,10 @@
       <div class="sec-title" data-page-node-id="Hjoe5wZB8l6aDkbnAFHeXp">贴图 · 地块本身就是一张 PNG</div>
       <div class="ph-preview" id="tl-ph-preview" data-page-node-id="rMiY9CyXvdIdfTeoEJmVWO"></div>
       <div class="ph-grid" id="tl-ph-grid" data-page-node-id="OdzYqnkjC3yEbxU1B2VxdC"></div>
-      <label data-page-node-id="8xktwqhu9ule9UGjTFJXBj">换成自己的 PNG<input type="file" id="tl-file" accept="image/*" data-page-node-id="tPZ4UBCjoNqQAG1f7FifLY"></label>
+      <label data-page-node-id="8xktwqhu9ule9UGjTFJXBj">换成自己的 PNG / GIF<input type="file" id="tl-file" accept="image/*" data-page-node-id="tPZ4UBCjoNqQAG1f7FifLY"></label>
       <div class="sec-title" data-page-node-id="GSBtqwxTyEgdOgY1r81FO2">点它 / 走近它 → 做什么</div>
       <label data-page-node-id="nx2SHDFD0Vj9nq7EnvHX9L">行为<select id="tl-action" data-page-node-id="0WMTYILTAh9HnoLj9Mgf8u">
         <option value="navigate">地图导航（仅 Map）</option>
-        <option value="none" data-page-node-id="0a1n73H63YrivB9bYDk4om">什么都不做（Level 装饰）</option>
         <option value="teleportLevel" data-page-node-id="WopvGidB4aCewYLEtEO7Wz">传送到另一关卡（仅 Level）</option>
         <option value="panel" data-page-node-id="hTIvZVotIpWu3h35zmN2cG">打开一个面板（仅 Level）</option>
       </select></label>
@@ -695,7 +715,7 @@ function panelEm(id){ const p=PANEL_KINDS.find(x=>x.id===id); return p?p.em:'�
 
 /* ================= 数据层（与游戏共用 game_maps） ================= */
 const LS_MAPS = 'game_maps';
-let editState = { nodeId:null, sel:null, bgSel:null };   // sel = {kind:'tile'|'trigger'|'spawn'|'bglayer', id}；bgSel = 背景层 id
+let editState = { nodeId:null, sel:null, bgSel:null, fgSel:null };   // sel = {kind:'tile'|'trigger'|'spawn'|'bglayer'|'fglayer', id}；bgSel = 背景层 id；fgSel = 前景层 id
 
 function getMapsData(){ try{ return JSON.parse(localStorage.getItem(LS_MAPS)||'null'); }catch(e){ return null; } }
 
@@ -1082,7 +1102,7 @@ function autoAssignWorldMapParent(d){
        * 画布上的 tile = 每个子关卡的"入口地标"（点它 = 跳去那张关卡）
        * 不能行走，不能画行走区，不能加传送门 / 入口点 / 可编辑区
    —— 关卡地图 = 玩家真正走进去玩的场景（阶梯教室 / 图书馆 / 服装店…）
-       * tile = 场景里的建筑（衣橱、塔罗），tile 自带触发（跳图 / 开面板 / 装饰）
+       * tile = 场景里的建筑（衣橱、塔罗），tile 自带触发（跳图 / 开面板）
        * 可以画行走区、加入口点，触发已挂在 tile 上，不需要独立传送门
    —— 全局入口：必须是「关卡地图」，且必须挂在某个「世界地图」下（可全屏世界地图跳转）
    ========================================================= */
@@ -1094,7 +1114,7 @@ function updateCanvasForLeaf(map){
   const tip=$('me-leaf-tip');if(!tip)return;
   const d=ensureMaps(),level=isLevelNode(map),navMap=isMapNode(map);
   ['me-add-trigger','me-add-spawn','me-walk','me-safe-fit','me-set-root'].forEach(id=>{const el=$(id);if(!el)return;const off=!level;el.classList.toggle('is-disabled',off);el.setAttribute('aria-disabled',off?'true':'false');el.style.opacity=off?'.35':'';el.style.pointerEvents=off?'none':'';});
-  const tileBtn=$('me-add-tile');if(tileBtn){tileBtn.textContent=navMap?'＋ 导航建筑':'＋ 场景物件';tileBtn.title=navMap?'地图建筑只能导航到子地图或关卡':'关卡物件可装饰、开面板或传送关卡';}
+  const tileBtn=$('me-add-tile');if(tileBtn){tileBtn.textContent=navMap?'＋ 导航建筑':'＋ 场景物件';tileBtn.title=navMap?'地图建筑只能导航到子地图或关卡':'关卡物件可开面板或传送关卡（纯景物请放「🌈 前景层」）';}
   if(!map){tip.classList.add('hidden');return;}
   if(level){
     const parent=map.parent?d.maps[map.parent]:null;
@@ -1588,6 +1608,8 @@ function renderEditor(){
   updateCanvasForLeaf(map);
   /* 出生点严格只属于显式 Level。 */
   if(isLevelNode(map))(map.spawns||[]).forEach(s=>world.appendChild(buildSpawnEl(map,s)));
+  /* ---------- 前景层：排在资产之后 ⇒ 一定盖住角色 / NPC / 物件（z-index 9） ---------- */
+  (map.fgLayers||[]).forEach(l=>world.appendChild(buildFgLayerEl(map, l)));
   /* 行走区只属于 Level。 */
   if(isLevelNode(map) && map.walk && map.walk.data){
     const wImg = document.createElement('img');
@@ -1633,7 +1655,8 @@ function selClass(kind, id){
 function selectNode(kind, id){
   editState.sel = { kind, id };
   if(kind!=='bglayer') editState.bgSel = null;
-  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn,#edit-stage .ed-npc,#edit-stage .ed-bg-layer')
+  if(kind!=='fglayer') editState.fgSel = null;
+  document.querySelectorAll('#edit-stage .ed-tile,#edit-stage .ed-trigger,#edit-stage .ed-spawn,#edit-stage .ed-npc,#edit-stage .ed-bg-layer,#edit-stage .ed-fg-layer')
     .forEach(el=>el.classList.remove('sel'));
   const el = document.querySelector(`#edit-stage [data-nid="${id}"]`);
   if(el) el.classList.add('sel');
@@ -1777,17 +1800,18 @@ function bindDrag(el, getObj, kind, map){
   });
 }
 /* 背景层拖拽 / 缩放：不参与安全区与行走区约束（背景本来就该铺满世界） */
-function bindLayerDrag(el, getObj, map){
+function bindLayerDrag(el, getObj, map, isFg){
+  const K = isFg ? 'fglayer' : 'bglayer';       // 前景层共用这套拖拽，但不触发「背景需重新合成」
   el.addEventListener('pointerdown', e=>{
     if(e.target.classList.contains('ed-resize')) return;
     e.preventDefault(); e.stopPropagation();
     const o=getObj(); if(!o) return;
-    selectNode('bglayer', o.id);
+    selectNode(K, o.id);
     if(o.locked){ toast('🔒 「'+(o.name||'这一层')+'」已锁定 · 先解锁再拖'); return; }
     const rect=dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
     const move=ev=>{ o.x = ox + (ev.clientX-sx)/rect.width; o.y = oy + (ev.clientY-sy)/rect.height; setBox(el,o); };
-    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); markBgDirty(map); commit(); renderProps(); };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(!isFg){ markBgDirty(map); } commit(); renderProps(); };
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
   if(getObj() && getObj().locked) return;
@@ -1795,7 +1819,7 @@ function bindLayerDrag(el, getObj, map){
   h.addEventListener('pointerdown', e=>{
     e.preventDefault(); e.stopPropagation();
     const o=getObj(); if(!o) return;
-    selectNode('bglayer', o.id);
+    selectNode(K, o.id);
     if(o.locked){ toast('🔒 已锁定 · 先解锁再缩放'); return; }
     const rect=dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ow=o.w, oh=tileH(o);
@@ -1804,7 +1828,7 @@ function bindLayerDrag(el, getObj, map){
       o.h = Math.max(0.02, oh + (ev.clientY-sy)/rect.height);
       setBox(el,o);
     };
-    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); markBgDirty(map); commit(); renderProps(); };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(!isFg){ markBgDirty(map); } commit(); renderProps(); };
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
 }
@@ -1896,6 +1920,10 @@ function composeBackground(){
   const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
   const layers=(map.bgLayers||[]).filter(l=>l.visible!==false && l.img);
   if(!layers.length){ toast('这张地图还没有可合成的背景层'); return; }
+  const gifLayers = layers.filter(l=>isGifSrc(l.img));
+  if(gifLayers.length && !confirm(
+      '有 '+gifLayers.length+' 层是 GIF，合成成 PNG 后<b>动画会停在第一帧</b>。\n'+
+      '要做会动的效果，请改用「🌈 前景层」。\n\n仍然继续合成吗？')) return;
   const wa = World.aspect(map);
   const sel = $('mp-bg-w');
   const outW = Math.max(256, Math.min(4096, parseInt((sel&&sel.value)||'1600',10)||1600));
@@ -1935,7 +1963,191 @@ function setAllLocks(map, locked){
   (map.nodes||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
   (map.spawns||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
   (map.bgLayers||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
+  (map.fgLayers||[]).forEach(x=>{ if(x&&typeof x==='object'){ x.locked=locked; n++; } });
   return n;
+}
+
+/* =========================================================================
+   前景层系统：下雨 / 彩虹 / 烟花 / 光斑这类氛围效果
+   —— 与背景层同款归一化世界坐标（x,y 是中心点），但渲染排在角色 / NPC / 物件之后，
+      所以一定盖住它们；运行时（index.html）也用 DOM <img> 渲染 ⇒ GIF 能真的循环播放。
+   —— GIF 全程「原样保存」：不裁边、不转 PNG、不烤进合成图，否则动画会死在第一帧。
+   ========================================================================= */
+function isGifSrc(u){
+  return !!u && (/^data:image\/gif/i.test(u) || /\.gif(?:\?|#|$)/i.test(u));
+}
+function newFgLayer(name, img){
+  return { id:'fg'+uid(), name:name||'前景层', img:img||null,
+           x:0.5, y:0.5, w:1, h:1, opacity:1, visible:true, locked:false, fit:'fill' };
+}
+function addFgLayerFromFile(e){
+  const map = curMap(); if(!map){ toast('先在左边选一张地图'); return; }
+  const file = e.target.files && e.target.files[0]; if(!file) return;
+  pickImage(e, (url, info)=>{
+    const d = ensureMaps();
+    const gif = !!(info && info.gif) || isGifSrc(url);
+    const iaTrim = (info && info.cut && info.sw && info.sh) ? (info.sw/info.sh) : 0;
+    const put = ia=>{
+      if(!map.worldAspect && ia) map.worldAspect = Math.round(ia*1000)/1000;
+      const wa  = World.aspect(map);
+      const fit = bgAspectFit(ia || wa, wa);
+      const l   = newFgLayer('前景层 ' + ((map.fgLayers||[]).length+1), url);
+      l.w = fit.w; l.h = fit.h;
+      if(gif) l.gif = true;                 // 标记一下，UI 上打 🌈，运行时也知道别去烤它
+      else shrinkBoxToTrim(l, info);        // GIF 不缩框：裁边信息不可靠，且要保动画
+      (map.fgLayers = map.fgLayers || []).push(l);
+      editState.fgSel = l.id; editState.sel = null;
+      saveMapsData(d); buildTree(); renderEditor(); renderProps();
+      toast('🌈 已加入「'+l.name+'」' + (gif ? ' · GIF 会循环播放' : '') + ' · 在画布上拖它 / 拖右下角缩放');
+    };
+    if(iaTrim) put(iaTrim);
+    else if(World._aspect[url]) put(World._aspect[url]);
+    else World.probe(url, ia=>put(ia));
+  });
+}
+function removeFgLayer(id){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  map.fgLayers=(map.fgLayers||[]).filter(l=>l.id!==id);
+  if(editState.fgSel===id) editState.fgSel=null;
+  saveMapsData(d); renderEditor(); renderProps(); toast('已删除前景层');
+}
+function moveFgLayer(id, dir){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const arr=map.fgLayers||[]; const i=arr.findIndex(l=>l.id===id); if(i<0) return;
+  const j=i+dir; if(j<0||j>=arr.length) return;
+  const t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+  saveMapsData(d); renderEditor(); renderProps();
+}
+function fitFgLayer(id){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  const l=(map.fgLayers||[]).find(x=>x.id===id); if(!l) return;
+  const apply=ia=>{
+    const fit=bgAspectFit(ia, World.aspect(map));
+    l.w=fit.w; l.h=fit.h;
+    saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    toast('📐 已按原图比例整层铺满世界（不变形）');
+  };
+  const known=World._aspect[l.img];
+  if(known) apply(known); else World.probe(l.img, apply);
+}
+function clearFgLayers(){
+  const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
+  if(!(map.fgLayers||[]).length){ toast('本来就没有前景层'); return; }
+  if(!confirm('清空 '+(map.fgLayers||[]).length+' 个前景层？')) return;
+  map.fgLayers=[]; editState.fgSel=null; editState.sel=null;
+  saveMapsData(d); renderEditor(); renderProps(); toast('🧹 前景层已清空');
+}
+/* 前景层元素：住 world-box 里，用世界归一化坐标；z-index 9（盖住角色 / NPC / 物件） */
+function buildFgLayerEl(map, l){
+  const el=document.createElement('div');
+  el.className='ed-fg-layer'+(l.id===editState.fgSel?' sel':'')+(l.locked?' locked':'')+(l.visible===false?' hidden-layer':'');
+  el.dataset.nid=l.id; el.dataset.kind='fglayer';
+  setBox(el,l);
+  el.style.opacity=(l.opacity==null?1:l.opacity);
+  if(l.img){
+    el.style.backgroundImage='url('+l.img+')';
+    if(l.fit==='contain'){ el.style.backgroundSize='contain'; el.style.backgroundRepeat='no-repeat'; }
+    else { el.style.backgroundSize='100% 100%'; }
+  }
+  if(l.locked){ const lk=document.createElement('div'); lk.className='ed-lock'; lk.textContent='🔒'; el.appendChild(lk); }
+  bindLayerDrag(el, ()=>l, map, true);
+  return el;
+}
+/* 🌈 前景层列表 + 选中层的精细参数 */
+function renderFgLayers(map){
+  const list=$('mp-fg-list'), meta=$('mp-fg-meta'), det=$('mp-fg-detail');
+  if(!list) return;
+  const layers = map.fgLayers||[];
+  meta.innerHTML = layers.length
+    ? '共 <b>'+layers.length+'</b> 层 · 游戏里直接读这些层（<b>不合成</b>，所以 GIF 能一直动）<br>画布上拖它 / 拖右下角缩放'
+    : '还没有前景层。点下面「＋ 加一层前景」，上传 PNG 或 GIF。';
+
+  list.innerHTML='';
+  layers.forEach((l,idx)=>{
+    const row=document.createElement('div');
+    row.className='blk-row'+(l.id===editState.fgSel?' on':'');
+    const th=document.createElement('span'); th.className='blk-th';
+    if(l.img) th.style.backgroundImage='url('+l.img+')';
+    row.appendChild(th);
+    const nm=document.createElement('span'); nm.className='blk-nm';
+    nm.textContent=(idx+1)+'. '+(l.name||'前景层')+(isGifSrc(l.img)?' 🌈':'');
+    nm.title=l.name||'';
+    row.appendChild(nm);
+    const mkBtn=(cls,txt,title,fn)=>{
+      const b=document.createElement('button'); b.type='button';
+      b.className='blk-btn '+cls; b.textContent=txt; b.title=title;
+      b.onclick=ev=>{ ev.stopPropagation(); fn(); };
+      return b;
+    };
+    const ops=document.createElement('div'); ops.className='blk-ops';
+    ops.appendChild(mkBtn('eye'+(l.visible===false?' off':''), l.visible===false?'🚫':'👁', '显示 / 隐藏这一层', ()=>{
+      l.visible=(l.visible===false); saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    }));
+    ops.appendChild(mkBtn('lock'+(l.locked?' on':''), l.locked?'🔒':'🔓', '锁定 / 解锁这一层', ()=>{
+      l.locked=!l.locked; saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    }));
+    ops.appendChild(mkBtn('','▲','上移一层（越靠上越后画）', ()=>moveFgLayer(l.id,-1)));
+    ops.appendChild(mkBtn('','▼','下移一层', ()=>moveFgLayer(l.id,+1)));
+    ops.appendChild(mkBtn('','🗑','删除这一层', ()=>removeFgLayer(l.id)));
+    row.appendChild(ops);
+    row.onclick=()=>{ editState.fgSel=l.id; editState.sel={kind:'fglayer', id:l.id}; renderEditor(); renderProps(); };
+    list.appendChild(row);
+  });
+
+  det.innerHTML='';
+  const cur = layers.find(l=>l.id===editState.fgSel);
+  if(!cur){
+    det.innerHTML = layers.length ? '<div class="blk-meta">点上面任意一层，这里会出现它的精细参数。</div>' : '';
+    return;
+  }
+  const op = Math.round((cur.opacity==null?1:cur.opacity)*100);
+  det.innerHTML =
+      '<div class="sec-title" style="margin-top:8px">选中的前景层'+(isGifSrc(cur.img)?' <span style="color:#7fd6c2">🌈 GIF · 循环播放</span>':'')+'</div>'
+    + '<label>名称<input type="text" id="mf-name" value="'+escapeHtml(cur.name||'')+'"></label>'
+    + '<label>不透明度 <b id="mf-op-val">'+op+'%</b>'
+    +   '<input type="range" id="mf-op" min="0" max="100" value="'+op+'" style="width:100%;margin-top:6px">'
+    + '</label>'
+    + '<label>铺法<select id="mf-fit">'
+    +   '<option value="fill"'+(cur.fit!=='contain'?' selected':'')+'>拉伸铺满（铺整屏的雨 / 光斑用这个）</option>'
+    +   '<option value="contain"'+(cur.fit==='contain'?' selected':'')+'>完整显示（不变形，彩虹 / 单个烟花用这个）</option>'
+    + '</select></label>'
+    + '<div class="blk-actions">'
+    +   '<button class="mini-btn" id="mf-fit-btn" title="按这张图的原图比例铺进世界，绝不变形">📐 铺满世界</button>'
+    +   '<button class="mini-btn" id="mf-center">🎯 居中</button>'
+    +   '<button class="mini-btn" id="mf-swap">🖼 换图</button>'
+    +   '<button class="mini-btn" id="mf-lock">'+(cur.locked?'🔓 解锁':'🔒 锁定')+'</button>'
+    + '</div>'
+    + '<div class="blk-meta" style="margin-top:8px">世界坐标 x '+(cur.x*100).toFixed(1)+'% · y '+(cur.y*100).toFixed(1)+'% · 宽 '+(cur.w*100).toFixed(1)+'% · 高 '+(tileH(cur)*100).toFixed(1)+'%</div>';
+
+  $('mf-name').oninput = ()=>{ cur.name=$('mf-name').value; saveMapsData(ensureMaps()); renderFgLayers(map); };
+  $('mf-op').oninput = ()=>{
+    cur.opacity = parseInt($('mf-op').value,10)/100;
+    $('mf-op-val').textContent = $('mf-op').value+'%';
+    const el=document.querySelector('#edit-stage [data-nid="'+cur.id+'"]');
+    if(el) el.style.opacity = cur.opacity;
+  };
+  $('mf-op').onchange = ()=>{ saveMapsData(ensureMaps()); renderProps(); };
+  $('mf-fit').onchange = ()=>{ cur.fit=$('mf-fit').value; saveMapsData(ensureMaps()); renderEditor(); renderProps(); };
+  $('mf-fit-btn').onclick = ()=>fitFgLayer(cur.id);
+  $('mf-center').onclick = ()=>{ cur.x=0.5; cur.y=0.5; saveMapsData(ensureMaps()); renderEditor(); renderProps(); };
+  $('mf-lock').onclick = ()=>{ cur.locked=!cur.locked; saveMapsData(ensureMaps()); renderEditor(); renderProps(); };
+  $('mf-swap').onclick = ()=>{
+    const inp=$('mp-fg-file'); if(!inp) return;
+    inp.onchange = ev=>{
+      const f=ev.target.files[0]; if(!f) return;
+      const gif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
+      if(f.size > (gif?8:2)*1024*1024){ toast(gif?'GIF 太大，控制在 8MB 内':'图片太大，控制在 2MB 内'); inp.value=''; return; }
+      pickImage(ev, (url, info)=>{
+        cur.img = url;
+        if(isGifSrc(url)){ cur.gif = true; delete cur.fit; }
+        else { delete cur.gif; shrinkBoxToTrim(cur, info); }
+        saveMapsData(ensureMaps()); renderEditor(); renderProps();
+        toast('🖼 这一层的图已替换' + (isGifSrc(url)?' · GIF 会循环播放':''));
+      });
+      inp.onchange = null;
+    };
+    inp.click();
+  };
 }
 
 /* ================= 属性面板 ================= */
@@ -2085,11 +2297,12 @@ function renderProps(){
   const map = d.maps[editState.nodeId];
   const sel = editState.sel;
   if(sel && sel.kind==='bglayer') editState.bgSel = sel.id;
+  if(sel && sel.kind==='fglayer') editState.fgSel = sel.id;
   // 切了节点就停试听（同一节点内的属性刷新不停）
   if(_bgmPreview.audio && _bgmPreview.obj !== map) stopBgmPreview();
   if(!map){ showPane(null); return; }
 
-  if(!sel || sel.kind==='bglayer'){
+  if(!sel || sel.kind==='bglayer' || sel.kind==='fglayer'){
     showPane('p-map');
     $('mp-heading').textContent=isMapNode(map)?'🗺 Map 地图设置':'🎯 Level 关卡设置';
     $('mp-type').value=map.nodeType;
@@ -2108,6 +2321,7 @@ function renderProps(){
     $('mp-worldmap').onchange=()=>{map.allowWorldMap=$('mp-worldmap').checked;saveMapsData(d);};
     $('mp-teleout').onchange=()=>{map.allowTeleportOut=$('mp-teleout').checked;saveMapsData(d);};
     renderBgLayers(map);
+    renderFgLayers(map);
     renderWorldAspect(map);
     renderBgmBlock('mp-bgm',map);
     return;
@@ -2119,7 +2333,14 @@ function renderProps(){
     showPane('p-tile');
     const act = tileAction(t);
     $('tl-name').value=t.name; $('tl-icon').value=t.icon||'';
-    $('tl-action').value=act;
+    /* 「什么都不做」这个无行为选项已下线 —— 要摆纯景物请用地图设置里的「🌈 前景层」。
+       老存档里还有 action:'none' 的地块，这里补一个隐藏项兜住，免得它静默变成「地图导航」。 */
+    const actSel = $('tl-action');
+    if(act==='none' && !actSel.querySelector('option[value="none"]')){
+      const o=document.createElement('option'); o.value='none'; o.textContent='（无行为 · 请选一个）'; o.hidden=true;
+      actSel.appendChild(o);
+    }
+    actSel.value=act;
     $('tl-mode').value=t.triggerMode||'click';
     $('tl-tip').value=t.tip||'';
 
@@ -2364,6 +2585,8 @@ function renderTrimPill(){
                : '已关闭：上传的 PNG 原样保留，地块外框不动';
 }
 function trimPng(dataUrl, cb){
+  /* GIF 必须原样穿过：drawImage → toDataURL 会把它烤成静止的第一帧，动画就没了 */
+  if(isGifSrc(dataUrl)){ cb({ dataUrl, iw:0, ih:0, sx:0, sy:0, sw:0, sh:0, cut:false, gif:true }); return; }
   const img=new Image();
   img.onload=()=>{
     const iw=img.naturalWidth, ih=img.naturalHeight;
@@ -2411,10 +2634,18 @@ function shrinkBoxToTrim(o, info){
 }
 function pickImage(e, cb){
   const f=e.target.files[0]; if(!f) return;
-  if(f.size > 2*1024*1024){ toast('图片太大，控制在 2MB 内'); e.target.value=''; return; }
+  /* GIF 动图体积天然比 PNG 大，且绝不能重编码，所以单独放宽到 8MB */
+  const isGif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
+  const limit = isGif ? 8*1024*1024 : 2*1024*1024;
+  if(f.size > limit){
+    toast(isGif ? 'GIF 太大，控制在 8MB 内' : '图片太大，控制在 2MB 内');
+    e.target.value=''; return;
+  }
   const r=new FileReader();
   r.onload=()=>{
     const raw=r.result;
+    const gif = isGif || /^data:image\/gif/i.test(raw);
+    if(gif){ cb(raw, { gif:true, dataUrl:raw, cut:false }); return; }   // 原样存，动画保住
     if(!autoTrimMap()){ cb(raw, null); return; }
     trimPng(raw, info=>{
       if(info.cut) toast('✂️ 已裁掉透明边：'+info.iw+'×'+info.ih+' → '+info.sw+'×'+info.sh);
@@ -2433,6 +2664,7 @@ $('me-map-name').oninput = e=>{
 };
 /* 上传背景＝新增一个背景层（多层 PNG 叠加，点「🧩 合成背景」烤成一张给游戏读） */
 $('me-bg-file').onchange = e=> addBgLayerFromFile(e);
+$('me-fg-file').onchange = e=> addFgLayerFromFile(e);
 $('me-add-tile').onclick=()=>{
   const d=ensureMaps(),map=d.maps[editState.nodeId];if(!map){toast('请先选择节点');return;}
   if(isMapNode(map)){
@@ -2617,8 +2849,10 @@ $('me-set-root').onclick=()=>{
   toast('🏝 已把「'+map.name+'」设为登录入口 · parent 仍是「'+parent.name+'」');
 };
 
-/* ====== 🧱 背景层 / 📐 世界比例 / 🔒 批量锁 的按钮 ====== */
+/* ====== 🧱 背景层 / 🌈 前景层 / 📐 世界比例 / 🔒 批量锁 的按钮 ====== */
 $('mp-bg-add').onclick = ()=>{ const inp=$('mp-bg-file'); if(!inp) return; inp.onchange = e=>addBgLayerFromFile(e); inp.click(); };
+$('mp-fg-add').onclick = ()=>{ const inp=$('mp-fg-file'); if(!inp) return; inp.onchange = e=>addFgLayerFromFile(e); inp.click(); };
+$('mp-fg-clear').onclick = ()=>clearFgLayers();
 $('mp-bg-compose').onclick = ()=>composeBackground();
 $('mp-bg-clear').onclick = ()=>clearBgLayers();
 $('mp-aspect-auto').onclick = ()=>{
@@ -2947,7 +3181,9 @@ $('mini-input').addEventListener('keydown', e=>{ if(e.key==='Enter') $('mini-ok'
 
 /* 点空白处取消选中 */
 $('edit-stage').addEventListener('pointerdown', e=>{
-  if(e.target.id==='edit-stage'){ editState.sel=null; renderEditor(); renderProps(); }
+  /* 点画布空白 = 取消选中。前景层也要一起取消，否则它一直是「选中」态、
+     会继续接管鼠标（pointer-events:auto）挡住下面的物件。 */
+  if(e.target.id==='edit-stage'){ editState.sel=null; editState.fgSel=null; renderEditor(); renderProps(); }
 });
 
 /* ================= 启动 ================= */

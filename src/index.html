@@ -421,6 +421,10 @@ input{font-family:inherit;outline:none;}
 .map-nav-btn.world:hover{filter:brightness(1.06);color:#5b3c00;}
 .map-crumb{flex:1;text-align:center;font-size:15px;font-weight:800;color:var(--c-ink);background:rgba(var(--glass-rgb),.62);backdrop-filter:blur(14px);border:1px solid var(--glass-border);padding:10px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(var(--shadow-rgb),.12);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .map-tipbar{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;z-index:10;font-size:12.5px;color:var(--c-ink);background:rgba(var(--glass-rgb),.72);backdrop-filter:blur(12px);border:1px solid var(--glass-border);padding:8px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(var(--shadow-rgb),.12);white-space:nowrap;max-width:78vw;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+/* 前景层：z-index 5 —— canvas（角色 / NPC / 物件，0）之上，
+   摇杆 / 顶栏 / 提示条（10）、触发气泡（12）、HUD（60）之下 ⇒ 挡不住任何操作。 */
+.map-fg{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+.map-fg img{position:absolute;display:block;pointer-events:none;}
 .map-pop{position:absolute;z-index:12;display:flex;flex-direction:column;align-items:center;gap:6px;transform:translate(-50%,-118%);pointer-events:none;}
 .map-pop.hidden{display:none;}
 .map-pop .mp-name{background:rgba(255,255,255,.96);color:var(--c-ink);padding:7px 16px;border-radius:999px;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.2);white-space:nowrap;}
@@ -995,6 +999,10 @@ input{font-family:inherit;outline:none;}
 <!-- ===== 地图引擎 v2（运行时：可行走 + 触发区 + 面板） ===== -->
 <div id="map-screen" class="screen hidden">
   <canvas id="map-canvas"></canvas>
+
+  <!-- 前景层：下雨 / 彩虹 / 烟花等氛围效果。盖在角色、NPC、物件之上，在摇杆 / 按钮 / HUD 之下。
+       用 DOM <img> 而不是 canvas —— 这样 GIF 能真的循环播放。 -->
+  <div id="map-fg" class="map-fg"></div>
 
   <!-- 关卡里不再放「返回学校 / 世界地图」页签：
        左上角卡片、右上角货币、左侧功能栏由全局 #runtime-hud 提供，
@@ -2759,11 +2767,13 @@ $('btn-bg').onclick = ()=>{
 $('bg-custom').oninput = e=>{ applyPreviewBg(e.target.value, 'custom:'+e.target.value); };
 $('bg-file').onchange = e=>{
   const f = e.target.files[0]; if(!f) return;
-  if(f.size > 2*1024*1024){ toast('图片太大，请控制在 2MB 内'); e.target.value=''; return; }
+  /* GIF 走 CSS background 会真的循环播放，所以放宽到 8MB（PNG 仍是 2MB） */
+  const isGif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
+  if(f.size > (isGif?8:2)*1024*1024){ toast(isGif?'GIF 太大，请控制在 8MB 内':'图片太大，请控制在 2MB 内'); e.target.value=''; return; }
   const r = new FileReader();
   r.onload = ()=>{
     applyPreviewBg(`url(${r.result}) center/cover no-repeat`, 'img:'+r.result);
-    toast('背景图已应用');
+    toast(isGif ? '背景图已应用 · GIF 会循环播放' : '背景图已应用');
   };
   r.readAsDataURL(f);
 };
@@ -4020,7 +4030,7 @@ function nodeRect(n, W, H){
   return { x:(n.x - w/2)*W, y:(n.y - h/2)*H, w:w*W, h:h*H };
 }
 function inRect(px, py, r){ return px>=r.x && px<=r.x+r.w && py>=r.y && py<=r.y+r.h; }
-/* 地块自己就有行为：跳转地图 / 打开界面 / 纯装饰 */
+/* 地块自己就有行为：跳转地图 / 打开界面（纯装饰已下线，改用「🌈 前景层」） */
 function nodeAction(n){
   if(!n) return 'none';
   if(n.action) return n.action;
@@ -4080,7 +4090,7 @@ function enterMap(id,spawnId){
   if(!Array.isArray(level.spawns)||!level.spawns.length){toast('❌ LEVEL_NO_SPAWN：关卡没有出生点');return;}
   mapState.currentId=id;mapState.spawnId=spawnId||null;loadRuntimeWalk(level);showScreen('map-screen');
   const place=()=>{
-    resizeMap();loadMapBg(level);
+    resizeMap();loadMapBg(level);renderMapFg(true);
     const W=mapRun.w||window.innerWidth||1,H=mapRun.h||window.innerHeight||1;
     const sp=(level.spawns||[]).find(s=>s.id===spawnId)||(level.spawns||[])[0];
     const sx=Math.max(0.05,Math.min(0.95,Number(sp.x)||0.5)),sy=Math.max(0.05,Math.min(0.95,Number(sp.y)||0.85));
@@ -4472,6 +4482,51 @@ function resizeMap(){
   mapRun.canvas.style.height = H+'px';
   mapRun.ctx.setTransform(mapRun.dpr,0,0,mapRun.dpr,0,0);
   if(oldW && oldH && mapState.currentId){ mapRun.px = mapRun.px/oldW*f.w; mapRun.py = mapRun.py/oldH*f.h; }
+  try{ layoutMapFg(); }catch(e){}
+}
+
+/* ================= 前景层（下雨 / 彩虹 / 烟花 / 光斑） =================
+   数据来自《地图编辑引擎》的 map.fgLayers，与背景层同一套归一化世界坐标（x,y 是中心点）。
+   用 DOM <img> 而不是 canvas：GIF 才能真的循环播放；而且它天然盖在 canvas（角色 / NPC / 物件）之上。
+   层本身 pointer-events:none，z-index 5 —— 摇杆（10）/ 触发气泡（12）/ HUD（60）都在它上面，挡不住操作。
+   ===================================================================== */
+let _fgSig = '';
+function fgLayersOf(m){
+  return (m && Array.isArray(m.fgLayers)) ? m.fgLayers.filter(l => l && l.img && l.visible !== false) : [];
+}
+function renderMapFg(force){
+  const box = $('map-fg'); if(!box) return;
+  let m = null; try{ const d = ensureMaps(); m = mapState.currentId ? d.maps[mapState.currentId] : null; }catch(e){}
+  const layers = fgLayersOf(m);
+  const sig = (mapState.currentId||'') + '|' + layers.map(l =>
+    l.id + ':' + (l.img||'').length + ':' + (l.opacity==null?1:l.opacity) + ':' + (l.fit||'fill')
+  ).join(',');
+  if(!force && sig === _fgSig){ layoutMapFg(); return; }
+  _fgSig = sig;
+  box.innerHTML = '';
+  layers.forEach(l=>{
+    const im = document.createElement('img');
+    im.className = 'map-fg-img'; im.alt = '';
+    im.dataset.fid = l.id;
+    im.src = l.img;                       // GIF 的 dataURL 直接给 <img> → 浏览器自动循环播放
+    box.appendChild(im);
+  });
+  layoutMapFg();
+}
+function layoutMapFg(){
+  const box = $('map-fg'); if(!box) return;
+  const W = mapRun.w, H = mapRun.h;
+  if(!W || !H) return;
+  let m = null; try{ const d = ensureMaps(); m = mapState.currentId ? d.maps[mapState.currentId] : null; }catch(e){}
+  fgLayersOf(m).forEach(l=>{
+    const im = box.querySelector('[data-fid="'+l.id+'"]'); if(!im) return;
+    im.style.left       = ((mapRun.ox||0) + (l.x - l.w/2) * W) + 'px';
+    im.style.top        = ((mapRun.oy||0) + (l.y - l.h/2) * H) + 'px';
+    im.style.width      = (l.w * W) + 'px';
+    im.style.height     = (l.h * H) + 'px';
+    im.style.opacity    = (l.opacity==null ? 1 : l.opacity);
+    im.style.objectFit  = (l.fit==='contain') ? 'contain' : 'fill';
+  });
 }
 const _mapImgCache = Object.create(null);
 function mapImg(src){
@@ -4745,7 +4800,7 @@ function drawMap(){
     /* 地块本身就是触发点：点一下就按它的行为走 */
     let hit = tileAt(x, y);
     if(!hit) return;
-    if(!nodeIsHot(hit)){ toast('「' + (hit.name||'地块') + '」只是装饰 · 在《地图编辑引擎》里给它加个行为'); return; }
+    if(!nodeIsHot(hit)){ toast('「' + (hit.name||'地块') + '」还没行为 · 在《地图编辑引擎》里给它设一个（纯景物请放「🌈 前景层」）'); return; }
     hideMapPop();
     if((hit.triggerMode||'click') === 'click'){ showMapPop(hit); return; }  // 点一下先确认
     mapRun.lastFired = hit.id; fireTrigger(hit);
