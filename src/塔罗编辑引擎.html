@@ -818,6 +818,22 @@ function canvasToWebp(cvs, q){ return cvs.toDataURL('image/webp', q || WEBP_Q); 
 /* ---- 默认牌面/牌背取图：优先已合成的，没有就现画一张（保证打开任何一张都不是空白） ---- */
 const _defFaceCache = new Map();
 let _defBackCache = null;
+/* 陛下提供的内置牌背资源（Mercury 1x）—— 首次/升级时自动作为默认牌背 */
+const BUILTIN_BACK_URL = 'assets/tarot/back-mercury-1x.webp';
+let _builtinBackDataUrlPromise = null;
+function getBuiltinBack1x(){
+  if(_builtinBackDataUrlPromise) return _builtinBackDataUrlPromise;
+  _builtinBackDataUrlPromise = fetch(BUILTIN_BACK_URL, { cache: 'no-store' })
+    .then(r => r.ok ? r.blob() : null)
+    .then(b => !b ? null : new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result);   // webp dataURL
+      fr.onerror = e => rej(e);
+      fr.readAsDataURL(b);
+    }))
+    .catch(() => null);
+  return _builtinBackDataUrlPromise;
+}
 function defaultFaceSrc(cd){
   if(_defFaceCache.has(cd.id)) return _defFaceCache.get(cd.id);
   const s = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
@@ -839,34 +855,43 @@ function cardBaseSrc(cd, c){
 /* 打开编辑器就自动铺好 78 张 + 牌背，陛下不用点任何按钮；
    牌面内容 = 游戏里现在渲染的那套（emoji + 牌名 + 正位关键词），改哪张就从哪张的默认值往上加。 */
 const SEED_VER = 1;                       // 以后默认牌面样式升级就 +1，只刷新「还没自己改过」的牌
+const BACK_SEED_VER = 1;                  // 默认牌背素材升级就 +1（同时换 BUILTIN_BACK_URL），只刷新「还没自己改过」牌背用户
 async function generatePlaceholders(opts){
   opts = opts || {};
   const forceDefault = !!opts.forceDefault;        // true：连「仍是默认牌面」的一起刷新
-  const todo = ALL_CARDS.filter(cd => {
-    const c = state.cards[cd.id];
-    if(!c || !c.composed) return true;             // 没牌面 → 补默认
-    return forceDefault && c.isDefault !== false;  // 升级样式 → 只动陛下没改过的
-  });
-  if(!todo.length) return 0;
+  const faceOnly     = !!opts.faceOnly;            // true：只刷牌背，不动 78 张牌面（back 升级专用）
   let n = 0;
-  for(let i=0; i<todo.length; i++){
-    const cd = todo[i];
-    const c = state.cards[cd.id] || (state.cards[cd.id] = {id:cd.id, name:cd.name, en:cd.en, frameId:null, layers:[]});
-    c.name = c.name || cd.name; c.en = c.en || cd.en;
-    /* 默认牌面只出 1x（500×800 已远超实际显示尺寸），78 张一起存才不至于撑爆库；
-       陛下自己合成的那张仍会出 2x，导出 ZIP 时缺 2x 的会自动补一张放大的。 */
-    c.composed   = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
-    c.composed2x = null;
-    c.isDefault  = true;
-    if(!c.layers) c.layers = [];
-    n++;
-    if(i % 6 === 5){
-      toast('准备默认牌面 ' + (i+1) + ' / ' + todo.length);
-      await new Promise(r => setTimeout(r, 0));    // 让出一帧，别卡死界面
+  if(!faceOnly){
+    const todo = ALL_CARDS.filter(cd => {
+      const c = state.cards[cd.id];
+      if(!c || !c.composed) return true;             // 没牌面 → 补默认
+      return forceDefault && c.isDefault !== false;  // 升级样式 → 只动陛下没改过的
+    });
+    if(todo.length){
+      for(let i=0; i<todo.length; i++){
+        const cd = todo[i];
+        const c = state.cards[cd.id] || (state.cards[cd.id] = {id:cd.id, name:cd.name, en:cd.en, frameId:null, layers:[]});
+        c.name = c.name || cd.name; c.en = c.en || cd.en;
+        /* 默认牌面只出 1x（500×800 已远超实际显示尺寸），78 张一起存才不至于撑爆库；
+           陛下自己合成的那张仍会出 2x，导出 ZIP 时缺 2x 的会自动补一张放大的。 */
+        c.composed   = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
+        c.composed2x = null;
+        c.isDefault  = true;
+        if(!c.layers) c.layers = [];
+        n++;
+        if(i % 6 === 5){
+          toast('准备默认牌面 ' + (i+1) + ' / ' + todo.length);
+          await new Promise(r => setTimeout(r, 0));    // 让出一帧，别卡死界面
+        }
+      }
     }
   }
   if(!state.back.composed || forceDefault){
-    state.back.composed   = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
+    /* 优先用陛下提供的内置牌背（fetch 一次），失败再回退到程序生成的渐变 */
+    let src = null;
+    try { src = await getBuiltinBack1x(); } catch(e) {}
+    if(!src) src = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
+    state.back.composed   = src;
     state.back.composed2x = null;          // 同上，导出时自动补放大的 2x
     state.back.isDefault  = true;
   }
@@ -878,16 +903,20 @@ async function ensureSeeded(){
   let seed = null;
   try{ seed = await dbGet(DB_META, 'seed'); }catch(e){}
   const missing = ALL_CARDS.some(cd => !(state.cards[cd.id] && state.cards[cd.id].composed));
-  if(seed && seed.ver === SEED_VER && !missing && state.back.composed) return;
-  const upgraded = !seed || seed.ver !== SEED_VER;
-  const n = await generatePlaceholders({ forceDefault: upgraded });
-  try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, at: Date.now() }); }catch(e){}
+  const faceOK = !!seed && seed.ver === SEED_VER && !missing;
+  const backOK = !!state.back.composed && seed && seed.backVer === BACK_SEED_VER;
+  if(faceOK && backOK) return;
+  const faceUpgraded = !faceOK && (!seed || seed.ver !== SEED_VER);
+  if(!faceOK) await generatePlaceholders({ forceDefault: faceUpgraded });
+  if(!backOK) await generatePlaceholders({ faceOnly: true });
+  try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, at: Date.now() }); }catch(e){}
   try{ renderPreviewGrid(); }catch(e){}
   try{ renderCardList(); }catch(e){}
   if(typeof editorCard  !== 'undefined' && editorCard)  editorCard.renderStage();
   if(typeof editorBack  !== 'undefined' && editorBack)  editorBack.renderStage();
   updateMeta();
-  if(n) toast('默认牌面已就绪：' + n + ' 张 · 就是游戏里现在用的那套');
+  if(!faceOK)  toast('默认牌面已就绪：' + ALL_CARDS.length + ' 张 · 就是游戏里现在用的那套');
+  if(!backOK)  toast('默认牌背已更新（Mercury）');
 }
 
 /* ============== 存/取 ============== */
