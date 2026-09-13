@@ -820,6 +820,14 @@ const _defFaceCache = new Map();
 let _defBackCache = null;
 /* 陛下提供的内置牌背资源（Mercury 1x）—— 首次/升级时自动作为默认牌背 */
 const BUILTIN_BACK_URL = 'assets/tarot/back-mercury-1x.webp';
+/* 默认花边库（陛下上传的 4 张 5:8 装饰背景，中央留白可叠牌面） */
+const BUILTIN_FRAMES = [
+  { url: 'assets/tarot/frame-azure-clouds-1x.webp',  id: 'frame-azure-clouds',  name: '蓝云繁花' },
+  { url: 'assets/tarot/frame-moon-phases-1x.webp',   id: 'frame-moon-phases',   name: '月相花语' },
+  { url: 'assets/tarot/frame-cloud-irises-1x.webp',  id: 'frame-cloud-irises',  name: '云海鸢尾' },
+  { url: 'assets/tarot/frame-stellar-orbit-1x.webp', id: 'frame-stellar-orbit', name: '星轨花环' },
+];
+let _builtinFrameCache = null;
 let _builtinBackDataUrlPromise = null;
 function getBuiltinBack1x(){
   if(_builtinBackDataUrlPromise) return _builtinBackDataUrlPromise;
@@ -833,6 +841,22 @@ function getBuiltinBack1x(){
     }))
     .catch(() => null);
   return _builtinBackDataUrlPromise;
+}
+/* 默认花边取图：fetch 一次缓存（fetch → blob → FileReader → dataURL） */
+async function getBuiltinFrame1x(url){
+  if(!_builtinFrameCache) _builtinFrameCache = new Map();
+  if(_builtinFrameCache.has(url)) return _builtinFrameCache.get(url);
+  const p = fetch(url, { cache: 'no-store' })
+    .then(r => r.ok ? r.blob() : null)
+    .then(b => !b ? null : new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload  = () => res(fr.result);
+      fr.onerror = e => rej(e);
+      fr.readAsDataURL(b);
+    }))
+    .catch(() => null);
+  _builtinFrameCache.set(url, p);
+  return p;
 }
 function defaultFaceSrc(cd){
   if(_defFaceCache.has(cd.id)) return _defFaceCache.get(cd.id);
@@ -856,6 +880,31 @@ function cardBaseSrc(cd, c){
    牌面内容 = 游戏里现在渲染的那套（emoji + 牌名 + 正位关键词），改哪张就从哪张的默认值往上加。 */
 const SEED_VER = 1;                       // 以后默认牌面样式升级就 +1，只刷新「还没自己改过」的牌
 const BACK_SEED_VER = 2;                  // 默认牌背素材升级就 +1（同时换 BUILTIN_BACK_URL），只刷新「还没自己改过」牌背用户
+const FRAME_SEED_VER = 1;                 // 默认花边素材升级就 +1（同时换 BUILTIN_FRAMES 列表），只刷新「陛下没改过对应花边」的
+async function seedBuiltinFrames(){
+  let added = 0;
+  for(const fd of BUILTIN_FRAMES){
+    if(state.frames[fd.id] && state.frames[fd.id].layers && state.frames[fd.id].layers.length){
+      /* 已存在同名花边（陛下手动建过同 id）→ 只把缺的名字/素材补上，不覆盖 layers */
+      if(!state.frames[fd.id].name) state.frames[fd.id].name = fd.name;
+      continue;
+    }
+    const dataUrl = await getBuiltinFrame1x(fd.url);
+    if(!dataUrl) continue;
+    state.frames[fd.id] = {
+      id: fd.id,
+      name: fd.name,
+      layers: [{
+        id:'__base', src:dataUrl,
+        x:0, y:0, w:STAGE_W, h:STAGE_H,
+        opacity:1, visible:true, rot:0, flipH:false
+      }]
+    };
+    added++;
+  }
+  if(added) await saveAll();
+  return added;
+}
 async function generatePlaceholders(opts){
   opts = opts || {};
   const forceDefault = !!opts.forceDefault;        // true：连「仍是默认牌面」的一起刷新
@@ -909,12 +958,23 @@ async function ensureSeeded(){
   const faceOK = !!seed && seed.ver === SEED_VER && !missing;
   const backOK = !!state.back.composed && !!seed && seed.backVer === BACK_SEED_VER;
   const backCustom = state.back.isDefault === false;   // 陛下自己合成过 → 不覆盖
-  if(faceOK && backOK) return;
+  const frameOK = !!seed && seed.frameVer === FRAME_SEED_VER
+    && BUILTIN_FRAMES.every(fd => state.frames[fd.id] && state.frames[fd.id].layers && state.frames[fd.id].layers.length);
+  if(faceOK && backOK && frameOK) return;
   const faceUpgraded = !faceOK && (!seed || seed.ver !== SEED_VER);
   if(!faceOK) await generatePlaceholders({ forceDefault: faceUpgraded });
   if(!backOK && !backCustom) await generatePlaceholders({ faceOnly: true, back: true });
+  if(!frameOK){
+    const n = await seedBuiltinFrames();
+    if(n){
+      try{ renderFrameList(); }catch(e){}
+      if(!state.currentFrameId) state.currentFrameId = Object.keys(state.frames)[0] || null;
+      if(typeof editorFrame !== 'undefined' && editorFrame) editorFrame.renderStage();
+      toast('默认花边已就绪：' + n + ' 张');
+    }
+  }
   /* 自己合成过的也算「已处理」，别每次开局都弹一遍 */
-  try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, at: Date.now() }); }catch(e){}
+  try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, frameVer: FRAME_SEED_VER, at: Date.now() }); }catch(e){}
   try{ renderPreviewGrid(); }catch(e){}
   try{ renderCardList(); }catch(e){}
   if(typeof editorCard  !== 'undefined' && editorCard)  editorCard.renderStage();
