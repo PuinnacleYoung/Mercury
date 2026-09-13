@@ -322,6 +322,10 @@ input{font-family:inherit;outline:none;}
 .tarot-head h2{margin:0;font-size:22px;letter-spacing:2px;}
 .tarot-head .t-back{padding:9px 20px;border-radius:999px;background:rgba(var(--glass-rgb),.12);color:#fff;font-size:14px;font-weight:700;transition:.15s;}
 .tarot-head .t-back:active{transform:scale(.95);}
+.tarot-head .t-src{font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;background:rgba(var(--glass-rgb),.10);border:1px solid rgba(var(--accent-rgb),.22);color:#b9aee0;white-space:nowrap;line-height:1;}
+.tarot-head .t-src::before{content:'🎴 ';}
+.tarot-head .t-src.ed{color:#8ce0b6;border-color:rgba(140,224,182,.35);}
+.tarot-head .t-src.fb{color:#d8b48a;border-color:rgba(216,180,138,.32);}
 .tarot-stage{flex:1;overflow-y:auto;padding:26px 30px;}
 .t-stage-title{text-align:center;font-size:18px;color:#c9bde8;margin:0 0 6px;}
 .t-stage-sub{text-align:center;font-size:13px;color:#8b83a8;margin:0 0 22px;}
@@ -1031,6 +1035,7 @@ input{font-family:inherit;outline:none;}
   <div class="tarot-wrap">
     <div class="tarot-head">
       <h2>🔮 塔罗占卜</h2>
+      <span class="t-src" id="tarot-src" title="牌面来源：塔罗编辑引擎 > 素材包 > 占位符"></span>
       <button class="t-back" id="tarot-back">← 返回大厅</button>
     </div>
     <div class="tarot-stage" id="tarot-stage"></div>
@@ -1390,33 +1395,112 @@ function buildTarotDeck(){
   });
   return deck;
 }
-/* ================= 塔罗自定义素材接入（塔罗编辑引擎导出包） ================= */
-let TAROT_META = null;
+/* ================= 塔罗牌面 · 三级来源 =================
+   ① 塔罗编辑引擎（同源 IndexedDB，改完立刻生效，最优先）
+   ② assets/tarot/meta.json（编辑引擎导出的素材包，跨设备用）
+   ③ 内置 emoji 占位（什么都没有时的兜底）
+   ==================================================== */
+let TAROT_META = null;          // 素材包 meta.json
 let TAROT_HAS_ASSETS = false;
 const TAROT_DIR = 'assets/tarot/';
+const TAROT_ED_DB = 'tarot_editor_v1', TAROT_ED_STORE = 'meta';
+const LS_TAROT_REV = 'tarot_editor_rev';   // 编辑引擎每次保存会 +1，用于判断要不要重读
+let TAROT_ED = { cards:null, back:null, ready:false, rev:-1 };
+let tarotEdBusy = false;
+
 function dpr2x(){ return (window.devicePixelRatio||1) > 1.3; }
+
+/* ---- 同源 IndexedDB 读取（塔罗编辑引擎把牌面存在这里） ---- */
+function tarotIdbOpen(name){
+  return new Promise((res, rej)=>{
+    let req;
+    try{ req = indexedDB.open(name); }catch(e){ rej(e); return; }
+    req.onsuccess = e => {
+      const d = e.target.result;
+      /* 游戏只是读客：库里没有 meta 仓库，说明编辑引擎还没建过库，
+         这是被我们这次 open 顺手创建的空壳——立刻关掉删掉，
+         否则它占着版本号，编辑引擎下次 open 就不会触发 onupgradeneeded，建不出 store。 */
+      if(!d.objectStoreNames || !d.objectStoreNames.contains('meta')){
+        try{ d.close(); indexedDB.deleteDatabase(name); }catch(_){}
+        res(null);
+      } else res(d);
+    };
+    req.onerror   = () => rej(new Error('idb open fail'));
+    req.onblocked = () => rej(new Error('idb blocked'));
+  });
+}
+function tarotIdbGet(name, store, key){
+  return tarotIdbOpen(name).then(d => new Promise(res => {
+    try{
+      if(!d){ res(null); return; }
+      if(!d.objectStoreNames.contains(store)){ res(null); return; }
+      const done = v => { try{ d.close(); }catch(_){} res(v); };   // 读完就关，别占着连接
+      const tx = d.transaction(store, 'readonly');
+      const r  = tx.objectStore(store).get(key);
+      r.onsuccess = () => done(r.result || null);
+      r.onerror   = () => done(null);
+    }catch(e){ res(null); }
+  })).catch(()=>null);
+}
+function tarotEdRev(){ try{ return parseInt(localStorage.getItem(LS_TAROT_REV)||'0', 10) || 0; }catch(e){ return 0; } }
+
+/* 读编辑引擎：78 张牌 + 牌背（含合成好的图与文案） */
+async function loadTarotEditor(){
+  const [cards, back] = await Promise.all([
+    tarotIdbGet(TAROT_ED_DB, TAROT_ED_STORE, 'cards'),
+    tarotIdbGet(TAROT_ED_DB, TAROT_ED_STORE, 'back')
+  ]);
+  TAROT_ED.cards = (cards && typeof cards === 'object') ? cards : null;
+  TAROT_ED.back  = back || null;
+  TAROT_ED.ready = true;
+  TAROT_ED.rev   = tarotEdRev();
+}
+/* 进塔罗界面时调一次：版本号变了才重读，避免每次都搬几 MB */
+async function refreshTarotEditor(){
+  if(tarotEdBusy) return;
+  tarotEdBusy = true;
+  try{
+    if(!TAROT_ED.ready || tarotEdRev() !== TAROT_ED.rev){
+      await loadTarotEditor();
+      applyTarotText();
+    }
+  }catch(e){}
+  tarotEdBusy = false;
+}
+
+/* 把编辑器 / 素材包里的牌名、正逆位文案叠到内置牌组（编辑器优先） */
+function applyTarotText(){
+  const layers = [];
+  if(TAROT_HAS_ASSETS && TAROT_META && TAROT_META.cards) layers.push(TAROT_META.cards);
+  if(TAROT_ED.cards) layers.push(TAROT_ED.cards);
+  if(!layers.length) return;
+  layers.forEach(C => {
+    MAJOR_ARCANA.forEach(m=>{
+      const cm = C['m'+m.id];
+      if(!cm) return;
+      if(cm.name)     m.name     = cm.name;
+      if(cm.upright)  m.upright  = cm.upright;
+      if(cm.reversed) m.reversed = cm.reversed;
+    });
+    SUITS.forEach(s=>{
+      RANKS.forEach(rk=>{
+        const cm = C['s'+s.suit+'_'+rk.key];
+        if(!cm) return;
+        if(cm.name)     rk._name     = cm.name;
+        if(cm.upright)  rk._upright  = cm.upright;
+        if(cm.reversed) rk._reversed = cm.reversed;
+      });
+    });
+  });
+}
+
 async function loadTarotAssets(){
   try{
     const r = await fetch(TAROT_DIR + 'meta.json', {cache:'no-cache'});
-    if(!r.ok) throw new Error('no meta');
-    TAROT_META = await r.json();
-    TAROT_HAS_ASSETS = true;
-    // 用 meta 覆盖内置文案（牌名 / 正位 / 逆位）
-    if(TAROT_META.cards){
-      MAJOR_ARCANA.forEach(m=>{
-        const cm = TAROT_META.cards['m'+m.id];
-        if(cm){ m.name = cm.name || m.name; m.upright = cm.upright || m.upright; m.reversed = cm.reversed || m.reversed; }
-      });
-      SUITS.forEach(s=>{
-        RANKS.forEach(rk=>{
-          const cm = TAROT_META.cards['s'+s.suit+'_'+rk.key];
-          if(cm && cm.name){ rk._name = cm.name; }
-          if(cm && cm.upright){ rk._upright = cm.upright; }
-          if(cm && cm.reversed){ rk._reversed = cm.reversed; }
-        });
-      });
-    }
+    if(r.ok){ TAROT_META = await r.json(); TAROT_HAS_ASSETS = true; }
   }catch(e){ TAROT_HAS_ASSETS = false; }
+  try{ await loadTarotEditor(); }catch(e){}
+  applyTarotText();
 }
 loadTarotAssets();   // 启动即加载（失败自动 emoji 兜底）
 
@@ -1426,12 +1510,32 @@ function tarotCardDone(cardId){
   const cm = TAROT_META.cards[cardId];
   return !!(cm && cm.done !== false);
 }
+/* 编辑器里的牌面（1x / 2x 自动挑） */
+function tarotEditorSrc(cardId, ratio2x){
+  const c = TAROT_ED.cards && TAROT_ED.cards[cardId];
+  if(!c) return null;
+  if(ratio2x && c.composed2x) return c.composed2x;
+  return c.composed || null;
+}
+function tarotEditorBackSrc(ratio2x){
+  const b = TAROT_ED.back;
+  if(!b) return null;
+  if(ratio2x && b.composed2x) return b.composed2x;
+  return b.composed || null;
+}
 function tarotImgSrc(cardId, ratio2x){
-  if(!tarotCardDone(cardId)) return null;
-  return TAROT_DIR + 'cards/' + cardId + (ratio2x ? '@2x' : '') + '.webp';
+  return tarotEditorSrc(cardId, ratio2x)                                        // ① 编辑器
+      || (tarotCardDone(cardId) ? TAROT_DIR + 'cards/' + cardId + (ratio2x ? '@2x' : '') + '.webp' : null); // ② 素材包
 }
 function tarotBackSrc(ratio2x){
-  return TAROT_HAS_ASSETS ? (TAROT_DIR + 'back' + (ratio2x ? '@2x' : '') + '.webp') : null;
+  return tarotEditorBackSrc(ratio2x)                                            // ① 编辑器
+      || (TAROT_HAS_ASSETS ? (TAROT_DIR + 'back' + (ratio2x ? '@2x' : '') + '.webp') : null);              // ② 素材包
+}
+/* 当前牌面来自哪（塔罗页顶上一行小字） */
+function tarotSourceLabel(){
+  if(TAROT_ED.cards) return '塔罗编辑引擎';
+  if(TAROT_HAS_ASSETS) return '素材包';
+  return '占位符';
 }
 /* 牌背 HTML（有自定义牌背用真图，否则 🔮 渐变兜底） */
 function tarotBackHtml(){
@@ -2100,7 +2204,13 @@ function showScreen(id){
   }
   if(id==='game-screen'){ $('game-screen').style.display='block'; resizeLobby(); }
   if(id==='wardrobe-screen'){ initPreviewBg(); buildWardrobe(); }
-  if(id==='tarot-screen'){ resetTarot(); }
+  if(id==='tarot-screen'){
+    /* 每次进塔罗先跟编辑引擎对一次版本号，改过牌面就重读，陛下不用手动刷新页面 */
+    const go = ()=>{ resetTarot(); };
+    if(typeof refreshTarotEditor === 'function'){
+      Promise.resolve(refreshTarotEditor()).then(go).catch(go);
+    } else go();
+  }
   // 地图屏切走时暂停地图渲染（位置保留，面板关掉可原样回到地图）
   try{ if(id!=='map-screen' && mapRun) mapRun.active = false; }catch(e){}
 }
@@ -3214,6 +3324,15 @@ function resetTarot(){
 }
 function renderTarot(){
   const el = $('tarot-stage'); el.innerHTML='';
+  const srcEl = $('tarot-src');
+  if(srcEl){
+    const lab = tarotSourceLabel();
+    srcEl.textContent = '牌面：' + lab;
+    srcEl.className = 't-src' + (lab==='占位符' ? ' fb' : ' ed');
+    srcEl.title = lab==='塔罗编辑引擎'
+      ? '正在用塔罗编辑引擎里的牌面（同源实时读取，改完立刻生效）'
+      : (lab==='素材包' ? '正在用 assets/tarot 素材包里的牌面' : '编辑引擎还没生成牌面，当前是内置 emoji 占位');
+  }
   if(tarot.stage==='spread') renderSpread(el);
   else if(tarot.stage==='question') renderQuestion(el);
   else if(tarot.stage==='shuffle') renderShuffle(el);

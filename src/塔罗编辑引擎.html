@@ -196,6 +196,11 @@ header{
 .btn.small{padding:5px 10px; font-size:11px; border-radius:8px;}
 .btn.on{background:linear-gradient(135deg,var(--violet),var(--pink)); border-color:transparent; color:#fff;}
 .btn-row{display:flex; gap:6px; flex-wrap:wrap;}
+/* 游戏同步状态条 */
+.sync-bar{display:flex;align-items:center;gap:9px;margin:0 0 14px;padding:11px 15px;border-radius:12px;background:linear-gradient(135deg,rgba(139,111,216,.10),rgba(255,107,157,.08));border:1px solid rgba(139,111,216,.22);font-size:13px;color:var(--sub);line-height:1.6;}
+.sync-bar .sb-ico{font-size:17px;line-height:1;flex:0 0 auto;}
+.sync-bar b{color:var(--violet);font-weight:800;}
+.sync-bar .sb-note{margin-left:auto;font-size:12px;color:#9a92b0;flex:0 0 auto;}
 
 /* 拖入区 */
 .drop{
@@ -342,11 +347,13 @@ input[type=range]::-moz-range-thumb{width:14px; height:14px; border:0; border-ra
     <div class="card-head" data-page-node-id="BtdHvDi20EBsvOrbVEWBqr">
       <div data-page-node-id="xgu5jwnz6Pb4iV8OVMkw4B"><h2 data-page-node-id="lrc8RiOqTdD0EsEleEMWD3">👁 <span class="accent" data-page-node-id="xuG30sPwHgamXcxBDFYmQK">全套预览</span></h2><div class="card-sub" id="previewSub" data-page-node-id="4pcqion9jlWXa46FmJWt3D">已完成的牌显示合成图，未完成的显示牌背 · 点击进入编辑</div></div>
       <div class="btn-row" data-page-node-id="ue69WCsU20pr2dAFA49opv">
+        <button class="btn gold" id="btn-genPlaceholder" title="把游戏里现在用的 emoji 占位符画成 500×800 真牌面，作为这一整套牌的默认值" data-page-node-id="btnGenPlaceholder">🎴 生成占位牌面</button>
         <button class="btn violet" id="btn-exportZip" data-page-node-id="675BzWYVmdZ4Vm70V07tmF">📦 导出 ZIP（含 79 张 WebP + JSON）</button>
         <button class="btn mint" id="btn-exportJson" data-page-node-id="lncLtSAstOAR99Iahqz3Ag">💾 只导出 JSON 元数据</button>
         <button class="btn" id="btn-reload" data-page-node-id="jWpAw3c1lmfllAdQaMgKpz">↻ 刷新</button>
       </div>
     </div>
+    <div class="sync-bar" id="syncBar" data-page-node-id="syncBar"><span class="sb-ico">🔗</span><span id="syncBarText">正在检查与游戏的同步状态…</span></div>
     <div class="grid-preview" id="grid-preview" data-page-node-id="wY9kjR0Ra9Qpv0Zon3M6gJ"></div>
   </div>
 </div>
@@ -697,11 +704,147 @@ async function composeLayers(layers, outW, outH, quality=WEBP_Q){
   });
 }
 
+/* ============== 占位牌面生成 · 把游戏现在用的 emoji 占位符画成真牌面 ============== */
+const ROMAN = ['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+const SUIT_CN = {wands:'权杖', cups:'圣杯', swords:'宝剑', pentacles:'星币'};
+const SUIT_EL = {wands:'火',   cups:'水',   swords:'风',   pentacles:'土'};
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const CN_FONT = 'ui-sans-serif,system-ui,"PingFang SC","Microsoft YaHei",sans-serif';
+
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);     ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+/* 把文字缩到不超过最大宽度 */
+function clipText(ctx, s, maxW){
+  s = String(s||'');
+  if(ctx.measureText(s).width <= maxW) return s;
+  let t = s;
+  while(t.length > 1 && ctx.measureText(t+'…').width > maxW) t = t.slice(0,-1);
+  return t + '…';
+}
+/* 画一张占位牌面（500×800 设计稿等比缩放） */
+function placeholderFaceCanvas(cd, W, H){
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const k = W / 500;
+  const lore = DEFAULT_LORE[cd.id] || {};
+  const isMajor = /^m\d+$/.test(cd.id);
+  const idx = isMajor ? parseInt(cd.id.slice(1), 10) : -1;
+  const suitName = cd.suit ? (SUIT_CN[cd.suit]||'') : '';
+  const elMark   = cd.suit ? (SUIT_EL[cd.suit]||'') : '';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // 卡底
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#fffdf8'); bg.addColorStop(1,'#f5edff');
+  ctx.fillStyle = bg; rr(ctx,0,0,W,H,34*k); ctx.fill();
+  // 外框（项目主色 粉→紫）
+  const bd = ctx.createLinearGradient(0,0,W,H);
+  bd.addColorStop(0,'#ff6b9d'); bd.addColorStop(1,'#8b6fd8');
+  ctx.strokeStyle = bd; ctx.lineWidth = 9*k;
+  rr(ctx,7*k,7*k,W-14*k,H-14*k,29*k); ctx.stroke();
+  // 内细线
+  ctx.strokeStyle = 'rgba(139,111,216,.25)'; ctx.lineWidth = 2*k;
+  rr(ctx,26*k,26*k,W-52*k,H-52*k,18*k); ctx.stroke();
+
+  // 顶部编号 / 花色
+  ctx.fillStyle = '#8b6fd8';
+  ctx.font = '700 ' + (30*k) + 'px ' + CN_FONT;
+  ctx.fillText(isMajor ? (ROMAN[idx] || '') : (suitName + '·' + elMark), W/2, 62*k);
+  ctx.strokeStyle = 'rgba(139,111,216,.22)'; ctx.lineWidth = 1.5*k;
+  ctx.beginPath(); ctx.moveTo(W*0.22, 98*k); ctx.lineTo(W*0.78, 98*k); ctx.stroke();
+
+  // 中央大 emoji（就是游戏里现在用的那个占位图标）
+  ctx.font = (200*k) + 'px ' + EMOJI_FONT;
+  ctx.fillText(cd.icon || '🃏', W/2, H*0.40);
+
+  // 牌名
+  ctx.fillStyle = '#3b2f52';
+  ctx.font = '800 ' + (54*k) + 'px ' + CN_FONT;
+  ctx.fillText(clipText(ctx, cd.name || '', W-80*k), W/2, H*0.615);
+  // 英文名
+  ctx.fillStyle = '#8b83a8';
+  ctx.font = '500 ' + (24*k) + 'px ' + CN_FONT;
+  ctx.fillText(clipText(ctx, cd.en || '', W-80*k), W/2, H*0.687);
+  // 正位关键词
+  const up = String(lore.upright || '').split('·')[0].trim();
+  if(up){
+    ctx.fillStyle = '#ff6b9d';
+    ctx.font = '700 ' + (27*k) + 'px ' + CN_FONT;
+    ctx.fillText(clipText(ctx, up, W-90*k), W/2, H*0.775);
+  }
+  // 底部角标
+  ctx.fillStyle = 'rgba(139,111,216,.55)';
+  ctx.font = '700 ' + (22*k) + 'px ' + CN_FONT;
+  ctx.fillText(isMajor ? '大阿卡纳' : (suitName + ' · ' + elMark), W/2, H - 62*k);
+  return c;
+}
+/* 画一张占位牌背 */
+function placeholderBackCanvas(W, H){
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'); const k = W / 500;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#5c4a8a'); g.addColorStop(.5,'#3d3060'); g.addColorStop(1,'#241d38');
+  ctx.fillStyle = g; rr(ctx,0,0,W,H,34*k); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,107,157,.5)'; ctx.lineWidth = 7*k;
+  rr(ctx,16*k,16*k,W-32*k,H-32*k,24*k); ctx.stroke();
+  ctx.strokeStyle = 'rgba(139,111,216,.4)'; ctx.lineWidth = 2*k;
+  rr(ctx,34*k,34*k,W-68*k,H-68*k,18*k); ctx.stroke();
+  // 中心几何
+  ctx.strokeStyle = 'rgba(255,214,138,.32)'; ctx.lineWidth = 3*k;
+  ctx.beginPath(); ctx.arc(W/2, H/2, 118*k, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W/2, H/2-76*k); ctx.lineTo(W/2+76*k, H/2);
+  ctx.lineTo(W/2, H/2+76*k); ctx.lineTo(W/2-76*k, H/2); ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,214,138,.22)'; ctx.stroke();
+  ctx.font = (118*k) + 'px ' + EMOJI_FONT;
+  ctx.fillText('🔮', W/2, H/2);
+  // 上下小星点
+  ctx.fillStyle = 'rgba(255,214,138,.5)';
+  [0.18, 0.82].forEach(p => {
+    ctx.beginPath(); ctx.arc(W/2, H*p, 7*k, 0, Math.PI*2); ctx.fill();
+  });
+  return c;
+}
+function canvasToWebp(cvs, q){ return cvs.toDataURL('image/webp', q || WEBP_Q); }
+
+/* 一键给还没牌面的牌生成占位牌面（默认值 = 游戏里现在用的那套 emoji 占位符） */
+async function generatePlaceholders(onlyMissing){
+  const todo = ALL_CARDS.filter(cd => !onlyMissing || !(state.cards[cd.id] && state.cards[cd.id].composed));
+  if(!todo.length){ toast('78 张牌都已经有牌面了'); return 0; }
+  let n = 0;
+  for(let i=0; i<todo.length; i++){
+    const cd = todo[i];
+    const c = state.cards[cd.id] || (state.cards[cd.id] = {id:cd.id, name:cd.name, en:cd.en, frameId:null, layers:[]});
+    c.name = c.name || cd.name; c.en = c.en || cd.en;
+    c.composed   = canvasToWebp(placeholderFaceCanvas(cd, OUT_1X.w, OUT_1X.h));
+    c.composed2x = canvasToWebp(placeholderFaceCanvas(cd, OUT_2X.w, OUT_2X.h));
+    n++;
+    if(i % 8 === 7){
+      toast('生成中 ' + (i+1) + ' / ' + todo.length);
+      await new Promise(r => setTimeout(r, 0));   // 让出一帧，别卡死界面
+    }
+  }
+  if(!state.back.composed){
+    state.back.composed   = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
+    state.back.composed2x = canvasToWebp(placeholderBackCanvas(OUT_2X.w, OUT_2X.h));
+  }
+  await saveAll();
+  return n;
+}
+
 /* ============== 存/取 ============== */
 async function saveAll(){
   await dbSet(DB_META, 'back', state.back);
   await dbSet(DB_META, 'frames', state.frames);
   await dbSet(DB_META, 'cards', state.cards);
+  /* 版本号：游戏进塔罗页时比对这个，变了才重读，做到「改完立刻生效」 */
+  try{ localStorage.setItem('tarot_editor_rev', String(Date.now())); }catch(e){}
   updateMeta();
 }
 async function loadAll(){
@@ -1484,7 +1627,35 @@ function updateMeta(){
   const framesN = Object.keys(state.frames).length;
   const cardsDone = ALL_CARDS.filter(cd => state.cards[cd.id] && state.cards[cd.id].composed).length;
   $('topMeta').innerHTML = `牌背 <b>${state.back.composed?'✓':'○'}</b> · 花边模板 <b>${framesN}</b> · 完成牌 <b>${cardsDone}</b>/78`;
+  updateSyncBar(cardsDone);
 }
+/* 同步状态条：告诉陛下「改的这些，游戏那边怎么读到」 */
+function updateSyncBar(done){
+  const el = $('syncBarText'); if(!el) return;
+  if(typeof done !== 'number') done = ALL_CARDS.filter(cd => state.cards[cd.id] && state.cards[cd.id].composed).length;
+  const backOk = !!state.back.composed;
+  el.innerHTML = done > 0
+    ? `已跟游戏打通 · 游戏会<b>直接读取</b>这里的 <b>${done}</b>/78 张牌面${backOk ? ' + 牌背' : '（牌背还没做，游戏用渐变兜底）'}。改完合成后，<b>回到游戏进塔罗页即刻生效</b>，不用导出 ZIP。`
+    : `还没生成任何牌面，游戏现在显示的是内置 emoji 占位。点上面 <b>🎴 生成占位牌面</b>，把这套占位符固化成 78 张真牌面当默认值，之后想改哪张点进去改就行。`;
+}
+
+/* ============== 生成占位牌面 ============== */
+$('btn-genPlaceholder').onclick = async ()=>{
+  const btn = $('btn-genPlaceholder');
+  const missing = ALL_CARDS.filter(cd => !(state.cards[cd.id] && state.cards[cd.id].composed)).length;
+  let redoAll = false;
+  if(missing === 0){
+    if(!confirm('78 张牌都已经有牌面了。\n\n要全部重新生成一遍吗？（现有牌面会被占位符覆盖）')) return;
+    redoAll = true;
+  } else if(!confirm('将为 ' + missing + ' 张还没有牌面的牌生成 emoji 占位牌面。\n\n这就是游戏里现在用的那套占位符，生成后可以随时点进去逐张替换成真图。\n\n继续？')) return;
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  try{
+    const n = await generatePlaceholders(!redoAll);
+    renderPreviewGrid(); updateMeta();
+    toast(n ? ('✅ 已生成 ' + n + ' 张占位牌面，游戏里立刻生效') : '没有需要生成的牌');
+  }catch(e){ toast('生成失败：' + ((e && e.message) || e)); }
+  btn.disabled = false; btn.textContent = '🎴 生成占位牌面';
+};
 
 /* ============== 导出按钮 ============== */
 $('btn-exportZip').onclick = exportZip;
