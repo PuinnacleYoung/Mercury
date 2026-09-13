@@ -1529,7 +1529,8 @@ function tarotImgSrc(cardId, ratio2x){
 }
 function tarotBackSrc(ratio2x){
   return tarotEditorBackSrc(ratio2x)                                            // ① 编辑器
-      || (TAROT_HAS_ASSETS ? (TAROT_DIR + 'back' + (ratio2x ? '@2x' : '') + '.webp') : null);              // ② 素材包
+      || (TAROT_HAS_ASSETS ? (TAROT_DIR + 'back' + (ratio2x ? '@2x' : '') + '.webp') : null)              // ② 素材包
+      || (TAROT_DIR + 'back-mercury-1x.webp');                                  // ③ 内置默认牌背（Mercury）—— 编辑器还没开过也保证有图
 }
 /* 当前牌面来自哪（塔罗页顶上一行小字） */
 function tarotSourceLabel(){

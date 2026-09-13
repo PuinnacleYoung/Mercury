@@ -886,11 +886,13 @@ async function generatePlaceholders(opts){
       }
     }
   }
-  if(!state.back.composed || forceDefault){
+  /* 注意：只判 composed 会让「素材升级」被旧图挡住 —— 所以升级 / 手动重置都要能强制进来 */
+  if(forceBack || forceDefault || !state.back.composed){
     /* 优先用陛下提供的内置牌背（fetch 一次），失败再回退到程序生成的渐变 */
     let src = null;
     try { src = await getBuiltinBack1x(); } catch(e) {}
     if(!src) src = canvasToWebp(placeholderBackCanvas(OUT_1X.w, OUT_1X.h));
+    _defBackCache = src;            // 「以默认牌背作底」也跟着换成这张，别再垫老渐变
     state.back.composed   = src;
     state.back.composed2x = null;          // 同上，导出时自动补放大的 2x
     state.back.isDefault  = true;
@@ -904,11 +906,13 @@ async function ensureSeeded(){
   try{ seed = await dbGet(DB_META, 'seed'); }catch(e){}
   const missing = ALL_CARDS.some(cd => !(state.cards[cd.id] && state.cards[cd.id].composed));
   const faceOK = !!seed && seed.ver === SEED_VER && !missing;
-  const backOK = !!state.back.composed && seed && seed.backVer === BACK_SEED_VER;
+  const backOK = !!state.back.composed && !!seed && seed.backVer === BACK_SEED_VER;
+  const backCustom = state.back.isDefault === false;   // 陛下自己合成过 → 不覆盖
   if(faceOK && backOK) return;
   const faceUpgraded = !faceOK && (!seed || seed.ver !== SEED_VER);
   if(!faceOK) await generatePlaceholders({ forceDefault: faceUpgraded });
-  if(!backOK) await generatePlaceholders({ faceOnly: true });
+  if(!backOK && !backCustom) await generatePlaceholders({ faceOnly: true, back: true });
+  /* 自己合成过的也算「已处理」，别每次开局都弹一遍 */
   try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, at: Date.now() }); }catch(e){}
   try{ renderPreviewGrid(); }catch(e){}
   try{ renderCardList(); }catch(e){}
@@ -916,7 +920,7 @@ async function ensureSeeded(){
   if(typeof editorBack  !== 'undefined' && editorBack)  editorBack.renderStage();
   updateMeta();
   if(!faceOK)  toast('默认牌面已就绪：' + ALL_CARDS.length + ' 张 · 就是游戏里现在用的那套');
-  if(!backOK)  toast('默认牌背已更新（Mercury）');
+  if(!backOK && !backCustom) toast('默认牌背已更新（Mercury）');
 }
 
 /* ============== 存/取 ============== */
@@ -1290,8 +1294,21 @@ function renderBackPanel(){
     afterChange: ({end, selChanged}) => { editorBack.renderStage(); if(selChanged) renderBackPanel(); if(end){ renderBackPanel(); saveAll(); } },
     extras: {
       footer: `<div class="divider"></div><button class="btn mint small" id="__saveBack">💾 保存合成图（供游戏用）</button>`
+            + `<div style="height:6px"></div>`
+            + `<button class="btn gold small" id="__resetBack" title="把牌背换回内置默认素材（Mercury 500×800）。素材升级后没自动换的话，点这里强制刷">↺ 重置为默认牌背</button>`
     }
   });
+  const rb = $('panel-back').querySelector('#__resetBack');
+  if(rb) rb.onclick = async () => {
+    rb.disabled = true; rb.textContent = '重置中…';
+    try{
+      await generatePlaceholders({ faceOnly: true, back: true });
+      try{ await dbSet(DB_META, 'seed', { ver: SEED_VER, backVer: BACK_SEED_VER, at: Date.now() }); }catch(e){}
+      editorBack.renderStage(); renderBackPanel(); updateMeta();
+      toast('牌背已重置为默认（Mercury）');
+    }catch(err){ toast('重置失败：' + err); }
+    rb.disabled = false; rb.textContent = '↺ 重置为默认牌背';
+  };
   const b = $('panel-back').querySelector('#__saveBack');
   if(b) b.onclick = async () => {
     toast('合成中…');
