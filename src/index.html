@@ -4347,7 +4347,7 @@ function openWorldMap(mapId,force){
     + '<div class="wm-fs-ui">'
     +   '<div class="wm-fs-left">'
     +     '<div class="wm-fs-title">🗺 '+esc(navMap?navMap.name:'地图导航')+'</div>'
-    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往 · 引擎 v38</div>'
+    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往 · 引擎 v39</div>'
     +   '</div>'
     +   '<div class="wm-fs-btns">'
     +     (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
@@ -4869,8 +4869,14 @@ function bgRectOf(m){
 /* 裁过边的底图专用绘制：先按 cover 算出「整张图」落在屏幕上的矩形，
    再把内容那一块按比例切出来画。
    直接 drawCover 的话，裁掉的边会让画面被放大 —— 与编辑器所见对不上。 */
+/* ⚠️ 尺寸读取必须兼容两种「图源」：
+   · <img>   → naturalWidth / naturalHeight
+   · <canvas>（背景层现场合成的画布）→ **没有 naturalWidth**，只有 width / height
+   以前只认 naturalWidth，画布被当成 1:1 正方形 → 被强行拉伸（v38 竖向拉伸的真凶）。 */
+function _natW(im){ return (im && (im.naturalWidth || im.videoWidth || im.width)) || 1; }
+function _natH(im){ return (im && (im.naturalHeight || im.videoHeight || im.height)) || 1; }
 function drawCoverRect(c, img, W, H, r){
-  const ir=(img.naturalWidth||1)/(img.naturalHeight||1), sr=W/H;
+  const ir=_natW(img)/_natH(img), sr=W/H;
   let dw=W, dh=H, dx=0, dy=0;
   if(ir>sr){ dh=H; dw=H*ir; dx=(W-dw)/2; }
   else { dw=W; dh=W/ir; dy=(H-dh)/2; }
@@ -4883,7 +4889,7 @@ function drawCoverRect(c, img, W, H, r){
    绝不能再按 bgRect 去切子图 —— 那等于把内容又裁一圈 + 缩小错位，看起来就是被拉伸。 */
 function bgScreenXf(img, FW, FH, m){
   const br = bgRectOf(m);
-  const ir = (img.naturalWidth||1)/(img.naturalHeight||1);
+  const ir = _natW(img)/_natH(img);
   let dw=FW, dh=FH, dx=0, dy=0;
   if(ir > FW/FH){ dh=FH; dw=Math.round(FH*ir); dx=Math.round((FW-dw)/2); }
   else { dw=FW; dh=Math.round(FW/ir); dy=Math.round((FH-dh)/2); }
@@ -4891,7 +4897,7 @@ function bgScreenXf(img, FW, FH, m){
   return { dx, dy, dw, dh, W:WX, H:HY, TX:dx - br.x*WX, TY:dy - br.y*HY };
 }
 function drawCover(c, img, W, H){
-  const ir = (img.naturalWidth||1) / (img.naturalHeight||1), sr = W/H;
+  const ir = _natW(img) / _natH(img), sr = W/H;   // ← canvas 也认（见 _natW/_natH 注释）
   let dw=W, dh=H, dx=0, dy=0;
   if(ir > sr){ dh = H; dw = H*ir; dx = (W-dw)/2; }
   else { dw = W; dh = W/ir; dy = (H-dh)/2; }
