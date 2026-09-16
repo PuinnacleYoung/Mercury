@@ -4347,7 +4347,7 @@ function openWorldMap(mapId,force){
     + '<div class="wm-fs-ui">'
     +   '<div class="wm-fs-left">'
     +     '<div class="wm-fs-title">🗺 '+esc(navMap?navMap.name:'地图导航')+'</div>'
-    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往</div>'
+    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往 · 引擎 v37</div>'
     +   '</div>'
     +   '<div class="wm-fs-btns">'
     +     (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
@@ -4404,26 +4404,32 @@ function openWorldMap(mapId,force){
       }
     }
     else if(bgLay){
-      /* 背景层兜底：按编辑器的层坐标现场拼到一块世界比例的画布上，再 cover 铺进小图。
-         哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。
-         唯一满幅层时画布比例用它的真实比例 —— 和窗口比例一致，绝不拉伸 */
-      const oneFull = bgLay.layers.length===1 && bgLay.layers[0].w>=0.999 && bgLay.layers[0].h>=0.999;
-      const oneIm = oneFull ? mapImg(bgLay.layers[0].img) : null;
-      const wa=(oneIm && oneIm.naturalWidth) ? oneIm.naturalWidth/oneIm.naturalHeight
-             : ((bgLay.map && +bgLay.map.worldAspect) || (W/H));
-      const cw=Math.max(480, Math.round(FW)), ch=Math.max(2, Math.round(cw/wa));
-      const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
-      lcv.width=cw; lcv.height=ch;
-      const lg=lcv.getContext('2d');
-      bgLay.layers.forEach(l=>{
-        const im=mapImg(l.img);
-        if(im && im.complete && im.naturalWidth){
-          lg.save(); lg.globalAlpha=(l.opacity==null?1:l.opacity);
-          lg.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
-          lg.restore();
-        } else if(im && !im.complete) im.onload=()=>{ if(document.body.contains(cvs)) draw(); };
-      });
-      drawCover(ctx, lcv, FW, FH);
+      /* 背景层兜底。铁律：单张满幅层（w、h 都 ≥0.99，铺满整个世界）→ 直接拿原图
+         cover 铺满全屏 —— 背景就是这张图本身，只裁切、绝不拉伸，也不依赖 worldAspect。
+         多层 / 不满幅才按编辑器的层坐标现场拼到一块世界比例的画布上再 cover。
+         哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。 */
+      const one = bgLay.layers.length===1 ? bgLay.layers[0] : null;
+      const oneIm = one ? mapImg(one.img) : null;
+      if(one && one.w>=0.99 && one.h>=0.99){
+        if(oneIm && oneIm.complete && oneIm.naturalWidth) drawCover(ctx, oneIm, FW, FH);
+        else if(oneIm && !oneIm.complete) oneIm.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
+      } else {
+        const wa=(bgLay.map && +bgLay.map.worldAspect) || (W/H);
+        const cw=Math.max(480, Math.round(FW)), ch=Math.max(2, Math.round(cw/wa));
+        const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
+        lcv.width=cw; lcv.height=ch;
+        const lg=lcv.getContext('2d');
+        let ready = true;
+        bgLay.layers.forEach(l=>{
+          const im=mapImg(l.img);
+          if(im && im.complete && im.naturalWidth){
+            lg.save(); lg.globalAlpha=(l.opacity==null?1:l.opacity);
+            lg.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
+            lg.restore();
+          } else { ready = false; if(im && !im.complete) im.onload=()=>{ if(document.body.contains(cvs)) draw(); }; }
+        });
+        if(ready) drawCover(ctx, lcv, FW, FH);
+      }
     }
     else {
       if(bgImg && !bgImg.complete) bgImg.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
@@ -4475,7 +4481,7 @@ function openWorldMap(mapId,force){
         const r = Math.max(14, Math.min(30, H*0.10));
         const fs = Math.max(10, Math.min(14, H*0.045));
         const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
-        ctx.save(); ctx.globalAlpha = Math.max(0.55, nodeAlpha(mm));
+        ctx.save(); ctx.globalAlpha = nodeAlpha(mm);   // 透明度 = 编辑器配的值，不加保底
         poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
         ctx.restore();
         /* 没摆地块的：名牌锚点也读 lb.pos，不写死下方 */
@@ -4810,6 +4816,13 @@ function loadMapBg(m){
 function buildBgLayersCv(m, key){
   const layers=(m.bgLayers||[]).filter(l=>l && l.visible!==false && l.img);
   if(!layers.length) return;
+  /* 单张满幅层 → 不拼合，直接把原图当底图 cover（与弹窗同款铁律，绝不拉伸） */
+  if(layers.length===1 && layers[0].w>=0.99 && layers[0].h>=0.99){
+    const im=new Image();
+    im.onload=()=>{ if(mapRun.bgKey===key){ mapRun.bgLayersCv=null; mapRun.bgImg=im; try{ resizeMap(); drawMap(); }catch(e){} } };
+    im.src=layers[0].img;
+    return;
+  }
   const wa = m.worldAspect || (16/9);
   const cw = 1280, ch = Math.max(2, Math.round(cw/wa));
   const cv = document.createElement('canvas'); cv.width=cw; cv.height=ch;
@@ -5073,84 +5086,86 @@ function nodeFillAlpha(n){
   return Math.max(0, Math.min(0.7, a));
 }
 /* 地块（建筑）：它就是一张 PNG，直接铺在框里；有行为时才加可交互光环 */
+/* 地块（建筑）：逐像素复刻编辑器 .ed-tile —— 方框、贴图 100% 铺满、图标透明度、行为角标。
+   不再自创 contain/椭圆光斑那一套：编辑器里什么样，游戏里就什么样。 */
 function drawMapTile(c, n, W, H, lb){
   const r0 = nodeRect(n, W, H);
-  const cx = r0.x + r0.w/2;
   const fs = Math.max(11, Math.min(16, H*0.032));
-  const act = nodeAction(n), hot = nodeIsHot(n);
+  const act = nodeAction(n);
   const im = n.img ? mapImg(n.img) : null;
 
   if(im && im.complete && im.naturalWidth){
-    const ir = im.naturalWidth / im.naturalHeight;
-    let dw = r0.w, dh = r0.w / ir;
-    if(dh > r0.h){ dh = r0.h; dw = r0.h * ir; }
-    const baseY = r0.y + r0.h;                    // 底边贴地
-    c.save();
-    c.globalAlpha = nodeAlpha(n);                 // 半透建筑：透出背景，名牌仍全不透明
-    c.fillStyle = 'rgba(0,0,0,.18)';
-    c.beginPath(); c.ellipse(cx, baseY - dh*0.03, dw*0.44, Math.max(3, dh*0.08), 0, 0, Math.PI*2); c.fill();
-    if(hot){                                       // 可交互：脚下虚线椭圆
-      c.strokeStyle = act==='panel' ? 'rgba(240,180,60,.75)' : 'rgba(255,255,255,.7)';
-      c.lineWidth = 1.5; c.setLineDash([6,5]);
-      c.beginPath(); c.ellipse(cx, baseY - dh*0.03, dw*0.52, Math.max(4, dh*0.11), 0, 0, Math.PI*2); c.stroke();
-      c.setLineDash([]);
-    }
-    c.drawImage(im, cx - dw/2, baseY - dh, dw, dh);
-    c.restore();
-  } else {
-    const r = Math.max(15, Math.min(44, Math.min(r0.w, r0.h)*0.48));
-    const cy = r0.y + r0.h/2;
+    /* = .ed-tile-pic：贴图拉伸铺满整个方框（background-size:100% 100%），透明度只作用在图上 */
     c.save();
     c.globalAlpha = nodeAlpha(n);
-    /* 方形牌（跟编辑器 .ed-tile 一个形状）—— 以前画圆形，跟编辑器对不上 */
-    poiBadge(c, cx, cy, r, n.color || '#8f7fc4', n.icon || '📍', null,
-             hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, true);
+    c.drawImage(im, r0.x, r0.y, r0.w, r0.h);
+    c.restore();
+  } else {
+    /* = 空地块的 .ed-tile：圆角方框（12px）+ 内白描边 + 投影，emoji 居中（font-size 30px） */
+    const rad = Math.max(5, Math.min(12, r0.w*0.12));
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = Math.max(6, r0.w*0.10); c.shadowOffsetY = Math.max(3, r0.h*0.08);
+    c.fillStyle = 'rgba(255,255,255,.10)';
+    roundRect(c, r0.x, r0.y, r0.w, r0.h, rad); c.fill();
+    c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+    c.strokeStyle = 'rgba(255,255,255,.4)'; c.lineWidth = 2;
+    roundRect(c, r0.x, r0.y, r0.w, r0.h, rad); c.stroke();
+    c.restore();
+    const ifont = Math.max(12, Math.min(30, r0.h*0.55));
+    c.save();
+    c.globalAlpha = nodeAlpha(n);
+    c.font = ifont+'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(n.icon || '📍', r0.x + r0.w/2, r0.y + r0.h/2);
+    c.restore();
+  }
+  /* = .ed-badge：有行为时右上角金色小圆标（🧭 前往 / 🚪 传送 / ✨ 面板） */
+  if(act !== 'none'){
+    const br = Math.max(8, Math.min(13, Math.min(r0.w, r0.h)*0.22));
+    const bx = r0.x + r0.w - br*0.55, by = r0.y + br*0.55;
+    c.save();
+    c.fillStyle = '#f0a500'; c.beginPath(); c.arc(bx, by, br, 0, Math.PI*2); c.fill();
+    c.font = Math.round(br*1.1)+'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(act==='navigate' ? '🧭' : ((act==='teleport'||act==='teleportLevel') ? '🚪' : '✨'), bx, by+br*0.08);
     c.restore();
   }
   const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
   drawNamePlate(c, (n.name||'地块') + tag, lb || mapLb(null), { fs, rect:r0, anchor:(lb&&lb.pos)||'below' });
 }
-/* 门口 / 交互入口：方形牌子，颜色区分（金=面板组件，紫=传送门） */
+/* 门口 / 交互入口：逐像素复刻编辑器 .ed-trigger —— 方形虚线框、区域色边框 + 填充浓度、图标透明度 */
+function zoneColorOf(n){ return (n && n.color) || '#f0a500'; }
+function zoneRGBA(hex, a){
+  const v = parseInt(String(hex).slice(1), 16);
+  return 'rgba(' + ((v>>16)&255) + ',' + ((v>>8)&255) + ',' + (v&255) + ',' + a + ')';
+}
 function drawTriggerBox(c, n, W, H, lb){
-  const isPanel = (n.action === 'panel');
-  const off = (n.action === 'none');
   const r0 = nodeRect(n, W, H);
-  const cx = r0.x + r0.w/2, cy = r0.y + r0.h/2;
-  const r  = Math.max(13, Math.min(38, Math.min(r0.w, r0.h)*0.42));
-  const fs = Math.max(10, Math.min(15, H*0.030));
-  /* 触发范围：跟编辑器 .ed-trigger 同款 —— 方形虚线框 + 淡填充（以前画椭圆，两边对不上） */
-  if(!off){
-    const fa = nodeFillAlpha(n);                   // 填充浓度：0 就只剩一圈虚线边框
-    c.save();
-    c.fillStyle = isPanel ? `rgba(240,180,60,${fa})` : `rgba(120,160,255,${fa})`;
-    c.strokeStyle = isPanel ? `rgba(240,180,60,${Math.min(.8, fa+.27)})` : `rgba(255,255,255,${Math.min(.8, fa+.27)})`;
-    c.lineWidth = 1.5; c.setLineDash([7,6]);
-    roundRect(c, r0.x, r0.y, r0.w, r0.h, Math.min(10, r0.w*0.14)); c.fill(); c.stroke();
-    c.setLineDash([]);
-    c.restore();
-  } else {
-    c.save(); c.globalAlpha = .35 * nodeAlpha(n);
-    poiBadge(c, cx, cy, r*0.8, '#9a94a8', n.icon || '🚪', null, null, true);
-    c.restore();
-  }
-  /* 图标：优先编辑器给这块配的 PNG 贴图（等比 contain、底边贴地），没有才退回方形牌+emoji */
+  const zc = zoneColorOf(n);
+  const rad = Math.max(4, Math.min(10, r0.w*0.12));
+  /* = .ed-trigger：borderColor = 区域色，background = zoneA(区域色, 填充浓度) —— 调 0 就只剩虚线框 */
+  c.save();
+  c.strokeStyle = zc; c.lineWidth = 2;
+  c.setLineDash([6,5]);
+  c.fillStyle = zoneRGBA(zc, nodeFillAlpha(n));
+  roundRect(c, r0.x, r0.y, r0.w, r0.h, rad); c.fill(); c.stroke();
+  c.setLineDash([]);
+  c.restore();
+  /* = 图标：有 PNG 贴图就铺满框，没有就 emoji 居中（font-size 22px），透明度 = 陛下配的 nodeAlpha */
   const im = n.img ? mapImg(n.img) : null;
   if(im && im.complete && im.naturalWidth){
-    const ir = im.naturalWidth/im.naturalHeight;
-    let dw = r0.w, dh = r0.w/ir;
-    if(dh > r0.h){ dh = r0.h; dw = r0.h*ir; }
     c.save(); c.globalAlpha = nodeAlpha(n);
-    c.drawImage(im, cx-dw/2, r0.y + r0.h - dh, dw, dh);
+    c.drawImage(im, r0.x, r0.y, r0.w, r0.h);
     c.restore();
-  } else if(!off){
+  } else {
+    const ifont = Math.max(11, Math.min(24, r0.h*0.55));
     c.save();
-    c.globalAlpha = nodeAlpha(n);                  // 图标透明度：徽章半透更高级
-    poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
-             isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
+    c.globalAlpha = nodeAlpha(n);
+    c.font = ifont+'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(n.icon || (n.action==='panel' ? '🧩' : '🚪'), r0.x + r0.w/2, r0.y + r0.h/2);
     c.restore();
   }
   lb = lb || mapLb(null);
-  drawNamePlate(c, n.name || (isPanel ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
+  const fs = Math.max(10, Math.min(15, H*0.030));
+  drawNamePlate(c, n.name || (n.action==='panel' ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
 }
 function drawMap(){
   let c = mapRun.ctx;
