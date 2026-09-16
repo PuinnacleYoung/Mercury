@@ -4469,7 +4469,7 @@ function openWorldMap(mapId,force){
           ctx.ellipse(r0.x+r0.w/2, r0.y+r0.h, Math.max(r0.w,r0.h)*0.55, Math.max(6, r0.h*0.16), 0, 0, Math.PI*2);
           ctx.stroke(); ctx.restore();
         }
-        pins.push({ id:k, x:r0.x+r0.w/2, y:r0.y+r0.h/2, r:Math.max(r0.w,r0.h)*0.62+10 });
+        pins.push({ id:k, x:r0.x+r0.w/2, y:r0.y+r0.h/2, r:Math.max(r0.w,r0.h)*0.62+10, rect:{x:r0.x, y:r0.y, w:r0.w, h:r0.h} });
       } else {
         const cx = p.x*W, cy = p.y*H;
         const r = Math.max(14, Math.min(30, H*0.10));
@@ -4508,7 +4508,10 @@ function openWorldMap(mapId,force){
     const y = (ev.clientY - rect.top) - OY;
     for(let i = pins.length-1; i >= 0; i--){
       const p = pins[i];
-      if((x-p.x)*(x-p.x) + (y-p.y)*(y-p.y) <= p.r*p.r) return p.id;
+      /* 优先按编辑器画的矩形范围命中（所见即所得），没有矩形才退回圆 */
+      if(p.rect){
+        if(x >= p.rect.x && x <= p.rect.x+p.rect.w && y >= p.rect.y && y <= p.rect.y+p.rect.h) return p.id;
+      } else if((x-p.x)*(x-p.x) + (y-p.y)*(y-p.y) <= p.r*p.r) return p.id;
     }
     return null;
   }
@@ -5099,8 +5102,9 @@ function drawMapTile(c, n, W, H, lb){
     const cy = r0.y + r0.h/2;
     c.save();
     c.globalAlpha = nodeAlpha(n);
+    /* 方形牌（跟编辑器 .ed-tile 一个形状）—— 以前画圆形，跟编辑器对不上 */
     poiBadge(c, cx, cy, r, n.color || '#8f7fc4', n.icon || '📍', null,
-             hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, false);
+             hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, true);
     c.restore();
   }
   const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
@@ -5114,24 +5118,37 @@ function drawTriggerBox(c, n, W, H, lb){
   const cx = r0.x + r0.w/2, cy = r0.y + r0.h/2;
   const r  = Math.max(13, Math.min(38, Math.min(r0.w, r0.h)*0.42));
   const fs = Math.max(10, Math.min(15, H*0.030));
-  if(off){
+  /* 触发范围：跟编辑器 .ed-trigger 同款 —— 方形虚线框 + 淡填充（以前画椭圆，两边对不上） */
+  if(!off){
+    const fa = nodeFillAlpha(n);                   // 填充浓度：0 就只剩一圈虚线边框
+    c.save();
+    c.fillStyle = isPanel ? `rgba(240,180,60,${fa})` : `rgba(120,160,255,${fa})`;
+    c.strokeStyle = isPanel ? `rgba(240,180,60,${Math.min(.8, fa+.27)})` : `rgba(255,255,255,${Math.min(.8, fa+.27)})`;
+    c.lineWidth = 1.5; c.setLineDash([7,6]);
+    roundRect(c, r0.x, r0.y, r0.w, r0.h, Math.min(10, r0.w*0.14)); c.fill(); c.stroke();
+    c.setLineDash([]);
+    c.restore();
+  } else {
     c.save(); c.globalAlpha = .35 * nodeAlpha(n);
     poiBadge(c, cx, cy, r*0.8, '#9a94a8', n.icon || '🚪', null, null, true);
-    c.restore(); return;
+    c.restore();
   }
-  // 触发范围：地面淡椭圆（还能看出"走进去会触发"），不再是虚线文件夹
-  const fa = nodeFillAlpha(n);                     // 填充浓度：0 就只剩一圈虚线边框
-  c.save();
-  c.fillStyle = isPanel ? `rgba(240,180,60,${fa})` : `rgba(120,160,255,${fa})`;
-  c.strokeStyle = isPanel ? `rgba(240,180,60,${Math.min(.8, fa+.27)})` : `rgba(255,255,255,${Math.min(.8, fa+.27)})`;
-  c.lineWidth = 1.5; c.setLineDash([7,6]);
-  c.beginPath(); c.ellipse(cx, cy + r*0.55, r0.w*0.52, r0.h*0.55, 0, 0, Math.PI*2); c.fill(); c.stroke();
-  c.restore();
-  c.save();
-  c.globalAlpha = nodeAlpha(n);                    // 图标透明度：徽章半透更高级
-  poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
-           isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
-  c.restore();
+  /* 图标：优先编辑器给这块配的 PNG 贴图（等比 contain、底边贴地），没有才退回方形牌+emoji */
+  const im = n.img ? mapImg(n.img) : null;
+  if(im && im.complete && im.naturalWidth){
+    const ir = im.naturalWidth/im.naturalHeight;
+    let dw = r0.w, dh = r0.w/ir;
+    if(dh > r0.h){ dh = r0.h; dw = r0.h*ir; }
+    c.save(); c.globalAlpha = nodeAlpha(n);
+    c.drawImage(im, cx-dw/2, r0.y + r0.h - dh, dw, dh);
+    c.restore();
+  } else if(!off){
+    c.save();
+    c.globalAlpha = nodeAlpha(n);                  // 图标透明度：徽章半透更高级
+    poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
+             isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
+    c.restore();
+  }
   lb = lb || mapLb(null);
   drawNamePlate(c, n.name || (isPanel ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
 }
