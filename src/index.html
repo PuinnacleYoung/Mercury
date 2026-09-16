@@ -3830,6 +3830,34 @@ function saveMapsData(d){ _mapsCache = d; try{ localStorage.setItem(LS_MAPS, JSO
 function invalidateMaps(){ _mapsCache = null; }
 window.addEventListener('storage', e=>{ if(e.key === LS_MAPS) invalidateMaps(); });
 
+/* ☁️ 线上数据包 —— 静态站没有后端，数据只能「当文件发布」：
+   陛下本地「数据备份与迁移」导出 JSON → scripts/mk-online-data.js 打成 src/online-data.json
+   → 推上 GitHub Pages；任何浏览器点「☁️ 拉线上数据」就把这份数据灌进本地 localStorage，
+   三端（file:// / localhost / github.io）就此对齐。想更新就重新导出 + 重新打包 + 推送。 */
+const ONLINE_DATA_URL = './online-data.json';
+const HAD_MAPS_AT_BOOT = (function(){ try{ return !!localStorage.getItem(LS_MAPS); }catch(e){ return false; } })();
+function pullOnlineData(opt){
+  opt = opt || {};
+  fetch(ONLINE_DATA_URL, { cache:'no-store' })
+    .then(r=>{ if(!r.ok) throw new Error('线上还没有数据包'); return r.json(); })
+    .then(j=>{
+      const data = (j && j.data && typeof j.data === 'object') ? j.data : null;
+      if(!data) throw new Error('数据包格式不对');
+      const keys = Object.keys(data);
+      if(!keys.length) throw new Error('数据包是空的');
+      if(opt.confirm !== false){
+        const t = (j._meta && j._meta.exportedAt) ? ('\n导出时间：'+j._meta.exportedAt) : '';
+        if(!confirm('☁️ 用线上数据包覆盖本机数据？\n将写入：'+keys.join('、')+t)) return;
+      }
+      let ok=0; keys.forEach(k=>{ try{ localStorage.setItem(k, data[k]); ok++; }catch(e){} });
+      _mapsCache = null; invalidateMaps();          // 下次读地图就会拿到刚同步的数据，不用刷新
+      if(!opt.silent) toast('✅ 已同步 '+ok+' 项线上数据');
+    })
+    .catch(e=>{ if(!opt.silent) toast('⚠️ 拉线上数据失败：'+((e && e.message) || e)); });
+}
+/* 全新浏览器（本机一条地图数据都没有）：静默拉一次 —— 朋友打开就是陛下的地图 */
+function autoPullOnlineData(){ if(HAD_MAPS_AT_BOOT) return; pullOnlineData({ confirm:false, silent:true }); }
+
 /* ================= 地图 Schema v3 =================
    Map   = 导航容器，只保存 navTiles，不可走、无出生点、无运行时触发。
    Level = 可运行关卡，只保存 entities / spawns / walk，必须挂在 Map 下。
@@ -4324,6 +4352,7 @@ function openWorldMap(mapId,force){
     +   '<div class="wm-fs-btns">'
     +     (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
     +     ((!isRoot) ? '<button class="map-btn ghost" id="wm-root">🌍 世界地图</button>' : '')
+    +     '<button class="map-btn ghost" id="wm-sync">☁️ 拉线上数据</button>'
     +     '<button class="map-btn" id="wm-close">✕ 关闭</button>'
     +   '</div>'
     + '</div>';
@@ -4331,6 +4360,7 @@ function openWorldMap(mapId,force){
   $('wm-close').onclick = ()=> mask.remove();
   if(upMap) $('wm-up').onclick = ()=>{ mask.remove(); openMapNavigator(upMap.id); };
   if($('wm-root')) $('wm-root').onclick = ()=>{ mask.remove(); openMapNavigator(d.rootMapId); };
+  if($('wm-sync')) $('wm-sync').onclick = ()=>{ mask.remove(); pullOnlineData(); };
 
   const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
   const cvs = $('wm-canvas');
@@ -4406,7 +4436,6 @@ function openWorldMap(mapId,force){
     if(FW/FH >= wasp){ H = FH; W = Math.round(FH*wasp); } else { W = FW; H = Math.round(FW/wasp); }
     OX = Math.round((FW-W)/2); OY = Math.round((FH-H)/2);
     ctx.save(); ctx.translate(OX, OY);
-    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, H*0.62, W, H*0.38);
     // 父子连线（谁通往谁）
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.setLineDash([5,6]);
     ids.forEach(k=>{
@@ -4421,10 +4450,11 @@ function openWorldMap(mapId,force){
       const mm = d.maps[k], p = pos[k]; if(!p) return;
       const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
       if(p.tile){
-        /* 编辑器同款：直接按地块的坐标/尺寸/贴图画（drawMapTile 与游戏主画面共用一套），
-           名牌的横竖排、上/下/左/右锚点也走编辑器配好的 lb.pos —— 两边所见即所得 */
+        /* 编辑器同款：地块按地块画、触发区按触发区画（方形范围 + 填充浓度 + 图标透明度），
+           不再一股脑套成圆形徽章 —— 跟陛下在编辑器里摆的 UI 一模一样 */
         const n = Object.assign({}, p.tile, { name: mm.name || p.tile.name || mm.name });
-        drawMapTile(ctx, n, W, H, mapLb(host));
+        if(n.kind === 'trigger') drawTriggerBox(ctx, n, W, H, mapLb(host));
+        else drawMapTile(ctx, n, W, H, mapLb(host));
         const r0 = nodeRect(p.tile, W, H);
         if(isCur || isEntry){                      // 当前位置白圈 / 入口金圈
           ctx.save();
@@ -4826,6 +4856,20 @@ function drawCoverRect(c, img, W, H, r){
   if(ir>sr){ dh=H; dw=H*ir; dx=(W-dw)/2; }
   else { dw=W; dh=W/ir; dy=(H-dh)/2; }
   c.drawImage(img, dx + r.x*dw, dy + r.y*dh, r.w*dw, r.h*dh);
+}
+/* 🖼 底图（可能已被「合成裁边」裁过）→ 屏幕的仿射变换：只裁切、绝不拉伸。
+   ⚠️ 关键事实：map.bg 存的**就是已经裁好边的那张成品图**（finishCompose 先裁再编码），
+      map.bgRect 只记录「这块内容原来在世界框里的位置」（世界框比例 = worldAspect）。
+   所以绘制必须「直接 cover 这张成品图」，再用同一套变换把世界坐标（0~1）映射回屏幕；
+   绝不能再按 bgRect 去切子图 —— 那等于把内容又裁一圈 + 缩小错位，看起来就是被拉伸。 */
+function bgScreenXf(img, FW, FH, m){
+  const br = bgRectOf(m);
+  const ir = (img.naturalWidth||1)/(img.naturalHeight||1);
+  let dw=FW, dh=FH, dx=0, dy=0;
+  if(ir > FW/FH){ dh=FH; dw=Math.round(FH*ir); dx=Math.round((FW-dw)/2); }
+  else { dw=FW; dh=Math.round(FW/ir); dy=Math.round((FH-dh)/2); }
+  const WX = dw/(br.w||1), HY = dh/(br.h||1);   // 世界框（0~1 坐标）铺到屏幕后的像素尺寸
+  return { dx, dy, dw, dh, W:WX, H:HY, TX:dx - br.x*WX, TY:dy - br.y*HY };
 }
 function drawCover(c, img, W, H){
   const ir = (img.naturalWidth||1) / (img.naturalHeight||1), sr = W/H;
@@ -5239,6 +5283,7 @@ try{
   fatalBar('横屏提示初始化失败，已直接放行：' + ((e && e.message) || e));
 }
 try{ checkOrientation(); }catch(e){}
+try{ autoPullOnlineData(); }catch(e){ console.warn('online-data', e); }   // 全新浏览器静默同步线上地图
 if(window.__storageFallback){
   fatalBar('当前环境<b>禁用了本地存储</b>（隐私/无痕模式、或 file:// 直开会触发），'
     + '本局能玩，但<b>账号与进度不会保存</b>。' + protocolTip());

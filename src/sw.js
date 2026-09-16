@@ -1,6 +1,6 @@
 /* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
    其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v33';
+const CACHE = 'shuguang-v34';
 const PRECACHE = [
   './',
   './index.html',
@@ -60,6 +60,22 @@ self.addEventListener('fetch', e => {
       } catch (_) {
         const c = await caches.open(CACHE);
         return (await c.match(req)) || (await c.match('./index.html')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // 线上数据包：永远网络优先（陛下更新了数据要立刻能拉到），断网才回缓存
+  if (url.pathname.indexOf('online-data.json') >= 0) {
+    e.respondWith((async () => {
+      try {
+        const net = await fetch(new Request(req.url, { cache: 'no-store' }));
+        const c = await caches.open(CACHE);
+        if (net && net.ok) c.put(req, net.clone());
+        return net;
+      } catch (_) {
+        const c = await caches.open(CACHE);
+        return (await c.match(req)) || new Response('{}', { status: 404 });
       }
     })());
     return;
