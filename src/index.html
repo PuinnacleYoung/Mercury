@@ -4297,7 +4297,7 @@ function openWorldMap(mapId,force){
       const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
       const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
       poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
-      poiLabel(ctx, cx, cy + r + fs*1.5, mm.name || k, null, fs);
+      drawNamePlate(ctx, mm.name || k, mapLb(root), { fs, cx, cy: cy + r + fs*1.5 });
       pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
     });
   }
@@ -4619,25 +4619,133 @@ function poiBadge(c, cx, cy, r, color, icon, imgSrc, ringColor, square){
   }
   c.restore();
 }
-function poiLabel(c, cx, cy, text, sub, fs){
-  fs = fs || 12;
-  c.save();
-  c.textAlign='center'; c.textBaseline='middle';
-  c.font = '800 ' + fs + 'px "Microsoft YaHei"';
-  const tw = c.measureText(text).width;
-  const h = Math.round(fs*1.75), w = tw + fs*1.5;
-  c.fillStyle = 'rgba(255,255,255,.95)';
-  roundRect(c, cx-w/2, cy-h/2, w, h, h/2); c.fill();
-  c.fillStyle = '#3d3650'; c.fillText(text, cx, cy+0.5);
-  if(sub){
-    c.font = '700 ' + (fs-2) + 'px "Microsoft YaHei"';
-    c.fillStyle = 'rgba(255,255,255,.92)';
-    c.fillText(sub, cx, cy + h*0.85);
+/* ---- 名牌：地图级「🏷 名牌样式」统一绘制 ----
+   map.lb = { preset, frame, text, fs, dir:'h'|'v', pos, img }（编辑器《地图编辑引擎》里配置）
+   花边款式与编辑器 DOM 预览同一套，所见即所得。 */
+function mapLb(m){
+  return Object.assign({preset:'plain',dir:'h',pos:'below',img:null},
+    (m && m.lb) || {});
+}
+function lbFont(lb, fs){ return '800 ' + fs + 'px "Microsoft YaHei"'; }
+/* 先量后画：返回 {w,h}，供调用方算头顶 / 左右锚点 */
+function namePlateSize(c, text, lb, fs){
+  const padX = fs*0.75, padY = fs*0.38;
+  c.save(); c.font = lbFont(lb, fs);
+  let w, h;
+  if(lb.dir === 'v'){
+    let cw = 0;
+    Array.from(text).forEach(ch=>{ cw = Math.max(cw, c.measureText(ch).width); });
+    w = cw + padX*2; h = Array.from(text).length*(fs*1.12) + padY*2;
+  }else{
+    w = c.measureText(text).width + padX*2; h = fs + padY*2;
   }
   c.restore();
+  return { w:Math.ceil(w), h:Math.ceil(h) };
+}
+function drawNamePlate(c, text, lb, opt){
+  opt = opt || {};
+  const fs     = lb.fs || opt.fs || 12;
+  const preset = lb.preset || 'plain';
+  const frame  = lb.frame || opt.frame || '#ffffff';
+  const tcol   = lb.text  || (preset==='gold' ? '#f6c94a' : preset==='neon' ? '#ffffff' : '#3d3650');
+  const size   = namePlateSize(c, text, lb, fs);
+  const w = size.w, h = size.h;
+  let cx = opt.cx, cy = opt.cy;
+  if(opt.rect){                                  /* 相对 PNG 的锚点定位 */
+    const r0 = opt.rect, gap = fs*0.5;
+    switch(opt.anchor || lb.pos || 'below'){
+      case 'above':  cx = r0.x + r0.w/2;      cy = r0.y - h/2 - gap;        break;
+      case 'left':   cx = r0.x - w/2 - gap;   cy = r0.y + r0.h*0.55;        break;
+      case 'right':  cx = r0.x + r0.w + w/2 + gap; cy = r0.y + r0.h*0.55;   break;
+      case 'center': cx = r0.x + r0.w/2;      cy = r0.y + r0.h/2;           break;
+      default:       cx = r0.x + r0.w/2;      cy = r0.y + r0.h + h/2 + gap*0.6;
+    }
+  }
+  const x = cx - w/2, y = cy - h/2;
+  const custom = lb.img ? mapImg(lb.img) : null;
+  const hasCustom = custom && custom.complete && custom.naturalWidth;
+  c.save();
+  c.textAlign='center'; c.textBaseline='middle';
+  c.font = lbFont(lb, fs);
+  if(hasCustom){                                 /* 自定义花边图：拉伸铺满名牌底 */
+    c.drawImage(custom, x, y, w, h);
+  }else switch(preset){
+    case 'cloud': {
+      c.fillStyle = frame;
+      c.strokeStyle = 'rgba(0,0,0,.16)'; c.lineWidth = 2;
+      roundRect(c, x+2, y+3, w-4, h-5, h*0.38); c.fill(); c.stroke();
+      const r = h*0.30;
+      [[x+w*0.28, y+4],[x+w*0.5, y+4-r*0.6],[x+w*0.72, y+4]].forEach(p=>{
+        c.beginPath(); c.arc(p[0], p[1], r, 0, Math.PI*2); c.fill(); c.stroke();
+      });
+      break;
+    }
+    case 'wood': {
+      const g = c.createLinearGradient(0, y, 0, y+h);
+      g.addColorStop(0, darken(frame, .06)); g.addColorStop(1, darken(frame, .38));
+      c.fillStyle = g; roundRect(c, x, y, w, h, 6); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.32)'; c.lineWidth = 2; roundRect(c, x, y, w, h, 6); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.30)'; c.lineWidth = 1; roundRect(c, x+3, y+3, w-6, h-6, 4); c.stroke();
+      break;
+    }
+    case 'gold': {
+      c.fillStyle = '#17131f'; roundRect(c, x, y, w, h, 6); c.fill();
+      c.strokeStyle = frame; c.lineWidth = 2.5; roundRect(c, x+1, y+1, w-2, h-2, 5); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 1; roundRect(c, x+4.5, y+4.5, w-9, h-9, 3); c.stroke();
+      break;
+    }
+    case 'ribbon': {
+      const notch = fs*0.55;
+      c.fillStyle = darken(frame, .3);
+      c.beginPath();
+      c.moveTo(x+6, y+h*0.18); c.lineTo(x-4, y+h*0.18); c.lineTo(x-4+notch, y+h/2); c.lineTo(x-4, y+h*0.82); c.lineTo(x+6, y+h*0.82); c.closePath(); c.fill();
+      c.beginPath();
+      c.moveTo(x+w-6, y+h*0.18); c.lineTo(x+w+4, y+h*0.18); c.lineTo(x+w+4-notch, y+h/2); c.lineTo(x+w+4, y+h*0.82); c.lineTo(x+w-6, y+h*0.82); c.closePath(); c.fill();
+      c.fillStyle = frame; roundRect(c, x+4, y, w-8, h, 3); c.fill();
+      break;
+    }
+    case 'neon': {
+      c.fillStyle = 'rgba(12,9,22,.62)'; roundRect(c, x, y, w, h, 10); c.fill();
+      c.shadowColor = frame; c.shadowBlur = 12;
+      c.strokeStyle = frame; c.lineWidth = 2; roundRect(c, x, y, w, h, 10); c.stroke();
+      break;
+    }
+    case 'scroll': {
+      const endw = fs*0.55;
+      c.fillStyle = darken(frame, .3);
+      roundRect(c, x-2, y-2, endw, h+4, 3); c.fill();
+      roundRect(c, x+w+2-endw, y-2, endw, h+4, 3); c.fill();
+      c.fillStyle = frame; roundRect(c, x+endw-2, y, w-endw*2+4, h, 2); c.fill();
+      break;
+    }
+    case 'gem': {
+      c.fillStyle = frame;
+      c.beginPath();
+      c.moveTo(x+w*0.14, y); c.lineTo(x+w*0.86, y); c.lineTo(x+w, cy); c.lineTo(x+w*0.86, y+h); c.lineTo(x+w*0.14, y+h); c.lineTo(x, cy); c.closePath();
+      c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5; c.stroke();
+      break;
+    }
+    default: { /* plain 经典胶囊 */
+      c.fillStyle = frame;
+      roundRect(c, x, y, w, h, h/2); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.10)'; c.lineWidth = 1; roundRect(c, x, y, w, h, h/2); c.stroke();
+    }
+  }
+  /* 文字（neon 自带辉光；竖排逐字下排） */
+  if(preset === 'neon' && !hasCustom){ c.shadowColor = frame; c.shadowBlur = 8; }
+  c.fillStyle = tcol;
+  if(lb.dir === 'v'){
+    const padY = fs*0.38;
+    Array.from(text).forEach((ch,i)=>{ c.fillText(ch, cx, y + padY + fs*0.62 + i*fs*1.12); });
+  }else{
+    c.fillText(text, cx, cy + 0.5);
+  }
+  c.restore();
+  return { w, h, cx, cy };
 }
 /* 地块（建筑）：它就是一张 PNG，直接铺在框里；有行为时才加可交互光环 */
-function drawMapTile(c, n, W, H){
+function drawMapTile(c, n, W, H, lb){
   const r0 = nodeRect(n, W, H);
   const cx = r0.x + r0.w/2;
   const fs = Math.max(11, Math.min(16, H*0.032));
@@ -4667,10 +4775,10 @@ function drawMapTile(c, n, W, H){
              hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, false);
   }
   const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
-  poiLabel(c, cx, r0.y + r0.h + fs*1.15, (n.name||'地块') + tag, null, fs);
+  drawNamePlate(c, (n.name||'地块') + tag, lb || mapLb(null), { fs, rect:r0, anchor:(lb&&lb.pos)||'below' });
 }
 /* 门口 / 交互入口：方形牌子，颜色区分（金=面板组件，紫=传送门） */
-function drawTriggerBox(c, n, W, H){
+function drawTriggerBox(c, n, W, H, lb){
   const isPanel = (n.action === 'panel');
   const off = (n.action === 'none');
   const r0 = nodeRect(n, W, H);
@@ -4691,7 +4799,8 @@ function drawTriggerBox(c, n, W, H){
   c.restore();
   poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
            isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
-  poiLabel(c, cx, cy - r - fs*1.4, n.name || (isPanel ? '交互' : '门口'), null, fs);
+  lb = lb || mapLb(null);
+  drawNamePlate(c, n.name || (isPanel ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
 }
 function drawMap(){
   let c = mapRun.ctx;
@@ -4724,33 +4833,32 @@ function drawMap(){
     c.fillStyle = 'rgba(255,255,255,.9)';
     c.fillText('入口', s.x*W, s.y*H + 13); c.restore();
   });
-  (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H); });
-  (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H); });
+  const _lb = mapLb(m);   /* 🏷 名牌样式：整张地图统一 */
+  (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H, _lb); });
+  (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H, _lb); });
   // NPC：从《NPC 引擎》挑好的人，用游戏同款换装管线画出来
   (m.nodes||[]).forEach(n=>{
     if(n.kind!=='npc') return;
     const npc = npcById(n.npcId); if(!npc) return;
     const h = (typeof n.h==='number' && n.h>0) ? n.h : 0.20;
     const px = n.x*W, py = n.y*H;
-    // 名字牌（悬在头顶）：立绘高 h*H、脚下在 py，所以头顶在 py-h*H，再往上 14px
-    c.save(); c.textAlign='center'; c.textBaseline='bottom';
-    const topY = py - h*H - 14;
-    c.font = '700 12px "Microsoft YaHei"';
+    // 名字牌（悬在头顶）：用地图级「🏷 名牌样式」渲染，ID 小字挂在名牌正上方
     const nm = (npc.name||'NPC') + (npc.event && npc.event.type==='tarot' ? ' 🔮' : '');
-    c.fillStyle = 'rgba(0,0,0,.28)';
-    c.fillText(nm, px+1, topY + 1);
-    c.fillStyle = '#fff';
-    c.fillText(nm, px, topY);
-    /* NPC 也要有 ID —— 和名字牌同款小字，挂在名字正下方 */
+    const lbFs = _lb.fs || 12;
+    const nsz = namePlateSize(c, nm, _lb, lbFs);
+    const lbInfo = drawNamePlate(c, nm, _lb, { fs:lbFs, cx:px, cy:(py - h*H - 14) - nsz.h/2 });
+    /* NPC 也要有 ID —— 和名字牌同款小字，挂在名牌正上方 */
     const nid = npcShortId(npc.id || n.npcId);
     if(nid){
+      c.save(); c.textAlign='center'; c.textBaseline='bottom';
       c.font = '600 10px ui-monospace,Menlo,Consolas,monospace';
+      const idY = lbInfo.cy - lbInfo.h/2 - 4;
       c.fillStyle = 'rgba(0,0,0,.28)';
-      c.fillText('#'+nid, px+1, topY - 13 + 1);
+      c.fillText('#'+nid, px+1, idY + 1);
       c.fillStyle = 'rgba(255,255,255,.72)';
-      c.fillText('#'+nid, px, topY - 13);
+      c.fillText('#'+nid, px, idY);
+      c.restore();
     }
-    c.restore();
     // 立绘（NPC 一律朝左面向玩家）
     drawCharacter(c, px, py, npc.outfit || {}, -1, 0, h*H/ENG_BASE_H);
   });
@@ -4760,17 +4868,12 @@ function drawMap(){
      表现就是「角色永远看不见」。 */
   if(currentUser){
     drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
-    // 玩家自己头顶显示昵称（和 NPC 名字牌同款，但用主题色描边更醒目）
+    // 玩家自己头顶显示昵称（同款名牌样式；方向强制横排，位置固定头顶）
     const nick = currentUser.nickname || '旅行者';
-    c.save(); c.textAlign='center'; c.textBaseline='bottom';
-    c.font = '700 12px "Microsoft YaHei"';
-    /* py 是脚底，角色高约 ENG_BASE_H(100px)，名字牌要挂到头顶再往上 14px */
-    const ph = mapRun.px, pfy = mapRun.py - ENG_BASE_H*1.14;
-    c.fillStyle = 'rgba(0,0,0,.30)';
-    c.fillText(nick, ph+1, pfy+1);
-    c.fillStyle = '#ffd86b';                       // 玩家名字牌用暖金色，与 NPC 白色区分
-    c.fillText(nick, ph, pfy);
-    c.restore();
+    const pLb = Object.assign({}, _lb, { dir:'h' });
+    const pFs = pLb.fs || 12;
+    const psz = namePlateSize(c, nick, pLb, pFs);
+    drawNamePlate(c, nick, pLb, { fs:pFs, cx:mapRun.px, cy:(mapRun.py - ENG_BASE_H*1.14) - psz.h/2 });
   }
   c.restore();
   // 空地图明确提示，防止用户以为是渲染坏了

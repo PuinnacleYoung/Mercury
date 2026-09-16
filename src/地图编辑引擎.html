@@ -191,7 +191,23 @@
   .ed-npc.has-img.sel{box-shadow:0 0 0 3px #b49ae0,0 8px 20px rgba(127,102,196,.4);border-radius:14px;}
   .ed-npc.sel{box-shadow:0 0 0 3px #b49ae0,0 8px 20px rgba(127,102,196,.4);}
   .ed-npc.locked{cursor:not-allowed;box-shadow:0 0 0 3px #f5c542,0 6px 16px rgba(0,0,0,.28)!important;}
-  .ed-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.96);color:#2a2140;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.18);}
+  /* 名牌：样式由地图级「🏷 名牌样式」驱动 —— stage 上的 lb-preset/dir/pos 类 + CSS 变量，
+     运行时（index.html canvas）用同一套配置绘制，所见即所得。 */
+  .ed-label{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);padding:2px 10px;border-radius:999px;font-weight:800;white-space:nowrap;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.18);font-size:var(--lb-fs,11px);color:var(--lb-text,#2a2140);background-color:var(--lb-frame,rgba(255,255,255,.96));background-image:var(--lb-img,none);background-size:100% 100%;}
+  .stage.lb-preset-cloud .ed-label{border:2.5px solid rgba(60,40,20,.16);border-radius:16px;padding:3px 13px;}
+  .stage.lb-preset-wood .ed-label{border-radius:7px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.30),inset 0 -6px 10px rgba(0,0,0,.22),0 3px 10px rgba(0,0,0,.32);}
+  .stage.lb-preset-gold .ed-label{border-radius:6px;background-color:#181320;box-shadow:inset 0 0 0 2px var(--lb-frame,#f5c542),inset 0 0 0 4px rgba(245,197,66,.22),0 3px 12px rgba(0,0,0,.45);}
+  .stage.lb-preset-ribbon .ed-label{border-radius:3px;clip-path:polygon(0 0,100% 0,calc(100% - 9px) 50%,100% 100%,0 100%,9px 50%);padding:2px 17px;}
+  .stage.lb-preset-neon .ed-label{border-radius:10px;background-color:rgba(12,9,22,.62);border:2px solid var(--lb-frame,#7ee7ff);box-shadow:0 0 12px var(--lb-frame,#7ee7ff),inset 0 0 8px rgba(255,255,255,.12);}
+  .stage.lb-preset-scroll .ed-label{border-radius:4px;border-left:7px solid rgba(0,0,0,.30);border-right:7px solid rgba(0,0,0,.30);}
+  .stage.lb-preset-gem .ed-label{clip-path:polygon(14% 0,86% 0,100% 50%,86% 100%,14% 100%,0 50%);border-radius:0;padding:2px 17px;}
+  /* 名牌：文字方向 + 相对 PNG 的位置 */
+  .stage.lb-dir-v .ed-label{writing-mode:vertical-rl;text-orientation:upright;padding:10px 3px;letter-spacing:2px;}
+  .stage.lb-pos-below .ed-label{top:auto;bottom:-24px;left:50%;transform:translateX(-50%);}
+  .stage.lb-pos-above .ed-label{bottom:auto;top:-24px;left:50%;transform:translateX(-50%);}
+  .stage.lb-pos-left  .ed-label{top:50%;bottom:auto;left:auto;right:calc(100% + 6px);transform:translateY(-50%);}
+  .stage.lb-pos-right .ed-label{top:50%;bottom:auto;left:calc(100% + 6px);transform:translateY(-50%);}
+  .stage.lb-pos-center .ed-label{top:50%;bottom:auto;left:50%;transform:translate(-50%,-50%);}
   .ed-resize{position:absolute;right:-7px;bottom:-7px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;}
 
   /* 地块＝一张 PNG（没有底色方块） */
@@ -514,6 +530,27 @@
       <div class="warn" style="margin-top:6px">下雨 / 彩虹 / 烟花 / 光斑这类氛围效果放这层。<br>它在角色、NPC、建筑<b>之上</b>，在摇杆、按钮、HUD<b>之下</b>，不会挡操作。</div>
       <div id="mp-fg-detail"></div>
       <input type="file" id="mp-fg-file" accept="image/*" style="display:none">
+
+      <!-- ===== 🏷 名牌样式：地块 / 门口 / NPC 头顶那块牌，整张地图统一 ===== -->
+      <div class="sec-title">🏷 名牌样式 · 整张地图统一换装</div>
+      <label>花边款式<select id="mp-lb-preset"></select></label>
+      <div class="blk-actions" style="gap:10px">
+        <label style="flex:1;margin:0">花边颜色<input type="color" id="mp-lb-frame" style="width:100%;height:34px;padding:2px"></label>
+        <label style="flex:1;margin:0">文字颜色<input type="color" id="mp-lb-text" style="width:100%;height:34px;padding:2px"></label>
+      </div>
+      <label>文字大小 <b id="mp-lb-fs-val" style="color:var(--ink)">12px</b><input type="range" id="mp-lb-fs" min="9" max="26" step="1" style="width:100%"></label>
+      <div class="blk-actions" style="gap:10px">
+        <label style="flex:1;margin:0">文字方向<select id="mp-lb-dir" style="width:100%"><option value="h">➡ 横排</option><option value="v">⬇ 竖排</option></select></label>
+        <label style="flex:1;margin:0">相对 PNG 位置<select id="mp-lb-pos" style="width:100%"><option value="below">⬇ 下方</option><option value="above">⬆ 上方</option><option value="left">⬅ 左侧</option><option value="right">➡ 右侧</option><option value="center">🎯 盖在图中间</option></select></label>
+      </div>
+      <div class="blk-actions">
+        <button class="mini-btn" id="mp-lb-img-btn">🖼 上传自定义花边</button>
+        <button class="mini-btn" id="mp-lb-img-clear">🧹 清除花边图</button>
+        <button class="mini-btn" id="mp-lb-reset">↩ 恢复默认</button>
+      </div>
+      <div class="blk-meta" id="mp-lb-img-name">未上传（用款式自带花边）</div>
+      <input type="file" id="mp-lb-img" accept="image/*" style="display:none">
+      <div class="warn">改的是<b>这张地图所有名牌</b>（地块 / 门口 / NPC / 入口）。花边图会拉伸铺满名牌底，建议用透明底 PNG（GIF 画进游戏不会动）。</div>
 
       <div class="sec-title">📐 世界比例（铺满裁切的基准）</div>
       <div class="blk-actions">
@@ -1579,6 +1616,7 @@ function renderEditor(){
   /* 世界底：有背景图就交给 .world-bg，没有才铺渐变 */
   stage.style.background = map.bg ? 'transparent'
     : `linear-gradient(160deg, ${map.bgColor||'#a9c9e8'}, ${darken(map.bgColor||'#a9c9e8',0.4)})`;
+  applyLabelTheme(map);   /* 🏷 名牌样式：挂 lb-* 类 + CSS 变量，所有 .ed-label 自动跟随 */
 
   /* ---------- 世界容器：背景和资产共享同一个仿射变换 ---------- */
   const world = document.createElement('div');
@@ -2327,6 +2365,7 @@ function renderProps(){
     renderBgLayers(map);
     renderFgLayers(map);
     renderWorldAspect(map);
+    renderLabelCfg(map);
     renderBgmBlock('mp-bgm',map);
     return;
   }
@@ -2856,6 +2895,127 @@ $('me-set-root').onclick=()=>{
 /* ====== 🧱 背景层 / 🌈 前景层 / 📐 世界比例 / 🔒 批量锁 的按钮 ====== */
 $('mp-bg-add').onclick = ()=>{ const inp=$('mp-bg-file'); if(!inp) return; inp.onchange = e=>addBgLayerFromFile(e); inp.click(); };
 $('mp-fg-add').onclick = ()=>{ const inp=$('mp-fg-file'); if(!inp) return; inp.onchange = e=>addFgLayerFromFile(e); inp.click(); };
+
+/* ================= 🏷 名牌样式（地图级，运行时同款渲染） =================
+   map.lb = { preset, frame, text, fs, dir, pos, img, frameCustom, textCustom }
+   换款式时自动带出该款默认配色；用户手动调过颜色（frameCustom/textCustom）则保留。 */
+const LB_PRESETS = [
+  ['plain' ,'经典胶囊（原版）'],
+  ['cloud' ,'☁️ 云朵泡'],
+  ['wood'  ,'🪵 木牌匾'],
+  ['gold'  ,'🏆 鎏金黑匾'],
+  ['ribbon','🎀 绶带'],
+  ['neon'  ,'💡 霓虹描边'],
+  ['scroll','📜 卷轴'],
+  ['gem'   ,'💎 宝石牌'],
+];
+const LB_PRESET_DEFAULTS = {
+  plain :{frame:'#ffffff',text:'#2a2140'},
+  cloud :{frame:'#ffffff',text:'#2a2140'},
+  wood  :{frame:'#a5713d',text:'#fdf3dd'},
+  gold  :{frame:'#f5c542',text:'#f6c94a'},
+  ribbon:{frame:'#e85d5d',text:'#ffffff'},
+  neon  :{frame:'#7ee7ff',text:'#ffffff'},
+  scroll:{frame:'#f3e6c8',text:'#5a4630'},
+  gem   :{frame:'#7ec8ff',text:'#173a52'},
+};
+function lbOf(map){ if(!map.lb) map.lb={}; return map.lb; }
+function lbPresetDefaults(preset){ return LB_PRESET_DEFAULTS[preset] || LB_PRESET_DEFAULTS.plain; }
+/* 把名牌主题刷到编辑画布上：stage 挂 lb-* 类 + CSS 变量，所有 .ed-label 自动跟随 */
+function applyLabelTheme(map){
+  const st = $('edit-stage'); if(!st) return;
+  const lb = (map && map.lb) || {};
+  st.classList.remove('lb-preset-plain','lb-preset-cloud','lb-preset-wood','lb-preset-gold',
+                      'lb-preset-ribbon','lb-preset-neon','lb-preset-scroll','lb-preset-gem',
+                      'lb-dir-h','lb-dir-v','lb-pos-below','lb-pos-above','lb-pos-left','lb-pos-right','lb-pos-center');
+  st.classList.add('lb-preset-'+(lb.preset||'plain'), 'lb-dir-'+(lb.dir||'h'), 'lb-pos-'+(lb.pos||'below'));
+  const pd = lbPresetDefaults(lb.preset||'plain');
+  st.style.setProperty('--lb-frame', lb.frame || pd.frame);
+  st.style.setProperty('--lb-text',  lb.text  || pd.text);
+  st.style.setProperty('--lb-fs',    (lb.fs || 11) + 'px');
+  st.style.setProperty('--lb-img',   lb.img ? ('url("'+lb.img+'")') : 'none');
+}
+function renderLabelCfg(map){
+  const lb = map.lb || {};
+  const pd = lbPresetDefaults(lb.preset || 'plain');
+  $('mp-lb-preset').value = lb.preset || 'plain';
+  $('mp-lb-frame').value  = lb.frame || pd.frame;
+  $('mp-lb-text').value   = lb.text  || pd.text;
+  $('mp-lb-fs').value     = lb.fs || 12;
+  $('mp-lb-fs-val').textContent = (lb.fs || 12) + 'px';
+  $('mp-lb-dir').value    = lb.dir || 'h';
+  $('mp-lb-pos').value    = lb.pos || 'below';
+  $('mp-lb-img-name').textContent = lb.img ? '已上传自定义花边 ✓（「🧹 清除花边图」可移除）' : '未上传（用款式自带花边）';
+}
+(function bindLabelCfg(){
+  const cur = ()=>{ const d=ensureMaps(); return d.maps[editState.nodeId]; };
+  const sel = $('mp-lb-preset');
+  LB_PRESETS.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; sel.appendChild(o); });
+  sel.onchange = ()=>{
+    const m=cur(); if(!m) return;
+    const pd = lbPresetDefaults(sel.value);
+    const lb = lbOf(m);
+    lb.preset = sel.value;
+    if(!lb.frameCustom) lb.frame = pd.frame;   // 没手动调过颜色就跟新款默认走，避免黑匾配白字看不清
+    if(!lb.textCustom)  lb.text  = pd.text;
+    saveMapsData(ensureMaps()); renderEditor(); renderProps();
+  };
+  $('mp-lb-frame').oninput = ()=>{
+    const m=cur(); if(!m) return;
+    const lb=lbOf(m); lb.frame=$('mp-lb-frame').value; lb.frameCustom=true;
+    saveMapsData(ensureMaps()); applyLabelTheme(m);
+  };
+  $('mp-lb-text').oninput = ()=>{
+    const m=cur(); if(!m) return;
+    const lb=lbOf(m); lb.text=$('mp-lb-text').value; lb.textCustom=true;
+    saveMapsData(ensureMaps()); applyLabelTheme(m);
+  };
+  $('mp-lb-fs').oninput = ()=>{
+    const m=cur(); if(!m) return;
+    const lb=lbOf(m); lb.fs=+$('mp-lb-fs').value;
+    $('mp-lb-fs-val').textContent = lb.fs+'px';
+    applyLabelTheme(m);
+  };
+  $('mp-lb-fs').onchange = ()=>{ const m=cur(); if(m) saveMapsData(ensureMaps()); };
+  $('mp-lb-dir').onchange = ()=>{
+    const m=cur(); if(!m) return;
+    lbOf(m).dir=$('mp-lb-dir').value;
+    saveMapsData(ensureMaps()); renderEditor();
+  };
+  $('mp-lb-pos').onchange = ()=>{
+    const m=cur(); if(!m) return;
+    lbOf(m).pos=$('mp-lb-pos').value;
+    saveMapsData(ensureMaps()); renderEditor();
+  };
+  $('mp-lb-img-btn').onclick = ()=>{ const inp=$('mp-lb-img'); if(inp) inp.click(); };
+  $('mp-lb-img').onchange = e=>{
+    const m=cur(); if(!m) return;
+    const f=e.target.files[0]; if(!f) return;
+    if(!/image\/(png|webp)/i.test(f.type||'')){ toast('花边图请用透明底 PNG / WebP（GIF 画进游戏不会动）'); e.target.value=''; return; }
+    if(f.size > 2*1024*1024){ toast('花边图太大，控制在 2MB 内'); e.target.value=''; return; }
+    const r=new FileReader();
+    r.onload=()=>{
+      lbOf(m).img = r.result;
+      saveMapsData(ensureMaps()); renderEditor(); renderProps();
+      toast('🏷 自定义花边已应用');
+    };
+    r.readAsDataURL(f);
+    e.target.value='';
+  };
+  $('mp-lb-img-clear').onclick = ()=>{
+    const m=cur(); if(!m) return;
+    if(!m.lb || !m.lb.img){ toast('本来就没有自定义花边图'); return; }
+    delete m.lb.img;
+    saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    toast('🧹 自定义花边已清除');
+  };
+  $('mp-lb-reset').onclick = ()=>{
+    const m=cur(); if(!m) return;
+    m.lb = { preset:'plain' };
+    saveMapsData(ensureMaps()); renderEditor(); renderProps();
+    toast('↩ 名牌已恢复默认样式');
+  };
+})();
 $('mp-fg-clear').onclick = ()=>clearFgLayers();
 $('mp-bg-compose').onclick = ()=>composeBackground();
 $('mp-bg-clear').onclick = ()=>clearBgLayers();
