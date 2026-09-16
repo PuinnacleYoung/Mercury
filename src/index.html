@@ -4392,13 +4392,15 @@ function openWorldMap(mapId,force){
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
     /* 背景跟主画面（关卡）同一套策略：cover 铺满全屏 —— 只裁切、不拉伸，
        多余部分按手机机型比例裁掉（陛下钦定方案），再也不搞「窗口比例」那一套 */
+    /* ✅ 修拉伸的关键：map.bg 是「已经裁好边的成品图」，直接 cover 铺满即可 —— 只裁边、绝不拉伸。
+       再用 bgScreenXf 的同一套变换把世界坐标（0~1）映射回屏幕，背景与地点天然严丝合缝。
+       ⚠️ 绝不能再按 bgRect 去切子图（drawCoverRect）—— 那等于在裁好的图上又裁一圈 + 放大，就是拉伸的元凶。 */
+    let xfW=0, xfH=0, xfTX=0, xfTY=0;
     if(bgImg && bgImg.complete && bgImg.naturalWidth){
-      if(root === host){
-        const br = bgRectOf(root);
-        if(br.w >= 0.9999 && br.h >= 0.9999) drawCover(ctx, bgImg, FW, FH);
-        else drawCoverRect(ctx, bgImg, FW, FH, br);    // 合成时裁过透明边：按子区 cover，不放大
-      } else {
-        drawCover(ctx, bgImg, FW, FH);                 // 借来的底图：只裁切、不拉伸
+      const xf = bgScreenXf(bgImg, FW, FH, root);
+      ctx.drawImage(bgImg, xf.dx, xf.dy, xf.dw, xf.dh);   // 成品图原样 cover：只裁切
+      if(root === host && xf.W > 0 && xf.H > 0){          // 借来的底图不代表本地图的世界，不采用
+        xfW = xf.W; xfH = xf.H; xfTX = xf.TX; xfTY = xf.TY;
       }
     }
     else if(bgLay){
@@ -4430,11 +4432,14 @@ function openWorldMap(mapId,force){
       g.addColorStop(0, base); g.addColorStop(1, darken(base, .3));
       ctx.fillStyle = g; ctx.fillRect(0,0,FW,FH);
     }
-    /* 世界盒：地点/名牌画在居中的「世界」里，比例锁编辑器的 worldAspect ——
-       坐标、尺寸、名牌锚点跟编辑器所见即所得；背景 cover 满屏，该裁就裁 */
-    const wasp = Math.min(2.8, Math.max(0.9, (host && +host.worldAspect) || (16/9)));
-    if(FW/FH >= wasp){ H = FH; W = Math.round(FH*wasp); } else { W = FW; H = Math.round(FW/wasp); }
-    OX = Math.round((FW-W)/2); OY = Math.round((FH-H)/2);
+    /* 世界盒：有本地图底图时直接用底图变换出来的世界框（背景与地点同源，分毫不差）；
+       没底图 / 底图是借来的，才退回到「按 worldAspect 居中一个盒子」。 */
+    if(xfW > 0 && xfH > 0){ W = xfW; H = xfH; OX = xfTX; OY = xfTY; }
+    else {
+      const wasp = Math.min(2.8, Math.max(0.9, (host && +host.worldAspect) || (16/9)));
+      if(FW/FH >= wasp){ H = FH; W = Math.round(FH*wasp); } else { W = FW; H = Math.round(FW/wasp); }
+      OX = Math.round((FW-W)/2); OY = Math.round((FH-H)/2);
+    }
     ctx.save(); ctx.translate(OX, OY);
     // 父子连线（谁通往谁）
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.setLineDash([5,6]);
@@ -5144,9 +5149,9 @@ function drawMap(){
   const vid = mapRun.bgVideo;
   if(vid && vid.readyState >= 2 && vid.videoWidth) drawCover(c, vid, FW, FH);
   else if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth){
-    const r = bgRectOf(m);
-    if(r.w >= 0.9999 && r.h >= 0.9999) drawCover(c, mapRun.bgImg, FW, FH);
-    else drawCoverRect(c, mapRun.bgImg, FW, FH, r);      // 合成时裁过透明边
+    /* ✅ 同一条铁律：map.bg 是裁好边的成品图，直接 cover —— 只裁切、绝不拉伸。
+       以前这里按 bgRect 再切一次子图（drawCoverRect）= 二次裁切 + 放大，就是「被拉伸」的元凶。 */
+    drawCover(c, mapRun.bgImg, FW, FH);
   }
   else if(mapRun.bgLayersCv){
     drawCover(c, mapRun.bgLayersCv, FW, FH);             // 背景层现场合成兜底
