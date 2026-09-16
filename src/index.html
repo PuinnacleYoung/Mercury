@@ -4304,7 +4304,6 @@ function openWorldMap(mapId,force){
   box.innerHTML='<h3>🗺 '+esc(navMap?navMap.name:'地图导航')+'</h3>'
     +'<div class="sub">当前位置：'+esc(m?m.name:'—')+' · 点上面的地点即可前往</div>'
     + '<div class="wm-stage"><canvas id="wm-canvas"></canvas></div>'
-    + '<div class="wm-legend" id="wm-legend"></div>'
     + '<div class="map-foot">'
     +   (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
     +   ((!isRoot) ? '<button class="map-btn ghost" id="wm-root">🌍 世界地图</button>' : '')
@@ -4319,11 +4318,9 @@ function openWorldMap(mapId,force){
   const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
   const cvs = $('wm-canvas');
   const ctx = cvs.getContext('2d');
-  /* 舞台比例锁成编辑器的世界比例（worldAspect）：
-     背景不再被硬塞进 16:9 拉伸，地块坐标也和编辑器一一对应 */
-  const aspRaw = (host && +host.worldAspect) || 0;
-  const asp = aspRaw ? Math.min(2.8, Math.max(0.9, aspRaw)) : (16/9);
-  cvs.parentNode.style.aspectRatio = String(asp);
+  const wmStage = cvs.parentNode;
+  wmStage.dataset.asp = String((host && +host.worldAspect) || (16/9));
+  wmStage.style.aspectRatio = wmStage.dataset.asp;
   let W = 0, H = 0, pins = [];
   function draw(){
     const rect = cvs.parentNode.getBoundingClientRect();
@@ -4349,6 +4346,29 @@ function openWorldMap(mapId,force){
       }
     })();
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
+    /* 窗口比例跟着画面走（这是「不拉伸」的根本）：
+       · 整幅底图（没裁过边）→ 窗口比例 = 图片真实比例，16:9 的图就开 16:9 的窗口
+       · 裁过边的合成图 → 世界比例，内容按 bgRect 铺回子矩形（数学上无变形）
+       · 背景层现场拼合 → 唯一满幅层用它的真实比例，否则用世界比例 */
+    let wantAsp = (host && +host.worldAspect) || (16/9);
+    if(bgImg && bgImg.naturalWidth && root===host){
+      const br0 = bgRectOf(root);
+      wantAsp = (br0.w>=0.999 && br0.h>=0.999)
+        ? bgImg.naturalWidth/bgImg.naturalHeight
+        : ((host && +host.worldAspect) || bgImg.naturalWidth/bgImg.naturalHeight);
+    } else if(bgLay){
+      const one = bgLay.layers.length===1 ? bgLay.layers[0] : null;
+      const oneIm = one ? mapImg(one.img) : null;
+      wantAsp = (one && one.w>=0.999 && one.h>=0.999 && oneIm && oneIm.naturalWidth)
+        ? oneIm.naturalWidth/oneIm.naturalHeight
+        : ((bgLay.map && +bgLay.map.worldAspect) || (W/H));
+    }
+    wantAsp = Math.min(2.8, Math.max(0.9, wantAsp||16/9));
+    if(Math.abs((+wmStage.dataset.asp||0) - wantAsp) > 0.005){
+      wmStage.dataset.asp = String(wantAsp);
+      wmStage.style.aspectRatio = String(wantAsp);
+      requestAnimationFrame(()=>{ if(document.body.contains(cvs)) draw(); });  // 比例变了：按新窗口重画一遍
+    }
     if(bgImg && bgImg.complete && bgImg.naturalWidth){
       if(root === host){
         /* 编辑器同款：舞台比例已锁成 worldAspect，底图按 bgRect 子矩形铺进世界
@@ -4361,8 +4381,12 @@ function openWorldMap(mapId,force){
     }
     else if(bgLay){
       /* 背景层兜底：按编辑器的层坐标现场拼到一块世界比例的画布上，再 cover 铺进小图。
-         哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。 */
-      const wa=(bgLay.map && bgLay.map.worldAspect) || (W/H);
+         哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。
+         唯一满幅层时画布比例用它的真实比例 —— 和窗口比例一致，绝不拉伸 */
+      const oneFull = bgLay.layers.length===1 && bgLay.layers[0].w>=0.999 && bgLay.layers[0].h>=0.999;
+      const oneIm = oneFull ? mapImg(bgLay.layers[0].img) : null;
+      const wa=(oneIm && oneIm.naturalWidth) ? oneIm.naturalWidth/oneIm.naturalHeight
+             : ((bgLay.map && +bgLay.map.worldAspect) || (W/H));
       const cw=Math.max(480, Math.round(W)), ch=Math.max(2, Math.round(cw/wa));
       const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
       lcv.width=cw; lcv.height=ch;
@@ -4459,20 +4483,9 @@ function openWorldMap(mapId,force){
     mask.remove();if(isMapNode(d.maps[id]))openMapNavigator(id);else enterMap(id,null);
   });
   draw();
-  const legend=$('wm-legend');
-  if(host&&host.parent&&isMapNode(d.maps[host.parent])){const up=document.createElement('button');up.className='wm-chip';up.textContent='← 返回 '+d.maps[host.parent].name;up.onclick=()=>{mask.remove();openMapNavigator(host.parent);};legend.appendChild(up);}
+  /* 底部那排地点胶囊已按陛下要求撤掉 —— 地图上直接点就行；
+     返回上级走下面的「⬆️ 上一级」按钮 */
   window.addEventListener('resize',function onr(){if(!document.body.contains(cvs)){window.removeEventListener('resize',onr);return;}draw();});
-
-  // 下面一排小胶囊：图太小点不准时的备用入口
-  ids.forEach(k=>{
-    const mm = d.maps[k];
-    const b = document.createElement('button');
-    b.className='wm-chip'+(d.entryLevelId===k?' main':'')+(k===mapState.currentId?' cur':'');
-    const tIcon=(pos[k]&&pos[k].tile&&pos[k].tile.icon)||(isMapNode(mm)?'🗺️':'🎯');
-    b.textContent=(k===mapState.currentId?'📍 ':(d.entryLevelId===k?'⭐ ':''))+tIcon+' '+(mm.name||k);
-    b.onclick=()=>{mask.remove();if(isMapNode(mm))openMapNavigator(k);else enterMap(k,null);};
-    legend.appendChild(b);
-  });
 }
 
 /* ---- 每帧：行走 + 触发检测 ---- */
