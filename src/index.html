@@ -1095,6 +1095,7 @@ input{font-family:inherit;outline:none;}
 <script src="./legacy-body-v4.js"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
 <script src="./map-placeholders.js"></script>
+<script src="./media-store.js"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -2093,7 +2094,9 @@ function showScreen(id){
     } else go();
   }
   // 地图屏切走时暂停地图渲染（位置保留，面板关掉可原样回到地图）
-  try{ if(id!=='map-screen' && mapRun) mapRun.active = false; }catch(e){}
+  try{
+    if(id!=='map-screen' && mapRun){ mapRun.active = false; pauseMapVideo(); }   // 🎬 离开地图就暂停视频，别在后台偷偷解码
+  }catch(e){}
 }
 
 /* ================= 横屏提示 ================= */
@@ -2380,7 +2383,7 @@ let mapRun = {
   keys:{up:false,down:false,left:false,right:false},
   joy:{active:false, dx:0, dy:0},
   lastT:0, active:false, cool:0,
-  bgImg:null,bgSrc:'',walkMapId:null,walkPixels:null,walkReady:false,
+  bgImg:null,bgSrc:'',bgKey:'',bgVideo:null,walkMapId:null,walkPixels:null,walkReady:false,
   standing:null,lastFired:null,
 };
 
@@ -4156,6 +4159,7 @@ function backToMap(){
   if(mapRun.standing) mapRun.lastFired = mapRun.standing.id;  // 别一回来又被弹一次
   mapRun.active = true;
   mapRun.lastT = performance.now();
+  try{ const _d = ensureMaps(); applyMapVideoOpts(_d.maps[mapState.currentId]); }catch(e){}  // 🎬 视频底图接着播
   refreshHud(); refreshProfile();
   refreshMapTopbar();
   restartLoop();
@@ -4269,7 +4273,8 @@ function openWorldMap(mapId,force){
     ctx.clearRect(0,0,W,H);
     // 背景：主地图的底色/底图
     const root=host||d.maps[d.rootMapId];
-    const bgSrc=root&&root.bg;
+    /* 🎬 根节点是视频底图时，卡片小视图用它的首帧海报（小视图不播视频，省电省内存） */
+    const bgSrc=(root&&root.bg) || (root&&root.bgKind==='video'&&root.bgPoster) || '';
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
     if(bgImg && bgImg.complete && bgImg.naturalWidth) drawCover(ctx, bgImg, W, H);
     else {
@@ -4452,6 +4457,8 @@ function currentWorldAspect(){
     m = (d && mapState.currentId) ? d.maps[mapState.currentId] : null;
   }catch(e){ m = null; }
   if(m && m.worldAspect) return m.worldAspect;
+  /* 🎬 视频底图：用上传时量好的原始像素比 */
+  if(m && m.bgKind === 'video' && m.bgVw && m.bgVh) return m.bgVw / m.bgVh;
   if(m && m.bg){ const a = aspectOfImg(m.bg); if(a) return a; }
   return WORLD_ASPECT_FALLBACK;
 }
@@ -4534,16 +4541,73 @@ function mapImg(src){
   if(_mapImgCache[src]) return _mapImgCache[src];
   const im = new Image(); im.src = src; _mapImgCache[src] = im; return im;
 }
+/* 🎬 视频底图：一个隐藏的 <video>，游戏主循环每帧把它画进 canvas 背景。
+   不插进 DOM 也能解码，但 Safari / iOS 必须 playsinline，且元素要在文档里才稳，
+   所以这里藏到屏幕外（left:-99999px），绝不会挡住任何东西。 */
+let _mapVideoEl = null;
+function stopMapVideo(){
+  const v = _mapVideoEl; if(!v) return;
+  try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){}
+  try{ v.remove(); }catch(e){}
+  _mapVideoEl = null; mapRun.bgVideo = null;
+}
+/* 只暂停不销毁：从面板回到地图时还要接着播（销毁了就得重新解码，会闪一下） */
+function pauseMapVideo(){ const v = _mapVideoEl; if(v){ try{ v.pause(); }catch(e){} } }
+function applyMapVideoOpts(m){
+  const v = _mapVideoEl; if(!v || !m) return;
+  v.loop  = m.bgLoop  !== false;
+  v.muted = m.bgMuted !== false;
+  if(m.bgAuto === false){ try{ v.pause(); v.currentTime = 0; }catch(e){} return; }
+  const p = v.play();
+  if(p && p.catch) p.catch(()=>{
+    /* 浏览器拦了自动播放（多半是陛下关了静音）→ 等第一次点屏幕 / 按键再补一刀 */
+    const kick = ()=>{
+      try{ v.play().catch(()=>{}); }catch(e){}
+      window.removeEventListener('pointerdown', kick);
+      window.removeEventListener('keydown', kick);
+    };
+    window.addEventListener('pointerdown', kick, { once:true });
+    window.addEventListener('keydown', kick, { once:true });
+  });
+}
+function startMapVideo(m, url){
+  stopMapVideo();
+  if(!url) return;
+  const v = document.createElement('video');
+  v.muted = m.bgMuted !== false; v.loop = m.bgLoop !== false;
+  v.playsInline = true; v.setAttribute('playsinline','');
+  v.setAttribute('webkit-playsinline','');
+  v.preload = 'auto';
+  v.style.cssText = 'position:fixed;left:-99999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+  if(m.bgPoster) v.poster = m.bgPoster;
+  v.src = url;
+  try{ document.body.appendChild(v); }catch(e){}
+  _mapVideoEl = v; mapRun.bgVideo = v;
+  applyMapVideoOpts(m);
+}
 function loadMapBg(m){
   const src = (m && m.bg) ? m.bg : '';
-  if(src === mapRun.bgSrc) return;
-  mapRun.bgSrc = src; mapRun.bgImg = null;
-  if(!src) return;
+  const vid = (m && m.bgKind === 'video' && m.bgMedia) ? m.bgMedia : '';
+  const key = 'v:' + vid + '|i:' + src;
+  if(key === mapRun.bgKey){ applyMapVideoOpts(m); return; }   // 同一张地图：只同步播放开关
+  mapRun.bgKey = key; mapRun.bgSrc = src; mapRun.bgImg = null;
+  stopMapVideo();
+  /* 🎬 视频底图：优先起视频（静态底图当兜底，视频没解码出来时先画它，不会黑屏） */
+  if(vid && typeof MediaStore !== 'undefined'){
+    MediaStore.url(vid).then(u=>{
+      if(!u || mapRun.bgKey !== key) return;
+      startMapVideo(m, u);
+      try{ resizeMap(); drawMap(); }catch(e){}
+    }).catch(e=>{ console.warn('[Map] 视频底图读取失败:', e && e.message); });
+  }
+  /* 静态底图；视频地图若还没合成过底图，就用首帧海报顶上 */
+  const pick = src || ((m && m.bgKind === 'video') ? (m.bgPoster || '') : '');
+  if(!pick) return;
   const im = new Image();
   /* 背景一加载出来就知道真实比例了 → 世界矩形重算一次（铺满裁切的基准） */
-  im.onload = ()=>{ if(mapRun.bgSrc === src){ mapRun.bgImg = im; try{ resizeMap(); }catch(e){} } };
-  im.onerror = ()=>{ if(mapRun.bgSrc === src){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(src).slice(0,60)); } };
-  im.src = src;
+  im.onload = ()=>{ if(mapRun.bgKey === key){ mapRun.bgImg = im; try{ resizeMap(); }catch(e){} } };
+  im.onerror = ()=>{ if(mapRun.bgKey === key){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(pick).slice(0,60)); } };
+  im.src = pick;
 }
 /* 空/坏地图兜底提示卡 —— 避免整块画布看起来"神秘一片白" */
 function _drawMapBadge(c, FW, FH, title, sub){
@@ -4812,7 +4876,10 @@ function drawMap(){
   if(!W || !H || !FW || !FH){ resizeMap(); W = mapRun.w; H = mapRun.h; FW = mapRun.fw||W; FH = mapRun.fh||H; }
   const d = ensureMaps(); const m = d.maps[mapState.currentId];
   c.clearRect(0,0,FW,FH);
-  if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, FW, FH);
+  /* 🎬 视频底图：每帧把当前画面画进背景（主循环一直在跑，所以它就是动的） */
+  const vid = mapRun.bgVideo;
+  if(vid && vid.readyState >= 2 && vid.videoWidth) drawCover(c, vid, FW, FH);
+  else if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, FW, FH);
   else {
     const base = (m && m.bgColor) || '#a9c9e8';
     const g = c.createLinearGradient(0,0,0,FH);

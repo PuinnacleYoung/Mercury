@@ -249,6 +249,8 @@
      ========================================================= */
   .world-box{position:absolute;overflow:hidden;}
   .world-bg{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
+  /* 🎬 视频底图：<video> 铺满世界矩形，和静态底图同一个 cover 矩形，资产位置对得上 */
+  .world-bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;background:#000;}
   .bg-stack{position:absolute;inset:0;pointer-events:none;}
   .ed-bg-layer{position:absolute;background-repeat:no-repeat;background-position:center;background-size:100% 100%;cursor:move;touch-action:none;z-index:1;pointer-events:auto;}
   .ed-bg-layer.sel{outline:3px solid var(--accent);outline-offset:-3px;}
@@ -499,6 +501,19 @@
       <div class="chk-row" data-page-node-id="1Ez8FzMH2bLpPQIxiz0VHb"><input type="checkbox" id="mp-teleout" data-page-node-id="ueRssjXmL3MtZ1oNX7CD1v"><span data-page-node-id="9viIY4bLnTJVyhafcdSNDN">允许从此处传送去别处</span></div>
       <div class="warn" id="mp-tip" data-page-node-id="gneGE6j5k2ECXmqb7FLzsz"></div>
 
+      <!-- ===== 🎬 视频底图：MP4 / WebM 直接当世界背景，会动 ===== -->
+      <div class="sec-title">🎬 视频底图 · 让世界动起来（MP4）</div>
+      <div class="blk-meta" id="mp-vid-meta">—</div>
+      <div class="blk-actions">
+        <button class="mini-btn grad" id="mp-vid-add" title="上传 MP4 / WebM 当地图底图。视频存本地 IndexedDB（localStorage 只有 5MB，装不下视频）">🎬 上传 MP4</button>
+        <button class="mini-btn" id="mp-vid-clear" title="移除视频底图，回到静态背景 / 背景层">🧹 移除视频</button>
+      </div>
+      <div class="chk-row"><input type="checkbox" id="mp-vid-auto"><span>▶ 自动播放（进地图就开播）</span></div>
+      <div class="chk-row"><input type="checkbox" id="mp-vid-loop"><span>🔁 循环播放</span></div>
+      <div class="chk-row"><input type="checkbox" id="mp-vid-muted"><span>🔇 静音（取消勾选可保留视频原声）</span></div>
+      <div class="blk-meta" id="mp-vid-tip"></div>
+      <input type="file" id="mp-vid-file" accept="video/mp4,video/webm,video/*" style="display:none">
+
       <!-- ===== 🧱 背景层：多层 PNG，合成后给游戏读一张 ===== -->
       <div class="sec-title">🧱 背景层 · 多层 PNG 叠出世界底图</div>
       <div class="blk-meta" id="mp-bg-meta">—</div>
@@ -698,6 +713,7 @@
 <div id="toast" data-page-node-id="wFCi2AXn62Cu7jqoV2TR6D"></div>
 
 <script src="./map-placeholders.js"></script>
+<script src="./media-store.js"></script>
 <script src="./legacy-body-v4.js"></script>
 <script src="./body-template.js"></script>
 <script src="./npc-render.js"></script>
@@ -1337,9 +1353,11 @@ const World = {
     im.src = url;
     return null;                        // 还没量出来
   },
-  /* 这张地图的世界比例：显式值 > 背景图真实比例 > 16:9 */
+  /* 这张地图的世界比例：显式值 > 视频原始比例 > 背景图真实比例 > 16:9 */
   aspect(map){
     if(map && map.worldAspect) return map.worldAspect;
+    /* 🎬 视频底图：上传时量好的原始像素比，和静态背景图一个待遇 */
+    if(map && isVideoBg(map) && map.bgVw && map.bgVh) return map.bgVw/map.bgVh;
     if(map && map.bg){ const a=this._aspect[map.bg]; if(a) return a; }
     return WORLD_ASPECT_FALLBACK;
   },
@@ -1633,7 +1651,24 @@ function renderEditor(){
     layers.forEach(l=>stack.appendChild(buildBgLayerEl(map, l)));
   }else{
     const bg = document.createElement('div'); bg.className='world-bg';
-    if(map.bg) bg.style.backgroundImage = 'url('+map.bg+')';
+    if(isVideoBg(map)){
+      /* 🎬 视频底图：和静态底图共用同一个世界矩形 ⇒ 资产位置照样对得上 */
+      const v = document.createElement('video');
+      v.className='world-bg-video';
+      v.muted = map.bgMuted!==false; v.loop = map.bgLoop!==false;
+      v.playsInline = true; v.preload = 'auto'; v.setAttribute('playsinline','');
+      if(map.bgPoster) v.poster = map.bgPoster;
+      const attach = u=>{
+        if(!u || !v.isConnected) return;
+        v.src = u;
+        if(map.bgAuto!==false){ const p=v.play(); if(p && p.catch) p.catch(()=>{}); }
+      };
+      const cached = (typeof MediaStore!=='undefined') ? MediaStore.peek(map.bgMedia) : '';
+      if(cached) attach(cached);
+      else if(typeof MediaStore!=='undefined') MediaStore.url(map.bgMedia).then(attach);
+      bg.appendChild(v);
+    }
+    else if(map.bg) bg.style.backgroundImage = 'url('+map.bg+')';
     else bg.style.background = `linear-gradient(160deg, ${map.bgColor||'#a9c9e8'}, ${darken(map.bgColor||'#a9c9e8',0.4)})`;
     stack.appendChild(bg);
   }
@@ -1893,6 +1928,133 @@ function bgAspectFit(ia, wa){
   return { w:ia/wa, h:1 };                   // 图更高 → 占满世界高，左右留空
 }
 function markBgDirty(map){ if(map) map.bgDirty = true; }
+
+/* ================= 🎬 视频底图 =================
+   MP4 太大（几 MB~几十 MB），localStorage 那 5MB 根本装不下 ⇒ Blob 存 IndexedDB，
+   地图数据里只留：
+     bgKind:'video'   bgMedia:'vid_xxx'（仓库 id）  bgPoster:首帧小图（兜底 / 视频没解码出来时先看它）
+     bgAuto 自动播放 / bgLoop 循环 / bgMuted 静音（默认全开，静音是浏览器允许自动播放的前提）
+     bgVw / bgVh 视频原始像素（没手动设过世界比例时，用它当世界比例） */
+const VID_MAX_MB = 60;
+function isVideoBg(m){ return !!(m && m.bgKind==='video' && m.bgMedia); }
+function vidFileOk(f){
+  return !!f && (/^video\//i.test(f.type||'') || /\.(mp4|webm|m4v|mov)$/i.test(f.name||''));
+}
+/* 抓视频首帧当海报：解码慢 / 关了自动播放 / 换设备还没上传时，先看这张，不会一片黑。
+   顺便量出真实像素，用来定世界比例（和静态背景图一个待遇）。 */
+function grabVideoInfo(objectUrl, cb){
+  let done=false;
+  const v=document.createElement('video');
+  v.muted=true; v.playsInline=true; v.preload='auto';
+  v.setAttribute('playsinline','');
+  const timer=setTimeout(()=>finish(null), 6000);
+  function finish(res){ if(done) return; done=true; clearTimeout(timer);
+    try{ v.removeAttribute('src'); v.load(); }catch(e){}
+    cb(res||null); }
+  v.onloadeddata=()=>{ setTimeout(shot, 120); };   // 等一帧，避免抓到全黑
+  v.onerror=()=>finish(null);
+  function shot(){
+    try{
+      const w=v.videoWidth, h=v.videoHeight;
+      if(!w || !h){ finish(null); return; }
+      const sc=Math.min(1, 640/w);
+      const cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(w*sc)); cv.height=Math.max(1,Math.round(h*sc));
+      cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+      let u='';
+      try{ u=cv.toDataURL('image/webp',0.72); }catch(e){}
+      if(!u || u.indexOf('data:image/webp')!==0){ try{ u=cv.toDataURL('image/png'); }catch(e){ u=''; } }
+      finish({ poster:u, w:w, h:h });
+    }catch(e){ finish(null); }
+  }
+  try{ v.src=objectUrl; }catch(e){ finish(null); }
+}
+function addVideoBgFromFile(e){
+  const map = curMap(); if(!map){ toast('先在左边选一张地图'); return; }
+  const f = e.target.files && e.target.files[0];
+  e.target.value='';
+  if(!f) return;
+  if(!vidFileOk(f)){ toast('请选 MP4 / WebM 视频文件'); return; }
+  if(typeof MediaStore==='undefined'){ toast('⚠️ 媒体仓库脚本没加载 · 请 Ctrl+F5 硬刷新后再试'); return; }
+  const mb = f.size/1048576;
+  if(f.size > VID_MAX_MB*1024*1024){ toast('视频 '+mb.toFixed(1)+'MB，太大了 · 请控制在 '+VID_MAX_MB+'MB 内（越小加载越快）'); return; }
+  const id = 'vid'+uid();
+  const tmp = URL.createObjectURL(f);
+  toast('⏳ 正在存视频…');
+  grabVideoInfo(tmp, info=>{
+    const w = info && info.w || 0, h = info && info.h || 0;
+    MediaStore.put(id, f).then(()=>MediaStore.url(id)).then(u=>{
+      URL.revokeObjectURL(tmp);
+      if(!u){ toast('⚠️ 视频存进仓库了，但取不出播放地址'); return; }
+      const d = ensureMaps();
+      map.bgKind='video'; map.bgMedia=id;
+      if(info && info.poster) map.bgPoster = info.poster;
+      if(map.bgAuto  == null) map.bgAuto  = true;
+      if(map.bgLoop  == null) map.bgLoop  = true;
+      if(map.bgMuted == null) map.bgMuted = true;
+      if(w && h){ map.bgVw=w; map.bgVh=h;
+        if(!map.worldAspect){ map.worldAspect = Math.round((w/h)*1000)/1000; } }
+      saveMapsData(d); buildTree(); renderEditor(); renderProps();
+      toast('🎬 视频底图已应用 · 画布上就能看到它在动'
+            + (w?(' · 原始 '+w+'×'+h):'')
+            + ' · 占用约 '+mb.toFixed(1)+'MB');
+    }).catch(err=>{
+      URL.revokeObjectURL(tmp);
+      toast('⚠️ 视频保存失败：'+((err && err.message) || err));
+    });
+  });
+}
+function removeVideoBg(){
+  const map = curMap(); if(!map) return;
+  if(!isVideoBg(map)){ toast('这张地图还没有视频底图'); return; }
+  if(!confirm('移除视频底图？\n（静态背景 / 背景层会重新显示出来）')) return;
+  const id = map.bgMedia;
+  ['bgKind','bgMedia','bgPoster','bgAuto','bgLoop','bgMuted','bgVw','bgVh'].forEach(k=>{ delete map[k]; });
+  saveMapsData(ensureMaps());
+  try{ MediaStore.del(id); }catch(e){}
+  renderEditor(); renderProps(); toast('🧹 视频底图已移除');
+}
+/* 把「自动播放 / 循环 / 静音」三个开关实时作用到画布上那个 <video> */
+function applyVideoOpts(map){
+  const v = document.querySelector('#world-box video');
+  if(!v || !map) return;
+  v.loop = map.bgLoop!==false; v.muted = map.bgMuted!==false;
+  if(map.bgAuto!==false){ const p=v.play(); if(p && p.catch) p.catch(()=>{}); }
+  else { try{ v.pause(); v.currentTime=0; }catch(e){} }
+}
+function renderVideoBg(map){
+  const meta=$('mp-vid-meta'), tip=$('mp-vid-tip');
+  if(!meta) return;
+  const on = isVideoBg(map);
+  if(!on){
+    meta.innerHTML = '还没有视频底图。点「🎬 上传 MP4」，世界就能动起来。'
+      + '<br><span style="color:var(--sub)">视频存本地 IndexedDB，<b>不占</b> localStorage 那 5MB。</span>';
+  }else{
+    meta.innerHTML = '🎬 已启用视频底图'
+      + (map.bgVw ? ' · 原始 '+map.bgVw+'×'+map.bgVh : '')
+      + '<br>自动播放 <b>'+(map.bgAuto!==false?'开':'关')+'</b> · 循环 <b>'+(map.bgLoop!==false?'开':'关')+'</b> · 静音 <b>'+(map.bgMuted!==false?'开':'关')+'</b>'
+      + '<br><span id="mp-vid-size" style="color:var(--sub)">占用计算中…</span>';
+    try{
+      MediaStore.get(map.bgMedia).then(b=>{
+        const el=$('mp-vid-size');
+        if(el) el.textContent = b ? ('占用 '+(b.size/1048576).toFixed(1)+' MB（IndexedDB）') : '⚠️ 仓库里找不到这个视频，请重新上传';
+      }).catch(()=>{});
+    }catch(e){}
+  }
+  const bind=(id, key, def)=>{
+    const el=$(id); if(!el) return;
+    el.checked = (map && map[key]!=null) ? !!map[key] : def;
+    el.disabled = !on;
+    el.onchange = ()=>{ map[key]=el.checked; saveMapsData(ensureMaps()); applyVideoOpts(map); renderVideoBg(map); };
+  };
+  bind('mp-vid-auto','bgAuto',true);
+  bind('mp-vid-loop','bgLoop',true);
+  bind('mp-vid-muted','bgMuted',true);
+  if(tip) tip.innerHTML = on
+    ? '⚠️ 视频存在本地 IndexedDB 里，<b>导出 JSON 备份不含视频</b>；换设备或清了浏览器数据后要重新上传。'
+    : '';
+}
+
 function newBgLayer(name, img){
   return { id:'bg'+uid(), name:name||'背景层', img:img||null,
            x:0.5, y:0.5, w:1, h:1, opacity:1, visible:true, locked:false };
@@ -2305,7 +2467,9 @@ function renderBgLayers(map){
 function renderWorldAspect(map){
   const meta=$('mp-aspect-meta'); if(!meta) return;
   const wa = World.aspect(map);
-  const src = map.worldAspect ? '手动设定' : (map.bg ? '按背景图实测' : '默认 16:9');
+  const src = map.worldAspect ? '手动设定'
+            : (isVideoBg(map) && map.bgVw ? '🎬 按视频实测'
+            : (map.bg ? '按背景图实测' : '默认 16:9'));
   const vis = worldVisibleBox(wa), saf = worldSafeBox(wa);
   const pc = v=>((v*100).toFixed(1)+'%');
   meta.innerHTML =
@@ -2363,6 +2527,7 @@ function renderProps(){
     $('mp-worldmap').onchange=()=>{map.allowWorldMap=$('mp-worldmap').checked;saveMapsData(d);};
     $('mp-teleout').onchange=()=>{map.allowTeleportOut=$('mp-teleout').checked;saveMapsData(d);};
     renderBgLayers(map);
+    renderVideoBg(map);
     renderFgLayers(map);
     renderWorldAspect(map);
     renderLabelCfg(map);
@@ -2893,6 +3058,8 @@ $('me-set-root').onclick=()=>{
 };
 
 /* ====== 🧱 背景层 / 🌈 前景层 / 📐 世界比例 / 🔒 批量锁 的按钮 ====== */
+$('mp-vid-add').onclick = ()=>{ const inp=$('mp-vid-file'); if(!inp) return; inp.onchange = e=>addVideoBgFromFile(e); inp.click(); };
+$('mp-vid-clear').onclick = ()=>removeVideoBg();
 $('mp-bg-add').onclick = ()=>{ const inp=$('mp-bg-file'); if(!inp) return; inp.onchange = e=>addBgLayerFromFile(e); inp.click(); };
 $('mp-fg-add').onclick = ()=>{ const inp=$('mp-fg-file'); if(!inp) return; inp.onchange = e=>addFgLayerFromFile(e); inp.click(); };
 
@@ -3022,7 +3189,14 @@ $('mp-bg-clear').onclick = ()=>clearBgLayers();
 $('mp-aspect-auto').onclick = ()=>{
   const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
   const url = map.bg || ((map.bgLayers||[]).slice(-1)[0]||{}).img;
-  if(!url){ toast('这张地图还没有背景图，没法按图重算'); return; }
+  /* 🎬 视频底图：没有静态底图也能按重算 —— 直接用视频的原始像素比 */
+  if(!url && isVideoBg(map) && map.bgVw && map.bgVh){
+    map.worldAspect = Math.round((map.bgVw/map.bgVh)*1000)/1000;
+    saveMapsData(d); renderEditor(); renderProps();
+    toast('📐 世界比例已按视频设为 '+Math.round(map.worldAspect*1000)/1000);
+    return;
+  }
+  if(!url){ toast('这张地图还没有背景图 / 视频，没法按图重算'); return; }
   map.worldAspect=null;
   World.adoptAspect(map, url);
   if(!World._aspect[url]) World.probe(url, ()=>{});
@@ -3273,6 +3447,8 @@ function delNode(id){
     });
   });
   delete d.maps[id];
+  /* 🎬 顺手回收它的视频底图，别在 IndexedDB 里留垃圾 */
+  if(map.bgKind==='video' && map.bgMedia){ try{ MediaStore.del(map.bgMedia); }catch(e){} }
   editState.nodeId=d.rootMapId||d.entryLevelId;editState.sel=null;
   saveMapsData(d); buildTree(); renderEditor(); renderProps();
   toast('已删除');
