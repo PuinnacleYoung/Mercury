@@ -4319,6 +4319,11 @@ function openWorldMap(mapId,force){
   const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
   const cvs = $('wm-canvas');
   const ctx = cvs.getContext('2d');
+  /* 舞台比例锁成编辑器的世界比例（worldAspect）：
+     背景不再被硬塞进 16:9 拉伸，地块坐标也和编辑器一一对应 */
+  const aspRaw = (host && +host.worldAspect) || 0;
+  const asp = aspRaw ? Math.min(2.8, Math.max(0.9, aspRaw)) : (16/9);
+  cvs.parentNode.style.aspectRatio = String(asp);
   let W = 0, H = 0, pins = [];
   function draw(){
     const rect = cvs.parentNode.getBoundingClientRect();
@@ -4345,9 +4350,14 @@ function openWorldMap(mapId,force){
     })();
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
     if(bgImg && bgImg.complete && bgImg.naturalWidth){
-      const br = bgRectOf(root);                   // 合成时裁过透明边 → 按子区画，不放大
-      if(br.w>=0.9999 && br.h>=0.9999) drawCover(ctx, bgImg, W, H);
-      else drawCoverRect(ctx, bgImg, W, H, br);
+      if(root === host){
+        /* 编辑器同款：舞台比例已锁成 worldAspect，底图按 bgRect 子矩形铺进世界
+           （裁掉多少就补回多少，永不拉伸），资产坐标天然对得上 */
+        const br = bgRectOf(root);
+        ctx.drawImage(bgImg, br.x*W, br.y*H, br.w*W, br.h*H);
+      } else {
+        drawCover(ctx, bgImg, W, H);               // 借来的底图：只裁切、不拉伸
+      }
     }
     else if(bgLay){
       /* 背景层兜底：按编辑器的层坐标现场拼到一块世界比例的画布上，再 cover 铺进小图。
@@ -4385,28 +4395,54 @@ function openWorldMap(mapId,force){
     ctx.restore();
     // POI
     pins = [];
-    const r = Math.max(14, Math.min(30, H*0.10));
-    const fs = Math.max(10, Math.min(14, H*0.045));
     ids.forEach(k=>{
       const mm = d.maps[k], p = pos[k]; if(!p) return;
-      const cx = p.x*W, cy = p.y*H;
       const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
-      const tile=p.tile||null;
-      const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':((tile&&tile.color)||(isMapNode(mm)?'#5fbf8f':'#6a7fd6')));
-      /* 图标跟编辑器串起来：优先用父地图里那块导航地块上传的 PNG（建筑图），
-         其次才是地图节点自己的图 / emoji 图标 */
-      const tImg=(tile&&tile.img)||mm.img||null;
-      const tIcon=(tile&&tile.icon)||mm.icon||(isMapNode(mm)?'🗺️':'🎯');
-      const tIm=tImg?mapImg(tImg):null;
-      if(tIm && !tIm.complete) tIm.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
-      /* 小图上徽章本来就小，半透到底就看不见了 —— 透明度保底 0.55，只在编辑器调得不太低时跟编辑器一致 */
-      const aRaw=(tile&&tile.alpha!=null&&tile.alpha!=='')?nodeAlpha(tile):nodeAlpha(mm);
-      ctx.save(); ctx.globalAlpha = Math.max(0.55, aRaw);
-      poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':tIcon),tImg,isCur?'rgba(255,255,255,.95)':null,false);
-      ctx.restore();
-      drawNamePlate(ctx, mm.name || k, mapLb(host), { fs, cx, cy: cy + r + fs*1.5 });
-      pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
+      if(p.tile){
+        /* 编辑器同款：直接按地块的坐标/尺寸/贴图画（drawMapTile 与游戏主画面共用一套），
+           名牌的横竖排、上/下/左/右锚点也走编辑器配好的 lb.pos —— 两边所见即所得 */
+        const n = Object.assign({}, p.tile, { name: mm.name || p.tile.name || mm.name });
+        drawMapTile(ctx, n, W, H, mapLb(host));
+        const r0 = nodeRect(p.tile, W, H);
+        if(isCur || isEntry){                      // 当前位置白圈 / 入口金圈
+          ctx.save();
+          ctx.strokeStyle = isCur ? 'rgba(255,255,255,.95)' : 'rgba(240,180,60,.9)';
+          ctx.lineWidth = 2.5; ctx.setLineDash([7,6]);
+          ctx.beginPath();
+          ctx.ellipse(r0.x+r0.w/2, r0.y+r0.h, Math.max(r0.w,r0.h)*0.55, Math.max(6, r0.h*0.16), 0, 0, Math.PI*2);
+          ctx.stroke(); ctx.restore();
+        }
+        pins.push({ id:k, x:r0.x+r0.w/2, y:r0.y+r0.h/2, r:Math.max(r0.w,r0.h)*0.62+10 });
+      } else {
+        const cx = p.x*W, cy = p.y*H;
+        const r = Math.max(14, Math.min(30, H*0.10));
+        const fs = Math.max(10, Math.min(14, H*0.045));
+        const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
+        ctx.save(); ctx.globalAlpha = Math.max(0.55, nodeAlpha(mm));
+        poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
+        ctx.restore();
+        /* 没摆地块的：名牌锚点也读 lb.pos，不写死下方 */
+        const lb=mapLb(host), sz=namePlateSize(ctx, mm.name||k, lb, lb.fs||fs), gp=(lb.fs||fs)*0.5;
+        let nx=cx, ny=cy;
+        switch(lb.pos||'below'){
+          case 'above': ny=cy-r-sz.h/2-gp*0.6; break;
+          case 'left':  nx=cx-r-sz.w/2-gp*0.6; break;
+          case 'right': nx=cx+r+sz.w/2+gp*0.6; break;
+          case 'center': ny=cy; break;
+          default: ny=cy+r+sz.h/2+gp*0.6;
+        }
+        drawNamePlate(ctx, mm.name||k, lb, { fs, cx:nx, cy:ny });
+        pins.push({ id:k, x:cx, y:cy, r:r+fs*2 });
+      }
     });
+    /* 地块 PNG / 自定义花边是异步加载的：弹窗不每帧重画，谁没加载完就挂回调重画一次 */
+    ids.forEach(k=>{
+      const p=pos[k];
+      const tim=p&&p.tile&&p.tile.img?mapImg(p.tile.img):null;
+      if(tim && !tim.complete) tim.onload=()=>{ if(document.body.contains(cvs)) draw(); };
+    });
+    const lbImg=host&&host.lb&&host.lb.img?mapImg(host.lb.img):null;
+    if(lbImg && !lbImg.complete) lbImg.onload=()=>{ if(document.body.contains(cvs)) draw(); };
   }
   function hit(ev){
     const rect = cvs.getBoundingClientRect();
