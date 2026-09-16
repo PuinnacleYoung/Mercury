@@ -608,7 +608,7 @@
       <div class="ph-preview" id="tl-ph-preview" data-page-node-id="rMiY9CyXvdIdfTeoEJmVWO"></div>
       <div class="ph-grid" id="tl-ph-grid" data-page-node-id="OdzYqnkjC3yEbxU1B2VxdC"></div>
       <label data-page-node-id="8xktwqhu9ule9UGjTFJXBj">换成自己的 PNG / GIF<input type="file" id="tl-file" accept="image/*" data-page-node-id="tPZ4UBCjoNqQAG1f7FifLY"></label>
-      <label>贴图 / 图标透明度 <b id="tl-alpha-val" style="color:var(--ink)">100%</b><input type="range" id="tl-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
+      <label style="font-weight:900;">🖼 贴图 / 图标透明度 <b id="tl-alpha-val" style="color:var(--accent);font-size:15px;">100%</b><input type="range" id="tl-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
       <button class="mini-btn" id="tl-alpha-reset" title="恢复成完全不透明">↺ 恢复不透明</button>
       <div class="prop-tip">半透的建筑会透出后面的背景，叠景更有层次；<b>名牌和角标不跟着变淡</b>，始终看得清。</div>
       <div class="sec-title" data-page-node-id="GSBtqwxTyEgdOgY1r81FO2">点它 / 走近它 → 做什么</div>
@@ -654,8 +654,8 @@
       <label>边框颜色<input type="color" id="tg-color" style="width:100%;height:34px;padding:2px;"></label>
       <div class="sw-row" id="tg-sw-row"></div>
       <button class="mini-btn" id="tg-color-reset" title="清掉自定义颜色，跟随「用途」的默认色">↺ 跟随用途默认色</button>
-      <label>底色填充浓度 <b id="tg-fill-val" style="color:var(--ink)">18%</b><input type="range" id="tg-fill" min="0" max="70" step="1" value="18" style="width:100%"></label>
-      <label>图标透明度 <b id="tg-alpha-val" style="color:var(--ink)">100%</b><input type="range" id="tg-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
+      <label style="font-weight:900;">🎨 底色填充浓度 <b id="tg-fill-val" style="color:var(--accent);font-size:15px;">18%</b><input type="range" id="tg-fill" min="0" max="70" step="1" value="18" style="width:100%"></label>
+      <label style="font-weight:900;">🖼 图标透明度 <b id="tg-alpha-val" style="color:var(--accent);font-size:15px;">100%</b><input type="range" id="tg-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
       <button class="mini-btn" id="tg-alpha-reset" title="填充回到 18%，图标恢复不透明">↺ 恢复默认浓度</button>
       <div class="prop-tip">不同用途用不同颜色画框，一堆区域叠在一起也分得清。<br>填充调淡 = 只留边框若隐若现，图标调淡 = 徽章半透更高级。</div>
 
@@ -1775,7 +1775,9 @@ function buildTileEl(d, map, t){
     /* 贴图单独铺一层：透明度只作用在图上，名牌 / 角标保持全不透明 */
     el.classList.add('has-img');
     const pic=document.createElement('div'); pic.className='ed-tile-pic';
-    pic.style.background = `url(${src})`;
+    /* 必须用 backgroundImage 长写属性：background 简写会把 background-size 重置成 auto，
+       而 inline 样式优先级高于类规则 → 贴图就不拉伸了（比例全乱的元凶） */
+    pic.style.backgroundImage = `url(${src})`;
     pic.style.opacity = nodeAlpha(t);
     el.appendChild(pic);
   }
