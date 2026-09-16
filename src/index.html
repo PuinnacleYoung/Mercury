@@ -2383,7 +2383,7 @@ let mapRun = {
   keys:{up:false,down:false,left:false,right:false},
   joy:{active:false, dx:0, dy:0},
   lastT:0, active:false, cool:0,
-  bgImg:null,bgSrc:'',bgKey:'',bgVideo:null,walkMapId:null,walkPixels:null,walkReady:false,
+  bgImg:null,bgSrc:'',bgKey:'',bgVideo:null,bgLayersCv:null,walkMapId:null,walkPixels:null,walkReady:false,
   standing:null,lastFired:null,
 };
 
@@ -3883,7 +3883,10 @@ function migrateMaps(d){
       migrationLog.push('TYPE_INFERRED:'+m.id+'='+m.nodeType);
     }
     m.type='map'; // 兼容旧字段；业务判断一律使用 nodeType
-    if(FIXED_PARENTS.hasOwnProperty(m.id)) m.parent=FIXED_PARENTS[m.id];
+    /* FIXED_PARENTS 只做「修复」：父级缺失/悬空才按预设归位。
+       陛下手动把节点挪去别处（parent 有效）时绝不能再拽回来 —— 否则每次刷新都会弹回初始位置。 */
+    const fp=FIXED_PARENTS[m.id];
+    if(fp!==undefined && (m.parent==null || !d.maps[m.parent])) m.parent=fp;
   });
 
   let world=d.maps['world-hub'];
@@ -4325,15 +4328,18 @@ function openWorldMap(mapId,force){
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
     // 背景：跟编辑器串起来 —— 优先当前导航 Map 自己的底图（合成图 / 视频海报），
-    // 它没有就沿父级链条往上借一张（Map 导航页经常还没合成底图），最后才退到底色渐变。
+    // 没有就沿父级链条往上借：先借合成好的 bg，再借「背景层」现场拼一张（编辑器里只铺了层、没点合成的图），
+    // 最后才退到底色渐变。
     let root=host||d.maps[d.rootMapId];
-    let bgSrc='';
+    let bgSrc='', bgLay=null;
     (function pickBg(){
       let mm=root; const seen={};
       while(mm && !seen[mm.id]){
         seen[mm.id]=1;
         if(mm.bg){ bgSrc=mm.bg; root=mm; return; }
         if(mm.bgKind==='video' && mm.bgPoster){ bgSrc=mm.bgPoster; root=mm; return; }
+        const lays=(mm.bgLayers||[]).filter(l=>l && l.visible!==false && l.img);
+        if(lays.length){ bgLay={ map:mm, layers:lays }; root=mm; return; }
         mm = d.maps[mm.parent];
       }
     })();
@@ -4342,6 +4348,24 @@ function openWorldMap(mapId,force){
       const br = bgRectOf(root);                   // 合成时裁过透明边 → 按子区画，不放大
       if(br.w>=0.9999 && br.h>=0.9999) drawCover(ctx, bgImg, W, H);
       else drawCoverRect(ctx, bgImg, W, H, br);
+    }
+    else if(bgLay){
+      /* 背景层兜底：按编辑器的层坐标现场拼到一块世界比例的画布上，再 cover 铺进小图。
+         哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。 */
+      const wa=(bgLay.map && bgLay.map.worldAspect) || (W/H);
+      const cw=Math.max(480, Math.round(W)), ch=Math.max(2, Math.round(cw/wa));
+      const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
+      lcv.width=cw; lcv.height=ch;
+      const lg=lcv.getContext('2d');
+      bgLay.layers.forEach(l=>{
+        const im=mapImg(l.img);
+        if(im && im.complete && im.naturalWidth){
+          lg.save(); lg.globalAlpha=(l.opacity==null?1:l.opacity);
+          lg.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
+          lg.restore();
+        } else if(im && !im.complete) im.onload=()=>{ if(document.body.contains(cvs)) draw(); };
+      });
+      drawCover(ctx, lcv, W, H);
     }
     else {
       if(bgImg && !bgImg.complete) bgImg.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
@@ -4375,10 +4399,12 @@ function openWorldMap(mapId,force){
       const tIcon=(tile&&tile.icon)||mm.icon||(isMapNode(mm)?'🗺️':'🎯');
       const tIm=tImg?mapImg(tImg):null;
       if(tIm && !tIm.complete) tIm.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
-      ctx.save(); ctx.globalAlpha = (tile&&tile.alpha!=null&&tile.alpha!=='')?nodeAlpha(tile):nodeAlpha(mm);
+      /* 小图上徽章本来就小，半透到底就看不见了 —— 透明度保底 0.55，只在编辑器调得不太低时跟编辑器一致 */
+      const aRaw=(tile&&tile.alpha!=null&&tile.alpha!=='')?nodeAlpha(tile):nodeAlpha(mm);
+      ctx.save(); ctx.globalAlpha = Math.max(0.55, aRaw);
       poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':tIcon),tImg,isCur?'rgba(255,255,255,.95)':null,false);
       ctx.restore();
-      drawNamePlate(ctx, mm.name || k, mapLb(root), { fs, cx, cy: cy + r + fs*1.5 });
+      drawNamePlate(ctx, mm.name || k, mapLb(host), { fs, cx, cy: cy + r + fs*1.5 });
       pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
     });
   }
@@ -4668,7 +4694,14 @@ function loadMapBg(m){
   const key = 'v:' + vid + '|i:' + src;
   if(key === mapRun.bgKey){ applyMapVideoOpts(m); return; }   // 同一张地图：只同步播放开关
   mapRun.bgKey = key; mapRun.bgSrc = src; mapRun.bgImg = null;
+  mapRun.bgLayersCv = null;
   stopMapVideo();
+  /* 背景层兜底：编辑器里只铺了「背景层」还没点合成时（map.bg 为空），
+     现场按层坐标拼一张世界比例的合成图顶上 —— 游戏里看到的就是编辑器里摆的样子。
+     全部层加载完才挂上去，挂之前先画底色渐变，不会闪黑。 */
+  if(!src && m && Array.isArray(m.bgLayers) && m.bgLayers.length){
+    buildBgLayersCv(m, key);
+  }
   /* 🎬 视频底图：优先起视频（静态底图当兜底，视频没解码出来时先画它，不会黑屏） */
   if(vid && typeof MediaStore !== 'undefined'){
     MediaStore.url(vid).then(u=>{
@@ -4685,6 +4718,28 @@ function loadMapBg(m){
   im.onload = ()=>{ if(mapRun.bgKey === key){ mapRun.bgImg = im; try{ resizeMap(); }catch(e){} } };
   im.onerror = ()=>{ if(mapRun.bgKey === key){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(pick).slice(0,60)); } };
   im.src = pick;
+}
+/* 「背景层」现场合成兜底：按编辑器的层坐标（归一化中心点）拼到一块 worldAspect 画布上。
+   全部层加载完才写进 mapRun.bgLayersCv（画图那边才认），中途切图则作废。 */
+function buildBgLayersCv(m, key){
+  const layers=(m.bgLayers||[]).filter(l=>l && l.visible!==false && l.img);
+  if(!layers.length) return;
+  const wa = m.worldAspect || (16/9);
+  const cw = 1280, ch = Math.max(2, Math.round(cw/wa));
+  const cv = document.createElement('canvas'); cv.width=cw; cv.height=ch;
+  const g  = cv.getContext('2d');
+  let left = layers.length;
+  const done = ()=>{ if(--left===0 && mapRun.bgKey===key) mapRun.bgLayersCv=cv; };
+  layers.forEach(l=>{
+    const im=new Image();
+    im.onload=()=>{
+      g.save(); g.globalAlpha=(l.opacity==null?1:l.opacity);
+      g.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
+      g.restore(); done();
+    };
+    im.onerror=done;
+    im.src=l.img;
+  });
 }
 /* 空/坏地图兜底提示卡 —— 避免整块画布看起来"神秘一片白" */
 function _drawMapBadge(c, FW, FH, title, sub){
@@ -5000,6 +5055,9 @@ function drawMap(){
     const r = bgRectOf(m);
     if(r.w >= 0.9999 && r.h >= 0.9999) drawCover(c, mapRun.bgImg, FW, FH);
     else drawCoverRect(c, mapRun.bgImg, FW, FH, r);      // 合成时裁过透明边
+  }
+  else if(mapRun.bgLayersCv){
+    drawCover(c, mapRun.bgLayersCv, FW, FH);             // 背景层现场合成兜底
   }
   else {
     const base = (m && m.bgColor) || '#a9c9e8';

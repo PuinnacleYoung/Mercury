@@ -845,7 +845,9 @@ function migrateMaps(d){
     if(FIXED_NODE_TYPES[m.id])m.nodeType=FIXED_NODE_TYPES[m.id];
     else if(!nodeTypeOf(m)){ const hasChild=Object.values(d.maps).some(x=>x&&x.parent===m.id&&x.type!=='panel'); m.nodeType=hasChild?'map':'level'; migrationLog.push('TYPE_INFERRED:'+m.id+'='+m.nodeType); }
     m.type='map';
-    if(FIXED_PARENTS.hasOwnProperty(m.id))m.parent=FIXED_PARENTS[m.id];
+    /* FIXED_PARENTS 只做「修复」：父级缺失/悬空才按预设归位；陛下手动挪过（parent 有效）不再拽回 */
+    const fp=FIXED_PARENTS[m.id];
+    if(fp!==undefined && (m.parent==null || !d.maps[m.parent])) m.parent=fp;
   });
   let world=d.maps['world-hub'];
   if(!world){ world={id:'world-hub',name:'世界地图',type:'map',nodeType:'map',parent:null,bg:null,bgColor:'#d4dff7',navTiles:[],nodes:[],spawns:[]}; d.maps[world.id]=world; migrationLog.push('MAP_CREATED:world-hub'); }
