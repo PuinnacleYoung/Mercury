@@ -213,6 +213,8 @@
   /* 地块＝一张 PNG（没有底色方块） */
   .ed-tile.has-img{box-shadow:none;background-color:transparent;border-radius:0;}
   .ed-tile.has-img.sel{box-shadow:0 0 0 3px var(--accent);border-radius:12px;background:rgba(167,140,217,.16);}
+  /* 地块贴图独立铺一层：透明度只作用在图上，名牌 / 角标不受影响，始终清晰可读 */
+  .ed-tile-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;}
   .ed-badge{position:absolute;top:-9px;right:-9px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;background:var(--gold);color:#3a2c05;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;}
 
   /* 占位素材选择 */
@@ -606,6 +608,9 @@
       <div class="ph-preview" id="tl-ph-preview" data-page-node-id="rMiY9CyXvdIdfTeoEJmVWO"></div>
       <div class="ph-grid" id="tl-ph-grid" data-page-node-id="OdzYqnkjC3yEbxU1B2VxdC"></div>
       <label data-page-node-id="8xktwqhu9ule9UGjTFJXBj">换成自己的 PNG / GIF<input type="file" id="tl-file" accept="image/*" data-page-node-id="tPZ4UBCjoNqQAG1f7FifLY"></label>
+      <label>贴图 / 图标透明度 <b id="tl-alpha-val" style="color:var(--ink)">100%</b><input type="range" id="tl-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
+      <button class="mini-btn" id="tl-alpha-reset" title="恢复成完全不透明">↺ 恢复不透明</button>
+      <div class="prop-tip">半透的建筑会透出后面的背景，叠景更有层次；<b>名牌和角标不跟着变淡</b>，始终看得清。</div>
       <div class="sec-title" data-page-node-id="GSBtqwxTyEgdOgY1r81FO2">点它 / 走近它 → 做什么</div>
       <label data-page-node-id="nx2SHDFD0Vj9nq7EnvHX9L">行为<select id="tl-action" data-page-node-id="0WMTYILTAh9HnoLj9Mgf8u">
         <option value="navigate">地图导航（仅 Map）</option>
@@ -649,7 +654,10 @@
       <label>边框颜色<input type="color" id="tg-color" style="width:100%;height:34px;padding:2px;"></label>
       <div class="sw-row" id="tg-sw-row"></div>
       <button class="mini-btn" id="tg-color-reset" title="清掉自定义颜色，跟随「用途」的默认色">↺ 跟随用途默认色</button>
-      <div class="prop-tip">不同用途用不同颜色画框，一堆区域叠在一起也分得清。</div>
+      <label>底色填充浓度 <b id="tg-fill-val" style="color:var(--ink)">18%</b><input type="range" id="tg-fill" min="0" max="70" step="1" value="18" style="width:100%"></label>
+      <label>图标透明度 <b id="tg-alpha-val" style="color:var(--ink)">100%</b><input type="range" id="tg-alpha" min="10" max="100" step="1" value="100" style="width:100%"></label>
+      <button class="mini-btn" id="tg-alpha-reset" title="填充回到 18%，图标恢复不透明">↺ 恢复默认浓度</button>
+      <div class="prop-tip">不同用途用不同颜色画框，一堆区域叠在一起也分得清。<br>填充调淡 = 只留边框若隐若现，图标调淡 = 徽章半透更高级。</div>
 
       <div id="tg-tele-box" data-page-node-id="YlbvRZjFTNgZr4CHdk5lXn">
         <div class="sec-title" data-page-node-id="yF26Do6DcjsoVwnWuNNGC4">传送设置</div>
@@ -881,6 +889,20 @@ function node(id,name,nodeType,parent,extra){
   return Object.assign(base,extra||{});
 }
 /* 地块＝一张 PNG。没指定贴图时用内置占位素材（按名字挑，保证每次一致） */
+/* 图标 / 贴图透明度：0.1~1，默认 1（不透明）。半透的地块会透出背景，叠景更有层次 */
+function nodeAlpha(n){
+  if(!n || n.alpha==null || n.alpha==='') return 1;
+  const a = parseFloat(n.alpha);
+  if(isNaN(a)) return 1;
+  return Math.max(0.1, Math.min(1, a));
+}
+/* 触发区的底色填充浓度：0~0.7，默认 .18。只影响那块淡色底，不影响边框 */
+function nodeFillAlpha(n){
+  if(!n || n.fillAlpha==null || n.fillAlpha==='') return 0.18;
+  const a = parseFloat(n.fillAlpha);
+  if(isNaN(a)) return 0.18;
+  return Math.max(0, Math.min(0.7, a));
+}
 function tileImg(t){
   if(t && t.img) return t.img;
   if(window.MapPlaceholders) return MapPlaceholders.pick((t && t.name) || '').src;
@@ -1749,8 +1771,15 @@ function buildTileEl(d, map, t){
   el.dataset.nid = t.id; el.dataset.kind = 'tile';
   setBox(el, t);
   const src = tileImg(t);
-  if(src){ el.classList.add('has-img'); el.style.background = `url(${src})`; el.style.backgroundSize='100% 100%'; }
-  else { const s=document.createElement('span'); s.textContent=t.icon||'📍'; el.appendChild(s); }
+  if(src){
+    /* 贴图单独铺一层：透明度只作用在图上，名牌 / 角标保持全不透明 */
+    el.classList.add('has-img');
+    const pic=document.createElement('div'); pic.className='ed-tile-pic';
+    pic.style.background = `url(${src})`;
+    pic.style.opacity = nodeAlpha(t);
+    el.appendChild(pic);
+  }
+  else { const s=document.createElement('span'); s.textContent=t.icon||'📍'; s.style.opacity=nodeAlpha(t); el.appendChild(s); }
   const act = tileAction(t);
   if(act!=='none'){
     const b=document.createElement('div'); b.className='ed-badge';
@@ -1771,11 +1800,11 @@ function buildTriggerEl(d, map, g){
   /* 区域颜色：陛下自己选过色就用选的，否则用「区域用途」的默认色 —— 一眼分清行走区/剧情区/传送区 */
   const _zc = zoneColorOf(g);
   el.style.borderColor = _zc;
-  el.style.background  = zoneA(_zc, .18);
+  el.style.background  = zoneA(_zc, nodeFillAlpha(g));   /* 填充浓度可自己调，调 0 就只剩边框 */
   setBox(el, g);
   let em = g.icon || '🚪';
   if(g.action==='panel') em = panelEm(g.panel);
-  const s=document.createElement('span'); s.textContent = em; el.appendChild(s);
+  const s=document.createElement('span'); s.textContent = em; s.style.opacity=nodeAlpha(g); el.appendChild(s);
   if(g.locked) lockBadge(el);
   const lb=document.createElement('div');lb.className='ed-label';
   const targetId=itemTargetId(g);lb.textContent=g.name+((g.action==='teleport'||g.action==='teleportLevel')&&targetId?' → '+((d.maps[targetId]||{}).name||'?'):'');
@@ -2590,6 +2619,16 @@ function renderProps(){
 
     $('tl-name').oninput = ()=>{ t.name=$('tl-name').value; saveMapsData(d); renderEditor(); };
     $('tl-icon').oninput = ()=>{ t.icon=$('tl-icon').value; saveMapsData(d); renderEditor(); };
+    /* ---- 贴图 / 图标透明度：半透的建筑会透出背景，叠景更有层次 ---- */
+    const _ta=$('tl-alpha'), _tav=$('tl-alpha-val');
+    if(_ta){
+      const _cur = Math.round(nodeAlpha(t)*100);
+      _ta.value=_cur; if(_tav) _tav.textContent=_cur+'%';
+      _ta.oninput = ()=>{ t.alpha=(+_ta.value)/100; if(_tav) _tav.textContent=_ta.value+'%'; saveMapsData(d); renderEditor(); };
+      _ta.onchange= ()=>{ t.alpha=(+_ta.value)/100; saveMapsData(d); };
+      const _tr=$('tl-alpha-reset');
+      if(_tr) _tr.onclick=()=>{ delete t.alpha; saveMapsData(d); renderEditor(); renderProps(); toast('↺ 已恢复完全不透明'); };
+    }
     $('tl-tip').oninput  = ()=>{ t.tip=$('tl-tip').value; saveMapsData(d); };
     $('tl-lock').checked = !!t.locked;
     $('tl-lock').onchange = ()=>{
@@ -2688,6 +2727,23 @@ function renderProps(){
       cIn.oninput  = ()=>{ g.color=cIn.value; saveMapsData(d); renderEditor(); };
       cIn.onchange = ()=>{ g.color=cIn.value; saveMapsData(d); renderEditor(); renderProps(); };
     }
+    /* ---- 填充浓度 + 图标透明度：和「改色」配套，做若隐若现的高级感 ---- */
+    const _tf=$('tg-fill'), _tfv=$('tg-fill-val');
+    if(_tf){
+      const _cur=Math.round(nodeFillAlpha(g)*100);
+      _tf.value=_cur; if(_tfv) _tfv.textContent=_cur+'%';
+      _tf.oninput = ()=>{ g.fillAlpha=(+_tf.value)/100; if(_tfv) _tfv.textContent=_tf.value+'%'; saveMapsData(d); renderEditor(); };
+      _tf.onchange= ()=>{ g.fillAlpha=(+_tf.value)/100; saveMapsData(d); };
+    }
+    const _ga=$('tg-alpha'), _gav=$('tg-alpha-val');
+    if(_ga){
+      const _cur=Math.round(nodeAlpha(g)*100);
+      _ga.value=_cur; if(_gav) _gav.textContent=_cur+'%';
+      _ga.oninput = ()=>{ g.alpha=(+_ga.value)/100; if(_gav) _gav.textContent=_ga.value+'%'; saveMapsData(d); renderEditor(); };
+      _ga.onchange= ()=>{ g.alpha=(+_ga.value)/100; saveMapsData(d); };
+    }
+    const _gr=$('tg-alpha-reset');
+    if(_gr) _gr.onclick=()=>{ delete g.fillAlpha; delete g.alpha; saveMapsData(d); renderEditor(); renderProps(); toast('↺ 已恢复默认浓度（填充 18% · 图标不透明）'); };
     const swr=$('tg-sw-row');
     if(swr){
       swr.innerHTML='';

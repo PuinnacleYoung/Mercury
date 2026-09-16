@@ -4301,7 +4301,9 @@ function openWorldMap(mapId,force){
       const cx = p.x*W, cy = p.y*H;
       const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
       const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
+      ctx.save(); ctx.globalAlpha = nodeAlpha(mm);
       poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
+      ctx.restore();
       drawNamePlate(ctx, mm.name || k, mapLb(root), { fs, cx, cy: cy + r + fs*1.5 });
       pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
     });
@@ -4808,6 +4810,20 @@ function drawNamePlate(c, text, lb, opt){
   c.restore();
   return { w, h, cx, cy };
 }
+/* 图标 / 贴图透明度：0.1~1，默认 1。和编辑器里的「贴图 / 图标透明度」是同一个字段 */
+function nodeAlpha(n){
+  if(!n || n.alpha==null || n.alpha==='') return 1;
+  const a = parseFloat(n.alpha);
+  if(isNaN(a)) return 1;
+  return Math.max(0.1, Math.min(1, a));
+}
+/* 触发区的底色填充浓度：默认 .18（编辑器里可 0~70% 调） */
+function nodeFillAlpha(n){
+  if(!n || n.fillAlpha==null || n.fillAlpha==='') return 0.18;
+  const a = parseFloat(n.fillAlpha);
+  if(isNaN(a)) return 0.18;
+  return Math.max(0, Math.min(0.7, a));
+}
 /* 地块（建筑）：它就是一张 PNG，直接铺在框里；有行为时才加可交互光环 */
 function drawMapTile(c, n, W, H, lb){
   const r0 = nodeRect(n, W, H);
@@ -4822,6 +4838,7 @@ function drawMapTile(c, n, W, H, lb){
     if(dh > r0.h){ dh = r0.h; dw = r0.h * ir; }
     const baseY = r0.y + r0.h;                    // 底边贴地
     c.save();
+    c.globalAlpha = nodeAlpha(n);                 // 半透建筑：透出背景，名牌仍全不透明
     c.fillStyle = 'rgba(0,0,0,.18)';
     c.beginPath(); c.ellipse(cx, baseY - dh*0.03, dw*0.44, Math.max(3, dh*0.08), 0, 0, Math.PI*2); c.fill();
     if(hot){                                       // 可交互：脚下虚线椭圆
@@ -4835,8 +4852,11 @@ function drawMapTile(c, n, W, H, lb){
   } else {
     const r = Math.max(15, Math.min(44, Math.min(r0.w, r0.h)*0.48));
     const cy = r0.y + r0.h/2;
+    c.save();
+    c.globalAlpha = nodeAlpha(n);
     poiBadge(c, cx, cy, r, n.color || '#8f7fc4', n.icon || '📍', null,
              hot ? (act==='panel' ? 'rgba(255,214,120,.9)' : 'rgba(255,255,255,.85)') : null, false);
+    c.restore();
   }
   const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
   drawNamePlate(c, (n.name||'地块') + tag, lb || mapLb(null), { fs, rect:r0, anchor:(lb&&lb.pos)||'below' });
@@ -4850,19 +4870,23 @@ function drawTriggerBox(c, n, W, H, lb){
   const r  = Math.max(13, Math.min(38, Math.min(r0.w, r0.h)*0.42));
   const fs = Math.max(10, Math.min(15, H*0.030));
   if(off){
-    c.save(); c.globalAlpha = .35;
+    c.save(); c.globalAlpha = .35 * nodeAlpha(n);
     poiBadge(c, cx, cy, r*0.8, '#9a94a8', n.icon || '🚪', null, null, true);
     c.restore(); return;
   }
   // 触发范围：地面淡椭圆（还能看出"走进去会触发"），不再是虚线文件夹
+  const fa = nodeFillAlpha(n);                     // 填充浓度：0 就只剩一圈虚线边框
   c.save();
-  c.fillStyle = isPanel ? 'rgba(240,180,60,.16)' : 'rgba(120,160,255,.16)';
-  c.strokeStyle = isPanel ? 'rgba(240,180,60,.45)' : 'rgba(255,255,255,.45)';
+  c.fillStyle = isPanel ? `rgba(240,180,60,${fa})` : `rgba(120,160,255,${fa})`;
+  c.strokeStyle = isPanel ? `rgba(240,180,60,${Math.min(.8, fa+.27)})` : `rgba(255,255,255,${Math.min(.8, fa+.27)})`;
   c.lineWidth = 1.5; c.setLineDash([7,6]);
   c.beginPath(); c.ellipse(cx, cy + r*0.55, r0.w*0.52, r0.h*0.55, 0, 0, Math.PI*2); c.fill(); c.stroke();
   c.restore();
+  c.save();
+  c.globalAlpha = nodeAlpha(n);                    // 图标透明度：徽章半透更高级
   poiBadge(c, cx, cy, r, isPanel ? '#e8a33d' : '#6a7fd6', n.icon || (isPanel ? '🧩' : '🚪'), null,
            isPanel ? 'rgba(255,214,120,.95)' : 'rgba(180,205,255,.95)', true);
+  c.restore();
   lb = lb || mapLb(null);
   drawNamePlate(c, n.name || (isPanel ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
 }
