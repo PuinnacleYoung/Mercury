@@ -250,7 +250,10 @@
      所以它们只共享一个仿射变换 —— 永不拉伸，相对位置像素级恒定。
      ========================================================= */
   .world-box{position:absolute;overflow:hidden;}
-  .world-bg{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
+  /* 背景底图：默认铺满世界矩形。合成时若裁掉了透明边（map.bgRect），
+     JS 会改写 left/top/width/height 让它只占「内容那一块」——
+     因为这里是 100% 100% 拉伸，裁掉多少就补回多少，资产位置分毫不差。 */
+  .world-bg{position:absolute;left:0;top:0;width:100%;height:100%;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
   /* 🎬 视频底图：<video> 铺满世界矩形，和静态底图同一个 cover 矩形，资产位置对得上 */
   .world-bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;background:#000;}
   .bg-stack{position:absolute;inset:0;pointer-events:none;}
@@ -258,6 +261,8 @@
   .ed-bg-layer.sel{outline:3px solid var(--accent);outline-offset:-3px;}
   .ed-bg-layer.locked{cursor:not-allowed;}
   .ed-bg-layer.hidden-layer{opacity:.22;filter:grayscale(1);}
+  /* 合成时勾了「🧽 释放原图层」：图被回收腾空间，层的位置还留着，画成空格子提示 */
+  .ed-freed{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:var(--sub);border:2px dashed var(--line);border-radius:10px;background:rgba(255,255,255,.05);pointer-events:none;white-space:nowrap;}
   /* 前景层：盖在角色 / NPC / 物件之上（z 9 > spawn 8），UI 与行走区遮罩之下。
      用 DOM 而不是 canvas —— 这样 GIF 能真的循环播放。
      默认 pointer-events:none：铺满整屏的雨 / 光斑不会挡住下面物件的点击；
@@ -533,6 +538,18 @@
           <option value="2560">2560 px</option>
         </select>
       </label>
+      <div style="margin:9px 0 2px;padding:9px 10px;border:2px dashed var(--line);border-radius:11px;background:rgba(255,255,255,.035)">
+        <div style="font-size:11.5px;font-weight:1000;color:var(--ink);margin-bottom:6px">🧩 点「合成背景」时顺手做的事</div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:900;color:var(--ink);margin:5px 0;cursor:pointer">
+          <input type="checkbox" id="mp-bg-trim" checked style="width:15px;height:15px"> ✂️ 裁掉四周透明边
+          <span style="font-weight:700;color:var(--sub)">图更紧凑，降采样后内容更大</span></label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:900;color:var(--ink);margin:5px 0;cursor:pointer">
+          <input type="checkbox" id="mp-bg-fit" checked style="width:15px;height:15px"> 📉 自动压到 2MB 内
+          <span style="font-weight:700;color:var(--sub)">超了就逐级缩小（必要时转 WebP）</span></label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:900;color:var(--ink);margin:5px 0;cursor:pointer">
+          <input type="checkbox" id="mp-bg-free" style="width:15px;height:15px"> 🧽 合成后释放原图层
+          <span style="font-weight:700;color:var(--sub)">腾出本地空间（层还在，只是不能再改图）</span></label>
+      </div>
       <div id="mp-bg-detail"></div>
       <input type="file" id="mp-bg-file" accept="image/*" style="display:none" data-page-node-id="mpBgFile01">
 
@@ -792,10 +809,10 @@ function getMapsData(){ try{ return JSON.parse(localStorage.getItem(LS_MAPS)||'n
    ========================================================================= */
 let _mapsCache = null;
 function saveMapsData(d){
-  if(!d) return;
+  if(!d) return false;
   _mapsCache = d;                       // 一旦写盘，这份就是最新内存态
-  try{ localStorage.setItem(LS_MAPS, JSON.stringify(d)); }
-  catch(e){ toast('⚠️ 存储已满（当前约 '+storageKB()+' KB），请先「导出 JSON」备份或精简背景图'); }
+  try{ localStorage.setItem(LS_MAPS, JSON.stringify(d)); return true; }
+  catch(e){ toast('⚠️ 存储已满（当前约 '+storageKB()+' KB），请先「导出 JSON」备份或精简背景图'); return false; }
 }
 function storageKB(){ try{ return Math.round((localStorage.getItem(LS_MAPS)||'').length/1024); }catch(e){ return -1; } }
 /* 外部直接改过 localStorage（导入 JSON / 粘贴替换）之后调用，强制丢弃内存态重新读 */
@@ -1690,7 +1707,14 @@ function renderEditor(){
       else if(typeof MediaStore!=='undefined') MediaStore.url(map.bgMedia).then(attach);
       bg.appendChild(v);
     }
-    else if(map.bg) bg.style.backgroundImage = 'url('+map.bg+')';
+    else if(map.bg){
+      bg.style.backgroundImage = 'url('+map.bg+')';
+      const r = bgRectOf(map);                 // 裁过透明边就只占内容那一块
+      if(r.x || r.y || r.w < 0.9999 || r.h < 0.9999){
+        bg.style.left=(r.x*100)+'%';  bg.style.top=(r.y*100)+'%';
+        bg.style.width=(r.w*100)+'%'; bg.style.height=(r.h*100)+'%';
+      }
+    }
     else bg.style.background = `linear-gradient(160deg, ${map.bgColor||'#a9c9e8'}, ${darken(map.bgColor||'#a9c9e8',0.4)})`;
     stack.appendChild(bg);
   }
@@ -1740,6 +1764,7 @@ function buildBgLayerEl(map, l){
   setBox(el, l);
   el.style.opacity = (l.opacity==null?1:l.opacity);
   if(l.img) el.style.backgroundImage = 'url('+l.img+')';
+  else { const t=document.createElement('div'); t.className='ed-freed'; t.textContent='🧽 图已释放'; el.appendChild(t); }
   if(l.locked){
     const lk=document.createElement('div'); lk.className='ed-lock'; lk.textContent='🔒'; el.appendChild(lk);
   }
@@ -2086,14 +2111,31 @@ function renderVideoBg(map){
     : '';
 }
 
+/* 写盘失败（本地存储满了）时，把这一层的图自动缩小再存一次。
+   平时**绝不压图** —— 陛下要的是原图清晰度；只有真放不下才兜底。
+   返回 true = 已存下；false = 已接管（会自己提示 + 重试）。 */
+function saveOrShrinkLayer(d, map, layer, isBg){
+  if(saveMapsData(d)) return true;
+  if(isGifSrc(layer.img)){ toast('⚠️ 本地存储放不下这个 GIF（动图不能压缩），请先精简别的图'); return false; }
+  toast('⚠️ 本地存储放不下这张原图，正在自动压缩…');
+  shrinkImageToLimit(layer.img, u=>{
+    layer.img = u;
+    if(isBg) markBgDirty(map);
+    const ok = saveMapsData(d);
+    renderEditor(); renderProps();
+    toast(ok ? '🖼 已自动缩到 '+mbOf(dataUrlBytes(u))+'（能存下了）· 想要最高清晰度请点「🧩 合成背景」瘦身'
+             : '⚠️ 还是存不下：请先「导出 JSON」备份，再合成时勾「🧽 释放原图层」腾空间');
+  });
+  return false;
+}
 function newBgLayer(name, img){
   return { id:'bg'+uid(), name:name||'背景层', img:img||null,
            x:0.5, y:0.5, w:1, h:1, opacity:1, visible:true, locked:false };
 }
 function addBgLayerFromFile(e){
   const map = curMap(); if(!map){ toast('先在左边选一张地图'); return; }
-  const file = e.target.files[0];
-  if(file && file.size > 2*1024*1024){ toast('图片太大，控制在 2MB 内'); e.target.value=''; return; }
+  /* 陛下要「大图都让传」—— 这里不再卡 2MB，原图直接进编辑器；
+     瘦身统一留到点「🧩 合成背景」时做（裁透明边 + 降采样）。 */
   pickImage(e, (url, info)=>{
     const d = ensureMaps();
     /* 裁过边就直接用裁后的比例，别再去探测整图的比例 */
@@ -2110,7 +2152,22 @@ function addBgLayerFromFile(e){
       (map.bgLayers = map.bgLayers || []).push(l);
       editState.bgSel = l.id; editState.sel = null;
       markBgDirty(map);
-      saveMapsData(d); buildTree(); renderEditor(); renderProps();
+      const saved = saveMapsData(d);
+      buildTree(); renderEditor(); renderProps();
+      /* 写不下 = 本地存储真放不下了 → 只对这一层自动缩小重试一次（平时绝不压） */
+      if(!saved){
+        if(isGifSrc(l.img)){ toast('⚠️ 本地存储放不下这个 GIF（动图不能压缩），请先精简别的图'); return; }
+        toast('⚠️ 本地存储放不下这张原图，正在自动压缩…');
+        shrinkImageToLimit(l.img, u=>{
+          const nl=(map.bgLayers||[]).find(x=>x.id===l.id); if(!nl) return;
+          nl.img = u; markBgDirty(map);
+          const ok2 = saveMapsData(d);
+          renderEditor(); renderProps();
+          toast(ok2 ? '🖼 已自动缩到 '+mbOf(dataUrlBytes(u))+'（能存下了）· 清晰度想更好请点「🧩 合成背景」并勾选瘦身选项'
+                    : '⚠️ 还是存不下：请先「导出 JSON」备份，再合成时勾「🧽 释放原图层」腾空间');
+        });
+        return;
+      }
       toast('🖼 已加入「'+l.name+'」· 世界比例 '+(Math.round(wa*1000)/1000)+' · 在画布上拖它 / 拖右下角缩放');
     };
     if(iaTrim) put(iaTrim);
@@ -2151,6 +2208,14 @@ function clearBgLayers(){
   saveMapsData(d); renderEditor(); renderProps(); toast('🧹 背景层已清空');
 }
 /* 一键合成：所有可见层按世界坐标烤成一张 PNG → map.bg（游戏只读这一张） */
+/* 合成时裁掉透明边后，底图在世界里只占这么一块（归一化；没有裁过就是整块 0,0,1,1） */
+function bgRectOf(m){
+  const r = m && m.bgRect;
+  if(!r) return { x:0, y:0, w:1, h:1 };
+  const x=+r.x||0, y=+r.y||0, w=+r.w||1, h=+r.h||1;
+  if(!(w>0) || !(h>0) || w>1.0001 || h>1.0001) return { x:0, y:0, w:1, h:1 };
+  return { x, y, w, h };
+}
 function composeBackground(){
   const d=ensureMaps(), map=d.maps[editState.nodeId]; if(!map) return;
   const layers=(map.bgLayers||[]).filter(l=>l.visible!==false && l.img);
@@ -2167,17 +2232,7 @@ function composeBackground(){
   const ctx=cv.getContext('2d');
   let i=0;
   const step=()=>{
-    if(i>=layers.length){
-      let url=null;
-      try{ url = cv.toDataURL('image/png'); }
-      catch(err){ toast('⚠️ 合成失败：'+(err&&err.message||err)); return; }
-      map.bg = url; map.bgWidth=outW; map.bgHeight=outH; map.bgDirty=false;
-      try{ saveMapsData(d); }
-      catch(err){ toast('⚠️ 合成成功但存不下：'+(err&&err.message||err)); }
-      renderEditor(); renderProps();
-      toast('🧩 已合成 '+outW+'×'+outH+'（约 '+Math.round(url.length/1024)+' KB）· 游戏现在读的就是这一张');
-      return;
-    }
+    if(i>=layers.length){ finishCompose(d, map, cv, outW, outH, wa, layers); return; }
     const l=layers[i++];
     const im=new Image();
     im.onload=()=>{
@@ -2190,6 +2245,89 @@ function composeBackground(){
     im.src=l.img;
   };
   step();
+}
+/* 扫描整幅画布，找出"有内容"（alpha>8）的最小包围盒 */
+function alphaBounds(cv){
+  const w=cv.width, h=cv.height; if(!w||!h) return null;
+  let data;
+  try{ data = cv.getContext('2d').getImageData(0,0,w,h).data; }
+  catch(e){ return null; }                    // 画布被跨域图污染时读不到像素 → 跳过裁边
+  let x0=w, y0=h, x1=-1, y1=-1;
+  for(let y=0;y<h;y++){
+    const row=y*w*4;
+    for(let x=0;x<w;x++){
+      if(data[row+x*4+3] > 8){                // alpha>8 才算有内容，避开半透明噪点
+        if(x<x0) x0=x; if(x>x1) x1=x;
+        if(y<y0) y0=y; if(y>y1) y1=y;
+      }
+    }
+  }
+  if(x1 < 0) return null;                     // 全透明就别裁了
+  return { sx:x0, sy:y0, sw:x1-x0+1, sh:y1-y0+1 };
+}
+/* 合成收尾 —— 陛下要的「大图随便传，保存时再瘦身」全在这一步：
+   ① ✂️ 裁掉四周透明边  ② 📉 逐级缩小压到 2MB 内（必要时转 WebP）  ③ 🧽 可选释放原图层 */
+function finishCompose(d, map, cv, outW, outH, wa, layers){
+  const chk = id=>{ const el=$(id); return el ? !!el.checked : true; };
+  const doTrim = chk('mp-bg-trim'), doFit = chk('mp-bg-fit'), doFree = chk('mp-bg-free');
+
+  /* ---------- ① 裁掉四周透明边 ---------- */
+  let src=cv, sw=outW, sh=outH, rect=null;
+  if(doTrim){
+    const bb = alphaBounds(cv);
+    /* 内容太瘦小（<2% 面积）多半是误判，不裁 */
+    if(bb && (bb.sx>0 || bb.sy>0 || bb.sw<outW || bb.sh<outH) && bb.sw*bb.sh > outW*outH*0.02){
+      const t=document.createElement('canvas'); t.width=bb.sw; t.height=bb.sh;
+      t.getContext('2d').drawImage(cv, bb.sx, bb.sy, bb.sw, bb.sh, 0, 0, bb.sw, bb.sh);
+      src=t; sw=bb.sw; sh=bb.sh;
+      rect={ x:bb.sx/outW, y:bb.sy/outH, w:bb.sw/outW, h:bb.sh/outH };
+    }
+  }
+  /* ---------- ② 压到 2MB 内 ---------- */
+  const renderAt=(w,h)=>{
+    if(w===src.width && h===src.height) return src;
+    const c2=document.createElement('canvas'); c2.width=w; c2.height=h;
+    const g=c2.getContext('2d'); g.imageSmoothingQuality='high';
+    g.drawImage(src,0,0,w,h); return c2;
+  };
+  const encode=(w,h)=>{
+    const c2=renderAt(w,h);
+    let u=null;
+    try{ u=c2.toDataURL('image/png'); }catch(e){}
+    if(u && dataUrlBytes(u) > IMG_LIMIT_BYTES){
+      try{ const wp=c2.toDataURL('image/webp',0.9); if(wp && dataUrlBytes(wp)<dataUrlBytes(u)) u=wp; }catch(e){}
+    }
+    return u;
+  };
+  let out=encode(sw,sh), ow=sw, oh=sh;
+  if(doFit){
+    let guard=0;
+    while(out && dataUrlBytes(out) > IMG_LIMIT_BYTES && ow > 512 && guard++ < 8){
+      ow = Math.max(512, Math.round(ow*0.8));
+      oh = Math.max(2,   Math.round(ow*(sh/sw)));
+      out = encode(ow, oh);
+    }
+  }
+  if(!out){ toast('⚠️ 合成失败：图片编码出错'); return; }
+
+  map.bg = out; map.bgWidth=ow; map.bgHeight=oh; map.bgDirty=false;
+  map.bgRect = rect || null;
+  /* 裁过边之后"图片比例"已经不等于世界比例了，钉住 worldAspect，
+     否则「按背景图实测」会把世界比例带偏、所有资产跟着错位。 */
+  if(rect) map.worldAspect = Math.round(wa*1000)/1000;
+
+  let freed=0;
+  if(doFree)(map.bgLayers||[]).forEach(l=>{ if(l && l.img){ l.img=null; freed++; } });
+
+  const ok = saveMapsData(d);
+  renderEditor(); renderProps();
+
+  const p=['🧩 已合成'];
+  if(rect) p.push('✂️ 裁边 '+outW+'×'+outH+' → '+sw+'×'+sh);
+  if(ow!==sw) p.push('📉 降采样 → '+ow+'×'+oh);
+  p.push(mbOf(dataUrlBytes(out)));
+  toast(p.join(' · ') + (ok ? '' : ' · ⚠️ 本地存储已满，请导出 JSON 备份后精简'));
+  if(freed) toast('🧽 已释放 '+freed+' 个原图层的图片（层还在，只是不能再改图）');
 }
 /* 批量锁定 */
 function setAllLocks(map, locked){
@@ -2370,14 +2508,14 @@ function renderFgLayers(map){
     const inp=$('mp-fg-file'); if(!inp) return;
     inp.onchange = ev=>{
       const f=ev.target.files[0]; if(!f) return;
-      const gif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
-      if(f.size > (gif?8:2)*1024*1024){ toast(gif?'GIF 太大，控制在 8MB 内':'图片太大，控制在 2MB 内'); inp.value=''; return; }
       pickImage(ev, (url, info)=>{
         cur.img = url;
         if(isGifSrc(url)){ cur.gif = true; delete cur.fit; }
         else { delete cur.gif; shrinkBoxToTrim(cur, info); }
-        saveMapsData(ensureMaps()); renderEditor(); renderProps();
-        toast('🖼 这一层的图已替换' + (isGifSrc(url)?' · GIF 会循环播放':''));
+        /* 换图也不卡 2MB；真存不下时 saveOrShrinkLayer 会自动压缩这一层 */
+        const ok = saveOrShrinkLayer(ensureMaps(), map, cur, false);
+        renderEditor(); renderProps();
+        if(ok) toast('🖼 这一层的图已替换' + (isGifSrc(url)?' · GIF 会循环播放':''));
       });
       inp.onchange = null;
     };
@@ -2475,15 +2613,16 @@ function renderBgLayers(map){
     if(!inp) return;
     inp.onchange = ev=>{
       const f=ev.target.files[0]; if(!f) return;
-      if(f.size>2*1024*1024){ toast('图片太大，控制在 2MB 内'); inp.value=''; return; }
       pickImage(ev, (url, info)=>{
         cur.img=url;
         const apply = ia=>{
           const fit=bgAspectFit(ia, World.aspect(map));
           cur.w=fit.w; cur.h=fit.h;
           shrinkBoxToTrim(cur, info);
-          markBgDirty(map); saveMapsData(ensureMaps()); renderEditor(); renderProps();
-          toast('🖼 这一层的图已替换');
+          markBgDirty(map);
+          const ok = saveOrShrinkLayer(ensureMaps(), map, cur, true);
+          renderEditor(); renderProps();
+          if(ok) toast('🖼 这一层的图已替换');
         };
         if(info && info.cut && info.sw && info.sh) apply(info.sw/info.sh);
         else if(World._aspect[url]) apply(World._aspect[url]);
@@ -2898,13 +3037,65 @@ function shrinkBoxToTrim(o, info){
   o.y=(o.y||0) + (cyr-0.5)*h0;
   return true;
 }
+/* =========================================================================
+   【大图自动降采样】
+   为什么原来"超过 2MB 不让传"：
+     整个地图数据（所有背景层 PNG + 合成后的底图 + 地块图 + 立绘）
+     都塞在 localStorage 的 game_maps 这一个 key 里，而单域名上限只有约 5MB；
+     dataURL 是 base64，比原文件还要再膨胀 ~33%。
+     所以不是不想让传，是传大了**存不下**（写盘会 QuotaExceeded 静默失败）。
+   现在的做法：不再硬拒，而是自动按长边逐级缩小重编码，压到 2MB 内再存。
+   ========================================================================= */
+const IMG_LIMIT_BYTES = 2*1024*1024;     // 目标：存进 localStorage 的上限
+const IMG_HARD_BYTES  = 40*1024*1024;    // 再大基本是选错文件了（原盘素材），才真拦
+function dataUrlBytes(u){
+  const i = String(u).indexOf(',');
+  return Math.max(0, Math.round((String(u).length - (i>=0 ? i+1 : 0)) * 3/4));  // base64 → 字节
+}
+function mbOf(n){ return (n/1048576).toFixed(1)+'MB'; }
+/* 超上限就按长边逐级缩小重编码；实在压不到就用最小的那一版（仍远小于原图） */
+function shrinkImageToLimit(dataUrl, cb){
+  if(dataUrlBytes(dataUrl) <= IMG_LIMIT_BYTES){ cb(dataUrl, null); return; }
+  const img = new Image();
+  img.onload = ()=>{
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if(!iw || !ih){ cb(dataUrl, null); return; }        // 量不到尺寸就原样放行，宁可大也别弄坏
+    const edges = [2048, 1600, 1280, 1024, 800, 640];
+    let i = 0, best = null;
+    const step = ()=>{
+      const k  = Math.min(1, edges[i] / Math.max(iw, ih));
+      const w  = Math.max(1, Math.round(iw*k)), h = Math.max(1, Math.round(ih*k));
+      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+      const cx = cv.getContext('2d'); cx.imageSmoothingQuality='high';
+      cx.drawImage(img, 0, 0, w, h);
+      let out = null;
+      try{ out = cv.toDataURL('image/png'); }catch(e){}
+      /* PNG 压不动（照片 / 大渐变底图很常见）→ 换 WebP 有损，透明度照样保留 */
+      if(!out || dataUrlBytes(out) > IMG_LIMIT_BYTES){
+        try{
+          const wp = cv.toDataURL('image/webp', 0.9);
+          if(wp && (!out || dataUrlBytes(wp) < dataUrlBytes(out))) out = wp;
+        }catch(e){}
+      }
+      if(out && (!best || dataUrlBytes(out) < dataUrlBytes(best))) best = out;
+      if(out && dataUrlBytes(out) <= IMG_LIMIT_BYTES){ cb(out, { w, h, bytes:dataUrlBytes(out) }); return; }
+      if(++i < edges.length){ step(); return; }
+      cb(best || dataUrl, { w, h, bytes:dataUrlBytes(best||dataUrl), giveUp:true });
+    };
+    step();
+  };
+  img.onerror = ()=>cb(dataUrl, null);
+  img.src = dataUrl;
+}
 function pickImage(e, cb){
   const f=e.target.files[0]; if(!f) return;
-  /* GIF 动图体积天然比 PNG 大，且绝不能重编码，所以单独放宽到 8MB */
+  /* GIF 动图绝不能重编码（一压就静止首帧），只能硬拦，单独放宽到 8MB；
+     静态图不再拦 —— 交给 shrinkImageToLimit 自动缩到 2MB 内 */
   const isGif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
-  const limit = isGif ? 8*1024*1024 : 2*1024*1024;
+  const limit = isGif ? 8*1024*1024 : IMG_HARD_BYTES;
   if(f.size > limit){
-    toast(isGif ? 'GIF 太大，控制在 8MB 内' : '图片太大，控制在 2MB 内');
+    toast(isGif ? 'GIF 太大，控制在 8MB 内'
+                : '这张图 '+mbOf(f.size)+'，超过 '+mbOf(IMG_HARD_BYTES)+' 上限，请先在外部压一下');
     e.target.value=''; return;
   }
   const r=new FileReader();
@@ -2912,6 +3103,8 @@ function pickImage(e, cb){
     const raw=r.result;
     const gif = isGif || /^data:image\/gif/i.test(raw);
     if(gif){ cb(raw, { gif:true, dataUrl:raw, cut:false }); return; }   // 原样存，动画保住
+    /* 上传阶段**不压图**：原图进编辑器，陛下看到的就是原图清晰度。
+       变小的活儿留给「🧩 合成背景」—— 那里会裁透明边 + 降采样到能存下的体积。 */
     if(!autoTrimMap()){ cb(raw, null); return; }
     trimPng(raw, info=>{
       if(info.cut) toast('✂️ 已裁掉透明边：'+info.iw+'×'+info.ih+' → '+info.sw+'×'+info.sh);

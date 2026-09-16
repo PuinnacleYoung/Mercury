@@ -2761,6 +2761,48 @@ $('wb-back').onclick = ()=>{
   enterLobby();
 };
 
+/* =========================================================================
+   【大图自动降采样】
+   地图/换肤背景都存在 localStorage，单域名只有约 5MB，dataURL 还要再膨胀 ~33%，
+   所以超过 2MB 的静态图必须先缩再存（不直接拒绝，陛下想传多大都行）。
+   GIF 不能重编码（一压就静止首帧），只能按 8MB 硬拦。
+   ========================================================================= */
+const IMG_LIMIT_BYTES = 2*1024*1024;
+function dataUrlBytes(u){
+  const i = String(u).indexOf(',');
+  return Math.max(0, Math.round((String(u).length - (i>=0 ? i+1 : 0)) * 3/4));
+}
+function mbOf(n){ return (n/1048576).toFixed(1)+'MB'; }
+function shrinkImageToLimit(dataUrl, cb){
+  if(dataUrlBytes(dataUrl) <= IMG_LIMIT_BYTES){ cb(dataUrl, null); return; }
+  const img = new Image();
+  img.onload = ()=>{
+    const iw=img.naturalWidth, ih=img.naturalHeight;
+    if(!iw || !ih){ cb(dataUrl, null); return; }
+    const edges=[2048,1600,1280,1024,800,640];
+    let i=0, best=null;
+    const step=()=>{
+      const k=Math.min(1, edges[i]/Math.max(iw,ih));
+      const w=Math.max(1,Math.round(iw*k)), h=Math.max(1,Math.round(ih*k));
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      const cx=cv.getContext('2d'); cx.imageSmoothingQuality='high';
+      cx.drawImage(img,0,0,w,h);
+      let out=null;
+      try{ out=cv.toDataURL('image/png'); }catch(e){}
+      if(!out || dataUrlBytes(out) > IMG_LIMIT_BYTES){
+        try{ const wp=cv.toDataURL('image/webp',0.9); if(wp && (!out || dataUrlBytes(wp)<dataUrlBytes(out))) out=wp; }catch(e){}
+      }
+      if(out && (!best || dataUrlBytes(out) < dataUrlBytes(best))) best=out;
+      if(out && dataUrlBytes(out) <= IMG_LIMIT_BYTES){ cb(out, {w,h,bytes:dataUrlBytes(out)}); return; }
+      if(++i < edges.length){ step(); return; }
+      cb(best||dataUrl, {w,h,bytes:dataUrlBytes(best||dataUrl), giveUp:true});
+    };
+    step();
+  };
+  img.onerror = ()=>cb(dataUrl, null);
+  img.src = dataUrl;
+}
+
 /* ================= 预览区背景切换事件 ================= */
 $('btn-bg').onclick = ()=>{
   const p = $('bg-panel');
@@ -2770,13 +2812,24 @@ $('btn-bg').onclick = ()=>{
 $('bg-custom').oninput = e=>{ applyPreviewBg(e.target.value, 'custom:'+e.target.value); };
 $('bg-file').onchange = e=>{
   const f = e.target.files[0]; if(!f) return;
-  /* GIF 走 CSS background 会真的循环播放，所以放宽到 8MB（PNG 仍是 2MB） */
+  /* GIF 走 CSS background 会真的循环播放（不能重编码）→ 单独按 8MB 硬拦；
+     静态图不拦：超 2MB 就自动缩到 2MB 内，陛下想传多大都行 */
   const isGif = /image\/gif/i.test(f.type||'') || /\.gif$/i.test(f.name||'');
-  if(f.size > (isGif?8:2)*1024*1024){ toast(isGif?'GIF 太大，请控制在 8MB 内':'图片太大，请控制在 2MB 内'); e.target.value=''; return; }
+  if(f.size > (isGif?8:40)*1024*1024){
+    toast(isGif ? 'GIF 太大，请控制在 8MB 内' : '这张图 '+mbOf(f.size)+'，超出 40MB 上限，请先在外部压一下');
+    e.target.value=''; return;
+  }
   const r = new FileReader();
   r.onload = ()=>{
-    applyPreviewBg(`url(${r.result}) center/cover no-repeat`, 'img:'+r.result);
-    toast(isGif ? '背景图已应用 · GIF 会循环播放' : '背景图已应用');
+    const raw = r.result;
+    if(isGif || /^data:image\/gif/i.test(raw)){
+      applyPreviewBg(`url(${raw}) center/cover no-repeat`, 'img:'+raw);
+      toast('背景图已应用 · GIF 会循环播放'); return;
+    }
+    shrinkImageToLimit(raw, (u, sh)=>{
+      applyPreviewBg(`url(${u}) center/cover no-repeat`, 'img:'+u);
+      toast(sh ? '背景图已应用 · 大图已自动缩到 '+sh.w+'×'+sh.h+'（'+mbOf(sh.bytes)+'）' : '背景图已应用');
+    });
   };
   r.readAsDataURL(f);
 };
@@ -4631,6 +4684,24 @@ function _drawMapBadge(c, FW, FH, title, sub){
   }
   c.restore();
 }
+/* 合成时若裁掉了透明边，底图在世界里只占这么一块（归一化；没裁过就是整块 0,0,1,1） */
+function bgRectOf(m){
+  const r = m && m.bgRect;
+  if(!r) return { x:0, y:0, w:1, h:1 };
+  const x=+r.x||0, y=+r.y||0, w=+r.w||1, h=+r.h||1;
+  if(!(w>0) || !(h>0) || w>1.0001 || h>1.0001) return { x:0, y:0, w:1, h:1 };
+  return { x, y, w, h };
+}
+/* 裁过边的底图专用绘制：先按 cover 算出「整张图」落在屏幕上的矩形，
+   再把内容那一块按比例切出来画。
+   直接 drawCover 的话，裁掉的边会让画面被放大 —— 与编辑器所见对不上。 */
+function drawCoverRect(c, img, W, H, r){
+  const ir=(img.naturalWidth||1)/(img.naturalHeight||1), sr=W/H;
+  let dw=W, dh=H, dx=0, dy=0;
+  if(ir>sr){ dh=H; dw=H*ir; dx=(W-dw)/2; }
+  else { dw=W; dh=W/ir; dy=(H-dh)/2; }
+  c.drawImage(img, dx + r.x*dw, dy + r.y*dh, r.w*dw, r.h*dh);
+}
 function drawCover(c, img, W, H){
   const ir = (img.naturalWidth||1) / (img.naturalHeight||1), sr = W/H;
   let dw=W, dh=H, dx=0, dy=0;
@@ -4903,7 +4974,11 @@ function drawMap(){
   /* 🎬 视频底图：每帧把当前画面画进背景（主循环一直在跑，所以它就是动的） */
   const vid = mapRun.bgVideo;
   if(vid && vid.readyState >= 2 && vid.videoWidth) drawCover(c, vid, FW, FH);
-  else if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth) drawCover(c, mapRun.bgImg, FW, FH);
+  else if(mapRun.bgImg && mapRun.bgImg.complete && mapRun.bgImg.naturalWidth){
+    const r = bgRectOf(m);
+    if(r.w >= 0.9999 && r.h >= 0.9999) drawCover(c, mapRun.bgImg, FW, FH);
+    else drawCoverRect(c, mapRun.bgImg, FW, FH, r);      // 合成时裁过透明边
+  }
   else {
     const base = (m && m.bgColor) || '#a9c9e8';
     const g = c.createLinearGradient(0,0,0,FH);
