@@ -437,6 +437,16 @@ input{font-family:inherit;outline:none;}
 .map-modal .sub{font-size:12px;color:var(--c-sub);margin-bottom:14px;}
 .wm-stage{position:relative;width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);background:#dbe6f3;box-shadow:inset 0 2px 14px rgba(0,0,0,.14);}
 .wm-stage canvas{display:block;width:100%;height:100%;touch-action:manipulation;cursor:pointer;}
+/* 🗺 地图导航·全屏模式：底图 cover 铺满（只裁切不拉伸），UI 浮在地图上 */
+.map-modal.wm-fs{position:relative;width:100%;height:100%;max-height:none;border-radius:0;padding:0;overflow:hidden;background:#0d0a1a;}
+.map-mask.wm-fs-mask{background:#0d0a1a;backdrop-filter:none;display:block;}
+.wm-fs canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation;cursor:pointer;}
+.wm-fs-ui{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 14px 0;background:linear-gradient(rgba(8,6,20,.62),rgba(8,6,20,0));pointer-events:none;z-index:2;}
+.wm-fs-ui *{pointer-events:auto;}
+.wm-fs-left{min-width:0;}
+.wm-fs-title{font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.65);}
+.wm-fs-sub{font-size:12px;color:rgba(255,255,255,.78);text-shadow:0 1px 6px rgba(0,0,0,.6);margin-top:2px;}
+.wm-fs-btns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
 .wm-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
 .wm-chip{padding:5px 12px;border-radius:999px;background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);font-size:12px;font-weight:700;color:var(--c-ink);cursor:pointer;font-family:inherit;transition:.16s;}
 .wm-chip:hover{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;}
@@ -4293,42 +4303,46 @@ function openWorldMap(mapId,force){
   if(!force&&m&&m.allowTeleportOut===false){toast('这里不能传送，请步行出门');return;}
   const old = $('map-modal-mask'); if(old) old.remove();
   const mask = document.createElement('div');
-  mask.className = 'map-mask'; mask.id = 'map-modal-mask';
-  const box = document.createElement('div'); box.className = 'map-modal';
+  mask.className = 'map-mask wm-fs-mask'; mask.id = 'map-modal-mask';
+  const box = document.createElement('div'); box.className = 'map-modal wm-fs';
   /* 这是一张「可开可关」的地图卡片：
      · 中间是这一层 Map 的地图 + 上面的地点
      · 底部「⬆️ 上一级」逐层往上（关卡 → 学校 → 家园 → 世界地图）
      · 或者直接「🌍 世界地图」一步到位；「关闭」原样回到刚才的位置 */
   const upMap = (navMap && navMap.parent && isMapNode(d.maps[navMap.parent])) ? d.maps[navMap.parent] : null;
   const isRoot = !!(navMap && navMap.id === d.rootMapId);
-  box.innerHTML='<h3>🗺 '+esc(navMap?navMap.name:'地图导航')+'</h3>'
-    +'<div class="sub">当前位置：'+esc(m?m.name:'—')+' · 点上面的地点即可前往</div>'
-    + '<div class="wm-stage"><canvas id="wm-canvas"></canvas></div>'
-    + '<div class="map-foot">'
-    +   (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
-    +   ((!isRoot) ? '<button class="map-btn ghost" id="wm-root">🌍 世界地图</button>' : '')
-    +   '<button class="map-btn" id="wm-close">关闭</button>'
+  /* 🖼 全屏地图导航：跟游戏主画面同一套显示策略 ——
+     底图 cover 铺满全屏（只裁切、不拉伸，随手机机型裁），
+     地点/名牌画在居中的「世界盒」里（比例锁编辑器 worldAspect，所见即所得），
+     顶部一排 UI：返回上一级 / 世界地图 / 关闭。 */
+  box.innerHTML='<canvas id="wm-canvas"></canvas>'
+    + '<div class="wm-fs-ui">'
+    +   '<div class="wm-fs-left">'
+    +     '<div class="wm-fs-title">🗺 '+esc(navMap?navMap.name:'地图导航')+'</div>'
+    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往</div>'
+    +   '</div>'
+    +   '<div class="wm-fs-btns">'
+    +     (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
+    +     ((!isRoot) ? '<button class="map-btn ghost" id="wm-root">🌍 世界地图</button>' : '')
+    +     '<button class="map-btn" id="wm-close">✕ 关闭</button>'
+    +   '</div>'
     + '</div>';
   mask.appendChild(box); document.body.appendChild(mask);
   $('wm-close').onclick = ()=> mask.remove();
   if(upMap) $('wm-up').onclick = ()=>{ mask.remove(); openMapNavigator(upMap.id); };
   if($('wm-root')) $('wm-root').onclick = ()=>{ mask.remove(); openMapNavigator(d.rootMapId); };
-  mask.addEventListener('click', e=>{ if(e.target === mask) mask.remove(); });
 
   const {ids,pos,host}=worldMapLayout(navMap&&navMap.id);
   const cvs = $('wm-canvas');
   const ctx = cvs.getContext('2d');
-  const wmStage = cvs.parentNode;
-  wmStage.dataset.asp = String((host && +host.worldAspect) || (16/9));
-  wmStage.style.aspectRatio = wmStage.dataset.asp;
-  let W = 0, H = 0, pins = [];
+  let W = 0, H = 0, pins = [], OX = 0, OY = 0;   // 世界盒尺寸 + 居中偏移（点击命中要用）
   function draw(){
-    const rect = cvs.parentNode.getBoundingClientRect();
+    const rect = box.getBoundingClientRect();          // 全屏画布
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = Math.max(240, Math.round(rect.width)); H = Math.max(135, Math.round(rect.height));
-    cvs.width = Math.round(W*dpr); cvs.height = Math.round(H*dpr);
+    const FW = Math.max(240, Math.round(rect.width)), FH = Math.max(240, Math.round(rect.height));
+    cvs.width = Math.round(FW*dpr); cvs.height = Math.round(FH*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,W,H);
+    ctx.clearRect(0,0,FW,FH);
     // 背景：跟编辑器串起来 —— 优先当前导航 Map 自己的底图（合成图 / 视频海报），
     // 没有就沿父级链条往上借：先借合成好的 bg，再借「背景层」现场拼一张（编辑器里只铺了层、没点合成的图），
     // 最后才退到底色渐变。
@@ -4346,37 +4360,15 @@ function openWorldMap(mapId,force){
       }
     })();
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
-    /* 窗口比例跟着画面走（这是「不拉伸」的根本）：
-       · 整幅底图（没裁过边）→ 窗口比例 = 图片真实比例，16:9 的图就开 16:9 的窗口
-       · 裁过边的合成图 → 世界比例，内容按 bgRect 铺回子矩形（数学上无变形）
-       · 背景层现场拼合 → 唯一满幅层用它的真实比例，否则用世界比例 */
-    let wantAsp = (host && +host.worldAspect) || (16/9);
-    if(bgImg && bgImg.naturalWidth && root===host){
-      const br0 = bgRectOf(root);
-      wantAsp = (br0.w>=0.999 && br0.h>=0.999)
-        ? bgImg.naturalWidth/bgImg.naturalHeight
-        : ((host && +host.worldAspect) || bgImg.naturalWidth/bgImg.naturalHeight);
-    } else if(bgLay){
-      const one = bgLay.layers.length===1 ? bgLay.layers[0] : null;
-      const oneIm = one ? mapImg(one.img) : null;
-      wantAsp = (one && one.w>=0.999 && one.h>=0.999 && oneIm && oneIm.naturalWidth)
-        ? oneIm.naturalWidth/oneIm.naturalHeight
-        : ((bgLay.map && +bgLay.map.worldAspect) || (W/H));
-    }
-    wantAsp = Math.min(2.8, Math.max(0.9, wantAsp||16/9));
-    if(Math.abs((+wmStage.dataset.asp||0) - wantAsp) > 0.005){
-      wmStage.dataset.asp = String(wantAsp);
-      wmStage.style.aspectRatio = String(wantAsp);
-      requestAnimationFrame(()=>{ if(document.body.contains(cvs)) draw(); });  // 比例变了：按新窗口重画一遍
-    }
+    /* 背景跟主画面（关卡）同一套策略：cover 铺满全屏 —— 只裁切、不拉伸，
+       多余部分按手机机型比例裁掉（陛下钦定方案），再也不搞「窗口比例」那一套 */
     if(bgImg && bgImg.complete && bgImg.naturalWidth){
       if(root === host){
-        /* 编辑器同款：舞台比例已锁成 worldAspect，底图按 bgRect 子矩形铺进世界
-           （裁掉多少就补回多少，永不拉伸），资产坐标天然对得上 */
         const br = bgRectOf(root);
-        ctx.drawImage(bgImg, br.x*W, br.y*H, br.w*W, br.h*H);
+        if(br.w >= 0.9999 && br.h >= 0.9999) drawCover(ctx, bgImg, FW, FH);
+        else drawCoverRect(ctx, bgImg, FW, FH, br);    // 合成时裁过透明边：按子区 cover，不放大
       } else {
-        drawCover(ctx, bgImg, W, H);               // 借来的底图：只裁切、不拉伸
+        drawCover(ctx, bgImg, FW, FH);                 // 借来的底图：只裁切、不拉伸
       }
     }
     else if(bgLay){
@@ -4387,7 +4379,7 @@ function openWorldMap(mapId,force){
       const oneIm = oneFull ? mapImg(bgLay.layers[0].img) : null;
       const wa=(oneIm && oneIm.naturalWidth) ? oneIm.naturalWidth/oneIm.naturalHeight
              : ((bgLay.map && +bgLay.map.worldAspect) || (W/H));
-      const cw=Math.max(480, Math.round(W)), ch=Math.max(2, Math.round(cw/wa));
+      const cw=Math.max(480, Math.round(FW)), ch=Math.max(2, Math.round(cw/wa));
       const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
       lcv.width=cw; lcv.height=ch;
       const lg=lcv.getContext('2d');
@@ -4399,15 +4391,21 @@ function openWorldMap(mapId,force){
           lg.restore();
         } else if(im && !im.complete) im.onload=()=>{ if(document.body.contains(cvs)) draw(); };
       });
-      drawCover(ctx, lcv, W, H);
+      drawCover(ctx, lcv, FW, FH);
     }
     else {
       if(bgImg && !bgImg.complete) bgImg.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
       const base = (host && host.bgColor) || (root && root.bgColor) || '#a9c9e8';
-      const g = ctx.createLinearGradient(0,0,0,H);
+      const g = ctx.createLinearGradient(0,0,0,FH);
       g.addColorStop(0, base); g.addColorStop(1, darken(base, .3));
-      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = g; ctx.fillRect(0,0,FW,FH);
     }
+    /* 世界盒：地点/名牌画在居中的「世界」里，比例锁编辑器的 worldAspect ——
+       坐标、尺寸、名牌锚点跟编辑器所见即所得；背景 cover 满屏，该裁就裁 */
+    const wasp = Math.min(2.8, Math.max(0.9, (host && +host.worldAspect) || (16/9)));
+    if(FW/FH >= wasp){ H = FH; W = Math.round(FH*wasp); } else { W = FW; H = Math.round(FW/wasp); }
+    OX = Math.round((FW-W)/2); OY = Math.round((FH-H)/2);
+    ctx.save(); ctx.translate(OX, OY);
     ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, H*0.62, W, H*0.38);
     // 父子连线（谁通往谁）
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2; ctx.setLineDash([5,6]);
@@ -4459,6 +4457,7 @@ function openWorldMap(mapId,force){
         pins.push({ id:k, x:cx, y:cy, r:r+fs*2 });
       }
     });
+    ctx.restore();   // 世界盒结束
     /* 地块 PNG / 自定义花边是异步加载的：弹窗不每帧重画，谁没加载完就挂回调重画一次 */
     ids.forEach(k=>{
       const p=pos[k];
@@ -4470,8 +4469,8 @@ function openWorldMap(mapId,force){
   }
   function hit(ev){
     const rect = cvs.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (W / rect.width);
-    const y = (ev.clientY - rect.top) * (H / rect.height);
+    const x = (ev.clientX - rect.left) - OX;   // 世界盒与屏幕 1:1（CSS 像素），减去居中偏移即世界坐标
+    const y = (ev.clientY - rect.top) - OY;
     for(let i = pins.length-1; i >= 0; i--){
       const p = pins[i];
       if((x-p.x)*(x-p.x) + (y-p.y)*(y-p.y) <= p.r*p.r) return p.id;
