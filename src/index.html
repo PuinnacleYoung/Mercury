@@ -4347,7 +4347,7 @@ function openWorldMap(mapId,force){
     + '<div class="wm-fs-ui">'
     +   '<div class="wm-fs-left">'
     +     '<div class="wm-fs-title">🗺 '+esc(navMap?navMap.name:'地图导航')+'</div>'
-    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往 · 引擎 v37</div>'
+    +     '<div class="wm-fs-sub">当前位置：'+esc(m?m.name:'—')+' · 点地图上的地点即可前往 · 引擎 v38</div>'
     +   '</div>'
     +   '<div class="wm-fs-btns">'
     +     (upMap ? '<button class="map-btn ghost" id="wm-up">⬆️ 上一级 · '+esc(upMap.name)+'</button>' : '')
@@ -4404,32 +4404,12 @@ function openWorldMap(mapId,force){
       }
     }
     else if(bgLay){
-      /* 背景层兜底。铁律：单张满幅层（w、h 都 ≥0.99，铺满整个世界）→ 直接拿原图
-         cover 铺满全屏 —— 背景就是这张图本身，只裁切、绝不拉伸，也不依赖 worldAspect。
-         多层 / 不满幅才按编辑器的层坐标现场拼到一块世界比例的画布上再 cover。
+      /* 背景层：跟主画面共用 composeBgLayers —— 按编辑器的层矩形拼进 worldAspect 世界画布，
+         再 cover 铺满全屏。因为画布比例 == 世界框比例，cover 就是「整个世界框铺满屏幕」，
+         和下面地点用的 W/H/OX/OY 是同一套变换 —— 背景与 UI 严丝合缝。
          哪层图没加载完就挂回调重画（弹窗不是每帧重画，必须自己钩）。 */
-      const one = bgLay.layers.length===1 ? bgLay.layers[0] : null;
-      const oneIm = one ? mapImg(one.img) : null;
-      if(one && one.w>=0.99 && one.h>=0.99){
-        if(oneIm && oneIm.complete && oneIm.naturalWidth) drawCover(ctx, oneIm, FW, FH);
-        else if(oneIm && !oneIm.complete) oneIm.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
-      } else {
-        const wa=(bgLay.map && +bgLay.map.worldAspect) || (W/H);
-        const cw=Math.max(480, Math.round(FW)), ch=Math.max(2, Math.round(cw/wa));
-        const lcv = draw._layCv || (draw._layCv=document.createElement('canvas'));
-        lcv.width=cw; lcv.height=ch;
-        const lg=lcv.getContext('2d');
-        let ready = true;
-        bgLay.layers.forEach(l=>{
-          const im=mapImg(l.img);
-          if(im && im.complete && im.naturalWidth){
-            lg.save(); lg.globalAlpha=(l.opacity==null?1:l.opacity);
-            lg.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
-            lg.restore();
-          } else { ready = false; if(im && !im.complete) im.onload=()=>{ if(document.body.contains(cvs)) draw(); }; }
-        });
-        if(ready) drawCover(ctx, lcv, FW, FH);
-      }
+      const lcv = composeBgLayers(bgLay.map, ()=>{ if(document.body.contains(cvs)) draw(); });
+      if(lcv) drawCover(ctx, lcv, FW, FH);
     }
     else {
       if(bgImg && !bgImg.complete) bgImg.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
@@ -4811,34 +4791,52 @@ function loadMapBg(m){
   im.onerror = ()=>{ if(mapRun.bgKey === key){ mapRun.bgSrc=''; mapRun.bgImg=null; console.warn('[Map] 背景图加载失败:', String(pick).slice(0,60)); } };
   im.src = pick;
 }
-/* 「背景层」现场合成兜底：按编辑器的层坐标（归一化中心点）拼到一块 worldAspect 画布上。
-   全部层加载完才写进 mapRun.bgLayersCv（画图那边才认），中途切图则作废。 */
-function buildBgLayersCv(m, key){
-  const layers=(m.bgLayers||[]).filter(l=>l && l.visible!==false && l.img);
-  if(!layers.length) return;
-  /* 单张满幅层 → 不拼合，直接把原图当底图 cover（与弹窗同款铁律，绝不拉伸） */
-  if(layers.length===1 && layers[0].w>=0.99 && layers[0].h>=0.99){
-    const im=new Image();
-    im.onload=()=>{ if(mapRun.bgKey===key){ mapRun.bgLayersCv=null; mapRun.bgImg=im; try{ resizeMap(); drawMap(); }catch(e){} } };
-    im.src=layers[0].img;
-    return;
-  }
-  const wa = m.worldAspect || (16/9);
-  const cw = 1280, ch = Math.max(2, Math.round(cw/wa));
+/* ===== 「背景层」→ 世界画布：编辑器同款，唯一真源（主画面 & 导航弹窗共用）=====
+   层坐标 l.x/l.y 是**中心点**、l.w/l.h 是尺寸，全部归一化到「世界框」（编辑器 world-box）。
+   所以拼合画布的比例必须 = map.worldAspect，层再按它自己的矩形画进去 ——
+   这样背景和地块/触发区用的是**同一套**「世界框 cover 铺满屏幕」变换，位置天然严丝合缝。
+   ⚠️ 血的教训（v37）：千万别图省事「单张满幅层就直接拿原图 cover」——
+      那样会丢掉陛下拖过的层矩形（偏移 / 缩放 / 溢出），背景走一套、UI 走另一套，
+      位置必然对不上。层矩形哪怕是 1.069×1.081 这种「比世界框略大」也不能扔。 */
+const _bgLayCache = { key:'', cv:null };
+function composeBgLayers(m, onReady){
+  const layers = (m && Array.isArray(m.bgLayers)) ? m.bgLayers.filter(l=>l && l.visible!==false && l.img) : [];
+  if(!layers.length) return null;
+  const wa = (+m.worldAspect) || (16/9);
+  const sig = (m.id||'')+'|'+wa+'|'+layers.map(l=>[l.img.length,l.x,l.y,l.w,l.h,l.opacity].join('~')).join(';');
+  if(_bgLayCache.key === sig && _bgLayCache.cv) return _bgLayCache.cv;
+  const cw = 1600, ch = Math.max(2, Math.round(cw/wa));
   const cv = document.createElement('canvas'); cv.width=cw; cv.height=ch;
   const g  = cv.getContext('2d');
-  let left = layers.length;
-  const done = ()=>{ if(--left===0 && mapRun.bgKey===key) mapRun.bgLayersCv=cv; };
+  let pending = 0;
   layers.forEach(l=>{
-    const im=new Image();
-    im.onload=()=>{
+    const im = mapImg(l.img);
+    if(im && im.complete && im.naturalWidth){
       g.save(); g.globalAlpha=(l.opacity==null?1:l.opacity);
       g.drawImage(im,(l.x-l.w/2)*cw,(l.y-l.h/2)*ch,l.w*cw,l.h*ch);
-      g.restore(); done();
-    };
-    im.onerror=done;
-    im.src=l.img;
+      g.restore();
+    } else if(im && !im.complete){
+      pending++;
+      const again = ()=>{ if(typeof onReady === 'function') onReady(); };
+      im.addEventListener('load', again, {once:true});
+      im.addEventListener('error', again, {once:true});
+    }
   });
+  if(pending) return null;                       // 还没加载完：先别返回半张，免得闪
+  _bgLayCache.key = sig; _bgLayCache.cv = cv;
+  return cv;
+}
+/* 「背景层」现场合成兜底：全部层加载完才写进 mapRun.bgLayersCv（画图那边才认），中途切图则作废。 */
+function buildBgLayersCv(m, key){
+  mapRun.bgLayersCv = null;
+  try{
+    composeBgLayers(m, ()=>{
+      if(mapRun.bgKey !== key) return;           // 已经切到别的图了：这次结果作废
+      mapRun.bgLayersCv = composeBgLayers(m);
+      try{ drawMap(); }catch(e){}
+    });
+    mapRun.bgLayersCv = composeBgLayers(m);
+  }catch(e){ mapRun.bgLayersCv = null; }
 }
 /* 空/坏地图兜底提示卡 —— 避免整块画布看起来"神秘一片白" */
 function _drawMapBadge(c, FW, FH, title, sub){
