@@ -4324,14 +4324,28 @@ function openWorldMap(mapId,force){
     cvs.width = Math.round(W*dpr); cvs.height = Math.round(H*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
-    // 背景：主地图的底色/底图
-    const root=host||d.maps[d.rootMapId];
-    /* 🎬 根节点是视频底图时，卡片小视图用它的首帧海报（小视图不播视频，省电省内存） */
-    const bgSrc=(root&&root.bg) || (root&&root.bgKind==='video'&&root.bgPoster) || '';
+    // 背景：跟编辑器串起来 —— 优先当前导航 Map 自己的底图（合成图 / 视频海报），
+    // 它没有就沿父级链条往上借一张（Map 导航页经常还没合成底图），最后才退到底色渐变。
+    let root=host||d.maps[d.rootMapId];
+    let bgSrc='';
+    (function pickBg(){
+      let mm=root; const seen={};
+      while(mm && !seen[mm.id]){
+        seen[mm.id]=1;
+        if(mm.bg){ bgSrc=mm.bg; root=mm; return; }
+        if(mm.bgKind==='video' && mm.bgPoster){ bgSrc=mm.bgPoster; root=mm; return; }
+        mm = d.maps[mm.parent];
+      }
+    })();
     const bgImg = bgSrc ? mapImg(bgSrc) : null;
-    if(bgImg && bgImg.complete && bgImg.naturalWidth) drawCover(ctx, bgImg, W, H);
+    if(bgImg && bgImg.complete && bgImg.naturalWidth){
+      const br = bgRectOf(root);                   // 合成时裁过透明边 → 按子区画，不放大
+      if(br.w>=0.9999 && br.h>=0.9999) drawCover(ctx, bgImg, W, H);
+      else drawCoverRect(ctx, bgImg, W, H, br);
+    }
     else {
-      const base = (root && root.bgColor) || '#a9c9e8';
+      if(bgImg && !bgImg.complete) bgImg.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
+      const base = (host && host.bgColor) || (root && root.bgColor) || '#a9c9e8';
       const g = ctx.createLinearGradient(0,0,0,H);
       g.addColorStop(0, base); g.addColorStop(1, darken(base, .3));
       ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
@@ -4353,9 +4367,16 @@ function openWorldMap(mapId,force){
       const mm = d.maps[k], p = pos[k]; if(!p) return;
       const cx = p.x*W, cy = p.y*H;
       const isCur=(k===mapState.currentId),isEntry=(k===d.entryLevelId);
-      const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':(isMapNode(mm)?'#5fbf8f':'#6a7fd6'));
-      ctx.save(); ctx.globalAlpha = nodeAlpha(mm);
-      poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':(mm.icon||(isMapNode(mm)?'🗺️':'🎯'))),mm.img||null,isCur?'rgba(255,255,255,.95)':null,false);
+      const tile=p.tile||null;
+      const color=isCur?'#8a6fc4':(isEntry?'#e8a33d':((tile&&tile.color)||(isMapNode(mm)?'#5fbf8f':'#6a7fd6')));
+      /* 图标跟编辑器串起来：优先用父地图里那块导航地块上传的 PNG（建筑图），
+         其次才是地图节点自己的图 / emoji 图标 */
+      const tImg=(tile&&tile.img)||mm.img||null;
+      const tIcon=(tile&&tile.icon)||mm.icon||(isMapNode(mm)?'🗺️':'🎯');
+      const tIm=tImg?mapImg(tImg):null;
+      if(tIm && !tIm.complete) tIm.onload = ()=>{ if(document.body.contains(cvs)) draw(); };
+      ctx.save(); ctx.globalAlpha = (tile&&tile.alpha!=null&&tile.alpha!=='')?nodeAlpha(tile):nodeAlpha(mm);
+      poiBadge(ctx,cx,cy,r,color,isCur?'📍':(isEntry?'⭐':tIcon),tImg,isCur?'rgba(255,255,255,.95)':null,false);
       ctx.restore();
       drawNamePlate(ctx, mm.name || k, mapLb(root), { fs, cx, cy: cy + r + fs*1.5 });
       pins.push({ id:k, x:cx, y:cy, r:r + fs*2 });
@@ -4385,7 +4406,8 @@ function openWorldMap(mapId,force){
     const mm = d.maps[k];
     const b = document.createElement('button');
     b.className='wm-chip'+(d.entryLevelId===k?' main':'')+(k===mapState.currentId?' cur':'');
-    b.textContent=(k===mapState.currentId?'📍 ':(d.entryLevelId===k?'⭐ ':(isMapNode(mm)?'🗺️ ':'🎯 ')))+(mm.name||k);
+    const tIcon=(pos[k]&&pos[k].tile&&pos[k].tile.icon)||(isMapNode(mm)?'🗺️':'🎯');
+    b.textContent=(k===mapState.currentId?'📍 ':(d.entryLevelId===k?'⭐ ':''))+tIcon+' '+(mm.name||k);
     b.onclick=()=>{mask.remove();if(isMapNode(mm))openMapNavigator(k);else enterMap(k,null);};
     legend.appendChild(b);
   });
