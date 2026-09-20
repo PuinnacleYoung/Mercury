@@ -161,6 +161,8 @@ input{font-family:inherit;outline:none;}
 
 /* 左侧竖排 UI */
 .left-ui{position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:12px;}
+/* 右侧竖排 UI（衣橱/背包） */
+.right-ui{position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:12px;}
 .ui-btn{width:64px;height:64px;border-radius:18px;background:rgba(var(--glass-rgb),.55);backdrop-filter:blur(16px) saturate(180%);box-shadow:0 6px 20px rgba(var(--shadow-rgb),.15),0 0 0 1px rgba(var(--accent-rgb),.1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:var(--c-sub);font-weight:700;transition:all .2s;border:1px solid rgba(var(--accent-rgb),.12);}
 .ui-btn:hover{background:rgba(var(--glass-rgb),.78);transform:translateY(-2px);box-shadow:0 8px 24px rgba(var(--shadow-rgb),.2);}
 .ui-btn:active{transform:scale(.93);}
@@ -414,6 +416,9 @@ input{font-family:inherit;outline:none;}
 .profile-earn:active{transform:scale(.98);}
 .profile-checkin{width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#7ed6c4,#4fb3a4);color:#fff;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(126,214,196,.4);cursor:pointer;letter-spacing:1px;transition:.15s;margin-bottom:10px;}
 .profile-checkin:active{transform:scale(.98);}
+.profile-settings{width:100%;padding:13px;border-radius:14px;background:rgba(var(--glass-rgb),.7);border:1px solid var(--glass-border);color:var(--c-ink);font-size:15px;font-weight:800;cursor:pointer;letter-spacing:1px;transition:.15s;margin-bottom:10px;}
+.profile-settings:hover{background:rgba(var(--glass-rgb),.92);}
+.profile-settings:active{transform:scale(.98);}
 
 /* ---------- 签到日历弹层 ---------- */
 .checkin-mask{position:fixed;inset:0;z-index:130;background:rgba(30,24,46,.5);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
@@ -610,6 +615,7 @@ input{font-family:inherit;outline:none;}
 #runtime-hud .coin-hud.multi .cur-item .ci{font-size:calc(18px * var(--ui-scale));}
 
 #runtime-hud .left-ui{left:var(--ui-pad-x);gap:var(--ui-btn-gap);}
+#runtime-hud .right-ui{right:var(--ui-pad-x);gap:var(--ui-btn-gap);}
 #runtime-hud .ui-btn{width:var(--ui-btn-size);height:var(--ui-btn-size);border-radius:calc(18px * var(--ui-scale));font-size:calc(12px * var(--ui-scale));}
 #runtime-hud .ui-btn .ico{font-size:calc(22px * var(--ui-scale));}
 
@@ -788,6 +794,7 @@ input{font-family:inherit;outline:none;}
 /* 极矮横屏（手机横屏 高度<480）：只收紧间距，方向一律不动 */
 @media (max-height: 480px) and (orientation: landscape) {
   #runtime-hud .left-ui{ gap: calc(5px * var(--ui-scale)); }
+  #runtime-hud .right-ui{ gap: calc(5px * var(--ui-scale)); }
   .joy-hint{ font-size: calc(11px * var(--ui-scale)); }
   .wardrobe-layout{ height: 96vh; }
   /* 名字卡片：压缩高度，保证「📅 签到日历」一定在屏内可点 */
@@ -798,7 +805,7 @@ input{font-family:inherit;outline:none;}
   .profile-stats .stat{ padding:8px 6px; }
   .stat-val{ font-size:16px; }
   .profile-hide{ margin-bottom:10px; padding:9px 12px; }
-  .profile-checkin,.profile-earn{ padding:10px; font-size:14px; }
+  .profile-checkin,.profile-settings,.profile-earn{ padding:10px; font-size:14px; }
   /* 签到日历：极矮横屏下同样要能滚到奖励说明 */
   .checkin-card{ padding:16px 16px; }
   .checkin-info{ padding:8px; margin-bottom:8px; }
@@ -1002,6 +1009,7 @@ input{font-family:inherit;outline:none;}
       <input type="checkbox" id="profile-hide-wealth">
     </div>
     <button class="profile-checkin" id="profile-checkin">📅 签到日历</button>
+    <button class="profile-settings" id="profile-settings">⚙️ 设置</button>
     <button class="profile-earn" id="profile-earn">💰 领取测试货币（金+100 / 钻+20 / 珍+10）</button>
   </div>
 </div>
@@ -1087,17 +1095,18 @@ input{font-family:inherit;outline:none;}
       <span class="cur-item"><span class="ci">🦪</span><span id="hud-pearl">0</span></span>
     </button>
     <button class="coin-hud home" id="btn-home" title="打开地图卡片：家园 / 学校 / 服装店"><span class="coin-ico">🏠</span><span>家园</span></button>
+    <button class="coin-hud" id="btn-map" title="打开地图卡片"><span class="coin-ico">🗺</span><span>地图</span></button>
   </div>
 
   <div class="left-ui" id="runtime-left-ui" data-page-node-id="GkwX6q7ttpNJdkC5wF3BRw">
-    <button class="ui-btn hot" id="btn-wardrobe" data-page-node-id="IQSYS83k8l6cEy2RY47E7q"><span class="ico" data-page-node-id="CyBLAunipiATmUNJ2gqmHv">👗</span>衣橱</button>
-    <button class="ui-btn" id="btn-map" title="打开地图卡片"><span class="ico">🗺</span>地图</button>
-    <button class="ui-btn" id="btn-checkin" title="每日签到日历"><span class="ico">📅</span>签到</button>
     <button class="ui-btn" id="btn-friends" data-page-node-id="GVhNRQUY0h4zcncW7mQIG0"><span class="ico" data-page-node-id="CtAukaIBZDjANOzzXqWZID">👥</span>好友</button>
     <button class="ui-btn" id="btn-mail" title="邮件"><span class="ico">✉️</span>邮件</button>
-    <button class="ui-btn" id="btn-bag" title="背包"><span class="ico">🎒</span>背包</button>
-    <button class="ui-btn" id="btn-settings" data-page-node-id="SetBtn001"><span class="ico" data-page-node-id="SetBtn002">⚙️</span>设置</button>
     <button class="ui-btn" id="btn-logout" data-page-node-id="mEGmeO4RSRafTlZn4sYQvE"><span class="ico" data-page-node-id="lezJKolZv4NWL6QwCXCDjg">🚪</span>退出</button>
+  </div>
+
+  <div class="right-ui" id="runtime-right-ui">
+    <button class="ui-btn hot" id="btn-wardrobe" data-page-node-id="IQSYS83k8l6cEy2RY47E7q"><span class="ico" data-page-node-id="CyBLAunipiATmUNJ2gqmHv">👗</span>衣橱</button>
+    <button class="ui-btn" id="btn-bag" title="背包"><span class="ico">🎒</span>背包</button>
   </div>
 
   <!-- 好友抽屉 -->
@@ -2883,9 +2892,6 @@ $('btn-wardrobe').onclick = ()=>{
   showScreen('wardrobe-screen');
 };
 $('btn-friends').onclick = ()=>openFriends();
-$('btn-settings').onclick = ()=>openSettings();
-const _btnCheckin = $('btn-checkin');           // 左侧功能栏的「📅 签到」直达入口
-if(_btnCheckin) _btnCheckin.onclick = ()=>openCheckin();
 document.querySelectorAll('.drawer-close').forEach(b=>b.onclick=()=>{
   const t = b.dataset.close;
   if(t==='friends') closeFriends();
@@ -3886,6 +3892,7 @@ function doCheckin(dateStr){
   toast('🎉 签到成功 · ' + rewards.join(' / '));
 }
 $('profile-checkin').onclick = ()=>{ closeProfile(); openCheckin(); };
+$('profile-settings').onclick = ()=>{ closeProfile(); openSettings(); };
 $('checkin-close').onclick = closeCheckin;
 $('checkin-mask').addEventListener('click', e=>{ if(e.target===$('checkin-mask')) closeCheckin(); });
 $('checkin-prev').onclick = ()=>{
@@ -4585,7 +4592,7 @@ function refreshMapTopbar(){
     const canOut = (m.allowTeleportOut !== false);
     tip.textContent = canOut
       ? '摇杆 / WASD 行走 · 走到 🚪 门口自动传送 · 也可以直接点门口'
-      : '此处不能直接传送 · 用左侧「🗺 地图」打开地图卡片离开';
+      : '此处不能直接传送 · 用右上角「🗺 地图」打开地图卡片离开';
   }
   const bm = $('btn-map');
   if(bm){
