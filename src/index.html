@@ -652,6 +652,105 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .map-btn.ghost{background:rgba(var(--glass-rgb),.7);color:var(--c-ink);border-color:var(--glass-border);box-shadow:none;}
 .map-btn.ghost:hover{background:rgba(var(--glass-rgb),.95);}
 
+/* ---------- 登录页（引擎驱动：视频背景 + 身份证卡片 + 核验） ---------- */
+#auth-screen{background:#060b12;}
+.auth-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.auth-world{position:absolute;overflow:hidden;background:#000;}
+.auth-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
+.auth-bg.is-video{object-fit:cover;}
+/* 占位视频背景：CSS 动态渐变 + 漂浮粒子，模拟循环视频 */
+.auth-bg.placeholder{background:radial-gradient(120% 120% at 30% 20%,#12344a 0%,#0a1a2a 45%,#060b12 100%);}
+.auth-bg.placeholder::before{
+  content:'';position:absolute;inset:-50%;background:
+    radial-gradient(2px 2px at 20% 30%,rgba(120,210,255,.7),transparent 50%),
+    radial-gradient(3px 3px at 70% 20%,rgba(150,230,255,.6),transparent 50%),
+    radial-gradient(2px 2px at 45% 70%,rgba(90,190,240,.55),transparent 50%),
+    radial-gradient(2px 2px at 85% 60%,rgba(140,220,255,.5),transparent 50%),
+    radial-gradient(3px 3px at 10% 80%,rgba(110,200,245,.5),transparent 50%);
+  animation:authDrift 16s linear infinite;
+}
+.auth-bg.placeholder::after{
+  content:'';position:absolute;left:-30%;top:0;width:30%;height:100%;
+  background:linear-gradient(105deg,transparent,rgba(120,210,255,.14),transparent);
+  animation:authSweep 7s ease-in-out infinite;
+}
+@keyframes authDrift{from{transform:translateY(0) rotate(0);}to{transform:translateY(-40px) rotate(8deg);}}
+@keyframes authSweep{0%{left:-30%;}60%,100%{left:130%;}}
+
+/* 身份证卡片 */
+.auth-card{position:absolute;cursor:pointer;z-index:10;transform-origin:center;border-radius:10px;}
+.auth-card-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;border-radius:10px;filter:drop-shadow(0 8px 26px rgba(0,0,0,.55));}
+.auth-card-pic.placeholder{
+  background:linear-gradient(150deg,#16324a,#0f2538 55%,#1b3f5c);
+  border:2px solid rgba(120,210,255,.5);
+  color:#cfeaff;text-shadow:0 1px 4px rgba(0,0,0,.6);
+}
+/* 占位内容全部绝对定位钉在卡片顶部/底部角落，中间完全留白给姓名/防伪码输入框 */
+.auth-card-pic.placeholder .ph-chip{position:absolute;top:5%;left:7%;font-size:clamp(14px,2.2vw,22px);line-height:1;}
+.auth-card-pic.placeholder .ph-t{position:absolute;top:6%;left:19%;font-size:clamp(9px,1.2vw,12px);letter-spacing:2px;font-weight:800;opacity:.9;white-space:nowrap;}
+.auth-card-pic.placeholder .ph-s{position:absolute;bottom:4%;right:7%;font-size:clamp(7px,.9vw,9px);letter-spacing:1px;opacity:.5;white-space:nowrap;}
+/* 卡片晃动 */
+@keyframes authShake{
+  0%,100%{transform:rotate(0) translateX(0);}
+  10%{transform:rotate(-1.6deg) translateX(-4px);}
+  20%{transform:rotate(1.4deg) translateX(4px);}
+  30%{transform:rotate(-1.2deg) translateX(-3px);}
+  40%{transform:rotate(1deg) translateX(3px);}
+  50%{transform:rotate(-.7deg) translateX(-2px);}
+  60%{transform:rotate(.6deg) translateX(2px);}
+  70%{transform:rotate(-.4deg) translateX(-1px);}
+  80%{transform:rotate(.3deg) translateX(1px);}
+  90%{transform:rotate(-.1deg) translateX(0);}
+}
+.auth-card.verified{animation:authShake .9s ease both;}
+/* 流光 */
+.auth-card-flow{position:absolute;inset:0;border-radius:10px;pointer-events:none;overflow:hidden;opacity:0;z-index:15;}
+.auth-card.verified .auth-card-flow{opacity:1;}
+.auth-card-flow::before{
+  content:'';position:absolute;top:-50%;left:-80%;width:45%;height:200%;
+  background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.15) 40%,rgba(120,210,255,.6) 50%,rgba(255,255,255,.15) 60%,transparent 100%);
+  transform:skewX(-20deg);animation:authFlowSweep 1.6s ease-in-out infinite;
+}
+@keyframes authFlowSweep{0%{left:-80%;}55%{left:135%;}100%{left:135%;}}
+.auth-card-flow::after{
+  content:'';position:absolute;inset:0;border-radius:10px;
+  background:linear-gradient(135deg,rgba(120,210,255,0) 0%,rgba(120,210,255,.28) 30%,rgba(245,197,66,.22) 60%,rgba(120,210,255,0) 100%);
+  background-size:300% 300%;animation:authFlowShimmer 2.4s ease-in-out infinite;mix-blend-mode:screen;
+}
+@keyframes authFlowShimmer{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+
+/* 姓名/防伪码输入框（z=30，永远压在卡片上方可点可输） */
+.auth-field{position:absolute;background:rgba(0,0,0,.5);border:2px solid rgba(120,210,255,.55);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);z-index:30;letter-spacing:.5px;pointer-events:auto;}
+.auth-field:focus{border-color:#37c8b0;box-shadow:0 0 14px rgba(55,200,176,.55);}
+.auth-field::placeholder{color:rgba(255,255,255,.45);}
+
+/* 核验触发框（z=35，最顶层） */
+.auth-verify{position:absolute;z-index:35;border:2px dashed rgba(55,200,176,.8);background:rgba(55,200,176,.16);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s;color:#bff5ea;pointer-events:auto;}
+.auth-verify:hover{background:rgba(55,200,176,.3);box-shadow:0 0 20px rgba(55,200,176,.4);}
+.auth-verify:active{transform:scale(.97);}
+.auth-verify-icon{font-size:18px;}
+.auth-verify-txt{font-size:12px;font-weight:900;letter-spacing:1px;}
+
+/* 标题 */
+.auth-title{position:absolute;z-index:5;font-size:clamp(20px,4vw,36px);font-weight:900;letter-spacing:4px;color:#eaf6ff;text-shadow:0 2px 18px rgba(120,210,255,.5);pointer-events:none;}
+
+/* 核验提示 toast */
+.auth-toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);background:linear-gradient(135deg,#37c8b0,#22b8cf);color:#042f28;font-size:14px;font-weight:900;padding:10px 24px;border-radius:999px;box-shadow:0 6px 22px rgba(0,0,0,.45);z-index:99;white-space:nowrap;opacity:0;transition:.2s;pointer-events:none;}
+.auth-toast.show{opacity:1;}
+
+/* 账号凭证弹窗 */
+.auth-cred-mask{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.auth-cred-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.25);border-radius:18px;padding:22px;width:min(320px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.auth-cred-modal h3{font-size:16px;font-weight:900;margin:0 0 8px;color:#fff;}
+.auth-cred-modal .sub{font-size:12px;color:#9cc5ce;line-height:1.6;margin:0 0 14px;}
+.auth-cred-card{background:rgba(0,0,0,.35);border:1px solid rgba(120,210,255,.2);border-radius:12px;padding:14px;margin-bottom:14px;}
+.auth-cred-card .cr{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px dashed rgba(255,255,255,.1);}
+.auth-cred-card .cr:last-child{border-bottom:none;}
+.auth-cred-card .k{color:#9cc5ce;font-size:12px;}
+.auth-cred-card .v{font-weight:900;color:#f5c542;letter-spacing:.5px;word-break:break-all;text-align:right;max-width:60%;}
+.auth-cred-modal .save{width:100%;padding:11px;border-radius:11px;font-size:13px;font-weight:900;background:linear-gradient(135deg,#22b8cf,#0f7a8c);color:#fff;cursor:pointer;margin-bottom:8px;border:0;}
+.auth-cred-modal .close{width:100%;padding:10px;border-radius:11px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);color:#9cc5ce;cursor:pointer;border:0;}
+
 /* ---------- 管理员入口 & 引擎中枢 ---------- */
 .admin-corner{position:absolute;right:20px;bottom:16px;padding:8px 15px;border-radius:999px;background:rgba(120,110,140,.13);border:1px solid rgba(120,110,140,.22);color:#9890a8;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px;}
 .admin-corner:hover{background:rgba(120,110,140,.24);color:#6b6180;}
@@ -998,36 +1097,41 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 <!-- 竖屏持续提示 -->
 <div id="portrait-toast" data-page-node-id="2rEhutija036tMaVgfh9E0">🔄 请横屏使用</div>
 
-<!-- ===== 登录/注册 ===== -->
+<!-- ===== 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ===== -->
 <div id="auth-screen" class="screen hidden">
-  <div class="split">
-    <div class="brand">
-      <div class="logo">🌊</div>
-      <h1>拾光·澈屿</h1>
-      <p>横屏幻想世界<br>换装 · 社交 · 小游戏 · 家园</p>
-      <div class="wuxing">
-        <span class="wx" style="background:#f5c542">金</span>
-        <span class="wx" style="background:#4caf50">木</span>
-        <span class="wx" style="background:#42a5f5">水</span>
-        <span class="wx" style="background:#ef5350">火</span>
-        <span class="wx" style="background:#a1887f">土</span>
+  <!-- 引擎驱动的登录舞台：视频背景 + 身份证卡片 + 姓名/防伪码输入 + 核验框 -->
+  <div class="auth-stage" id="auth-stage">
+    <div class="auth-world" id="auth-world">
+      <div class="auth-bg" id="auth-bg"></div>
+      <div class="auth-card" id="auth-card">
+        <div class="auth-card-pic" id="auth-card-pic"></div>
+        <div class="auth-card-flow" id="auth-card-flow"></div>
       </div>
-    </div>
-    <div class="form">
-      <h2>登录 / 注册</h2>
-      <p class="sub">欢迎回来，先登录或注册一个账号吧</p>
-      <div class="tab-switch">
-        <button id="tab-login" class="on">登录</button>
-        <button id="tab-register">注册</button>
+      <input class="auth-field" id="auth-field-name" placeholder="姓名" autocomplete="off">
+      <input class="auth-field" id="auth-field-code" placeholder="特殊防伪码" autocomplete="off">
+      <div class="auth-verify" id="auth-verify" title="点击核验身份">
+        <span class="auth-verify-icon">🔍</span>
+        <span class="auth-verify-txt">核验身份</span>
       </div>
-      <div class="field"><label>账号</label><input id="auth-user" placeholder="请输入账号名" autocomplete="off"></div>
-      <div class="field"><label>密码</label><input id="auth-pass" type="password" placeholder="请输入密码"></div>
-      <button class="btn-primary" id="auth-submit">登 录</button>
-      <div class="msg" id="auth-msg"></div>
-      <p style="text-align:center;font-size:12px;color:var(--c-sub);margin:10px 0 0;">⚠️ 雏形阶段：账号存于本机浏览器（localStorage）</p>
+      <div class="auth-toast" id="auth-toast"></div>
+      <div class="auth-title" id="auth-title">拾光·澈屿</div>
     </div>
   </div>
   <button class="admin-corner" id="btn-admin-corner" title="管理员登录，进入引擎中枢">⚙ 管理员登录</button>
+</div>
+
+<!-- 首次核验注册成功 → 账号凭证弹窗 -->
+<div class="auth-cred-mask hidden" id="auth-cred-mask">
+  <div class="auth-cred-modal">
+    <h3>🪪 注册成功！</h3>
+    <p class="sub">首次核验已自动注册。请保存以下账号与防伪码，下次登录需核验一致。</p>
+    <div class="auth-cred-card">
+      <div class="cr"><span class="k">姓名 / 账号</span><span class="v" id="auth-cred-name">—</span></div>
+      <div class="cr"><span class="k">特殊防伪码</span><span class="v" id="auth-cred-code">—</span></div>
+    </div>
+    <button class="save" id="auth-cred-save">📥 保存为图片</button>
+    <button class="close" id="auth-cred-close">我已保存，进入世界</button>
+  </div>
 </div>
 
 <!-- ===== 管理员登录弹层 ===== -->
@@ -2495,6 +2599,7 @@ function showScreen(id){
     } else go();
   }
   if(id==='mergeshop-screen'){ msInit(); }
+  if(id==='auth-screen'){ initAuthEngine(); }
   // 地图屏切走时暂停地图渲染（位置保留，面板关掉可原样回到地图）
   try{
     if(id!=='map-screen' && mapRun){ mapRun.active = false; pauseMapVideo(); }   // 🎬 离开地图就暂停视频，别在后台偷偷解码
@@ -2569,17 +2674,228 @@ function afterLandscape(){
   }
 }
 
-/* ================= 登录/注册 ================= */
-let authMode = 'login';
-function setAuthMode(mode){
-  authMode = mode;
-  $('tab-login').classList.toggle('on', mode==='login');
-  $('tab-register').classList.toggle('on', mode==='register');
-  $('auth-submit').textContent = mode==='login' ? '登 录' : '注 册';
-  $('auth-msg').textContent = '';
+/* ================= 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ================= */
+/* 登录引擎配置（localStorage: login_engine_config）驱动主游戏登录页。
+   无配置时用内置代理占位素材（CSS 动态背景 + 占位身份证卡片）兜底。
+   账号模型与主游戏对齐：username=姓名、password=防伪码。 */
+const LS_AUTH_CFG = 'login_engine_config';
+const AUTH_WA = 16/9;   // 世界宽高比，与登录页面引擎一致
+
+function authDefaultCfg(){
+  return {
+    videos: [],   // 占位：无视频则用 CSS 动态背景
+    card: { src:'', opacity:1, x:0.5, y:0.44, w:0.34, h:0.52 },
+    fields: [
+      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.325, w:0.24, h:0.075, fontSize:18 },
+      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.515, w:0.24, h:0.075, fontSize:16 },
+    ],
+    verify: { x:0.5, y:0.72, w:0.24, h:0.13 },
+    title: { show:true, x:0.5, y:0.14, text:'拾光·澈屿' },
+  };
 }
-$('tab-login').onclick = ()=>setAuthMode('login');
-$('tab-register').onclick = ()=>setAuthMode('register');
+let authCfg = null;
+function authLoadCfg(){
+  try{
+    const s = localStorage.getItem(LS_AUTH_CFG);
+    if(s){ const c = JSON.parse(s); if(c && c.card && c.fields){ authCfg = c; return; } }
+  }catch(e){}
+  authCfg = authDefaultCfg();
+}
+
+/* cover 变换：与登录页面引擎 / 地图编辑器同源，保证跨机型元素相对位置恒定 */
+function authCoverFit(vw, vh, wa){
+  wa = (wa && isFinite(wa) && wa>0) ? wa : AUTH_WA;
+  const scale = Math.max(vw/wa, vh);
+  return { w: wa*scale, h: scale, ox:(vw-wa*scale)/2, oy:(vh-scale)/2, scale };
+}
+function authSetBox(el, o){
+  el.style.left = ((o.x - o.w/2)*100)+'%';
+  el.style.top  = ((o.y - o.h/2)*100)+'%';
+  el.style.width  = (o.w*100)+'%';
+  el.style.height = (o.h*100)+'%';
+}
+
+/* 渲染登录页舞台（视频背景 + 卡片 + 输入框 + 核验框），按引擎配置布局 */
+function initAuthEngine(){
+  authLoadCfg();
+  const stage = $('auth-stage');
+  const world = $('auth-world');
+  if(!stage || !world) return;
+
+  // 1) 背景：有视频用视频，无视频用占位动态背景
+  const bg = $('auth-bg');
+  bg.className = 'auth-bg';
+  const vids = (authCfg.videos || []).filter(v=>v && v.src);
+  if(vids.length){
+    bg.classList.add('is-video');
+    bg.innerHTML = '';
+    const v = document.createElement('video');
+    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
+    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;';
+    v.src = vids[vids.length-1].src;
+    bg.appendChild(v);
+  } else {
+    bg.classList.add('placeholder');
+    bg.innerHTML = '';
+  }
+
+  // 2) 身份证卡片（PNG 或占位）
+  const card = $('auth-card');
+  card.className = 'auth-card';
+  const pic = $('auth-card-pic');
+  pic.className = 'auth-card-pic';
+  if(authCfg.card.src){
+    pic.style.backgroundImage = 'url(' + authCfg.card.src + ')';
+    pic.style.opacity = authCfg.card.opacity;
+    pic.innerHTML = '';
+  } else {
+    pic.classList.add('placeholder');
+    pic.style.opacity = authCfg.card.opacity;
+    pic.innerHTML = '<span class="ph-chip">🪪</span><span class="ph-t">生物芯片身份证</span><span class="ph-s">IDENTITY CARD</span>';
+  }
+  authSetBox(card, authCfg.card);
+
+  // 3) 姓名 / 防伪码输入框
+  const nameF = (authCfg.fields||[]).find(f=>f.type==='name');
+  const codeF = (authCfg.fields||[]).find(f=>f.type==='code');
+  const nameEl = $('auth-field-name');
+  const codeEl = $('auth-field-code');
+  if(nameF){ authSetBox(nameEl, nameF); nameEl.placeholder = nameF.label||'姓名'; }
+  if(codeF){ authSetBox(codeEl, codeF); codeEl.placeholder = codeF.label||'特殊防伪码'; }
+
+  // 4) 核验触发框
+  authSetBox($('auth-verify'), authCfg.verify || {x:0.5,y:0.72,w:0.24,h:0.13});
+
+  // 5) 标题（配置无 title 字段时用默认位置显示）
+  const tt = $('auth-title');
+  const ti = authCfg.title || {};
+  if(ti.show !== false){
+    tt.style.display = 'block';
+    tt.style.left = ((ti.x!=null?ti.x:0.5)*100)+'%';
+    tt.style.top  = ((ti.y!=null?ti.y:0.12)*100)+'%';
+    tt.style.transform = 'translate(-50%,-50%)';
+    tt.textContent = ti.text || '拾光·澈屿';
+  } else { tt.style.display = 'none'; }
+
+  layoutAuthWorld();
+  // 初始化状态：清空输入、复位卡片动画
+  nameEl.value = ''; codeEl.value = '';
+  card.classList.remove('verified');
+}
+
+function layoutAuthWorld(){
+  const stage = $('auth-stage');
+  const world = $('auth-world');
+  if(!stage || !world) return;
+  const r = stage.getBoundingClientRect();
+  const f = authCoverFit(r.width, r.height, AUTH_WA);
+  world.style.left = f.ox+'px';
+  world.style.top  = f.oy+'px';
+  world.style.width  = f.w+'px';
+  world.style.height = f.h+'px';
+}
+
+/* 核验提示 */
+let authToastTimer = null;
+function authToast(msg){
+  const t = $('auth-toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(authToastTimer);
+  authToastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* 核验流程：未注册→自动注册+弹凭证；已注册→校验防伪码 */
+function doAuthVerify(){
+  const name = $('auth-field-name').value.trim();
+  const code = $('auth-field-code').value.trim();
+  if(!name || !code){ authToast('⚠️ 请先填写姓名和防伪码'); return; }
+
+  const accounts = getAccounts();
+  const card = $('auth-card');
+  let isNew = false;
+
+  if(!accounts[name]){
+    accounts[name] = { username:name, password:code, nickname:'', element:null, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false, avatar:PRESET_AVATARS[0].id };
+    saveAccounts(accounts);
+    isNew = true;
+  }
+
+  // 播放卡片晃动 + 流光
+  if(card){
+    card.classList.remove('verified');
+    void card.offsetWidth;
+    card.classList.add('verified');
+  }
+
+  if(isNew){
+    authToast('✅ 首次核验，自动注册成功');
+    setTimeout(()=>{
+      $('auth-cred-name').textContent = name;
+      $('auth-cred-code').textContent = code;
+      $('auth-cred-mask').classList.remove('hidden');
+    }, 600);
+  } else {
+    if(accounts[name].password === code){
+      authToast('✅ 核验通过，欢迎回来 ' + name);
+      // 登录成功 → 进入世界
+      setTimeout(()=>{
+        setCurrent(name); currentUser = accounts[name];
+        ensureBody();
+        currentUser.outfit = normalizeOutfit(currentUser.outfit);
+        normalizeUser(currentUser);
+        if(!currentUser.nickname) showScreen('nickname-screen');
+        else if(!currentUser.element) showScreen('element-screen');
+        else enterLobby();
+      }, 700);
+    } else {
+      authToast('❌ 防伪码与已注册账号不一致');
+      card && card.classList.remove('verified');
+    }
+  }
+}
+
+/* 凭证弹窗交互 */
+$('auth-cred-save').onclick = ()=>{
+  const name = $('auth-cred-name').textContent;
+  const code = $('auth-cred-code').textContent;
+  const canvas = document.createElement('canvas');
+  canvas.width = 320; canvas.height = 200;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#0a1620'; c.fillRect(0,0,320,200);
+  c.fillStyle = '#22b8cf'; c.font = 'bold 18px sans-serif'; c.fillText('🪪 拾光·澈屿 账号凭证', 20, 40);
+  c.fillStyle = '#9cc5ce'; c.font = '14px sans-serif'; c.fillText('姓名 / 账号：', 20, 85);
+  c.fillStyle = '#f5c542'; c.font = 'bold 16px sans-serif'; c.fillText(name, 20, 110);
+  c.fillStyle = '#9cc5ce'; c.font = '14px sans-serif'; c.fillText('特殊防伪码：', 20, 140);
+  c.fillStyle = '#f5c542'; c.font = 'bold 16px sans-serif'; c.fillText(code, 20, 165);
+  const a = document.createElement('a');
+  a.download = '账号凭证.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  authToast('📥 已保存账号凭证图片');
+};
+$('auth-cred-close').onclick = ()=>{
+  $('auth-cred-mask').classList.add('hidden');
+  // 注册成功关闭后，进入昵称页（新号走创建角色流程）
+  const name = $('auth-cred-name').textContent;
+  const accounts = getAccounts();
+  if(accounts[name]){
+    setCurrent(name); currentUser = accounts[name];
+    ensureBody();
+    currentUser.outfit = normalizeOutfit(currentUser.outfit);
+    normalizeUser(currentUser);
+    showScreen('nickname-screen');
+    setNickAvatarPreview();
+  }
+};
+$('auth-cred-mask').addEventListener('click', e=>{ if(e.target===$('auth-cred-mask')) $('auth-cred-mask').classList.add('hidden'); });
+
+/* 核验触发：点击核验框 或 点击卡片 均可 */
+$('auth-verify').onclick = doAuthVerify;
+$('auth-card').onclick = doAuthVerify;
+$('auth-field-code').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuthVerify(); });
+$('auth-field-name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('auth-field-code').focus(); });
+
+window.addEventListener('resize', ()=>{ if(!$('auth-screen').classList.contains('hidden')) layoutAuthWorld(); });
 
 /* ================= 管理员入口 & 引擎中枢 ================= */
 const ADMIN_USER = '1', ADMIN_PASS = '1';   // Q10 硬编码，正式发布前改
@@ -2620,35 +2936,6 @@ $('admin-login-mask').addEventListener('click', e=>{ if(e.target===$('admin-logi
 $('admin-login-go').onclick = doAdminLogin;
 $('admin-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') doAdminLogin(); });
 $('hub-back').onclick = ()=>{ sessionStorage.removeItem('adminLogin'); showScreen('auth-screen'); };
-
-$('auth-submit').onclick = ()=>{
-  const u = $('auth-user').value.trim();
-  const p = $('auth-pass').value;
-  const msg = $('auth-msg');
-  if(!u || !p){ msg.textContent='账号和密码都不能为空'; return; }
-  const accounts = getAccounts();
-  if(authMode==='register'){
-    if(accounts[u]){ msg.textContent='该账号已存在，请直接登录'; return; }
-    accounts[u] = {username:u, password:p, nickname:'', element:null, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false};
-    saveAccounts(accounts);
-    setCurrent(u); currentUser = accounts[u];
-    ensureBody();
-    currentUser.outfit = normalizeOutfit(currentUser.outfit);
-    msg.textContent='';
-    showScreen('nickname-screen');
-    setNickAvatarPreview();
-  } else {
-    if(!accounts[u] || accounts[u].password!==p){ msg.textContent='账号或密码错误'; return; }
-    setCurrent(u); currentUser = accounts[u];
-    ensureBody();                                   // 本地没素体 → 装上内置初始模板
-    currentUser.outfit = normalizeOutfit(currentUser.outfit);
-    normalizeUser(currentUser);
-    msg.textContent='';
-    if(!currentUser.nickname) showScreen('nickname-screen');
-    else if(!currentUser.element) showScreen('element-screen');
-    else enterLobby();
-  }
-};
 
 /* ================= 昵称 ================= */
 /* 预设头像：emoji + 底色，玩家在昵称页选一个 */
@@ -6510,7 +6797,6 @@ $('btn-logout').onclick = ()=>{
   setCurrent('');
   currentUser = null;
   closeFriends();
-  $('auth-user').value=''; $('auth-pass').value='';
   showScreen('auth-screen');
 };
 
