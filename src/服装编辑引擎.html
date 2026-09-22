@@ -502,6 +502,27 @@
             </div>
           </div>
         </div>
+        <div class="card" data-page-node-id="GameRatioCard0000000001">
+          <div class="card-head" data-page-node-id="GameRatioHead0000000001">
+            <div data-page-node-id="GameRatioHeadT0000000001"><h2 data-page-node-id="GameRatioH2T00000000001">🎮 游戏内占比</h2><div class="card-sub" data-page-node-id="GameRatioSub00000000001">角色高 ÷ 地图背景高 · 全机型一致可调</div></div>
+            <span class="badge violet" id="gRatioTag" data-page-node-id="GameRatioTag0000000001">16%</span>
+          </div>
+          <div class="anim-cfg" data-page-node-id="GameRatioCfg00000000001">
+            <div class="anim-cfg-title">📐 角色占地图比例<span class="hint">游戏里角色相对背景的大小 · 改完切回游戏页立即生效</span></div>
+            <div class="field">
+              <label>占比</label>
+              <input type="range" id="gameRatio" min="0.06" max="0.40" step="0.005" value="0.16">
+              <span class="v" id="gameRatioV">16%</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn tiny" id="gRatioDefault" title="恢复默认 16%">↺ 默认</button>
+              <button class="btn tiny" id="gRatioSmall" title="角色小一些">🧒 10%</button>
+              <button class="btn tiny" id="gRatioMid" title="标准比例">🧍 16%</button>
+              <button class="btn tiny" id="gRatioBig" title="角色大一些">🧔 24%</button>
+            </div>
+            <div class="anim-cfg-title" style="margin-top:8px; opacity:.65;">影响：游戏里自己 + 联机玩家。建筑 / NPC 不受影响（它们在地图编辑引擎里各有归一化尺寸）。走路速度也会按同一比例随世界缩放，各窗口手感一致。</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2328,6 +2349,25 @@ const sessionStorage = _mkStore(window.sessionStorage);
     w('waveSpeed').oninput=e=>{ animCfg.waveSpeed=+e.target.value; w('waveSpeedV').textContent=animCfg.waveSpeed.toFixed(1)+'×'; saveAnimCfg(); };
     w('walkPhase').oninput=e=>{ animCfg.walkPhase=+e.target.value; w('walkPhaseV').textContent=animCfg.walkPhase+'°'; saveAnimCfg(); };
     sync();
+  })();
+
+  /* ====== 🎮 游戏内占比（角色高 / 地图背景高）======
+     游戏页（index.html）读同一个 localStorage 键 engine_char_ratio，跨页实时生效（storage 事件）。
+     相对背景固定 ⇒ 任何窗口 / 机型上角色相对地图的大小都一样，不再是「窗口越小角色越大」。 */
+  (function initGameRatio(){
+    const KEY='engine_char_ratio', DEF=0.16;
+    const load=()=>{ let v=parseFloat(localStorage.getItem(KEY)); if(!isFinite(v)) v=DEF; return Math.min(0.5, Math.max(0.06, v)); };
+    const apply=v=>{
+      try{ localStorage.setItem(KEY, String(v)); }catch(e){}
+      const pct=Math.round(v*100)+'%';
+      $('gameRatio').value=v; $('gameRatioV').textContent=pct; $('gRatioTag').textContent=pct;
+    };
+    $('gameRatio').oninput=e=>apply(+e.target.value);
+    $('gRatioDefault').onclick=()=>apply(DEF);
+    $('gRatioSmall').onclick=()=>apply(0.10);
+    $('gRatioMid').onclick  =()=>apply(0.16);
+    $('gRatioBig').onclick  =()=>apply(0.24);
+    apply(load());   // 初始化：回显当前存储值
   })();
 
   $('btnToggleBody').onclick=()=>{ showBodyInCloth=!showBodyInCloth; stageMgrs.cloth.render(); $('btnToggleBody').textContent=showBodyInCloth?'👁 素体显示':'🚫 素体隐藏'; };

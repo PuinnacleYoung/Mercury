@@ -158,6 +158,12 @@ input{font-family:inherit;outline:none;}
 .hud .info{display:flex;flex-direction:column;gap:2px;}
 .hud .nick{font-size:15px;font-weight:700;color:var(--c-ink);background:rgba(var(--glass-rgb),.82);padding:2px 10px;border-radius:8px;display:inline-block;width:max-content;}
 .hud .badge{font-size:12px;color:#fff;padding:2px 10px;border-radius:8px;width:max-content;font-weight:700;}
+/* 联机状态徽章（名字卡片正下方）：灰点=单机模式，绿点脉冲=已联机 */
+#net-badge{position:absolute;top:76px;left:16px;z-index:10;display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:800;letter-spacing:.5px;background:rgba(var(--glass-rgb),.62);backdrop-filter:blur(12px);border:1px solid var(--glass-border);color:var(--c-sub);box-shadow:0 4px 14px rgba(var(--shadow-rgb),.12);transition:all .25s;}
+#net-badge .dot{width:10px;height:10px;border-radius:50%;background:#b8b3c4;box-shadow:0 0 0 3px rgba(184,179,196,.22);flex:none;}
+#net-badge.online{color:#0c7a5c;background:rgba(126,214,196,.18);border-color:rgba(126,214,196,.45);}
+#net-badge.online .dot{background:#18b884;box-shadow:0 0 0 3px rgba(24,184,132,.22);animation:netPulse 2s infinite;}
+@keyframes netPulse{0%,100%{box-shadow:0 0 0 3px rgba(24,184,132,.22);}50%{box-shadow:0 0 0 6px rgba(24,184,132,.10);}}
 
 /* 左侧竖排 UI */
 .left-ui{position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:12px;}
@@ -188,16 +194,60 @@ input{font-family:inherit;outline:none;}
 .drawer-close:hover{background:rgba(var(--glass-rgb),.92);color:var(--c-ink);}
 .drawer-body{flex:1;overflow-y:auto;padding:16px 20px;}
 
-/* ---------- 联机：聊天框 ---------- */
-#chat-box{position:fixed;left:calc(var(--ui-pad-x) + 0px);bottom:calc(var(--ui-pad-y) + 0px);width:min(360px,70vw);z-index:61;display:flex;flex-direction:column;gap:8px;pointer-events:auto;}
-#chat-log{max-height:180px;overflow-y:auto;background:rgba(var(--glass-rgb),.6);backdrop-filter:blur(14px);border:1px solid var(--glass-border);border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.5;display:flex;flex-direction:column;gap:4px;}
+/* ---------- 联机：聊天抽屉（左侧可折叠） ---------- */
+#chat-box{position:absolute;top:0;left:0;bottom:0;width:min(360px,86vw);background:rgba(var(--glass-rgb),.6);backdrop-filter:blur(30px) saturate(180%);z-index:60;box-shadow:10px 0 40px rgba(var(--shadow-rgb),.18),0 0 0 1px rgba(var(--accent-rgb),.1);transform:translateX(-105%);transition:transform .28s cubic-bezier(.22,.8,.3,1);display:flex;flex-direction:column;border-right:1px solid rgba(var(--accent-rgb),.15);}
+#chat-box.open{transform:translateX(0);}
+#chat-box .chat-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--c-line);}
+#chat-box .chat-head h3{margin:0;font-size:17px;}
+.chat-close{width:34px;height:34px;border-radius:10px;background:rgba(var(--glass-rgb),.72);border:1px solid var(--glass-border);font-size:16px;color:var(--c-sub);cursor:pointer;transition:.2s;}
+.chat-close:hover{background:rgba(var(--glass-rgb),.92);color:var(--c-ink);}
+/* 未联机提示条（默认隐藏，未连接服务器时显示） */
+.chat-offline{display:none;margin:12px 16px 0;padding:9px 12px;border-radius:10px;background:rgba(255,180,60,.14);border:1px solid rgba(255,160,40,.4);color:#b8791a;font-size:12.5px;font-weight:700;cursor:pointer;}
+.chat-offline.show{display:block;}
+.chat-offline:hover{background:rgba(255,180,60,.22);}
+/* 频道页签（世界 / 关卡 / 私聊） */
+.chat-tabs{display:flex;gap:6px;margin:12px 16px 0;background:rgba(var(--glass-rgb),.5);padding:5px;border-radius:999px;border:1px solid rgba(var(--accent-rgb),.1);}
+.chat-tab{flex:1;padding:8px 4px;border-radius:999px;border:0;background:transparent;color:var(--c-sub);font-size:13px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:5px;}
+.chat-tab.on{background:var(--c-accent);color:#fff;box-shadow:0 4px 14px rgba(var(--shadow-rgb),.18);}
+.chat-tab .ct-badge{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#ff4d6b;color:#fff;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;line-height:1;}
+.chat-tab .ct-badge.show{display:inline-flex;}
+/* 私聊目标选择条（私聊页签顶部） */
+.chat-dm-bar{display:none;align-items:center;gap:8px;margin:10px 16px 0;padding:8px 12px;border-radius:12px;background:rgba(var(--glass-rgb),.55);border:1px solid rgba(var(--accent-rgb),.12);}
+.chat-dm-bar.show{display:flex;}
+.chat-dm-bar .dm-ava{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 auto;}
+.chat-dm-bar .dm-name{flex:1;font-size:13px;font-weight:700;color:var(--c-ink);}
+.chat-dm-bar .dm-pick{font-size:12px;color:var(--c-accent);font-weight:700;cursor:pointer;}
+/* 聊天日志 */
+#chat-log{flex:1;overflow-y:auto;margin:12px 16px 0;padding:10px 12px;background:rgba(var(--glass-rgb),.5);border:1px solid var(--glass-border);border-radius:14px;font-size:13px;line-height:1.5;display:flex;flex-direction:column;gap:4px;min-height:160px;}
 #chat-log .c-msg{color:var(--c-ink);word-break:break-all;}
 #chat-log .c-msg .c-nick{font-weight:800;margin-right:6px;}
 #chat-log .c-msg.mine .c-nick{color:var(--c-accent);}
 #chat-log .c-msg.sys{color:var(--c-sub);font-size:12px;}
-.chat-input-row{display:flex;gap:8px;}
+#chat-log .c-msg.dm .c-nick{color:var(--c-accent2);}
+#chat-log .c-empty{color:var(--c-sub);font-size:12px;text-align:center;margin-top:20px;}
+.chat-input-row{display:flex;gap:8px;margin:12px 16px 16px;}
 .chat-input-row input{flex:1;padding:10px 12px;border:2px solid var(--glass-border);border-radius:12px;font-size:14px;background:rgba(var(--glass-rgb),.6);color:var(--c-ink);}
 .chat-input-row button{padding:0 16px;border-radius:12px;background:var(--c-accent);color:#fff;font-weight:700;font-size:14px;border:0;cursor:pointer;}
+.chat-input-row button:disabled{background:var(--c-line);color:var(--c-sub);cursor:not-allowed;}
+
+/* 关卡聊天：头顶气泡（挂在说话玩家头顶，几秒淡出） */
+.chat-bubble{position:absolute;z-index:59;max-width:min(200px,40vw);padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.94);color:#333;font-size:12px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none;word-break:break-all;animation:cb-fade 5s ease forwards;}
+.chat-bubble::after{content:'';position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:rgba(255,255,255,.94);}
+@keyframes cb-fade{0%{opacity:0;transform:translateY(6px);}8%{opacity:1;transform:translateY(0);}70%{opacity:1;}100%{opacity:0;transform:translateY(-8px);}}
+
+/* 设置里：聊天显示开关 */
+.chat-set-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(var(--glass-rgb),.55);border:1px solid rgba(var(--accent-rgb),.1);margin-bottom:10px;}
+.chat-set-item .cs-label{font-size:14px;font-weight:700;color:var(--c-ink);}
+.chat-set-item .cs-desc{font-size:11px;color:var(--c-sub);margin-top:2px;}
+.cs-switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+.cs-switch input{opacity:0;width:0;height:0;}
+.cs-switch .cs-track{position:absolute;inset:0;background:var(--c-line);border-radius:999px;transition:.2s;cursor:pointer;}
+.cs-switch .cs-track::before{content:'';position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 2px 5px rgba(0,0,0,.2);}
+.cs-switch input:checked + .cs-track{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));}
+.cs-switch input:checked + .cs-track::before{transform:translateX(20px);}
+.cs-seg{display:flex;gap:6px;background:rgba(var(--glass-rgb),.5);padding:5px;border-radius:999px;border:1px solid rgba(var(--accent-rgb),.1);}
+.cs-seg-btn{flex:1;padding:8px 4px;border-radius:999px;border:0;background:transparent;color:var(--c-sub);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;}
+.cs-seg-btn.on{background:var(--c-accent);color:#fff;box-shadow:0 4px 12px rgba(var(--shadow-rgb),.18);}
 
 /* ---------- 邮件 / 背包 ---------- */
 .mail-card{background:rgba(var(--glass-rgb),.55);border:1px solid rgba(var(--accent-rgb),.1);border-radius:14px;padding:14px;margin-bottom:10px;}
@@ -300,11 +350,52 @@ input{font-family:inherit;outline:none;}
 .online-label{font-size:13px;color:var(--c-sub);margin:14px 0 10px;}
 .friend-row button{padding:6px 14px;border-radius:999px;background:var(--c-accent);color:#fff;font-size:13px;font-weight:700;flex-shrink:0;}
 .friend-row button.done{background:var(--c-line);color:var(--c-sub);}
+.friend-row button.done.dm-go{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;box-shadow:0 4px 12px rgba(var(--accent-rgb),.3);}
+.friend-row button.done.dm-go:hover{filter:brightness(1.08);}
 .empty-tip{text-align:center;color:var(--c-sub);font-size:13px;padding:24px 0;}
+/* 好友抽屉页签（我的好友 / 好友申请） */
+.fd-tabs{display:flex;gap:6px;margin-bottom:12px;background:rgba(var(--glass-rgb),.5);padding:5px;border-radius:999px;border:1px solid rgba(var(--accent-rgb),.1);}
+.fd-tab{flex:1;padding:8px 6px;border-radius:999px;border:0;background:transparent;color:var(--c-sub);font-size:13px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.fd-tab.on{background:var(--c-accent);color:#fff;box-shadow:0 4px 14px rgba(var(--shadow-rgb),.18);}
+.fd-badge{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff4d6b;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.fd-tab.on .fd-badge{background:#fff;color:#ff4d6b;}
+.req-actions{display:flex;gap:6px;flex-shrink:0;}
+.req-btn{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;border:0;cursor:pointer;flex-shrink:0;}
+.req-btn.ok{background:linear-gradient(135deg,#7ed6c4,#4fb3a4);}
+.req-btn.ok:active{transform:scale(.96);}
+.req-btn.no{background:var(--c-line);color:var(--c-sub);padding:6px 10px;}
+.req-batch-row{display:flex;gap:8px;margin-bottom:10px;}
+.req-batch-row .req-btn{flex:1;padding:9px 0;font-size:13px;}
+/* 左侧「好友」按钮的申请红点（有新申请时提醒，不弹窗） */
+.ui-btn{position:relative;}
+.ui-btn.has-req::after{content:'';position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;background:#ff4d6b;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);}
 
 /* toast */
 #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-80px);z-index:200;background:rgba(44,36,24,.78);backdrop-filter:blur(20px) saturate(180%);color:#fff;padding:11px 22px;border-radius:999px;font-size:14px;transition:transform .3s;pointer-events:none;border:1px solid rgba(var(--accent-rgb),.15);box-shadow:0 8px 30px rgba(0,0,0,.2);}
 #toast.show{transform:translateX(-50%) translateY(0);}
+/* ===== 游戏风格弹窗（替代原生 confirm/prompt，玻璃拟态） ===== */
+.ui-modal-mask{position:fixed;inset:0;z-index:400;background:rgba(58,51,80,.35);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:umFade .18s;}
+@keyframes umFade{from{opacity:0}to{opacity:1}}
+.ui-modal{width:min(84vw,340px);background:rgba(var(--glass-rgb),.94);backdrop-filter:blur(24px) saturate(180%);border-radius:22px;padding:22px 22px 18px;box-shadow:0 18px 50px rgba(var(--shadow-rgb),.28),0 0 0 1px rgba(var(--accent-rgb),.14);animation:umPop .22s cubic-bezier(.22,.8,.3,1);}
+@keyframes umPop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.ui-modal .um-title{font-size:17px;font-weight:800;color:var(--c-ink);margin-bottom:10px;text-align:center;}
+.ui-modal .um-msg{font-size:14px;color:var(--c-sub);line-height:1.6;text-align:center;word-break:break-all;white-space:pre-line;}
+.ui-modal .um-input{width:100%;box-sizing:border-box;margin:12px 0 2px;padding:11px 14px;border-radius:12px;border:1.5px solid rgba(var(--accent-rgb),.25);background:rgba(255,255,255,.7);font-size:15px;color:var(--c-ink);outline:none;text-align:center;font-family:inherit;}
+.ui-modal .um-input:focus{border-color:var(--c-accent);}
+.ui-modal .um-input.err{border-color:#e56a6a;animation:umShake .3s;}
+@keyframes umShake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.ui-modal .um-btns{display:flex;gap:10px;margin-top:16px;}
+.ui-modal .um-btn{flex:1;padding:11px 0;border-radius:999px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:.15s;font-family:inherit;}
+.ui-modal .um-btn.cancel{background:rgba(var(--glass-rgb),.7);color:var(--c-sub);border:1px solid rgba(var(--accent-rgb),.18);}
+.ui-modal .um-btn.ok{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;box-shadow:0 6px 16px rgba(var(--accent-rgb),.35);}
+.ui-modal .um-btn.ok:active{transform:scale(.97);}
+/* 列表选择（私聊对象等） */
+.ui-modal .um-list{max-height:240px;overflow-y:auto;margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.ui-modal .um-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(var(--glass-rgb),.6);border:1px solid rgba(var(--accent-rgb),.12);cursor:pointer;transition:.15s;text-align:left;}
+.ui-modal .um-item:hover{background:rgba(var(--accent-rgb),.16);border-color:var(--c-accent);}
+.ui-modal .um-item .um-item-ava{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto;}
+.ui-modal .um-item .um-item-label{flex:1;font-size:14px;font-weight:700;color:var(--c-ink);}
+.ui-modal .um-item .um-item-sub{font-size:11px;color:var(--c-sub);font-weight:400;}
 
 /* ---------- 建筑名字浮标 ---------- */
 
@@ -382,6 +473,66 @@ input{font-family:inherit;outline:none;}
 .reading .r-line{display:block;margin-bottom:10px;}
 .reading b{color:#a78cd9;}
 .reading .r-verdict{color:#a8c8a0;}
+
+/* ---------- 二合小卖部（五宝零食铺玩法屏） ---------- */
+#mergeshop-screen{background:radial-gradient(circle at 50% 16%,#3a3350 0%,#2b2638 55%,#1c1a24 100%);color:#ece8f4;}
+.ms-wrap{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:radial-gradient(circle at 50% 12%,#40395c 0%,#2b2638 55%,#1c1a24 100%);}
+.ms-head{display:flex;align-items:center;justify-content:space-between;padding:clamp(12px,1.8vh,22px) clamp(18px,3vw,34px);border-bottom:1px solid rgba(var(--accent-rgb),.15);gap:12px;flex-shrink:0;}
+.ms-head h2{margin:0;font-size:clamp(18px,3.4vh,30px);letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.ms-head h2 .shop{color:#f5a623;}
+.ms-stats{display:flex;align-items:center;gap:clamp(12px,2vw,24px);font-size:clamp(13px,2.2vh,18px);font-weight:700;}
+.ms-stats .s{display:flex;align-items:center;gap:6px;}
+.ms-stats .s .v{color:#ffd166;min-width:30px;}
+.ms-stats .s.energy .v{color:#56ccf2;}
+.ms-back{padding:clamp(8px,1.2vh,14px) clamp(16px,2.4vw,24px);border-radius:999px;background:rgba(var(--glass-rgb),.12);color:#fff;font-size:clamp(13px,2vh,17px);font-weight:700;transition:.15s;border:0;cursor:pointer;white-space:nowrap;}
+.ms-back:active{transform:scale(.95);}
+.ms-body{flex:1;display:flex;overflow:hidden;min-height:0;}
+.ms-order{width:clamp(230px,24vw,360px);min-width:230px;background:rgba(var(--glass-rgb),.04);border-right:1px solid rgba(var(--accent-rgb),.12);display:flex;flex-direction:column;padding:clamp(12px,1.8vh,20px);gap:10px;flex-shrink:0;}
+.ms-order h3{font-size:clamp(13px,2vh,17px);font-weight:800;display:flex;align-items:center;gap:8px;margin:0;}
+.ms-order h3 .ms-refresh{margin-left:auto;font-size:clamp(10px,1.6vh,13px);font-weight:600;color:#9a93ad;cursor:pointer;padding:4px 10px;border:1px solid rgba(var(--accent-rgb),.15);border-radius:8px;background:transparent;}
+.ms-order h3 .ms-refresh:active{background:rgba(var(--glass-rgb),.12);}
+.ms-order-list{display:flex;flex-direction:column;gap:clamp(8px,1.4vh,12px);overflow-y:auto;flex:1;}
+.ms-order-card{background:rgba(var(--glass-rgb),.07);border:1px solid rgba(var(--accent-rgb),.15);border-radius:14px;padding:clamp(10px,1.6vh,14px);display:flex;flex-direction:column;gap:clamp(7px,1.1vh,10px);}
+.ms-order-card .mo-head{display:flex;align-items:center;gap:8px;font-size:clamp(13px,2vh,16px);font-weight:700;}
+.ms-order-card .mo-type{font-size:clamp(10px,1.6vh,13px);font-weight:800;padding:3px 8px;border-radius:6px;}
+.mo-type.normal{background:rgba(86,204,242,.15);color:#56ccf2;}
+.mo-type.vip{background:rgba(245,166,35,.18);color:#f5a623;}
+.mo-type.rush{background:rgba(235,87,87,.18);color:#eb5757;}
+.ms-order-card .mo-ask{display:flex;flex-wrap:wrap;gap:6px;}
+.ms-order-card .mo-req{display:flex;align-items:center;gap:5px;background:rgba(var(--glass-rgb),.12);border:1px solid rgba(var(--accent-rgb),.12);border-radius:9px;padding:5px 8px;font-size:clamp(11px,1.8vh,14px);font-weight:700;}
+.ms-order-card .mo-req.done{background:rgba(111,207,151,.16);border-color:#6fcf97;}
+.ms-order-card .mo-req .have{color:#6fcf97;}
+.ms-order-card .mo-req .need{color:#9a93ad;}
+.ms-order-card .mo-text{font-size:clamp(11px,1.8vh,13px);color:#9a93ad;line-height:1.5;}
+.ms-order-card .mo-reward{font-size:clamp(11px,1.8vh,14px);color:#ffd166;font-weight:700;}
+.ms-order-card .mo-go{padding:clamp(7px,1.2vh,11px);border-radius:10px;border:0;font-size:clamp(13px,2vh,16px);font-weight:800;background:rgba(var(--glass-rgb),.12);color:#9a93ad;cursor:not-allowed;transition:.15s;font-family:inherit;}
+.ms-order-card .mo-go.ready{background:#6fcf97;color:#1c1a24;cursor:pointer;}
+.ms-order-card .mo-go.ready:active{transform:scale(.97);}
+.ms-board{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.ms-board-scroll{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:clamp(12px,2vh,24px);min-height:0;}
+.ms-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));gap:clamp(5px,1vh,10px);background:rgba(var(--glass-rgb),.06);border:1px solid rgba(var(--accent-rgb),.15);border-radius:16px;padding:clamp(10px,1.8vh,18px);width:100%;height:100%;max-width:calc((100vh - 96px) * 8 / 7);box-sizing:border-box;}
+.ms-cell{background:rgba(var(--glass-rgb),.10);border-radius:11px;border:1px solid rgba(var(--accent-rgb),.12);position:relative;display:flex;align-items:center;justify-content:center;transition:background .12s;aspect-ratio:1;min-width:0;min-height:0;}
+.ms-cell.gen{background:linear-gradient(135deg,#4a4168,#332e46);border-color:#6a5d95;}
+.ms-cell.hover{background:rgba(var(--glass-rgb),.22);}
+.ms-cell.ghost{background:rgba(245,166,35,.12);border:2px dashed #f5a623;}
+.ms-item{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:grab;position:relative;border:2px solid transparent;transition:transform .1s;box-sizing:border-box;min-width:0;min-height:0;}
+.ms-item .em{font-size:clamp(20px,4.6vh,44px);line-height:1;}
+.ms-item .tier{font-size:clamp(9px,1.5vh,13px);font-weight:800;color:#1c1a24;background:#f5a623;border-radius:5px;padding:1px 5px;position:absolute;top:-6px;right:-4px;}
+.ms-item .nm{font-size:clamp(8px,1.4vh,11px);color:#9a93ad;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;}
+.ms-item.dragging{opacity:.5;transform:scale(.9);}
+.ms-item.mergeable{border-color:#f5a623;animation:msPulse .8s ease infinite;}
+@keyframes msPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4);}50%{box-shadow:0 0 0 6px rgba(245,166,35,0);}}
+.ms-item.t1{border-color:#8a8498;}.ms-item.t2{border-color:#7db97f;}.ms-item.t3{border-color:#56ccf2;}.ms-item.t4{border-color:#9b7df0;}.ms-item.t5{border-color:#f5a623;}.ms-item.t6{border-color:#eb5757;}.ms-item.t7{border-color:#ff6bd6;}.ms-item.t8{border-color:#ffd166;}.ms-item.t9{border-color:#6fcf97;}
+.ms-gen{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:linear-gradient(160deg,#4a4168,#332e46);border:2px solid #6a5d95;box-sizing:border-box;min-width:0;min-height:0;}
+.ms-gen .em{font-size:clamp(20px,4.6vh,44px);}
+.ms-gen .gn{font-size:clamp(9px,1.5vh,12px);font-weight:800;color:#ece8f4;}
+.ms-gen .gc{font-size:clamp(8px,1.3vh,10px);color:#9a93ad;}
+.ms-gen .cd{position:absolute;inset:0;border-radius:10px;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:clamp(14px,2.4vh,20px);font-weight:800;color:#ffd166;}
+.ms-hint{height:clamp(40px,6vh,60px);display:flex;align-items:center;justify-content:center;font-size:clamp(11px,1.8vh,14px);color:#9a93ad;background:rgba(var(--glass-rgb),.05);border-top:1px solid rgba(var(--accent-rgb),.12);gap:clamp(12px,2vw,24px);flex-shrink:0;flex-wrap:wrap;}
+.ms-float{position:fixed;font-size:20px;font-weight:800;color:#ffd166;z-index:99;pointer-events:none;animation:msFloat 1s ease forwards;}
+@keyframes msFloat{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-46px);}}
+/* 玩法全屏时隐藏 PWA 安装浮窗（z-index 99999 会叠在棋盘上） */
+body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 
 /* ---------- 名字卡片（左上角 HUD，可点击） ---------- */
 .hud.clickable{cursor:pointer;padding:6px 12px 6px 6px;border-radius:18px;transition:all .2s;background:rgba(var(--glass-rgb),.4);backdrop-filter:blur(12px);border:1px solid rgba(var(--accent-rgb),.1);}
@@ -605,6 +756,8 @@ input{font-family:inherit;outline:none;}
 #runtime-hud .hud .avatar{width:var(--ui-hud-size);height:var(--ui-hud-size);font-size:calc(18px * var(--ui-scale));}
 #runtime-hud .hud .nick{font-size:calc(15px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
 #runtime-hud .hud .badge{font-size:calc(12px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+#runtime-hud #net-badge{top:calc(var(--ui-pad-y) + var(--ui-hud-size) + 20px);left:var(--ui-pad-x);font-size:calc(12px * var(--ui-scale));padding:calc(5px * var(--ui-scale)) calc(12px * var(--ui-scale));}
+#runtime-hud #net-badge .dot{width:calc(9px * var(--ui-scale));height:calc(9px * var(--ui-scale));}
 #runtime-hud .hud-more{font-size:calc(20px * var(--ui-scale));}
 
 #runtime-hud .top-right-ui{top:var(--ui-pad-y);right:var(--ui-pad-x);gap:var(--ui-hud-gap);}
@@ -984,6 +1137,39 @@ input{font-family:inherit;outline:none;}
   </div>
 </div>
 
+<!-- ===== 二合小卖部（五宝零食铺玩法屏，从地图地块触发进入） ===== -->
+<div id="mergeshop-screen" class="screen hidden">
+  <div class="ms-wrap">
+    <div class="ms-head">
+      <h2>🐹 <span class="shop">五宝的小卖部</span></h2>
+      <div class="ms-stats">
+        <span class="s energy"><span class="ico">⚡</span><span class="v" id="ms-energy">100</span><span>/100</span></span>
+        <span class="s"><span class="ico">🥫</span><span class="v" id="ms-money">0</span></span>
+        <span class="s"><span class="ico">⭐</span><span class="v" id="ms-exp">0</span> Lv.<span id="ms-lv">1</span></span>
+      </div>
+      <button class="ms-back" id="ms-back">← 返回地图</button>
+    </div>
+    <div class="ms-body">
+      <!-- 左：订单列 -->
+      <div class="ms-order">
+        <h3>📋 客户订单 <span class="ms-refresh" id="ms-refresh">🔄 刷新</span></h3>
+        <div class="ms-order-list" id="ms-order-list"></div>
+      </div>
+      <!-- 右：合成棋盘 -->
+      <div class="ms-board">
+        <div class="ms-board-scroll">
+          <div class="ms-grid" id="ms-grid"></div>
+        </div>
+        <div class="ms-hint">
+          <span>👆 点<b>生成器</b>产物品（耗 1 体力）</span>
+          <span>🖐 拖<b>两个同阶</b>物品合成升阶</span>
+          <span>📦 凑齐订单点<b>交付</b>换罐头</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast" data-page-node-id="KdP6Wq58vKBNzCCWV3HDCj"></div>
 
 <!-- ===== 名字卡片详情弹层 ===== -->
@@ -1088,6 +1274,8 @@ input{font-family:inherit;outline:none;}
     <span class="hud-more">›</span>
   </div>
 
+  <div id="net-badge" title="联机状态"><span class="dot"></span><span id="net-badge-text">联机检测中…</span></div>
+
   <div class="top-right-ui">
     <button class="coin-hud multi" id="btn-coins" title="货币">
       <span class="cur-item"><span class="ci">🪙</span><span id="hud-coin">0</span></span>
@@ -1099,6 +1287,7 @@ input{font-family:inherit;outline:none;}
   </div>
 
   <div class="left-ui" id="runtime-left-ui" data-page-node-id="GkwX6q7ttpNJdkC5wF3BRw">
+    <button class="ui-btn" id="btn-chat" title="聊天（世界/关卡/私聊）"><span class="ico">💬</span>聊天</button>
     <button class="ui-btn" id="btn-friends" data-page-node-id="GVhNRQUY0h4zcncW7mQIG0"><span class="ico" data-page-node-id="CtAukaIBZDjANOzzXqWZID">👥</span>好友</button>
     <button class="ui-btn" id="btn-mail" title="邮件"><span class="ico">✉️</span>邮件</button>
     <button class="ui-btn" id="btn-logout" data-page-node-id="mEGmeO4RSRafTlZn4sYQvE"><span class="ico" data-page-node-id="lezJKolZv4NWL6QwCXCDjg">🚪</span>退出</button>
@@ -1120,9 +1309,23 @@ input{font-family:inherit;outline:none;}
         <input id="friend-input" placeholder="输入对方账号名添加" autocomplete="off" data-page-node-id="FiwGDHBUd5GGn5osDvDXX4">
         <button id="friend-add" data-page-node-id="9Dh8jkvYxlwo3a3nttNM1E">添加</button>
       </div>
+      <!-- 页签：我的好友 / 好友申请（申请不再弹窗打断，收进来慢慢处理，支持批量） -->
+      <div class="fd-tabs">
+        <button class="fd-tab on" id="fd-tab-friends">👥 我的好友</button>
+        <button class="fd-tab" id="fd-tab-reqs">📨 好友申请<span class="fd-badge" id="fd-req-badge" style="display:none">0</span></button>
+      </div>
       <div id="friend-list" data-page-node-id="6HzsM6TrWo7cSY1g498Vwh"></div>
-      <div class="online-label" data-page-node-id="TB4gICzft5rsDANYzg4DE3">—— 在线玩家（模拟数据） ——</div>
-      <div id="online-list" data-page-node-id="sEm1JSqzOgWywsoHVXXFmC"></div>
+      <div id="req-sec" style="display:none">
+        <div class="req-batch-row" id="req-batch-row" style="display:none">
+          <button class="req-btn ok" id="req-accept-all">✅ 全部接受</button>
+          <button class="req-btn no" id="req-reject-all">🗑 全部拒绝</button>
+        </div>
+        <div id="req-list"></div>
+      </div>
+      <div id="online-sec">
+        <div class="online-label" data-page-node-id="TB4gICzft5rsDANYzg4DE3">—— 在线玩家（模拟数据） ——</div>
+        <div id="online-list" data-page-node-id="sEm1JSqzOgWywsoHVXXFmC"></div>
+      </div>
     </div>
   </div>
 
@@ -1154,13 +1357,49 @@ input{font-family:inherit;outline:none;}
         <div class="set-label" data-page-node-id="SetDrawer007">🎨 界面配色</div>
         <div class="theme-grid" id="theme-grid" data-page-node-id="SetDrawer008"></div>
       </div>
+      <div class="set-section">
+        <div class="set-label">💬 聊天显示</div>
+        <div class="chat-set-row">
+          <div class="chat-set-item">
+            <div class="cs-label">左下角自动显示</div>
+            <div class="cs-desc">新消息是否自动出现在页面左下角方便观看</div>
+            <label class="cs-switch">
+              <input type="checkbox" id="chat-set-autopop">
+              <span class="cs-track"></span>
+            </label>
+          </div>
+        </div>
+        <div class="chat-set-row" id="chat-show-row">
+          <div class="set-label" style="margin-bottom:8px">显示哪个频道</div>
+          <div class="cs-seg">
+            <button class="cs-seg-btn" data-v="world">🌍 世界</button>
+            <button class="cs-seg-btn" data-v="level">🗺 关卡</button>
+            <button class="cs-seg-btn" data-v="both">两者都要</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
 </div>
 
-<!-- 大厅/关卡聊天框（联机） -->
+<!-- 聊天抽屉（左侧可折叠）：世界 / 关卡 / 好友私聊 三频道 -->
 <div id="chat-box" class="hidden">
+  <div class="chat-head">
+    <h3>💬 聊天</h3>
+    <button class="chat-close" id="chat-close">✕</button>
+  </div>
+  <div class="chat-offline" id="chat-offline">⚠️ 未连接服务器，聊天暂不可用（点击重连）</div>
+  <div class="chat-tabs">
+    <button class="chat-tab on" id="chat-tab-world" data-ch="world">🌍 世界</button>
+    <button class="chat-tab" id="chat-tab-level" data-ch="level">🗺 关卡<span class="ct-badge" id="ct-badge-level">0</span></button>
+    <button class="chat-tab" id="chat-tab-dm" data-ch="dm">💌 私聊<span class="ct-badge" id="ct-badge-dm">0</span></button>
+  </div>
+  <div class="chat-dm-bar" id="chat-dm-bar">
+    <span class="dm-ava" id="dm-ava">👤</span>
+    <span class="dm-name" id="dm-name">选择一位好友私聊</span>
+    <span class="dm-pick" id="dm-pick">切换 ›</span>
+  </div>
   <div id="chat-log"></div>
   <div class="chat-input-row">
     <input id="chat-input" placeholder="说点什么…（回车发送）" maxlength="200" autocomplete="off">
@@ -1239,7 +1478,7 @@ setTimeout(()=>{
     const ov = document.getElementById('landscape-overlay');
     const stuck = !!(ov && !ov.classList.contains('hidden'));
     if(stuck) ov.classList.add('hidden');
-    const ids = ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'];
+    const ids = ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen'];
     const any = ids.some(function(id){ const el=document.getElementById(id); return el && !el.classList.contains('hidden'); });
     if(any && !stuck) return;                       // 一切正常，别打扰陛下
     if(!any){
@@ -1618,6 +1857,26 @@ const CAT_ICONS = {
 /* ================= 素材引擎同步（读取 engine_body_v4 / engine_lib_v3 / engine_anim_cfg） ================= */
 const ENG_LS = { body:'engine_body_v4', lib:'engine_lib_v3', anim:'engine_anim_cfg' };
 const ENG_BASE_H = 100;   // 引擎角色换算到游戏后的基准高度（约 100px，原色块小人同尺寸）
+
+/* ---- 角色游戏内占比（相对地图背景固定）----
+   角色（自己 + 联机玩家）高度 = 地图背景高度 × charRatio。
+   以前写死 100 世界像素，窗口一大角色就显小、窗口一小角色就显大 —— 占比在不同机型不一致。
+   现在跟建筑 / NPC 一样用归一化比例：任何窗口尺寸下角色相对背景的大小都一样。
+   参数在《服装编辑引擎 · 素体工坊 · 🎮 游戏内占比》曝光，存 localStorage.engine_char_ratio，
+   编辑器一改、游戏页实时生效（storage 事件跨页通知）。 */
+const CHAR_RATIO_KEY = 'engine_char_ratio';
+const CHAR_RATIO_DEFAULT = 0.16;
+let _charRatioCache = null;
+function charRatioOf(){
+  if(_charRatioCache != null) return _charRatioCache;
+  let v = parseFloat(localStorage.getItem(CHAR_RATIO_KEY));
+  if(!isFinite(v)) v = CHAR_RATIO_DEFAULT;
+  v = Math.min(0.5, Math.max(0.06, v));
+  _charRatioCache = v;
+  return v;
+}
+function charScaleOf(worldH){ return charRatioOf() * worldH / ENG_BASE_H; }  // 传给 drawCharacter 的 scale
+window.addEventListener('storage', e=>{ if(!e.key || e.key === CHAR_RATIO_KEY) _charRatioCache = null; });
 
 /* ================= NPC 引擎同步（读取 engine_npcs_v1） ================= */
 const LS_NPCS = 'engine_npcs_v1';
@@ -2149,15 +2408,76 @@ function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800);
 }
+/* 游戏风格弹窗（替代原生 confirm/prompt，避免系统弹窗破坏氛围）
+   uiModal({title, msg, input:{value,maxlen,placeholder}, okText, cancelText})
+   → Promise<true/false>（确认框）或 Promise<string/null>（带输入框） */
+function uiModal(opts){
+  opts = opts || {};
+  return new Promise(resolve=>{
+    const mask = document.createElement('div');
+    mask.className = 'ui-modal-mask';
+    const hasInput = !!opts.input;
+    const hasList = Array.isArray(opts.list) && opts.list.length > 0;
+    mask.innerHTML = `
+      <div class="ui-modal">
+        <div class="um-title"></div>
+        ${opts.msg ? '<div class="um-msg"></div>' : ''}
+        ${hasInput ? '<input class="um-input">' : ''}
+        ${hasList ? '<div class="um-list"></div>' : ''}
+        <div class="um-btns"><button class="um-btn cancel"></button><button class="um-btn ok"></button></div>
+      </div>`;
+    mask.querySelector('.um-title').textContent = opts.title || '';
+    if(opts.msg) mask.querySelector('.um-msg').textContent = opts.msg;
+    const cancelBtn = mask.querySelector('.um-btn.cancel'), okBtn = mask.querySelector('.um-btn.ok');
+    cancelBtn.textContent = opts.cancelText || '取消';
+    okBtn.textContent = opts.okText || '确定';
+    // 列表模式：点列表项即选中并关闭；隐藏确定按钮
+    if(hasList){
+      okBtn.style.display = 'none';
+      const listEl = mask.querySelector('.um-list');
+      opts.list.forEach(it=>{
+        const item = document.createElement('div');
+        item.className = 'um-item';
+        item.innerHTML = `
+          <div class="um-item-ava" style="background:${(it.avatar&&it.avatar.bg)||'transparent'}">${(it.avatar&&it.avatar.em)||it.icon||'👤'}</div>
+          <div class="um-item-label">${it.label||it.key}</div>
+          ${it.sub ? `<div class="um-item-sub">${it.sub}</div>` : ''}`;
+        item.onclick = ()=>close(it.key);
+        listEl.appendChild(item);
+      });
+    }
+    const close = val => { mask.remove(); resolve(val); };
+    const doOk = ()=>{
+      if(hasInput){
+        const inp = mask.querySelector('.um-input');
+        const v = inp.value.trim();
+        if(!v){ inp.classList.add('err'); setTimeout(()=>inp.classList.remove('err'), 400); return; }
+        close(v);
+      } else close(true);
+    };
+    cancelBtn.onclick = ()=>close(hasInput || hasList ? null : false);
+    okBtn.onclick = doOk;
+    mask.addEventListener('click', e=>{ if(e.target===mask) close(hasInput || hasList ? null : false); });
+    if(hasInput){
+      const inp = mask.querySelector('.um-input');
+      inp.maxLength = (opts.input.maxlen||8);
+      inp.value = opts.input.value || '';
+      inp.placeholder = opts.input.placeholder || '';
+      inp.onkeydown = e=>{ if(e.key==='Enter') doOk(); };
+      setTimeout(()=>inp.focus(), 60);
+    }
+    document.body.appendChild(mask);
+  });
+}
 function showScreen(id){
-  ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen'].forEach(s=>$(s).classList.add('hidden'));
+  ['auth-screen','nickname-screen','element-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen'].forEach(s=>$(s).classList.add('hidden'));
   $(id).classList.remove('hidden');
   /* 大厅与关卡共用同一份 HUD（名字卡片 / 货币 / 左侧功能栏 / 抽屉）。
      其它全屏面板（衣橱 / 塔罗 / 登录 / 中枢）一律收起，避免"UI 被吞"或"面板上糊一层按钮"。 */
   const hud = $('runtime-hud');
   if(hud) hud.classList.toggle('hidden', id!=='map-screen');
   const chatbox = $('chat-box');
-  if(chatbox) chatbox.classList.toggle('hidden', id!=='map-screen');
+  if(chatbox){ chatbox.classList.toggle('hidden', id!=='map-screen'); if(id!=='map-screen') chatbox.classList.remove('open'); }
   if(id!=='map-screen'){ try{ closeFriends(); closeSettings(); closeMail(); closeBag(); }catch(e){} }
   if(id==='admin-hub-screen') buildAdminHub();
   if(id==='nickname-screen'){
@@ -2174,6 +2494,7 @@ function showScreen(id){
       Promise.resolve(refreshTarotEditor()).then(go).catch(go);
     } else go();
   }
+  if(id==='mergeshop-screen'){ msInit(); }
   // 地图屏切走时暂停地图渲染（位置保留，面板关掉可原样回到地图）
   try{
     if(id!=='map-screen' && mapRun){ mapRun.active = false; pauseMapVideo(); }   // 🎬 离开地图就暂停视频，别在后台偷偷解码
@@ -2416,7 +2737,7 @@ function darken(hex, amt){
 }
 
 /* （旧大厅 canvas 已下线，这里不再有 lobby 运行时状态） */
-const MAP_SPEED  = 230; // 地图内行走速度 px/s
+const MAP_SPEED  = 230; // 地图内行走速度：已改为「0.32 × 世界高度 / 秒」（见 stepMap），此常量仅留作换算参考（720p 时的像素速度）
 let loopId = 0;
 
 /* ================= 世界视口（全机型：把可玩区缩进 UI 安全区） =================
@@ -2472,7 +2793,7 @@ let mapRun = {
 function refreshHud(){
   if(!currentUser) return;
   const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
-  const nick = currentUser.nickname || '旅行者';
+  const nick = currentUser.nickname || currentUser.username;   // 昵称缺失时回退账号名
   $('hud-nick').textContent = nick;
   const av = avatarById(currentUser.avatar);          // 预设头像
   $('hud-avatar').style.background = av.bg;
@@ -2493,7 +2814,7 @@ function netLogin(){
   Net.connect().then(()=>{
     Net.login({
       username: currentUser.username,
-      nickname: currentUser.nickname || '旅行者',
+      nickname: currentUser.nickname || currentUser.username,   // 昵称缺失时用账号名，绝不用「旅行者」占位
       avatar: currentUser.avatar || 'fox',
       element: currentUser.element || 'earth',
       outfit: currentUser.outfit || {},
@@ -2501,6 +2822,7 @@ function netLogin(){
     });
     _netLoggedIn = true;
     Net.mailList();
+    refreshChatNet();
   }).catch(()=>{ /* 服务器未启动时静默降级为单机 */ });
 }
 function netLogout(){
@@ -2508,39 +2830,65 @@ function netLogout(){
   _netLoggedIn = false;
   Net.close();
 }
-/* 每帧/移动时上报自己位置（节流：每 50ms 一次，约 20 次/秒） */
+/* 联机状态徽章：绿=已联机（显示在线人数），灰=单机模式（title 里带目标地址方便排查） */
+function updateNetBadge(online, n){
+  const b = $('net-badge'); if(!b) return;
+  const t = $('net-badge-text');
+  if(online){
+    b.classList.add('online');
+    if(t) t.textContent = '联机中 · ' + (n || 1) + ' 人在线';
+    b.title = '已连接 ' + (window.Net ? Net.url() : '');
+  } else {
+    b.classList.remove('online');
+    if(t) t.textContent = '单机模式';
+    b.title = window.Net ? ('未连接（目标 ' + Net.url() + '）· 每 5 秒自动重试') : '联机模块未加载';
+  }
+}
+/* 断线自动重连：只要在游戏中（已登录账号），每 5 秒检测一次，掉线或当初没连上都重试 */
+setInterval(()=>{
+  try{
+    if(window.Net && currentUser && currentUser.username && !Net.connected()) netLogin();
+  }catch(e){}
+}, 5000);
+/* 每帧/移动时上报自己位置（节流：每 50ms 一次，约 20 次/秒）
+   ⚑ 上报 0~1 归一化坐标（相对地图背景），两个窗口尺寸不同的浏览器才能对上同一位置 */
 let _netLastMove = 0;
 function netTick(){
   if(!_netLoggedIn || !window.Net || !mapRun.active) return;
   const now = performance.now();
   if(now - _netLastMove < 50) return;
   _netLastMove = now;
-  Net.move(mapRun.px, mapRun.py, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, mapState.currentId||'lobby');
+  const _w = mapRun.w || 1, _h = mapRun.h || 1;
+  Net.move(mapRun.px/_w, mapRun.py/_h, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, mapState.currentId||'lobby');
 }
-/* 渲染远程玩家（只画最近的 8 个，且同图） */
+/* 渲染远程玩家（只画最近的 8 个，且同图）
+   ⚑ 网络坐标是 0~1 归一化（相对地图背景），与窗口大小无关 ——
+   以前直接传世界画布像素，两个窗口尺寸不同的浏览器坐标对不上，互相看见的位置全是错的。 */
 function drawRemotePlayers(c, W, H){
   if(!window.Net || !window.Net.connected) return;
   const players = Net.remotePlayers();
   const me = mapState.currentId || 'lobby';
+  const cs = charScaleOf(H);   // 与本地角色同一占比（相对地图背景固定）
   // 收集同图玩家 + 距离，排序取最近 8 个
   const arr = [];
   for(const uname in players){
     const p = players[uname];
     if(p.mapId !== me) continue;
     if(Date.now() - p.lastSeen > 5000) continue;   // 超 5 秒没消息视为掉线
-    const dx = p.x - mapRun.px, dy = p.y - mapRun.py;
-    arr.push({ p, dist: dx*dx + dy*dy });
+    const sx = p.x*W, sy = p.y*H;                  // 归一化 → 当前世界画布
+    const dx = sx - mapRun.px, dy = sy - mapRun.py;
+    arr.push({ p, sx, sy, dist: dx*dx + dy*dy });
   }
   arr.sort((a,b)=>a.dist-b.dist);
   const near = arr.slice(0, 8);
-  near.forEach(({p})=>{
-    drawCharacter(c, p.x, p.y, p.outfit || {}, p.facing||1, p.walk||0, 1.0);
+  near.forEach(({p, sx, sy})=>{
+    drawCharacter(c, sx, sy, p.outfit || {}, p.facing||1, p.walk||0, cs);
     // 头顶名字牌（暖金色，跟玩家自己一致，但略淡区分）
     const nick = p.nick || '玩家';
     const lb = Object.assign({}, mapLb(ensureMaps().maps[mapState.currentId]||{}), { dir:'h' });
     const fs = lb.fs || 12;
     const sz = namePlateSize(c, nick, lb, fs);
-    drawNamePlate(c, nick, lb, { fs, cx:p.x, cy:(p.y - ENG_BASE_H*1.14) - sz.h/2 });
+    drawNamePlate(c, nick, lb, { fs, cx:sx, cy:(sy - ENG_BASE_H*cs*1.14) - sz.h/2 });
   });
 }
 
@@ -2550,6 +2898,8 @@ function enterLobby(){
   ensureBody();
   refreshHud();
   refreshProfile();          // 载入/建档 PlayerProfile，并刷新三货币 HUD
+  loadFriendReqs();          // 恢复暂存的好友申请（红点提醒）
+  updateReqBadge();
   netLogin();                // 联机：登录服务器，广播自己
   stopLoop();
   let entryId = null;
@@ -2881,10 +3231,31 @@ function roundRect(ctx,x,y,w,h,r){
 
 /* ================= 衣橱 ================= */
 let curCat = 'hair';
-function openFriends(){ $('friends-drawer').classList.add('open'); buildFriends(); }
+function openFriends(){
+  $('friends-drawer').classList.add('open');
+  loadFriendReqs();          // 恢复本地暂存的申请（刷新页面也不丢）
+  switchFdTab('friends');    // 每次打开回到「我的好友」页签
+  updateReqBadge();
+  buildFriends();
+}
 function closeFriends(){ $('friends-drawer').classList.remove('open'); }
-function openSettings(){ buildThemeGrid(); $('settings-drawer').classList.add('open'); }
+function openSettings(){ buildThemeGrid(); buildChatSettings(); $('settings-drawer').classList.add('open'); }
 function closeSettings(){ $('settings-drawer').classList.remove('open'); }
+/* 聊天显示设置：左下角自动弹开关 + 显示哪个频道（世界/关卡/两者） */
+function buildChatSettings(){
+  const auto = $('chat-set-autopop'); if(!auto) return;
+  auto.checked = chatAutoPop();
+  document.querySelectorAll('.cs-seg-btn').forEach(b=>b.classList.toggle('on', b.dataset.v === chatShowWhich()));
+}
+$('chat-set-autopop').addEventListener('change', e=>{
+  localStorage.setItem(LS_CHAT_AUTOPOP, e.target.checked ? '1' : '0');
+});
+document.querySelectorAll('.cs-seg-btn').forEach(b=>{
+  b.onclick = ()=>{
+    localStorage.setItem(LS_CHAT_SHOW, b.dataset.v);
+    buildChatSettings();
+  };
+});
 $('btn-wardrobe').onclick = ()=>{
   wbZoneFilter = null;                          // 左侧入口 = 全部衣橱，不按商店分区过滤
   wbTitle = '';                                 // 标题回归朴素「衣橱」
@@ -3203,6 +3574,10 @@ function initPreviewBg(){
 /* ================= 好友 ================= */
 function buildFriends(){
   const list = $('friend-list'); list.innerHTML='';
+  updateReqBadge();   // 申请数变化时同步页签角标 + 好友按钮红点
+  // 面板标签动态化：连上服务器才叫「在线玩家」，没连上明确提示
+  const _onlLabel = document.querySelector('#friends-drawer .online-label');
+  if(_onlLabel) _onlLabel.textContent = (window.Net && Net.connected()) ? '—— 在线玩家 ——' : '—— 未联机 · 显示模拟数据 ——';
   // 联机：好友关系存服务器，用 Net.self().friends 渲染
   const friends = (window.Net && Net.self() && Net.self().friends) || currentUser.friends || [];
   const onlineNow = (window.Net && Net.connected()) ? onlineUsernames() : [];
@@ -3215,7 +3590,8 @@ function buildFriends(){
     const row=document.createElement('div'); row.className='friend-row';
     row.innerHTML=`<div class="f-ava" style="background:${av.bg}">${av.em}</div>
       <div style="flex:1"><div class="f-name">${info.nickname}</div><div class="f-meta">五行·${e.name}${online?' · 🟢在线':''}</div></div>
-      <button class="done">好友</button>`;
+      <button class="done dm-go">💌 私聊</button>`;
+    row.querySelector('.dm-go').onclick = ()=>{ startDmWith(uname); };
     list.appendChild(row);
   });
   // 在线玩家（可加好友）
@@ -3285,31 +3661,274 @@ function addFriend(f){
   toast('已添加好友 '+f.nickname);
 }
 
-/* ================= 联机：聊天 / 邮件 / 背包 ================= */
-function openChat(){ $('chat-box').classList.remove('hidden'); }
-function closeChat(){ $('chat-box').classList.add('hidden'); }
-function appendChat(msg, cls){
-  const log = $('chat-log');
-  const d = document.createElement('div');
-  d.className = 'c-msg' + (cls ? ' ' + cls : '');
-  d.textContent = msg;
-  log.appendChild(d);
+/* ================= 好友申请（页签式 · 不弹窗 · 支持批量） =================
+   申请进来只进「📨 好友申请」页签 + 好友按钮红点，绝不打断游戏；
+   陛下想什么时候处理就什么时候处理，还能一键全收。
+   本地 localStorage 按账号持久化 —— 中途刷新页面申请也不丢（7 天过期）。 */
+let _friendReqs = [];
+let _fdTab = 'friends';
+function reqStoreKey(){ return 'game_friend_reqs_' + ((currentUser && currentUser.username) || 'anon'); }
+function loadFriendReqs(){
+  try{ _friendReqs = JSON.parse(localStorage.getItem(reqStoreKey()) || '[]') || []; }catch(e){ _friendReqs = []; }
+  const week = 7*24*3600*1000;
+  _friendReqs = _friendReqs.filter(r=>r && r.from && (Date.now() - (r.at||0)) < week);
+}
+function saveFriendReqs(){ try{ localStorage.setItem(reqStoreKey(), JSON.stringify(_friendReqs)); }catch(e){} }
+function updateReqBadge(){
+  const b = $('fd-req-badge');
+  if(b){ b.textContent = _friendReqs.length; b.style.display = _friendReqs.length ? '' : 'none'; }
+  const fb = $('btn-friends');                       // 左侧栏「好友」按钮红点
+  if(fb) fb.classList.toggle('has-req', _friendReqs.length > 0);
+}
+function pushFriendReq(m){
+  if(_friendReqs.some(r=>r.from===m.from)) return;   // 同一人重复申请只留一条
+  _friendReqs.unshift({ from:m.from, nickname:m.nickname||m.from, avatar:m.avatar, element:m.element, at:Date.now() });
+  saveFriendReqs(); updateReqBadge();
+  if(_fdTab==='reqs') renderFriendReqs();
+  toast('📩 ' + (m.nickname||m.from) + ' 请求加你为好友 · 打开好友面板处理');
+}
+function removeFriendReq(from){
+  _friendReqs = _friendReqs.filter(r=>r.from!==from);
+  saveFriendReqs(); updateReqBadge(); renderFriendReqs();
+}
+function acceptFriendReq(from){
+  if(window.Net && Net.connected()){ Net.friendAcc(from); }
+  else { toast('未连接服务器，暂时无法接受'); return; }
+  removeFriendReq(from);
+}
+function switchFdTab(t){
+  _fdTab = t;
+  const tf=$('fd-tab-friends'), tr=$('fd-tab-reqs');
+  if(tf) tf.classList.toggle('on', t==='friends');
+  if(tr) tr.classList.toggle('on', t==='reqs');
+  $('friend-list').style.display = t==='friends' ? '' : 'none';
+  $('online-sec').style.display  = t==='friends' ? '' : 'none';
+  $('req-sec').style.display     = t==='reqs'    ? '' : 'none';
+  if(t==='reqs') renderFriendReqs();
+}
+function renderFriendReqs(){
+  const box = $('req-list'); if(!box) return;
+  box.innerHTML='';
+  const has = _friendReqs.length > 0;
+  $('req-batch-row').style.display = has ? '' : 'none';
+  if(!has){ box.innerHTML='<div class="empty-tip">暂无好友申请</div>'; return; }
+  _friendReqs.forEach(r=>{
+    const e = ELEMENTS[r.element] || {color:'#999', name:'?'};
+    const av = avatarById(r.avatar);
+    const row=document.createElement('div'); row.className='friend-row';
+    row.innerHTML=`<div class="f-ava" style="background:${av.bg}">${av.em}</div>
+      <div style="flex:1"><div class="f-name">${r.nickname}</div><div class="f-meta">ID:${r.from} · 五行·${e.name}</div></div>
+      <div class="req-actions"><button class="req-btn ok">✓ 接受</button><button class="req-btn no" title="忽略">✕</button></div>`;
+    const btns = row.querySelectorAll('.req-btn');
+    btns[0].onclick = ()=>acceptFriendReq(r.from);
+    btns[1].onclick = ()=>removeFriendReq(r.from);
+    box.appendChild(row);
+  });
+}
+$('fd-tab-friends').onclick = ()=>switchFdTab('friends');
+$('fd-tab-reqs').onclick    = ()=>switchFdTab('reqs');
+$('req-accept-all').onclick = ()=>{
+  if(!_friendReqs.length) return;
+  if(!window.Net || !Net.connected()){ toast('未连接服务器，暂时无法接受'); return; }
+  const n = _friendReqs.length;
+  _friendReqs.slice().forEach(r=>Net.friendAcc(r.from));   // 批量接受：逐个发给服务器
+  _friendReqs = []; saveFriendReqs(); updateReqBadge(); renderFriendReqs();
+  toast('✅ 已接受 ' + n + ' 个好友申请');
+};
+$('req-reject-all').onclick = ()=>{
+  _friendReqs = []; saveFriendReqs(); updateReqBadge(); renderFriendReqs();
+  toast('已清空全部申请');
+};
+
+/* ================= 联机：聊天（三频道抽屉） ================= */
+/* 频道状态 */
+let _chatCh = 'world';            // 当前频道：world / level / dm
+let _dmTarget = null;             // 私聊目标 username
+let _chatLogs = { world:[], level:[], dm:{} };   // dm: username -> []
+let _chatUnread = { level:0, dm:0 };
+
+/* 设置项（localStorage 持久化） */
+const LS_CHAT_AUTOPOP = 'game_chat_autopop';   // 是否自动弹出左下角气泡/面板
+const LS_CHAT_SHOW    = 'game_chat_show';      // 'world' | 'level' | 'both' 自动出现在左下角看的频道
+function chatAutoPop(){ return localStorage.getItem(LS_CHAT_AUTOPOP) !== '0'; }   // 默认开
+function chatShowWhich(){ return localStorage.getItem(LS_CHAT_SHOW) || 'world'; }  // 默认只看世界
+
+function openChat(ch){
+  if(ch) switchChatCh(ch);
+  $('chat-box').classList.remove('hidden');
+  requestAnimationFrame(()=>$('chat-box').classList.add('open'));
+  refreshChatNet();
+  renderChatLog();
+}
+function closeChat(){ $('chat-box').classList.remove('open'); setTimeout(()=>$('chat-box').classList.add('hidden'), 280); }
+function toggleChat(){ $('chat-box').classList.contains('open') ? closeChat() : openChat(); }
+$('chat-close').onclick = closeChat;
+$('btn-chat').onclick = toggleChat;
+
+/* 刷新聊天抽屉的联机状态：未连接时显示提示条 + 发送按钮禁用，连接后恢复 */
+function refreshChatNet(){
+  const online = !!(window.Net && Net.connected());
+  const bar = $('chat-offline'); if(bar) bar.classList.toggle('show', !online);
+  const btn = $('chat-send'); if(btn){ btn.disabled = !online; btn.classList.toggle('off', !online); }
+  const inp = $('chat-input'); if(inp){ inp.disabled = !online; }
+}
+/* 点提示条手动重连 */
+$('chat-offline').onclick = ()=>{
+  if(window.Net && Net.connected()){ refreshChatNet(); return; }
+  toast('正在重新连接服务器…');
+  netLogin();
+  setTimeout(refreshChatNet, 1500);
+};
+
+function switchChatCh(ch){
+  _chatCh = ch;
+  document.querySelectorAll('.chat-tab').forEach(t=>t.classList.toggle('on', t.dataset.ch===ch));
+  $('chat-dm-bar').classList.toggle('show', ch==='dm');
+  if(ch!=='dm') _dmTarget = null;
+  // 清角标
+  if(ch==='level') _chatUnread.level = 0;
+  if(ch==='dm'){ _chatUnread.dm = 0; }
+  updateChatBadges();
+  renderChatLog();
+  const inp = $('chat-input');
+  inp.placeholder = ch==='world' ? '对全服说话…（回车发送）' : ch==='level' ? '对本关卡说话…（回车发送）' : '对好友说悄悄话…（回车发送）';
+}
+$('chat-tab-world').onclick = ()=>switchChatCh('world');
+$('chat-tab-level').onclick = ()=>switchChatCh('level');
+$('chat-tab-dm').onclick    = ()=>switchChatCh('dm');
+
+/* 私聊目标选择：弹出好友名单让用户挑（用 uiModal 风格） */
+function pickDmTarget(){
+  const friends = (window.Net && Net.self() && Net.self().friends) || currentUser.friends || [];
+  if(!friends.length){ toast('还没有好友，先去添加吧'); return; }
+  uiModal({
+    title:'💌 选择私聊对象',
+    msg:'点击一位好友开始私聊',
+    list: friends.map(u=>{
+      const info = friendCache(u);
+      const av = avatarById(info.avatar);
+      return { key:u, label: info.nickname, sub:'ID:'+u, avatar:{ em:av.em, bg:av.bg } };
+    }),
+    okText:'', cancelText:'取消',
+  }).then(u=>{
+    if(u){ _dmTarget = u; refreshDmBar(); renderChatLog(); const inp=$('chat-input'); inp.focus(); }
+  });
+}
+function refreshDmBar(){
+  const bar = $('chat-dm-bar');
+  if(_dmTarget){
+    const info = friendCache(_dmTarget);
+    const av = avatarById(info.avatar);
+    $('dm-ava').style.background = av.bg; $('dm-ava').textContent = av.em;
+    $('dm-name').textContent = '私聊 ' + info.nickname;
+  } else {
+    $('dm-ava').style.background = 'transparent'; $('dm-ava').textContent = '👤';
+    $('dm-name').textContent = '选择一位好友私聊';
+  }
+}
+$('dm-pick').onclick = pickDmTarget;
+
+/* 从好友面板直接发起私聊：打开聊天抽屉 → 切私聊频道 → 选中该好友 */
+function startDmWith(uname){
+  _dmTarget = uname;
+  switchChatCh('dm');
+  refreshDmBar();
+  renderChatLog();
+  openChat('dm');
+  const inp = $('chat-input'); if(inp) inp.focus();
+}
+
+function updateChatBadges(){
+  const bl = $('ct-badge-level'); if(bl){ bl.textContent = _chatUnread.level; bl.classList.toggle('show', _chatUnread.level>0); }
+  const bd = $('ct-badge-dm');   if(bd){ bd.textContent = _chatUnread.dm;   bd.classList.toggle('show', _chatUnread.dm>0); }
+}
+
+function renderChatLog(){
+  const log = $('chat-log'); log.innerHTML='';
+  let list;
+  if(_chatCh==='world') list = _chatLogs.world;
+  else if(_chatCh==='level') list = _chatLogs.level;
+  else list = _dmTarget ? (_chatLogs.dm[_dmTarget] || []) : [];
+  if(!list || !list.length){ log.innerHTML = '<div class="c-empty">' + (_chatCh==='world'?'还没有人说话':'这里还很安静，说点什么吧') + '</div>'; return; }
+  list.forEach(m=>{
+    const d = document.createElement('div');
+    d.className = 'c-msg' + (m.mine?' mine':'') + (m.channel==='dm'?' dm':'') + (m.sys?' sys':'');
+    if(m.sys){ d.textContent = m.text; }
+    else {
+      const nick = document.createElement('span'); nick.className='c-nick'; nick.textContent = '[' + (m.nick||m.from) + ']';
+      d.appendChild(nick);
+      d.appendChild(document.createTextNode(m.text));
+    }
+    log.appendChild(d);
+  });
   log.scrollTop = log.scrollHeight;
 }
+
+/* 把一条消息推进对应频道的缓存（含未读角标），并根据设置决定要不要打断 */
+function pushChatMsg(m){
+  if(m.channel==='world') _chatLogs.world.push(m);
+  else if(m.channel==='level'){ _chatLogs.level.push(m); if(_chatCh!=='level'){ _chatUnread.level++; updateChatBadges(); } }
+  else if(m.channel==='dm'){
+    const key = m.mine ? (m.to) : (m.from);
+    (_chatLogs.dm[key] = _chatLogs.dm[key] || []).push(m);
+    if(!(_chatCh==='dm' && _dmTarget===key)){ _chatUnread.dm++; updateChatBadges(); }
+  }
+  if(_chatCh==='world' && m.channel==='world') renderChatLog();
+  if(_chatCh==='level' && m.channel==='level') renderChatLog();
+  if(_chatCh==='dm' && m.channel==='dm'){ const key=m.mine?m.to:m.from; if(_dmTarget===key) renderChatLog(); }
+  // 关卡聊天 → 头顶气泡（谁说的谁头顶冒泡）
+  if(m.channel==='level' && !m.mine){ showChatBubble(m.from, m.text); }
+  // 左下角自动显示（按设置：只看世界 / 只看关卡 / 都看）
+  maybeAutoShow(m);
+}
+/* 设置里的「左下角自动显示」逻辑 */
+function maybeAutoShow(m){
+  if(!chatAutoPop()) return;          // 关掉就不自动弹
+  const w = chatShowWhich();
+  if(m.channel==='dm'){ return; }     // 私聊默认不自动弹左下角（除非面板开着），走角标
+  if(w==='world' && m.channel!=='world') return;
+  if(w==='level' && m.channel!=='level') return;
+  appendToastChat(m);
+}
+/* 左下角轻提示条（复用 toast，但带昵称，几秒消失） */
+function appendToastChat(m){
+  if(m.mine) return;
+  toast((m.channel==='level'?'【关卡】':'【世界】') + (m.nick||m.from) + '：' + m.text);
+}
+
 function sendChat(){
   const inp = $('chat-input');
   const text = inp.value.trim();
   if(!text) return;
-  if(window.Net && Net.connected()){
-    Net.chat(text);
-    appendChat('[我] ' + text, 'mine');
-    inp.value='';
-  } else {
-    toast('未连接到服务器，聊天不可用');
-  }
+  if(!(window.Net && Net.connected())){ refreshChatNet(); toast('⚠️ 未连接服务器，聊天不可用'); return; }
+  if(_chatCh==='dm' && !_dmTarget){ toast('请先选择私聊对象'); pickDmTarget(); return; }
+  if(_chatCh==='world'){ Net.chatCh('world', text); }
+  else if(_chatCh==='level'){ Net.chatCh('level', text); }
+  else { Net.chatCh('dm', text, _dmTarget); }
+  // 本地回显（带 mine 标记，走同一条 pushChatMsg 分流）
+  pushChatMsg({ channel:_chatCh, from:currentUser.username, nick:currentUser.nickname||currentUser.username, text, mine:true, to:_dmTarget, ts:Date.now() });
+  inp.value='';
 }
 $('chat-send').onclick = sendChat;
 $('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+
+/* 关卡聊天头顶气泡：在说话玩家头顶挂一个 DOM 气泡，5 秒淡出 */
+function showChatBubble(from, text){
+  const players = (window.Net && Net.remotePlayers()) || {};
+  const p = players[from];
+  if(!p || p.mapId !== (mapState.currentId || 'lobby')) return;
+  const mc = $('map-canvas'); if(!mc) return;
+  const rect = mc.getBoundingClientRect();
+  // 归一化坐标 → 屏幕坐标（含 contain 居中留边）
+  const x = rect.left + (mapRun.ox||0) + p.x * mapRun.w;
+  const y = rect.top + (mapRun.oy||0) + p.y * mapRun.h - 46;   // 头顶上方
+  const b = document.createElement('div');
+  b.className = 'chat-bubble';
+  b.textContent = text;
+  b.style.left = x + 'px'; b.style.top = y + 'px';
+  document.body.appendChild(b);
+  setTimeout(()=>{ try{ b.remove(); }catch(e){} }, 5000);
+}
 
 /* 邮件 */
 function openMail(){ $('mail-drawer').classList.add('open'); if(window.Net && Net.connected()) Net.mailList(); renderMail(); }
@@ -3357,9 +3976,8 @@ function renderBag(){
       ${item.id==='rename_card' && item.qty>0 ? '<button class="b-use">使用</button>' : ''}`;
     if(item.id==='rename_card' && item.qty>0){
       row.querySelector('.b-use').onclick = ()=>{
-        const nn = prompt('输入新昵称（最多 8 字）：', currentUser.nickname || '');
-        if(!nn) return;
-        Net.rename(nn.slice(0,8));
+        uiModal({title:'🎫 使用改名卡', msg:'给自己起个新昵称（最多 8 字）', input:{value:currentUser.nickname||'', maxlen:8, placeholder:'新昵称'}, okText:'确认改名', cancelText:'再想想'})
+          .then(nn=>{ if(nn) Net.rename(nn.slice(0,8)); });
       };
     }
     box.appendChild(row);
@@ -3371,17 +3989,15 @@ function bindNetEvents(){
   if(!window.Net) return;
   Net.on('chat', m=>{
     const nick = m.nickname || m.from;
-    if(m.from === currentUser.username) return;   // 自己发的不重复显示
-    appendChat('[' + nick + '] ' + m.text);
-    openChat();
+    if(m.from === currentUser.username) return;   // 自己发的不重复显示（本地已回显）
+    pushChatMsg({ channel:m.channel||'world', from:m.from, nick:nick, avatar:m.avatar, text:m.text, mine:false, to:m.to, ts:m.ts });
   });
   Net.on('sys', m=>{ toast(m.msg || ''); });
-  Net.on('online', m=>{ _onlineList = m.list || []; });
-  Net.on('onlineCount', m=>{ /* 可显示在线人数徽章 */ });
+  Net.on('online', m=>{ _onlineList = m.list || []; if(window.Net && Net.connected()) buildFriends(); });
+  Net.on('onlineCount', m=>{ updateNetBadge(true, m.n); });
+  Net.on('disconnect', ()=>{ updateNetBadge(false); });
   Net.on('friendReq', m=>{
-    if(confirm('玩家「' + m.nickname + '」申请加你为好友，接受吗？')){
-      Net.friendAcc(m.from);
-    }
+    pushFriendReq(m);   // 页签式：只进好友申请列表 + 红点提醒，不再弹窗打断
   });
   Net.on('friends', m=>{
     if(window.Net && Net.self()) Net.self().friends = m.list.map(f=>f.username);
@@ -3631,6 +4247,259 @@ function exitTarot(){
   enterLobby();   // 兜底：重新走登录入口关卡
 }
 $('tarot-back').onclick = ()=>exitTarot();
+
+/* ================= 二合小卖部（五宝零食铺 · 玩法屏） =================
+   对齐塔罗的进出方式：从「当前所在关卡」的地块触发进入，退出回到那张地图。
+   核心循环：点生成器 → 二合升阶 → 凑订单 → 交付 → 罐头。
+   素材：全部 emoji 占位符（后续可替换为正式美术）。 */
+let msFrom = { mapId:'', spawnId:'' };
+function enterMergeShop(){
+  msFrom = { mapId: mapState.currentId || '', spawnId: mapState.spawnId || '' };
+  panelReturn = 'map';
+  msReset();
+  showScreen('mergeshop-screen');
+}
+function exitMergeShop(){
+  panelReturn = 'map';
+  let d = null; try{ d = ensureMaps(); }catch(e){}
+  const fromId = msFrom.mapId || mapState.currentId || (d && d.entryLevelId) || '';
+  msStop();
+  if(d && fromId && isLevelNode(d.maps[fromId])){
+    if(fromId === mapState.currentId){ backToMap(); return; }
+    enterMap(fromId, msFrom.spawnId); return;
+  }
+  enterLobby();
+}
+$('ms-back').onclick = ()=>exitMergeShop();
+
+/* ---- 合成链配置（占位符） ---- */
+const MS_CHAINS = {
+  A: { gen:'后仓进货口', gemoji:'🚪', genDesc:'主食罐头链',
+    tiers:[{n:'空罐',em:'🥫'},{n:'果肉罐头',em:'🥫'},{n:'糖水鸡肉罐',em:'🍗'},{n:'黄桃鸡肉罐',em:'🍑'},{n:'主食罐头礼盒',em:'🎁'},{n:'战备罐头箱',em:'📦'},{n:'十年陈罐头',em:'🏺'},{n:'黄金罐头',em:'🥇'},{n:'罐头金库',em:'🏦'},{n:'余晖铁皮罐头',em:'🌇'}] },
+  B: { gen:'五宝的腮帮子', gemoji:'🐹', genDesc:'灵猫零食链',
+    tiers:[{n:'鱼干碎',em:'🐟'},{n:'一把鱼干',em:'🐟'},{n:'小鱼干条',em:'🍢'},{n:'猫草饼',em:'🌿'},{n:'木天蓼枝',em:'🌱'},{n:'仓鼠条',em:'🐹'},{n:'夜巡鱼条',em:'🌙'},{n:'黑猫总督小鱼干',em:'👑'}] },
+  C: { gen:'瑞兽配料台', gemoji:'🖌️', genDesc:'瑞兽零食链',
+    tiers:[{n:'竹简屑',em:'🎋'},{n:'残页',em:'📜'},{n:'墨香酥',em:'🖌️'},{n:'典故糕',em:'📖'},{n:'云纹酥',em:'☁️'},{n:'万卷酥',em:'📚'},{n:'知味露',em:'💧'},{n:'白泽无字酥',em:'✨'}] }
+};
+function msTierPrice(t){ return Math.round(Math.pow(2.25, t-1)); }
+
+const MS_COLS = 8, MS_ROWS = 7;
+let msBoard = [], msEnergy = 100, msMoney = 0, msExp = 0, msBoost = 1, msBoostIdx = 0;
+let msOrders = [], msNextId = 1, msGenCd = {};
+let msDragging = null, msHover = null, msTimer = null, msInited = false;
+
+function msEl(id){ return document.getElementById(id); }
+function msToast(msg){
+  // 复用全局 toast（#toast），避免二套 toast 样式冲突
+  if(typeof toast === 'function'){ toast(msg); }
+}
+function msFloat(x, y, txt){
+  const d = document.createElement('div');
+  d.className = 'ms-float';
+  d.textContent = txt;
+  d.style.left = x + 'px'; d.style.top = y + 'px';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 1000);
+}
+function msTierColor(t){ return 't' + Math.min(9, t); }
+
+function msInit(){
+  if(msInited) return;
+  msInited = true;
+  msReset();
+  msEl('ms-back').onclick = ()=>exitMergeShop();
+  msEl('ms-refresh').onclick = ()=>{
+    msOrders = msOrders.map(()=>msGenOrder());
+    msRenderOrders();
+    msToast('🔄 订单已刷新');
+  };
+}
+
+function msReset(){
+  msBoard = [];
+  for(let r=0;r<MS_ROWS;r++){ msBoard[r]=[]; for(let c=0;c<MS_COLS;c++) msBoard[r][c]=null; }
+  msBoard[0][0] = { gen:'A' }; msBoard[0][1] = { gen:'B' }; msBoard[1][0] = { gen:'C' };
+  msPlace(0,2,{chain:'A',tier:1}); msPlace(0,3,{chain:'A',tier:1});
+  msPlace(1,2,{chain:'B',tier:1}); msPlace(1,3,{chain:'B',tier:1});
+  msPlace(2,2,{chain:'A',tier:2}); msPlace(2,3,{chain:'B',tier:2});
+  msEnergy = 100; msMoney = 0; msExp = 0; msBoost = 1; msBoostIdx = 0;
+  msOrders = []; for(let i=0;i<3;i++) msOrders.push(msGenOrder());
+  msGenCd = {}; msDragging = null;
+  msRender(); msRenderOrders(); msUpdateStats();
+  msStop(); msStart();
+}
+function msPlace(r,c,item){ item.id = msNextId++; msBoard[r][c] = item; }
+function msStart(){
+  msStop();
+  msTimer = setInterval(()=>{ if(msEnergy < 100){ msEnergy = Math.min(100, msEnergy+1); msUpdateStats(); } }, 3000);
+}
+function msStop(){ if(msTimer){ clearInterval(msTimer); msTimer = null; } }
+
+function msRender(){
+  const g = msEl('ms-grid'); if(!g) return;
+  g.innerHTML = '';
+  for(let r=0;r<MS_ROWS;r++){
+    for(let c=0;c<MS_COLS;c++){
+      const cell = document.createElement('div');
+      cell.className = 'ms-cell';
+      cell.dataset.r = r; cell.dataset.c = c;
+      const v = msBoard[r][c];
+      if(v){
+        if(v.gen){ cell.classList.add('gen'); cell.appendChild(msRenderGen(v.gen)); }
+        else cell.appendChild(msRenderItem(v));
+      }
+      g.appendChild(cell);
+    }
+  }
+}
+function msRenderItem(item){
+  const ch = MS_CHAINS[item.chain], info = ch.tiers[item.tier-1];
+  const d = document.createElement('div');
+  d.className = 'ms-item ' + msTierColor(item.tier);
+  d.dataset.id = item.id;
+  d.innerHTML = `<span class="em">${info.em}</span><span class="tier">T${item.tier}</span><span class="nm">${info.n}</span>`;
+  d.addEventListener('pointerdown', e=>msItemDown(e, item));
+  return d;
+}
+function msRenderGen(chainKey){
+  const ch = MS_CHAINS[chainKey];
+  const d = document.createElement('div');
+  d.className = 'ms-gen';
+  d.innerHTML = `<span class="em">${ch.gemoji}</span><span class="gn">${ch.gen}</span><span class="gc">${ch.genDesc}</span>`;
+  d.addEventListener('pointerdown', e=>msGenDown(e, chainKey));
+  return d;
+}
+function msFindEmpty(){
+  for(let r=0;r<MS_ROWS;r++) for(let c=0;c<MS_COLS;c++) if(!msBoard[r][c]) return {r,c};
+  return null;
+}
+function msGenDown(e, chainKey){
+  e.stopPropagation();
+  const now = Date.now(), cd = msGenCd[chainKey] || 0;
+  if(now < cd){ msToast('⏳ 生成器冷却中…'); return; }
+  if(msEnergy < 1){ msToast('⚡ 体力不足！'); return; }
+  const empty = msFindEmpty();
+  if(!empty){ msToast('🚫 棋盘满了！先合成腾格子'); return; }
+  msEnergy -= 1;
+  msGenCd[chainKey] = now + 600;
+  let placed = 0;
+  for(let i=0;i<msBoost;i++){ const slot = msFindEmpty(); if(!slot) break; msPlace(slot.r, slot.c, {chain:chainKey, tier:1}); placed++; }
+  msUpdateStats(); msRender(); msUpdateOrdersReady();
+  if(placed>0){ const info = MS_CHAINS[chainKey].tiers[0]; msFloat(e.clientX, e.clientY, `+${placed} ${info.em}`); }
+}
+function msItemDown(e, item){
+  e.preventDefault(); e.stopPropagation();
+  msDragging = { item, el: e.currentTarget };
+  e.currentTarget.classList.add('dragging');
+  document.addEventListener('pointermove', msDragMove);
+  document.addEventListener('pointerup', msDragUp);
+}
+function msDragMove(e){
+  const cell = document.elementFromPoint(e.clientX, e.clientY);
+  const c = cell && cell.closest('.ms-cell');
+  document.querySelectorAll('.ms-cell.hover,.ms-cell.ghost').forEach(x=>x.classList.remove('hover','ghost'));
+  if(c){
+    const r = +c.dataset.r, cc = +c.dataset.c, target = msBoard[r][cc];
+    if(target && !target.gen && target.id !== msDragging.item.id && target.chain===msDragging.item.chain && target.tier===msDragging.item.tier){ c.classList.add('ghost'); }
+    else if(!target){ c.classList.add('hover'); }
+  }
+}
+function msDragUp(e){
+  document.removeEventListener('pointermove', msDragMove);
+  document.removeEventListener('pointerup', msDragUp);
+  const cell = document.elementFromPoint(e.clientX, e.clientY);
+  const c = cell && cell.closest('.ms-cell');
+  document.querySelectorAll('.ms-cell.hover,.ms-cell.ghost').forEach(x=>x.classList.remove('hover','ghost'));
+  if(!msDragging) return;
+  const d = msDragging; msDragging = null;
+  d.el.classList.remove('dragging');
+  if(!c){ msRender(); return; }
+  const r = +c.dataset.r, cc = +c.dataset.c, target = msBoard[r][cc];
+  if(target && !target.gen && target.id!==d.item.id && target.chain===d.item.chain && target.tier===d.item.tier){ msMerge(d.item, target, r, cc); }
+  else if(!target){ msMoveItem(d.item, r, cc); }
+  else { msRender(); }
+}
+function msMoveItem(item, r, c){
+  for(let rr=0;rr<MS_ROWS;rr++) for(let cc=0;cc<MS_COLS;cc++) if(msBoard[rr][cc] && msBoard[rr][cc].id===item.id) msBoard[rr][cc]=null;
+  msBoard[r][c] = item; msRender();
+}
+function msMerge(itemA, itemB, r, c){
+  for(let rr=0;rr<MS_ROWS;rr++) for(let cc=0;cc<MS_COLS;cc++) if(msBoard[rr][cc] && (msBoard[rr][cc].id===itemA.id || msBoard[rr][cc].id===itemB.id)) msBoard[rr][cc]=null;
+  const chain = itemA.chain, newTier = itemA.tier + 1, maxTier = MS_CHAINS[chain].tiers.length;
+  if(newTier > maxTier){
+    msToast('🏆 已合成 ' + MS_CHAINS[chain].tiers[maxTier-1].n + '（顶级）！');
+    msMoney += msTierPrice(maxTier) * 2; msExp += 10;
+    msRender(); msUpdateStats(); return;
+  }
+  msPlace(r, c, {chain, tier:newTier});
+  const info = MS_CHAINS[chain].tiers[newTier-1];
+  msExp += Math.max(1, Math.round(msTierPrice(newTier)*0.6));
+  const g = msEl('ms-grid'), cellEl = g && g.children[r*MS_COLS+c];
+  if(cellEl){ const rect = cellEl.getBoundingClientRect(); msFloat(rect.left + rect.width/2, rect.top, `${info.em} T${newTier}!`); }
+  msRender(); msUpdateStats(); msUpdateOrdersReady();
+}
+
+const MS_CUSTOMERS = ['战后老兵·老周','麒麟觉醒者','星光粉丝','跑商铁灰','闪闪(10岁)','常客大妈','微服的司凰'];
+const MS_TEXTS = ['来罐鸡肉罐头，冰的。','给我家祖宗来点硬的。','星星姐姐同款有吗？','黑市货，问就是主粮。','五宝哥哥在吗？','黄桃鸡肉罐留一箱。','深夜小鱼干条，双份。'];
+function msGenOrder(){
+  const chain = ['A','B','C'][Math.floor(Math.random()*3)];
+  const tier = 1 + Math.floor(Math.random()*3);
+  const qty = 1 + Math.floor(Math.random()*2);
+  const type = Math.random()<0.7 ? 'normal' : (Math.random()<0.6?'vip':'rush');
+  const ci = Math.floor(Math.random()*MS_CUSTOMERS.length);
+  const reward = msTierPrice(tier) * qty * (type==='normal'?2:type==='vip'?3.5:5);
+  return { id: msNextId++, customer: MS_CUSTOMERS[ci], text: MS_TEXTS[ci], type, reqs:[{chain, tier, qty, have:0}], reward: Math.round(reward) };
+}
+function msRenderOrders(){
+  const list = msEl('ms-order-list'); if(!list) return;
+  list.innerHTML = '';
+  msOrders.forEach(o=>{
+    const d = document.createElement('div');
+    d.className = 'ms-order-card';
+    const typeLabel = o.type==='normal'?'普通':o.type==='vip'?'VIP':'加急';
+    let reqHtml = '';
+    o.reqs.forEach(r=>{
+      const info = MS_CHAINS[r.chain].tiers[r.tier-1];
+      const done = r.have >= r.qty;
+      reqHtml += `<div class="mo-req ${done?'done':''}"><span>${info.em}</span><span>T${r.tier} ${info.n}</span><span class="${done?'have':'need'}">${done?'✓':'('+r.have+'/'+r.qty+')'}</span></div>`;
+    });
+    const allReady = o.reqs.every(r=>r.have>=r.qty);
+    d.innerHTML = `<div class="mo-head"><span>${o.customer}</span><span class="mo-type ${o.type}">${typeLabel}</span></div>
+      <div class="mo-ask">${reqHtml}</div>
+      <div class="mo-text">💬 「${o.text}」</div>
+      <div class="mo-reward">💰 奖励 ${o.reward} 罐头</div>
+      <button class="mo-go ${allReady?'ready':''}" ${allReady?'':'disabled'}>${allReady?'✅ 交付':'凑齐后可交付'}</button>`;
+    d.querySelector('.mo-go').addEventListener('click', ()=>msDeliver(o.id));
+    list.appendChild(d);
+  });
+}
+function msUpdateOrdersReady(){
+  msOrders.forEach(o=>{ o.reqs.forEach(r=>{
+    let have = 0;
+    for(let rr=0;rr<MS_ROWS;rr++) for(let cc=0;cc<MS_COLS;cc++){ const v = msBoard[rr][cc]; if(v && !v.gen && v.chain===r.chain && v.tier===r.tier) have++; }
+    r.have = have;
+  }); });
+  msRenderOrders();
+}
+function msDeliver(oid){
+  const o = msOrders.find(x=>x.id===oid); if(!o) return;
+  if(!o.reqs.every(r=>r.have>=r.qty)) return;
+  o.reqs.forEach(r=>{ let need = r.qty;
+    for(let rr=0;rr<MS_ROWS && need>0;rr++) for(let cc=0;cc<MS_COLS && need>0;cc++){ const v = msBoard[rr][cc]; if(v && !v.gen && v.chain===r.chain && v.tier===r.tier){ msBoard[rr][cc]=null; need--; } }
+  });
+  msMoney += o.reward; msExp += Math.round(o.reward*0.3);
+  msOrders = msOrders.filter(x=>x.id!==oid); msOrders.push(msGenOrder());
+  msRender(); msUpdateStats(); msUpdateOrdersReady();
+  msFloat(window.innerWidth/2 - 60, 120, `+${o.reward} 🥫`);
+  msToast(`✅ 交付成功！+${o.reward} 罐头`);
+}
+function msUpdateStats(){
+  const e = msEl('ms-energy'), m = msEl('ms-money'), x = msEl('ms-exp'), l = msEl('ms-lv');
+  if(e) e.textContent = msEnergy;
+  if(m) m.textContent = msMoney;
+  if(x) x.textContent = msExp;
+  if(l) l.textContent = Math.floor(msExp/100) + 1;
+}
 
 /* ================= 玩家档案 PlayerProfile（Q2.3 / §6） ================= */
 const LS_PROFILE = 'player_profile_';
@@ -4107,6 +4976,7 @@ const PANEL_KINDS = [
   { id:'tarot',           name:'🔮 塔罗占卜',     em:'🔮', zones:null },
   { id:'wish',            name:'⛲ 许愿池',       em:'⛲', zones:null },
   { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
+  { id:'mergeshop',       name:'🍬 五宝的小卖部', em:'🍬', zones:null },
 ];
 function panelInfo(id){ return PANEL_KINDS.filter(p=>p.id===id)[0] || null; }
 function panelName(id){ const p = panelInfo(id); return p ? p.name : (id||'（未设置）'); }
@@ -4134,13 +5004,16 @@ function pullOnlineData(opt){
       if(!data) throw new Error('数据包格式不对');
       const keys = Object.keys(data);
       if(!keys.length) throw new Error('数据包是空的');
+      const doSync = ()=>{
+        let ok=0; keys.forEach(k=>{ try{ localStorage.setItem(k, data[k]); ok++; }catch(e){} });
+        _mapsCache = null; invalidateMaps();          // 下次读地图就会拿到刚同步的数据，不用刷新
+        if(!opt.silent) toast('✅ 已同步 '+ok+' 项线上数据');
+      };
       if(opt.confirm !== false){
         const t = (j._meta && j._meta.exportedAt) ? ('\n导出时间：'+j._meta.exportedAt) : '';
-        if(!confirm('☁️ 用线上数据包覆盖本机数据？\n将写入：'+keys.join('、')+t)) return;
-      }
-      let ok=0; keys.forEach(k=>{ try{ localStorage.setItem(k, data[k]); ok++; }catch(e){} });
-      _mapsCache = null; invalidateMaps();          // 下次读地图就会拿到刚同步的数据，不用刷新
-      if(!opt.silent) toast('✅ 已同步 '+ok+' 项线上数据');
+        uiModal({title:'☁️ 同步线上数据', msg:'用线上数据包覆盖本机数据？\n将写入：'+keys.join('、')+t, okText:'覆盖', cancelText:'取消'})
+          .then(ok=>{ if(ok) doSync(); });
+      } else doSync();
     })
     .catch(e=>{ if(!opt.silent) toast('⚠️ 拉线上数据失败：'+((e && e.message) || e)); });
 }
@@ -4269,6 +5142,33 @@ function migrateMaps(d){
   if(d.maps.home && d.maps.shop) ensureNavTile(d.maps.home,d.maps.shop,0.28,0.55,'👗');
   if(d.maps.school && d.maps.library) ensureNavTile(d.maps.school,d.maps.library,0.30,0.58,'📚');
   if(d.maps.school&&d.maps.classroom)ensureNavTile(d.maps.school,d.maps.classroom,0.70,0.58,'🎓');
+  /* ★ 清理上次误建的 mergeshop 关卡（挂在家园旁，位置错误），并摘除指向它的导航。
+     正确位置是「五宝的小卖铺」既有关卡，见下方补种逻辑。 */
+  if(d.maps.mergeshop){
+    delete d.maps.mergeshop;
+    migrationLog.push('MERGE_SHOP_LEGACY_REMOVED');
+  }
+  Object.values(d.maps).forEach(m=>{
+    if(!m) return;
+    if(Array.isArray(m.navTiles)) m.navTiles = m.navTiles.filter(n=>!(n && (n.targetId==='mergeshop' || n.targetMap==='mergeshop')));
+    if(Array.isArray(m.nodes)) m.nodes = m.nodes.filter(n=>!(n && (n.targetId==='mergeshop' || n.targetMap==='mergeshop')));
+  });
+
+  /* ★ 二合玩法屏补种：在「已有的」五宝小卖铺关卡里塞一个触发地块。
+     拾光澈屿里五宝小卖铺是 S市→商业街 下的一个既有关卡（用户本地存档生成的随机 id），
+     不新建关卡，只按名字匹配到这个 level，若 nodes 为空就补一个 panel 地块。 */
+  Object.values(d.maps).forEach(m=>{
+    if(!m) return;
+    if(isLevelNode(m) && /五宝|小卖/.test(m.name||'')){
+      if(!Array.isArray(m.nodes)) m.nodes = Array.isArray(m.entities)?m.entities:[];
+      const hasPanel = m.nodes.some(n=>n && (n.panelId==='mergeshop' || n.panel==='mergeshop'));
+      if(!hasPanel){
+        m.nodes.push({ id:'ms_counter_' + m.id, kind:'tile', name:'小卖部柜台', icon:'🍬', x:0.5, y:0.44, w:0.34, h:0.22, img:null, action:'panel', panelId:'mergeshop', panel:'mergeshop', triggerMode:'click', tip:'五宝的小卖部，进去玩二合经营' });
+        m.entities = m.nodes;
+        migrationLog.push('MERGE_SHOP_COUNTER_SEEDED:' + m.id);
+      }
+    }
+  });
   Object.values(d.maps).forEach(child=>{const parent=child&&child.parent?d.maps[child.parent]:null;if(parent&&isMapNode(parent))ensureNavTile(parent,child,0.5,0.5,isMapNode(child)?'🗺️':'🎯');});
   Object.values(d.maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles||[];});
 
@@ -4558,6 +5458,7 @@ function openPanelNode(node){
   if(kind==='tarot'){enterTarot();return;}
   if(kind==='checkin'){openCheckin();return;}
   if(kind==='wish'){toast('⛲ 许愿池还在开发中');return;}
+  if(kind==='mergeshop'){enterMergeShop();return;}
   // 三档衣橱：按商店分区自动过滤
   wbZoneFilter = (info && info.zones) ? info.zones.slice() : null;
   wbTitle = (info ? info.em + ' ' : '') + label;
@@ -4708,12 +5609,16 @@ function openWorldMap(mapId,force){
       ctx.fillStyle = g; ctx.fillRect(0,0,FW,FH);
     }
     /* 世界盒：有本地图底图时直接用底图变换出来的世界框（背景与地点同源，分毫不差）；
-       没底图 / 底图是借来的，才退回到「按 worldAspect 居中一个盒子」。 */
+       没底图 / 底图是借来的，才退回到「按 worldAspect 铺满裁切一个盒子」。
+       ⚠️ 这里必须和编辑器 boxPct / 关卡 worldFit 一致 —— 都用 cover（铺满裁切），
+       不能再用 contain（完整显示）。contain 会让同一批 navTile 在编辑器（cover）和
+       游戏地图（contain）里位置错开，PC 缩放窗口时尤其明显。 */
     if(xfW > 0 && xfH > 0){ W = xfW; H = xfH; OX = xfTX; OY = xfTY; }
     else {
       const wasp = Math.min(2.8, Math.max(0.9, (host && +host.worldAspect) || (16/9)));
-      if(FW/FH >= wasp){ H = FH; W = Math.round(FH*wasp); } else { W = FW; H = Math.round(FW/wasp); }
-      OX = Math.round((FW-W)/2); OY = Math.round((FH-H)/2);
+      const scale = Math.max(FW / wasp, FH);   // cover：世界始终铺满，短边被裁
+      W = Math.round(wasp * scale); H = Math.round(scale);
+      OX = Math.round((FW - W) / 2); OY = Math.round((FH - H) / 2);
     }
     ctx.save(); ctx.translate(OX, OY);
     // 父子连线（谁通往谁）
@@ -4814,8 +5719,15 @@ function stepMap(now){
     if(mapRun.keys.down)  dy+=1;
   }
   mapRun.moving=(dx!==0||dy!==0);const prevX=mapRun.px,prevY=mapRun.py;
-  if(mapRun.moving){const len=Math.hypot(dx,dy);dx/=len;dy/=len;mapRun.px+=dx*MAP_SPEED*dt;mapRun.py+=dy*MAP_SPEED*dt;if(dx>0)mapRun.facing=1;else if(dx<0)mapRun.facing=-1;mapRun.walkPhase+=dt*12;}
-  mapRun.px=Math.max(24,Math.min(mapRun.w-24,mapRun.px));mapRun.py=Math.max(74,Math.min(mapRun.h-28,mapRun.py));
+  if(mapRun.moving){
+    const len=Math.hypot(dx,dy);dx/=len;dy/=len;
+    /* ⚑ 速度按世界画布高度走（0.32 高度/秒 ≈ 720p 下的 230px/s）：
+       以前写死 230 像素/秒，窗口越小角色跑得越「快」（相对地图），各机型手感不一致 */
+    const spd = 0.32 * mapRun.h;
+    mapRun.px+=dx*spd*dt;mapRun.py+=dy*spd*dt;if(dx>0)mapRun.facing=1;else if(dx<0)mapRun.facing=-1;mapRun.walkPhase+=dt*12;
+  }
+  const _bk = mapRun.h/720;   // 边界余量也随世界尺寸等比（720p 时维持原值 24/74/28）
+  mapRun.px=Math.max(24*_bk,Math.min(mapRun.w-24*_bk,mapRun.px));mapRun.py=Math.max(74*_bk,Math.min(mapRun.h-28*_bk,mapRun.py));
   const d=ensureMaps(),level=d.maps[mapState.currentId];if(!runtimeWalkable(level,mapRun.px,mapRun.py)){mapRun.px=prevX;mapRun.py=prevY;mapRun.moving=false;}
   updateMapPop();
   updateNpcProximity();
@@ -5419,7 +6331,7 @@ function drawMapTile(c, n, W, H, lb){
     c.save();
     c.fillStyle = '#f0a500'; c.beginPath(); c.arc(bx, by, br, 0, Math.PI*2); c.fill();
     c.font = Math.round(br*1.1)+'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(act==='navigate' ? '🧭' : ((act==='teleport'||act==='teleportLevel') ? '🚪' : '✨'), bx, by+br*0.08);
+    c.fillText(act==='navigate' ? '🧭' : ((act==='teleport'||act==='teleportLevel') ? '🚪' : (act==='panel' ? panelEm(n.panelId||n.panel) : '✨')), bx, by+br*0.08);
     c.restore();
   }
   const tag=(act==='teleport'||act==='teleportLevel')?' ›':(act==='panel'?' ✦':'');
@@ -5454,7 +6366,7 @@ function drawTriggerBox(c, n, W, H, lb){
     c.save();
     c.globalAlpha = nodeAlpha(n);
     c.font = ifont+'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(n.icon || (n.action==='panel' ? '🧩' : '🚪'), r0.x + r0.w/2, r0.y + r0.h/2);
+    c.fillText(n.icon || (n.action==='panel' ? panelEm(n.panelId||n.panel) : '🚪'), r0.x + r0.w/2, r0.y + r0.h/2);
     c.restore();
   }
   lb = lb || mapLb(null);
@@ -5536,13 +6448,14 @@ function drawMap(){
   /* currentUser 为空时（没登录就直接进地图）绝不能抛 —— 抛一次就会把 rAF 循环一起带走，
      表现就是「角色永远看不见」。 */
   if(currentUser){
-    drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, 1.0);
+    const cs = charScaleOf(H);   // 角色占比相对地图背景固定（素体工坊可调），不再随窗口大小变化
+    drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, cs);
     // 玩家自己头顶显示昵称（同款名牌样式；方向强制横排，位置固定头顶）
-    const nick = currentUser.nickname || '旅行者';
+    const nick = currentUser.nickname || currentUser.username;   // 昵称缺失时回退账号名
     const pLb = Object.assign({}, _lb, { dir:'h' });
     const pFs = pLb.fs || 12;
     const psz = namePlateSize(c, nick, pLb, pFs);
-    drawNamePlate(c, nick, pLb, { fs:pFs, cx:mapRun.px, cy:(mapRun.py - ENG_BASE_H*1.14) - psz.h/2 });
+    drawNamePlate(c, nick, pLb, { fs:pFs, cx:mapRun.px, cy:(mapRun.py - ENG_BASE_H*cs*1.14) - psz.h/2 });
   }
   // 联机：渲染其他玩家（同屏最多 8 人，只画最近的）
   drawRemotePlayers(c, W, H);

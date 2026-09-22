@@ -67,8 +67,9 @@
     },
     /* 上报位置 */
     move(x, y, facing, walk, mapId){ Net.send({ t:'move', x, y, facing, walk, mapId }); },
-    /* 大厅聊天 */
-    chat(text){ Net.send({ t:'chat', text }); },
+    /* 大厅/频道聊天：channel = 'world'(世界) | 'level'(关卡) | 'dm'(好友私聊) */
+    chat(text){ Net.send({ t:'chat', text, channel:'world' }); },
+    chatCh(channel, text, to){ Net.send({ t:'chat', text, channel, to }); },
     /* 好友 */
     friendReq(to){ Net.send({ t:'friendReq', to }); },
     friendAcc(from){ Net.send({ t:'friendAcc', from }); },

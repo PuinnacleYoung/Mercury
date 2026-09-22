@@ -96,12 +96,39 @@ function onlineList(){
   return list;
 }
 
-/* ================= 业务：大厅聊天 ================= */
+/* ================= 业务：频道聊天 =================
+   channel = 'world'(世界，全服广播) | 'level'(关卡，只推同图) | 'dm'(好友私聊，只推对方)
+   消息统一带 channel + mapId，客户端据此分流。 */
 function handleChat(c, msg){
   if(!c.username) return;
   const text = String(msg.text || '').slice(0, 200);
   if(!text) return;
-  broadcast({ t:'chat', from:c.username, nickname:c.nickname, avatar:c.avatar, text, ts:Date.now() });
+  const channel = (msg.channel === 'level' || msg.channel === 'dm') ? msg.channel : 'world';
+  const base = { t:'chat', from:c.username, nickname:c.nickname, avatar:c.avatar, text, ts:Date.now(), channel, mapId:c.mapId };
+
+  if(channel === 'dm'){
+    // 好友私聊：只发给目标（对方必须在线），自己这边由客户端本地回显
+    const to = String(msg.to||'').trim();
+    if(!to || to === c.username) return;
+    const targetSock = [...clients.keys()].find(s=>clients.get(s).username===to);
+    if(targetSock){ send(targetSock, Object.assign({}, base, { to })); }
+    else send(c.sock, { t:'sys', msg:'对方不在线，暂时收不到私聊' });
+    return;
+  }
+
+  if(channel === 'level'){
+    // 关卡频道：只推同图（同 mapId）的玩家
+    const buf = encodeFrame(JSON.stringify(base));
+    for(const [sock, o] of clients){
+      if(sock === c.sock) continue;
+      if(o.mapId !== c.mapId) continue;
+      try{ sock.write(buf); }catch(e){}
+    }
+    return;
+  }
+
+  // world：全服广播（原大厅聊天）
+  broadcast(base);
 }
 
 /* ================= 业务：同屏位置（只推最近 8 人） ================= */
@@ -285,8 +312,9 @@ function onMessage(sock, text){
       send(sock, { t:'welcome', self: publicAccount(acc) });
       send(sock, { t:'online', list: onlineList().filter(o=>o.username!==username) });
       send(sock, { t:'mails', list: DB.mails[username] || [] });
-      // 广播在线人数
+      // 广播在线人数 + 最新在线名单（新玩家自己已单独收到过，排除掉）
       broadcast({ t:'onlineCount', n: clients.size });
+      broadcast({ t:'online', list: onlineList() }, sock);
       console.log('[server]', username, '上线，当前在线', clients.size);
       break;
     }
@@ -308,6 +336,7 @@ function onClose(sock){
   socketUser.delete(sock);
   if(username){
     broadcast({ t:'onlineCount', n: clients.size });
+    broadcast({ t:'online', list: onlineList() });   // 名单同步刷新，客户端好友面板实时更新
     console.log('[server]', username, '下线，当前在线', clients.size);
   }
 }

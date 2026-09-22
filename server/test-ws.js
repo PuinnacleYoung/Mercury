@@ -63,51 +63,55 @@ function send(sock, obj){
 let pass = 0, fail = 0;
 function check(name, cond){ if(cond){ pass++; console.log('  ✅', name); } else { fail++; console.log('  ❌', name); } }
 
+/* 每次运行用随机账号，避免 data.json 历史数据（已是好友/旧邮件）干扰，可重复执行 */
+const SUF = Date.now().toString(36).slice(-5);
+const AL = 'alice_' + SUF, BO = 'bob_' + SUF, ADN = '_admin_' + SUF;
+
 (async ()=>{
   console.log('=== 玩家 A 连接 ===');
   let aMsg = [];
   const A = await wsConnect(m=>aMsg.push(m));
-  send(A, { t:'login', username:'alice', nickname:'小爱', avatar:'fox', element:'wood', outfit:{}, mapId:'level1' });
+  send(A, { t:'login', username:AL, nickname:'小爱', avatar:'fox', element:'wood', outfit:{}, mapId:'level1' });
   await new Promise(r=>setTimeout(r,300));
-  check('A 收到 welcome + self', aMsg.some(m=>m.t==='welcome' && m.self && m.self.username==='alice'));
+  check('A 收到 welcome + self', aMsg.some(m=>m.t==='welcome' && m.self && m.self.username===AL));
   check('A 收到 mails（默认空）', aMsg.some(m=>m.t==='mails'));
   check('A 背包默认有改名卡', aMsg.some(m=>m.t==='welcome' && m.self.inventory && m.self.inventory.some(s=>s.id==='rename_card')));
 
   console.log('=== 玩家 B 连接 ===');
   let bMsg = [];
   const B = await wsConnect(m=>bMsg.push(m));
-  send(B, { t:'login', username:'bob', nickname:'小波', avatar:'cat', element:'fire', outfit:{}, mapId:'level1' });
+  send(B, { t:'login', username:BO, nickname:'小波', avatar:'cat', element:'fire', outfit:{}, mapId:'level1' });
   await new Promise(r=>setTimeout(r,300));
 
   console.log('=== 同屏位置广播 ===');
   aMsg = [];
   send(A, { t:'move', x:100, y:200, facing:1, walk:0, mapId:'level1' });
   await new Promise(r=>setTimeout(r,200));
-  check('B 收到 A 的 move', bMsg.some(m=>m.t==='move' && m.from==='alice'));
+  check('B 收到 A 的 move', bMsg.some(m=>m.t==='move' && m.from===AL));
 
   console.log('=== 大厅聊天 ===');
   bMsg = [];
   send(A, { t:'chat', text:'大家好' });
   await new Promise(r=>setTimeout(r,200));
-  check('B 收到 A 的聊天', bMsg.some(m=>m.t==='chat' && m.from==='alice' && m.text==='大家好'));
+  check('B 收到 A 的聊天', bMsg.some(m=>m.t==='chat' && m.from===AL && m.text==='大家好'));
 
   console.log('=== 好友申请/接受 ===');
   bMsg = [];
-  send(A, { t:'friendReq', to:'bob' });
+  send(A, { t:'friendReq', to:BO });
   await new Promise(r=>setTimeout(r,200));
-  check('B 收到 A 的好友申请', bMsg.some(m=>m.t==='friendReq' && m.from==='alice'));
+  check('B 收到 A 的好友申请', bMsg.some(m=>m.t==='friendReq' && m.from===AL));
   aMsg = [];
-  send(B, { t:'friendAcc', from:'alice' });
+  send(B, { t:'friendAcc', from:AL });
   await new Promise(r=>setTimeout(r,300));
-  check('A 收到好友列表更新（含 bob）', aMsg.some(m=>m.t==='friends' && m.list.some(f=>f.username==='bob')));
+  check('A 收到好友列表更新（含对方）', aMsg.some(m=>m.t==='friends' && m.list.some(f=>f.username===BO)));
 
   console.log('=== 后台发邮件（带资产） ===');
   let adminMsg = [];
   const AD = await wsConnect(m=>adminMsg.push(m));
-  send(AD, { t:'login', username:'_admin', nickname:'管理员', avatar:'dragon', element:'metal' });
+  send(AD, { t:'login', username:ADN, nickname:'管理员', avatar:'dragon', element:'metal' });
   await new Promise(r=>setTimeout(r,200));
   aMsg = [];
-  send(AD, { t:'adminMail', adminKey:'admin123', targets:['alice'], title:'测试邮件', body:'发你 100 金币 + 一张改名卡', attach:[{type:'coin',qty:100},{type:'item',itemId:'rename_card',name:'改名卡',icon:'🎫',qty:1}] });
+  send(AD, { t:'adminMail', adminKey:'admin123', targets:[AL], title:'测试邮件', body:'发你 100 金币 + 一张改名卡', attach:[{type:'coin',qty:100},{type:'item',itemId:'rename_card',name:'改名卡',icon:'🎫',qty:1}] });
   await new Promise(r=>setTimeout(r,300));
   check('A 收到 newMail 通知', aMsg.some(m=>m.t==='newMail'));
 
@@ -116,13 +120,15 @@ function check(name, cond){ if(cond){ pass++; console.log('  ✅', name); } else
   send(A, { t:'mailList' });
   await new Promise(r=>setTimeout(r,200));
   const mail = aMsg.find(m=>m.t==='mails');
-  check('A 邮件列表有 1 封', mail && mail.list && mail.list.length===1);
-  if(mail && mail.list[0]){
-    const mid = mail.list[0].id;
+  // 只认本次刚发的那封（标题匹配 + 未领取），避免历史邮件干扰
+  const mine = (mail && mail.list) ? mail.list.filter(x=>x.title==='测试邮件' && !x.claimed) : [];
+  check('A 收到本次测试邮件', mine.length >= 1);
+  if(mine.length){
+    const mid = mine[mine.length-1].id;
     aMsg = [];
     send(A, { t:'mailClaim', id: mid });
     await new Promise(r=>setTimeout(r,300));
-    check('A 领取后金币到账 + 背包改名卡数量增加', aMsg.some(m=>m.t==='mailClaimed' && m.acc && m.acc.currency && m.acc.currency.coin===100));
+    check('A 领取后金币到账 +100', aMsg.some(m=>m.t==='mailClaimed' && m.acc && m.acc.currency && m.acc.currency.coin>=100));
   }
 
   console.log('=== 后台查询所有玩家 ===');
