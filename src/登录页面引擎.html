@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录页面引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#0f7a8c">
+<style>
+  :root{
+    --bg:#0a1620; --bg2:#0f2230;
+    --panel:rgba(255,255,255,.05); --panel2:rgba(255,255,255,.026);
+    --line:rgba(255,255,255,.12);
+    --ink:#e8f4f7; --sub:#9cc5ce;
+    --accent:#22b8cf; --accent2:#0f7a8c;
+    --gold:#f5c542; --danger:#e57373; --mint:#37c8b0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    background:linear-gradient(135deg,var(--bg),var(--bg2));
+    color:var(--ink);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer;}
+  input,select{font-family:inherit;color:var(--ink);}
+
+  header{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 20px;
+    background:rgba(255,255,255,.03);
+    border-bottom:1px solid var(--line);
+    backdrop-filter:blur(10px);
+  }
+  header .logo{font-size:24px;}
+  header h1{font-size:17px;font-weight:800;letter-spacing:.5px;}
+  header .sub{font-size:11px;color:var(--sub);margin-top:2px;}
+  header .spacer{flex:1;}
+  .top-btn{
+    padding:9px 16px;border-radius:12px;font-size:13px;font-weight:800;
+    background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);
+    transition:.18s;white-space:nowrap;
+  }
+  .top-btn:hover{background:rgba(255,255,255,.12);}
+  .top-btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(15,122,140,.35);}
+  .top-btn.primary:hover{filter:brightness(1.1);}
+
+  main{flex:1;display:flex;min-height:0;margin:12px 14px 14px;gap:12px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);overflow:hidden;display:flex;flex-direction:column;}
+
+  /* 左：图层/元素树 */
+  .tree-panel{width:230px;flex-shrink:0;}
+  .tree-head{padding:12px;border-bottom:1px solid var(--line);}
+  .tree-head h2{font-size:14px;font-weight:800;margin-bottom:8px;}
+  .tree-head .hint{font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:10px;}
+  .tree{flex:1;overflow-y:auto;padding:8px;}
+  .tree-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;cursor:pointer;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px;transition:.15s;}
+  .tree-row:hover{background:rgba(255,255,255,.07);color:var(--ink);}
+  .tree-row.sel{background:rgba(34,184,207,.16);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(34,184,207,.4);}
+  .tree-row .k{width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:13px;flex-shrink:0;}
+  .tree-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* 中：预览 stage */
+  .center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);}
+  .pill{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;transition:.15s;}
+  .pill:hover{background:rgba(255,255,255,.12);}
+  .pill.on{outline:2px solid var(--accent);outline-offset:2px;background:rgba(34,184,207,.14);}
+  .pill.mint{background:linear-gradient(135deg,#37c8b0,#22b8cf);border-color:transparent;color:#042f28;}
+  .pill.gold{background:linear-gradient(135deg,#f5c542,#f0a500);border-color:transparent;color:#3a2c05;}
+  .device-sel{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding:0 10px;height:32px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;}
+
+  .stage-frame{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:8px;background:rgba(0,0,0,.18);border-radius:16px;min-height:280px;flex:1;}
+  .device-name{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.5px;padding:0 4px;}
+  .device-viewport{position:relative;width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:14px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 10px,rgba(0,0,0,.18) 10px 20px);border-radius:12px;min-height:240px;overflow:hidden;}
+
+  .stage{position:relative;width:100%;aspect-ratio:16/9;max-height:62vh;border-radius:14px;border:2px dashed rgba(34,184,207,.45);overflow:hidden;background:#000;min-height:260px;}
+  /* 机型预览 */
+  .device-none .device-viewport{padding:0;background:transparent;}
+  .device-iphone-se .stage,
+  .device-iphone-15pm .stage,
+  .device-android .stage,
+  .device-ipad .stage{width:min(100%,760px);height:auto;min-height:0;max-height:none;border:4px solid #111116;box-shadow:0 0 0 5px #303038,0 18px 48px rgba(0,0,0,.62);}
+  .device-iphone-se .stage{aspect-ratio:667/375;border-radius:26px;}
+  .device-iphone-15pm .stage{aspect-ratio:932/430;border-radius:30px;}
+  .device-android .stage{aspect-ratio:19.5/9;border-radius:24px;}
+  .device-ipad .stage{aspect-ratio:4/3;max-width:650px;border-radius:18px;}
+  .device-pc-1280 .stage{aspect-ratio:16/9;max-width:560px;max-height:380px;width:auto;border:2px solid #2c2c38;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+
+  .stage-hint{text-align:center;font-size:11px;color:var(--sub);padding:8px 0 4px;}
+
+  /* 世界容器：视频背景 + 卡片 + 元素都住在这里，共享同一 cover 变换 */
+  .world-box{position:absolute;overflow:hidden;background:#000;}
+  .world-bg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
+
+  /* 生物芯片身份证卡片 */
+  .id-card{position:absolute;cursor:move;touch-action:none;z-index:10;transform-origin:center;border-radius:8px;}
+  .id-card .card-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;border-radius:8px;filter:drop-shadow(0 6px 20px rgba(0,0,0,.5));}
+  .id-card.sel{box-shadow:0 0 0 3px var(--accent);border-radius:8px;}
+  .id-card .ed-resize{position:absolute;right:-8px;bottom:-8px;width:20px;height:20px;border-radius:6px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
+
+  /* 输入框（姓名 / 防伪码）—— 引擎里用占位框，运行时变成真输入框 */
+  .id-field{position:absolute;cursor:move;touch-action:none;z-index:20;border-radius:6px;}
+  .id-field .field-box{position:absolute;inset:0;border:2px dashed var(--gold);background:rgba(240,165,0,.14);border-radius:6px;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;}
+  .id-field .field-label{position:absolute;top:-20px;left:0;font-size:11px;font-weight:900;color:var(--gold);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+  .id-field.sel .field-box{border-color:#fff;background:rgba(255,255,255,.16);box-shadow:0 0 0 3px var(--accent);}
+  .id-field .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--gold);cursor:nwse-resize;z-index:30;}
+
+  /* 核验触发框 */
+  .id-verify{position:absolute;cursor:move;touch-action:none;z-index:25;border:2px dashed var(--mint);background:rgba(55,200,176,.14);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+  .id-verify .v-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:900;color:var(--mint);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+  .id-verify.sel{background:rgba(55,200,176,.28);box-shadow:0 0 0 3px var(--mint);}
+  .id-verify .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--mint);cursor:nwse-resize;z-index:30;}
+
+  /* 预览模式：隐藏编辑虚线框，展示真实效果 */
+  .stage.preview .id-field .field-box,
+  .stage.preview .id-verify{border-color:transparent;background:transparent;box-shadow:none;}
+  .stage.preview .id-field .field-label,
+  .stage.preview .id-verify .v-label,
+  .stage.preview .ed-resize,
+  .stage.preview .id-card .ed-resize{display:none;}
+
+  /* 运行时输入框（预览模式里的真输入框） */
+  .rt-input{position:absolute;background:rgba(0,0,0,.55);border:2px solid rgba(34,184,207,.7);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);}
+  .rt-input:focus{border-color:#37c8b0;box-shadow:0 0 12px rgba(55,200,176,.5);}
+
+  /* 卡片动画：晃动 + 流光 */
+  @keyframes idShake{
+    0%,100%{transform:rotate(0) translateX(0);}
+    10%{transform:rotate(-1.6deg) translateX(-4px);}
+    20%{transform:rotate(1.4deg) translateX(4px);}
+    30%{transform:rotate(-1.2deg) translateX(-3px);}
+    40%{transform:rotate(1deg) translateX(3px);}
+    50%{transform:rotate(-.7deg) translateX(-2px);}
+    60%{transform:rotate(.6deg) translateX(2px);}
+    70%{transform:rotate(-.4deg) translateX(-1px);}
+    80%{transform:rotate(.3deg) translateX(1px);}
+    90%{transform:rotate(-.1deg) translateX(0);}
+  }
+  .id-card.verified{animation:idShake .9s ease both;}
+  .id-card .flow-layer{position:absolute;inset:0;border-radius:8px;pointer-events:none;overflow:hidden;opacity:0;z-index:15;}
+  .id-card.verified .flow-layer{opacity:1;}
+  .id-card .flow-layer::before{
+    content:'';position:absolute;top:-50%;left:-80%;width:45%;height:200%;
+    background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.15) 40%,rgba(34,216,255,.55) 50%,rgba(255,255,255,.15) 60%,transparent 100%);
+    transform:skewX(-20deg);
+    animation:flowSweep 1.6s ease-in-out infinite;
+  }
+  @keyframes flowSweep{
+    0%{left:-80%;}
+    55%{left:135%;}
+    100%{left:135%;}
+  }
+  .id-card .flow-layer::after{
+    content:'';position:absolute;inset:0;border-radius:8px;
+    background:linear-gradient(135deg,rgba(34,216,255,.0) 0%,rgba(34,216,255,.25) 30%,rgba(245,197,66,.2) 60%,rgba(34,216,255,0) 100%);
+    background-size:300% 300%;
+    animation:flowShimmer 2.4s ease-in-out infinite;
+    mix-blend-mode:screen;
+  }
+  @keyframes flowShimmer{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+  }
+  /* 核验成功提示 */
+  .verify-toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);background:linear-gradient(135deg,#37c8b0,#22b8cf);color:#042f28;font-size:14px;font-weight:900;padding:10px 22px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:99;white-space:nowrap;animation:toastPop .35s ease;pointer-events:none;}
+  @keyframes toastPop{from{transform:translateX(-50%) scale(.7);opacity:0;}to{transform:translateX(-50%) scale(1);opacity:1;}}
+
+  /* 右：属性面板 */
+  .props-panel{width:280px;flex-shrink:0;overflow-y:auto;padding:14px;}
+  .props-panel h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .props-empty{color:var(--sub);font-size:12px;line-height:1.7;}
+  .prop-blk{margin-bottom:16px;}
+  .sec-title{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:1px;margin:14px 0 8px;text-transform:uppercase;}
+  .field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .field-row label{font-size:12px;color:var(--sub);flex-shrink:0;min-width:44px;}
+  .field-row input[type=text],.field-row input[type=number]{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);outline:none;}
+  .field-row input:focus{border-color:var(--accent);}
+  .field-row input[type=range]{flex:1;}
+  .field-row .val{font-size:11px;color:var(--gold);font-weight:800;min-width:36px;text-align:right;}
+  .btn-mini{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(255,255,255,.08);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .btn-mini:hover{background:rgba(255,255,255,.14);}
+  .btn-mini.danger{color:#ff9e9e;border-color:rgba(229,115,115,.4);}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .file-drop{border:2px dashed var(--line);border-radius:12px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:var(--sub);transition:.15s;background:rgba(255,255,255,.03);}
+  .file-drop:hover{border-color:var(--accent);color:var(--ink);}
+  .file-drop.drag{border-color:var(--mint);background:rgba(55,200,176,.1);}
+  .thumb-preview{margin-top:8px;max-width:100%;max-height:120px;border-radius:8px;display:none;object-fit:contain;background:rgba(0,0,0,.3);}
+  .vid-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);margin-bottom:6px;font-size:12px;}
+  .vid-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .vid-item .x{color:var(--danger);cursor:pointer;font-weight:900;font-size:14px;padding:0 4px;}
+  .chk-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .warn{background:rgba(229,115,115,.12);border:1px solid rgba(229,115,115,.3);color:#ffb4b4;border-radius:10px;padding:9px 12px;font-size:11px;line-height:1.6;margin-top:10px;}
+
+  /* 账号密码弹窗（核验通过自动注册时弹出） */
+  .account-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .account-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid var(--line);border-radius:18px;padding:22px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .account-modal h3{font-size:16px;font-weight:900;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+  .account-modal .sub{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:14px;}
+  .cred-card{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;}
+  .cred-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px dashed rgba(255,255,255,.1);}
+  .cred-row:last-child{border-bottom:none;}
+  .cred-row .k{color:var(--sub);font-size:12px;}
+  .cred-row .v{font-weight:900;color:var(--gold);letter-spacing:.5px;word-break:break-all;text-align:right;max-width:60%;}
+  .save-btn{width:100%;padding:11px;border-radius:11px;font-size:13px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;cursor:pointer;margin-bottom:8px;}
+  .close-btn{width:100%;padding:10px;border-radius:11px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);color:var(--sub);cursor:pointer;}
+
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🪪</div>
+  <div>
+    <h1>登录页面引擎</h1>
+    <div class="sub">生物芯片身份证 · 循环视频背景 · 机型预览 · 核验流程</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="top-btn" id="btn-preview" title="切换预览模式：隐藏编辑框，显示真实运行效果">▶ 预览/编辑</button>
+  <button class="top-btn" id="btn-test-verify" title="模拟一次核验流程（填入当前姓名+防伪码）">🔑 测试核验</button>
+  <button class="top-btn primary" id="btn-export">📦 导出配置</button>
+</header>
+
+<main>
+  <!-- 左：元素树 -->
+  <aside class="panel tree-panel">
+    <div class="tree-head">
+      <h2>🪪 登录页元素</h2>
+      <div class="hint">点选元素在右侧配置位置/大小。所有元素共享同一 cover 变换，不同机型下相对卡片位置恒定。</div>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+
+  <!-- 中：预览 -->
+  <section class="panel center-panel">
+    <div class="toolbar">
+      <button class="pill mint" id="btn-add-card">🪪 加卡片</button>
+      <button class="pill" id="btn-add-field">✍ 加输入框</button>
+      <button class="pill gold" id="btn-add-verify">🔍 加核验框</button>
+      <span style="width:1px;height:22px;background:var(--line);margin:0 2px;"></span>
+      <select class="device-sel" id="device-sel" title="切换不同机型预览">
+        <option value="none">🖥 无（16:9 全屏）</option>
+        <option value="iphone-se">📱 iPhone SE · 横屏</option>
+        <option value="iphone-15pm" selected>📱 iPhone 15 Pro Max · 横屏</option>
+        <option value="android">📱 Android 20:9 · 横屏</option>
+        <option value="ipad">📱 iPad 4:3 · 横屏</option>
+        <option value="pc-1280">💻 PC 1280</option>
+      </select>
+    </div>
+    <div class="stage-frame" id="stage-frame">
+      <div class="device-name" id="device-name">📱 iPhone 15 Pro Max · 横屏 932×430</div>
+      <div class="device-viewport" id="device-viewport">
+        <div class="stage" id="edit-stage"></div>
+      </div>
+    </div>
+    <div class="stage-hint">拖动移动 · 拖右下角缩放 · 点元素在右侧配置 · 「▶ 预览」看真实效果</div>
+  </section>
+
+  <!-- 右：属性 -->
+  <aside class="panel props-panel" id="props-panel">
+    <div class="props-empty" id="props-empty">点击左侧元素或画布中的卡片 / 输入框 / 核验框进行配置</div>
+    <div id="props-content" class="hidden"></div>
+  </aside>
+</main>
+
+<!-- 账号密码弹窗 -->
+<div class="account-modal-mask hidden" id="account-modal-mask">
+  <div class="account-modal">
+    <h3>🪪 注册成功！</h3>
+    <div class="sub">首次核验已为你自动注册账号。请务必保存以下账号与防伪码，下次登录需核验一致。</div>
+    <div class="cred-card">
+      <div class="cred-row"><span class="k">姓名 / 账号</span><span class="v" id="cred-name">—</span></div>
+      <div class="cred-row"><span class="k">特殊防伪码</span><span class="v" id="cred-code">—</span></div>
+    </div>
+    <button class="save-btn" id="cred-save">📥 保存为图片</button>
+    <button class="close-btn" id="cred-close">我已保存，进入世界</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   登录页面引擎 · 拾光·澈屿
+   数据模型（localStorage: login_engine_config）：
+   {
+     videos: [ {src, name} ],        // 循环播放的视频列表
+     card: { src, opacity, x, y, w, h },  // 生物芯片身份证卡片 PNG
+     fields: [ {id, type:'name'|'code', label, x, y, w, h, fontSize} ],
+     verify: { x, y, w, h },
+     currentVideoIndex
+   }
+   坐标全部归一化 0~1，x/y 是中心点，w/h 是相对 world-box 的宽高比。
+   ============================================================ */
+const LS_KEY = 'login_engine_config';
+
+function defaultConfig(){
+  return {
+    videos: [],
+    card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62 },
+    fields: [
+      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.42, w:0.24, h:0.07, fontSize:18 },
+      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.58, w:0.24, h:0.07, fontSize:16 },
+    ],
+    verify: { x:0.5, y:0.78, w:0.22, h:0.14 },
+  };
+}
+
+let cfg;
+function loadCfg(){
+  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); return; } }catch(e){}
+  cfg = defaultConfig();
+}
+function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const clamp = (a,b,v) => Math.max(a, Math.min(b, v));
+
+/* ================= 世界坐标（cover，与地图编辑引擎一致） ================= */
+const WA = 16/9;
+function coverFit(vw, vh, wa){
+  wa = (wa && isFinite(wa) && wa>0) ? wa : WA;
+  const scale = Math.max(vw/wa, vh);
+  return { w: wa*scale, h: scale, ox:(vw-wa*scale)/2, oy:(vh-scale)/2, scale };
+}
+function setBox(el, o){
+  el.style.left = ((o.x - o.w/2)*100)+'%';
+  el.style.top = ((o.y - o.h/2)*100)+'%';
+  el.style.width = (o.w*100)+'%';
+  el.style.height = (o.h*100)+'%';
+}
+
+/* ================= 机型预览 ================= */
+const DEVICE_INFO = {
+  'none':'🖥 无（16:9 全屏）',
+  'iphone-se':'📱 iPhone SE · 横屏 667×375',
+  'iphone-15pm':'📱 iPhone 15 Pro Max · 横屏 932×430',
+  'android':'📱 Android 20:9 · 横屏',
+  'ipad':'📱 iPad 4:3 · 横屏',
+  'pc-1280':'💻 PC 1280×720',
+};
+function setDevice(dev){
+  const frame = $('stage-frame');
+  frame.classList.remove('device-none','device-iphone-se','device-iphone-15pm','device-android','device-ipad','device-pc-1280');
+  if(dev !== 'none') frame.classList.add('device-'+dev);
+  $('device-name').textContent = DEVICE_INFO[dev] || dev;
+}
+$('device-sel').onchange = ()=> setDevice($('device-sel').value);
+
+/* ================= 渲染 ================= */
+let selectedId = null;   // 当前选中的元素 id（card / f_name / verify）
+let previewMode = false;
+let verifyToastTimer = null;
+
+function worldBoxEl(){
+  return $('edit-stage').querySelector('.world-box');
+}
+
+function render(){
+  const stage = $('edit-stage');
+  stage.innerHTML = '';
+  // 世界容器（cover 变换）
+  const wb = document.createElement('div');
+  wb.className = 'world-box';
+  // 视频背景
+  const curVid = cfg.videos[cfg.videos.length-1]; // 简单起见用最后一个；循环播放全部则由 videos 数组管理
+  if(cfg.videos.length){
+    const v = document.createElement('video');
+    v.className = 'world-bg-video';
+    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
+    v.src = cfg.videos[cfg.videos.length-1].src;
+    v.style.opacity = 1;
+    wb.appendChild(v);
+  } else {
+    const ph = document.createElement('div');
+    ph.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#9cc5ce;font-size:13px;';
+    ph.innerHTML = '<div style="font-size:40px;">🎬</div><div>暂无视频背景<br><span style="font-size:11px;opacity:.7;">在右侧「视频背景」上传 MP4/WebM</span></div>';
+    wb.appendChild(ph);
+  }
+  // 卡片
+  wb.appendChild(buildCardEl());
+  // 输入框
+  cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
+  // 核验框
+  wb.appendChild(buildVerifyEl());
+
+  // 在 preview 模式下，注入真实输入框
+  if(previewMode){
+    stage.classList.add('preview');
+    cfg.fields.forEach(f => {
+      const inp = document.createElement('input');
+      inp.className = 'rt-input';
+      inp.id = 'rt-' + f.id;
+      inp.placeholder = f.label;
+      inp.style.left = ((f.x - f.w/2)*100)+'%';
+      inp.style.top = ((f.y - f.h/2)*100)+'%';
+      inp.style.width = (f.w*100)+'%';
+      inp.style.height = (f.h*100)+'%';
+      inp.style.fontSize = 'clamp(10px, '+ (f.fontSize/100*5) +'vw, '+ (f.fontSize*1.4) +'px)';
+      wb.appendChild(inp);
+    });
+  } else {
+    stage.classList.remove('preview');
+  }
+
+  stage.appendChild(wb);
+  layoutWorldBox();
+  renderTree();
+  renderProps();
+}
+
+function layoutWorldBox(){
+  const stage = $('edit-stage');
+  const wb = worldBoxEl();
+  if(!wb) return;
+  const rect = stage.getBoundingClientRect();
+  const f = coverFit(rect.width, rect.height, WA);
+  wb.style.left = f.ox+'px';
+  wb.style.top = f.oy+'px';
+  wb.style.width = f.w+'px';
+  wb.style.height = f.h+'px';
+}
+
+/* ================= 卡片 ================= */
+function buildCardEl(){
+  const el = document.createElement('div');
+  el.className = 'id-card' + (selectedId==='card' ? ' sel' : '');
+  el.dataset.kind = 'card';
+  const pic = document.createElement('div');
+  pic.className = 'card-pic';
+  if(cfg.card.src){
+    pic.style.backgroundImage = 'url(' + cfg.card.src + ')';
+    pic.style.opacity = cfg.card.opacity;
+  } else {
+    pic.style.background = 'linear-gradient(135deg,#123,#1a3a4a)';
+    pic.style.border = '2px solid rgba(34,184,207,.5)';
+    pic.style.borderRadius = '8px';
+    pic.style.display = 'flex';
+    pic.style.alignItems = 'center';
+    pic.style.justifyContent = 'center';
+    pic.style.color = '#9cc5ce';
+    pic.style.fontSize = '13px';
+    pic.textContent = '🪪 上传身份证 PNG';
+  }
+  el.appendChild(pic);
+  // 流光层
+  const flow = document.createElement('div');
+  flow.className = 'flow-layer';
+  el.appendChild(flow);
+  setBox(el, cfg.card);
+  bindDrag(el, ()=>({...cfg.card, id:'card'}), 'card');
+  // 点击卡片触发核验（预览模式下）
+  el.addEventListener('click', e=>{
+    if(previewMode && !e.target.classList.contains('ed-resize')){
+      doVerify();
+    }
+  });
+  return el;
+}
+
+/* ================= 输入框 ================= */
+function buildFieldEl(f){
+  const el = document.createElement('div');
+  el.className = 'id-field' + (selectedId===f.id ? ' sel' : '');
+  el.dataset.kind = 'field';
+  el.dataset.fid = f.id;
+  const box = document.createElement('div');
+  box.className = 'field-box';
+  box.textContent = (f.type==='name'?'👤':'🔐');
+  box.style.fontSize = '20px';
+  el.appendChild(box);
+  const lb = document.createElement('div');
+  lb.className = 'field-label';
+  lb.textContent = f.label;
+  el.appendChild(lb);
+  setBox(el, f);
+  bindDrag(el, ()=>f, f.id);
+  return el;
+}
+
+/* ================= 核验框 ================= */
+function buildVerifyEl(){
+  const el = document.createElement('div');
+  el.className = 'id-verify' + (selectedId==='verify' ? ' sel' : '');
+  el.dataset.kind = 'verify';
+  el.innerHTML = '<span style="font-size:22px;">🔍</span>';
+  const lb = document.createElement('div');
+  lb.className = 'v-label';
+  lb.textContent = '核验区';
+  el.appendChild(lb);
+  setBox(el, cfg.verify);
+  bindDrag(el, ()=>({...cfg.verify, id:'verify'}), 'verify');
+  el.addEventListener('click', e=>{
+    if(previewMode && !e.target.classList.contains('ed-resize')){
+      doVerify();
+    }
+  });
+  return el;
+}
+
+/* ================= 拖拽 / 缩放 ================= */
+function dragHost(){ return worldBoxEl() || $('edit-stage'); }
+
+function bindDrag(el, getObj, id){
+  el.addEventListener('pointerdown', e=>{
+    if(e.target.classList.contains('ed-resize')) return;
+    e.preventDefault(); e.stopPropagation();
+    const o = getObj(); if(!o) return;
+    selectedId = id; refreshSelection();
+    const rect = dragHost().getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
+    const move=ev=>{
+      o.x = clamp01(ox + (ev.clientX-sx)/rect.width);
+      o.y = clamp01(oy + (ev.clientY-sy)/rect.height);
+      setBox(el, o);
+    };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); saveCfg(); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+  });
+  const h=document.createElement('div'); h.className='ed-resize'; el.appendChild(h);
+  h.addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    const o=getObj(); if(!o) return;
+    selectedId = id; refreshSelection();
+    const rect=dragHost().getBoundingClientRect();
+    const sx=e.clientX, sy=e.clientY, ow=o.w, oh=o.h;
+    const move=ev=>{
+      o.w = clamp(0.04, 0.95, ow + (ev.clientX-sx)/rect.width);
+      o.h = clamp(0.03, 0.9, oh + (ev.clientY-sy)/rect.height);
+      setBox(el,o);
+    };
+    const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);saveCfg();};
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+  });
+}
+
+function refreshSelection(){
+  const stage = $('edit-stage');
+  stage.querySelectorAll('.id-card,.id-field,.id-verify').forEach(el=>{
+    let id;
+    if(el.classList.contains('id-card')) id='card';
+    else if(el.classList.contains('id-verify')) id='verify';
+    else id = el.dataset.fid;
+    el.classList.toggle('sel', id===selectedId);
+  });
+  renderTree();
+  renderProps();
+}
+
+/* ================= 元素树 ================= */
+function renderTree(){
+  const t = $('tree');
+  t.innerHTML = '';
+  const rows = [
+    { id:'card', k:'🪪', nm:'身份证卡片' },
+    ...cfg.fields.map(f=>({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label })),
+    { id:'verify', k:'🔍', nm:'核验触发框' },
+  ];
+  rows.forEach(r=>{
+    const d=document.createElement('div');
+    d.className='tree-row'+(selectedId===r.id?' sel':'');
+    d.innerHTML = '<span class="k">'+r.k+'</span><span class="nm">'+r.nm+'</span>';
+    d.onclick = ()=>{ selectedId=r.id; refreshSelection(); };
+    t.appendChild(d);
+  });
+}
+
+/* ================= 属性面板 ================= */
+function renderProps(){
+  const empty = $('props-empty');
+  const content = $('props-content');
+  if(!selectedId){
+    empty.classList.remove('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  content.classList.remove('hidden');
+
+  if(selectedId === 'card'){
+    content.innerHTML = `
+      <h3>🪪 身份证卡片</h3>
+      <div class="prop-blk">
+        <div class="sec-title">卡片 PNG 贴图</div>
+        <div class="file-drop" id="card-drop">点击或拖入 PNG 上传</div>
+        <img class="thumb-preview" id="card-thumb">
+      </div>
+      <div class="prop-blk">
+        <div class="sec-title">透明度</div>
+        <div class="field-row"><label>不透明</label><input type="range" id="card-opacity" min="0" max="1" step="0.01" value="${cfg.card.opacity}"><span class="val" id="card-opacity-v">${Math.round(cfg.card.opacity*100)}%</span></div>
+      </div>
+      <div class="prop-blk">
+        <div class="sec-title">位置 / 大小</div>
+        <div class="field-row"><label>X</label><input type="number" id="card-x" step="0.01" value="${cfg.card.x.toFixed(3)}"></div>
+        <div class="field-row"><label>Y</label><input type="number" id="card-y" step="0.01" value="${cfg.card.y.toFixed(3)}"></div>
+        <div class="field-row"><label>宽</label><input type="number" id="card-w" step="0.01" value="${cfg.card.w.toFixed(3)}"></div>
+        <div class="field-row"><label>高</label><input type="number" id="card-h" step="0.01" value="${cfg.card.h.toFixed(3)}"></div>
+      </div>
+      <div class="btn-row"><button class="btn-mini danger" id="card-clear">🗑 移除贴图</button></div>
+    `;
+    bindCardProps();
+  } else if(selectedId === 'verify'){
+    content.innerHTML = `
+      <h3>🔍 核验触发框</h3>
+      <div class="sec-title">说明</div>
+      <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域进行身份核验。触发通过后卡片播放晃动 + 流光动画。</div>
+      <div class="prop-blk">
+        <div class="sec-title">位置 / 大小</div>
+        <div class="field-row"><label>X</label><input type="number" id="v-x" step="0.01" value="${cfg.verify.x.toFixed(3)}"></div>
+        <div class="field-row"><label>Y</label><input type="number" id="v-y" step="0.01" value="${cfg.verify.y.toFixed(3)}"></div>
+        <div class="field-row"><label>宽</label><input type="number" id="v-w" step="0.01" value="${cfg.verify.w.toFixed(3)}"></div>
+        <div class="field-row"><label>高</label><input type="number" id="v-h" step="0.01" value="${cfg.verify.h.toFixed(3)}"></div>
+      </div>
+    `;
+    ['v-x','v-y','v-w','v-h'].forEach(id=>{
+      $(id).oninput = e=>{
+        const k = id.slice(2);
+        cfg.verify[k] = parseFloat(e.target.value) || 0;
+        saveCfg(); render();
+      };
+    });
+  } else {
+    // 输入框
+    const f = cfg.fields.find(x=>x.id===selectedId);
+    if(!f){ selectedId=null; renderProps(); return; }
+    content.innerHTML = `
+      <h3>${f.type==='name'?'👤 姓名输入框':'🔐 防伪码输入框'}</h3>
+      <div class="prop-blk">
+        <div class="sec-title">字段</div>
+        <div class="field-row"><label>标签</label><input type="text" id="f-label" value="${f.label}"></div>
+        <div class="field-row"><label>字号</label><input type="range" id="f-font" min="10" max="40" step="1" value="${f.fontSize}"><span class="val" id="f-font-v">${f.fontSize}px</span></div>
+      </div>
+      <div class="prop-blk">
+        <div class="sec-title">位置 / 大小</div>
+        <div class="field-row"><label>X</label><input type="number" id="f-x" step="0.01" value="${f.x.toFixed(3)}"></div>
+        <div class="field-row"><label>Y</label><input type="number" id="f-y" step="0.01" value="${f.y.toFixed(3)}"></div>
+        <div class="field-row"><label>宽</label><input type="number" id="f-w" step="0.01" value="${f.w.toFixed(3)}"></div>
+        <div class="field-row"><label>高</label><input type="number" id="f-h" step="0.01" value="${f.h.toFixed(3)}"></div>
+      </div>
+      <div class="btn-row"><button class="btn-mini danger" id="f-del">🗑 删除此字段</button></div>
+    `;
+    $('f-label').oninput = e=>{ f.label = e.target.value; saveCfg(); render(); };
+    $('f-font').oninput = e=>{ f.fontSize = +e.target.value; $('f-font-v').textContent = f.fontSize+'px'; saveCfg(); render(); };
+    ['f-x','f-y','f-w','f-h'].forEach(id=>{
+      $(id).oninput = e=>{
+        const k = id.slice(2);
+        f[k] = parseFloat(e.target.value) || 0;
+        saveCfg(); render();
+      };
+    });
+    $('f-del').onclick = ()=>{
+      cfg.fields = cfg.fields.filter(x=>x.id!==f.id);
+      selectedId = null; saveCfg(); render();
+    };
+  }
+}
+
+function bindCardProps(){
+  // 上传 PNG
+  const drop = $('card-drop');
+  const thumb = $('card-thumb');
+  if(cfg.card.src){ thumb.src = cfg.card.src; thumb.style.display='block'; }
+  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg'; i.onchange=()=>readCardFile(i.files[0]); i.click(); };
+  drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = ()=> drop.classList.remove('drag');
+  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files[0]) readCardFile(e.dataTransfer.files[0]); };
+  // 透明度
+  $('card-opacity').oninput = e=>{
+    cfg.card.opacity = parseFloat(e.target.value);
+    $('card-opacity-v').textContent = Math.round(cfg.card.opacity*100)+'%';
+    saveCfg(); render();
+  };
+  // 位置大小
+  ['card-x','card-y','card-w','card-h'].forEach(id=>{
+    $(id).oninput = e=>{
+      const k = id.slice(5);
+      cfg.card[k] = parseFloat(e.target.value) || 0;
+      saveCfg(); render();
+    };
+  });
+  $('card-clear').onclick = ()=>{ cfg.card.src=''; saveCfg(); render(); };
+}
+
+function readCardFile(file){
+  const r = new FileReader();
+  r.onload = ()=>{ cfg.card.src = r.result; saveCfg(); render(); };
+  r.readAsDataURL(file);
+}
+
+/* ================= 视频背景 ================= */
+function renderVideoProps(){
+  // 视频背景属性放在一个独立的「全局设置」面板，通过未选中时也能看到
+  // 这里在选中卡片时额外显示视频列表是多余的；改成放在 props-empty 上方的固定区
+}
+
+/* ================= 核验流程 ================= */
+function doVerify(){
+  const nameInp = $('rt-f_name');
+  const codeInp = $('rt-f_code');
+  const name = nameInp ? nameInp.value.trim() : '';
+  const code = codeInp ? codeInp.value.trim() : '';
+  if(!name || !code){
+    toastVerify('⚠️ 请先填写姓名和防伪码');
+    return;
+  }
+  // 账号数据与主游戏对齐：username=姓名, password=防伪码，存 localStorage 'accounts'
+  const accounts = getGameAccounts();
+  let isNew = false;
+  if(!accounts[name]){
+    accounts[name] = { username:name, password:code, nickname:'', element:null, outfit:null, friends:[], level:1, wealth:500, coins:100, hideWealth:false };
+    isNew = true;
+  }
+  saveGameAccounts(accounts);
+
+  // 播放卡片晃动 + 流光
+  const cardEl = $('edit-stage').querySelector('.id-card');
+  if(cardEl){
+    cardEl.classList.remove('verified');
+    void cardEl.offsetWidth; // 重置动画
+    cardEl.classList.add('verified');
+  }
+
+  if(isNew){
+    toastVerify('✅ 首次核验，自动注册成功');
+    setTimeout(()=> showAccountModal(name, code), 500);
+  } else {
+    if(accounts[name].password === code){
+      toastVerify('✅ 核验通过，欢迎回来 '+name);
+    } else {
+      toastVerify('❌ 防伪码与已注册账号不一致');
+      cardEl && cardEl.classList.remove('verified');
+    }
+  }
+}
+
+function toastVerify(msg){
+  const stage = $('edit-stage');
+  stage.querySelectorAll('.verify-toast').forEach(x=>x.remove());
+  const t = document.createElement('div');
+  t.className = 'verify-toast';
+  t.textContent = msg;
+  stage.appendChild(t);
+  clearTimeout(verifyToastTimer);
+  verifyToastTimer = setTimeout(()=> t.remove(), 2200);
+}
+
+function showAccountModal(name, code){
+  $('cred-name').textContent = name;
+  $('cred-code').textContent = code;
+  $('account-modal-mask').classList.remove('hidden');
+}
+
+/* 与主游戏对齐的账号存储：key 用主游戏的 game_accounts，
+   账号结构 username=姓名、password=防伪码，主游戏登录页能直接读到 */
+const LS_GAME_ACCOUNTS = 'game_accounts';
+function getGameAccounts(){
+  try{ return JSON.parse(localStorage.getItem(LS_GAME_ACCOUNTS)) || {}; }catch(e){ return {}; }
+}
+function saveGameAccounts(a){
+  try{ localStorage.setItem(LS_GAME_ACCOUNTS, JSON.stringify(a)); }catch(e){}
+}
+
+$('cred-save').onclick = ()=>{
+  const name = $('cred-name').textContent;
+  const code = $('cred-code').textContent;
+  const canvas = document.createElement('canvas');
+  canvas.width = 320; canvas.height = 200;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#0a1620'; c.fillRect(0,0,320,200);
+  c.fillStyle = '#22b8cf'; c.font = 'bold 18px sans-serif'; c.fillText('🪪 拾光·澈屿 账号凭证', 20, 40);
+  c.fillStyle = '#9cc5ce'; c.font = '14px sans-serif'; c.fillText('姓名 / 账号：', 20, 85);
+  c.fillStyle = '#f5c542'; c.font = 'bold 16px sans-serif'; c.fillText(name, 20, 110);
+  c.fillStyle = '#9cc5ce'; c.font = '14px sans-serif'; c.fillText('特殊防伪码：', 20, 140);
+  c.fillStyle = '#f5c542'; c.font = 'bold 16px sans-serif'; c.fillText(code, 20, 165);
+  const a = document.createElement('a');
+  a.download = '账号凭证.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  toastVerify('📥 已保存账号凭证图片');
+};
+$('cred-close').onclick = ()=>{ $('account-modal-mask').classList.add('hidden'); };
+$('account-modal-mask').addEventListener('click', e=>{ if(e.target===$('account-modal-mask')) $('account-modal-mask').classList.add('hidden'); });
+
+/* ================= 工具栏 ================= */
+$('btn-preview').onclick = ()=>{
+  previewMode = !previewMode;
+  $('btn-preview').textContent = previewMode ? '✎ 编辑模式' : '▶ 预览/编辑';
+  render();
+};
+
+$('btn-add-card').onclick = ()=>{ selectedId='card'; refreshSelection(); };
+$('btn-add-field').onclick = ()=>{
+  const id = 'f_' + Date.now();
+  cfg.fields.push({ id, type:'name', label:'姓名', x:0.5, y:0.3, w:0.22, h:0.07, fontSize:18 });
+  selectedId = id; saveCfg(); render();
+};
+$('btn-add-verify').onclick = ()=>{ selectedId='verify'; refreshSelection(); };
+
+$('btn-test-verify').onclick = ()=>{
+  // 进入预览模式并填入示例数据
+  previewMode = true;
+  $('btn-preview').textContent = '✎ 编辑模式';
+  render();
+  const n = $('rt-f_name'), c = $('rt-f_code');
+  if(n) n.value = '暮眠';
+  if(c) c.value = 'A7-9K2-5FQ';
+  setTimeout(doVerify, 200);
+};
+
+$('btn-export').onclick = ()=>{
+  const data = JSON.stringify(cfg, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.download = '登录页配置.json';
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  toastVerify('📦 已导出登录页配置 JSON');
+};
+
+/* ================= 视频背景上传（放右侧面板顶部固定区） ================= */
+function renderGlobalVideoPanel(){
+  // 视频背景是全局配置，放在属性面板的 props-empty 里太隐蔽；
+  // 改为在 props-empty 里也展示视频上传入口
+  const empty = $('props-empty');
+  if(selectedId) return;
+  empty.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div class="sec-title" style="margin-top:0;">🎬 循环视频背景</div>
+      <div class="file-drop" id="vid-drop">点击或拖入 MP4 / WebM 上传</div>
+      <div id="vid-list" style="margin-top:10px;">${renderVidList()}</div>
+      <div class="chk-row" style="margin-top:10px;"><input type="checkbox" id="vid-loop-all" ${cfg.videos.length>1?'checked':''}> 多视频循环轮播</div>
+    </div>
+    <div class="warn">💡 上传多段视频可做「循环轮播」背景。当前实现：单视频 loop 循环，多视频按列表顺序切换。</div>
+  `;
+  const drop = $('vid-drop');
+  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='video/mp4,video/webm'; i.multiple=true; i.onchange=()=>readVidFiles([...i.files]); i.click(); };
+  drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag'); };
+  drop.ondragleave = ()=> drop.classList.remove('drag');
+  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files.length) readVidFiles([...e.dataTransfer.files]); };
+  $('vid-loop-all').onchange = e=>{ /* 标记多视频轮播，具体逻辑在 render 里 */ };
+  // 列表删除按钮
+  document.querySelectorAll('#vid-list .x').forEach(x=>{
+    x.onclick = ()=>{ const idx=+x.dataset.idx; cfg.videos.splice(idx,1); saveCfg(); render(); };
+  });
+}
+
+function renderVidList(){
+  if(!cfg.videos.length) return '<div style="font-size:11px;color:#9cc5ce;">暂无视频</div>';
+  return cfg.videos.map((v,i)=>`<div class="vid-item"><span>🎞</span><span class="nm">${v.name||('视频'+(i+1))}</span><span class="x" data-idx="${i}">✕</span></div>`).join('');
+}
+
+function readVidFiles(files){
+  files.forEach(f=>{
+    const r = new FileReader();
+    r.onload = ()=>{ cfg.videos.push({ src:r.result, name:f.name }); saveCfg(); render(); };
+    r.readAsDataURL(f);
+  });
+  toastVerify('🎬 已添加 '+files.length+' 段视频');
+}
+
+/* ================= 窗口缩放适配 ================= */
+window.addEventListener('resize', ()=>{ layoutWorldBox(); });
+
+/* ================= 初始化 ================= */
+loadCfg();
+render();
+renderGlobalVideoPanel();
+setDevice('iphone-15pm');
+
+// 点击 stage 空白处取消选中
+$('edit-stage').addEventListener('pointerdown', e=>{
+  if(e.target === $('edit-stage') || e.target.classList.contains('world-box')){
+    selectedId = null; refreshSelection(); renderGlobalVideoPanel();
+  }
+});
+</script>
+</body>
+</html>
