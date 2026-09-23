@@ -451,6 +451,8 @@ function loadCfg(){
 /* 补齐旧配置缺失的 locked 字段，避免老数据报错 */
 function normalizeCfg(){
   const def = defaultConfig();
+  /* 陛下钦定「最后一秒才淡出」：把早先设的 3000 一并迁到 1000 */
+  if(cfg.intro && (cfg.intro.fadeOut === 3000 || cfg.intro.fadeOut === 800)) cfg.intro.fadeOut = 1000;
   if(cfg.card && cfg.card.locked===undefined) cfg.card.locked = false;
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
@@ -989,7 +991,7 @@ function renderTree(){
     cfg.fields.forEach(f=> rows.push({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label }));
     rows.push({ id:'stamp', k:'🔍', nm:'盖章触发区' });
   } else if(activeTab==='intro'){
-    rows.push({ id:'__intro', k:'🎬', nm:'开场动画层（z=100）' });
+    rows.push({ id:'__intro', k:'🎬', nm:'开场动画层（z=15）' });
   } else if(activeTab==='login'){
     rows.push({ id:'__loginfx', k:'✨', nm:'登录动画层（z=10）' });
   } else if(activeTab==='overview'){
@@ -1776,11 +1778,24 @@ function playIntroPreview(){
 
   const showCard = ()=>{
     if(d.cardShown) return; d.cardShown = true;
-    cardEls.forEach(el=>{
-      el.style.transition=''; el.style.opacity=''; el.style.pointerEvents='';
-      void el.offsetWidth;                 // 强制重排，保证动画每次都重新播
-      el.classList.add('intro-pop');
-    });
+    /* 整组一起弹：卡片、头像、输入框、盖章区共用「卡片中心」当变换原点，
+       缩放/歪头/抖动围绕同一个点 → 整块卡片一体登场，不再各弹各的 */
+    try{
+      const a = wb.querySelector('.id-card') || cardEls[0];
+      const ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + a.offsetHeight / 2;
+      cardEls.forEach(el=>{
+        el.style.transition=''; el.style.opacity=''; el.style.pointerEvents='';
+        el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px';
+        void el.offsetWidth;                 // 强制重排，保证动画每次都重新播
+        el.classList.add('intro-pop');
+      });
+    }catch(e){
+      cardEls.forEach(el=>{
+        el.style.transition=''; el.style.opacity=''; el.style.pointerEvents='';
+        void el.offsetWidth;
+        el.classList.add('intro-pop');
+      });
+    }
   };
   const finish = ()=>{
     if(d.ended) return; d.ended = true;

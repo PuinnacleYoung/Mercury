@@ -2852,13 +2852,12 @@ function startLandscapePrompt(){
 }
 function afterLandscape(){
   // 管理员从引擎返回中枢：index.html?hub=1
-  // 没登录态（直接开网址 / 换标签页 / 刷新过）时也要有反馈：直接把管理员登录框弹出来，登进去就进中枢
-  if(/[?&]hub/.test(location.search)){
-    if(sessionStorage.getItem('adminLogin')==='true'){ showScreen('admin-hub-screen'); return; }
-    if(typeof openAdminLogin === 'function'){ openAdminLogin(); return; }
+  // 只有「确实带着管理员登录态」才直达中枢 —— 以前没登录态也在这里 return，
+  // 开场动画被整个跳过（陛下刷新 hub 链接永远看不到动画，就是它干的）。
+  if(/[?&]hub/.test(location.search) && sessionStorage.getItem('adminLogin')==='true'){
+    showScreen('admin-hub-screen'); return;
   }
-  /* 🎬 开场动画：不管有没有登录，进游戏都先看一次（一个会话只播一次）。
-     以前它只挂在「未登录」那条分支上 —— 陛下早就登录了，所以永远看不到。
+  /* 🎬 开场动画：不管有没有登录，进游戏都先看一次。
      ⚠️ 必须**等云端配置落地**再决定播不播：否则读到的还是本机旧配置
      （比如指向早就被删掉的旧视频文件），表现就是「明明配了却没有开场动画」。 */
   waitCloudAssets(()=>{
@@ -2893,6 +2892,11 @@ function afterLandscapeGo(){
     else { enterLobby(); checkCharacterSource(); }
   } else {
     showScreen('auth-screen');
+    /* hub=1 但没有管理员登录态：动画播完、落到登录页后，把管理员登录框弹出来
+      （以前是开局就弹、代价是把开场动画整个跳过 —— 现在挪到动画后面） */
+    if(/[?&]hub/.test(location.search) && sessionStorage.getItem('adminLogin')!=='true' && typeof openAdminLogin === 'function'){
+      try{ openAdminLogin(); }catch(e){}
+    }
   }
 }
 
@@ -2907,14 +2911,10 @@ function resolveVideoSrc(v){
   return (v.slice(0, 4) === 'srv:') ? v.slice(4) : v;
 }
 function playIntroOnce(onDone){
-  /* 一个浏览器会话只播一次（省得每次刷新都重看 20 秒）；
-     想反复验收效果就加 ?intro=1 强制重播 */
-  const force = /[?&]intro=1/.test(location.search);
-  try{
-    if(!force && sessionStorage.getItem('introPlayed') === '1'){ onDone(); return; }
-    if(force) sessionStorage.removeItem('introPlayed');
-    else sessionStorage.setItem('introPlayed', '1');
-  }catch(e){}
+  /* 陛下钦定：刷新就要能看到开场动画 → 不再做「一个会话只播一次」的门控。
+     （以前每次刷新都被 sessionStorage 拦住，看起来就像动画凭空消失了。）
+     不想看的人可以 ?intro=0 跳过。 */
+  if(/[?&]intro=0/.test(location.search)){ onDone(); return; }
   playIntro(onDone);
 }
 function playIntro(onDone){
@@ -2972,11 +2972,21 @@ function startIntroVideo(src, o, onDone, opt){
   }
   const showCard = ()=>{
     if(cardShown) return; cardShown = true;
-    cardEls.forEach(el=>{
-      el.style.opacity=''; el.style.pointerEvents='';
-      void el.offsetWidth;
-      el.classList.add('intro-pop');
-    });
+    /* 整组一起弹：姓名框、防伪码、核验按钮是卡片的兄弟节点，以前各弹各的，
+       陛下看着像散架。现在所有元素共用「卡片中心」当 transform-origin，
+       缩放/歪头/抖动都围绕同一个点 → 视觉上就是整块卡片一体登场。 */
+    try{
+      const a = document.getElementById('auth-card') || cardEls[0];
+      const ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + a.offsetHeight / 2;
+      cardEls.forEach(el=>{
+        el.style.opacity = ''; el.style.pointerEvents = '';
+        el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px';
+        void el.offsetWidth;
+        el.classList.add('intro-pop');
+      });
+    }catch(e){
+      cardEls.forEach(el=>{ el.style.opacity=''; el.style.pointerEvents=''; el.classList.add('intro-pop'); });
+    }
   };
 
   const finish = ()=>{
