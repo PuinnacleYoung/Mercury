@@ -219,7 +219,7 @@
 
     /* ---------- 提交本机 → 云端草稿区 ---------- */
     askKey: function(){
-      var k = prompt('请输入后台口令（找陛下要一次，输完本机就记住了）：');
+      var k = prompt('请输入后台口令（找陛下要一次，输完本机就记住了）：', 'mercury');
       if(k === null) return false;
       k = String(k).trim();
       if(!k){ alert('口令不能为空'); return false; }

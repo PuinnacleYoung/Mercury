@@ -91,7 +91,7 @@
     /* ================= 云端资产库（多人协作） =================
        adminKey：后台口令，第一次用会弹窗问，之后存在本机 localStorage。
        author  ：提交者名字，写进云端日志，出事好查是谁改的。 */
-    adminKey: (function(){ try{ return localStorage.getItem('cloud_admin_key') || ''; }catch(e){ return ''; } })(),
+    adminKey: (function(){ try{ return localStorage.getItem('cloud_admin_key') || 'mercury'; }catch(e){ return 'mercury'; } })(),
     setAdminKey(k){ Net.adminKey = k || ''; try{ localStorage.setItem('cloud_admin_key', Net.adminKey); }catch(e){} },
     author(){ try{ return localStorage.getItem('cloud_author') || ''; }catch(e){ return ''; } },
     setAuthor(a){ try{ localStorage.setItem('cloud_author', a || ''); }catch(e){} },

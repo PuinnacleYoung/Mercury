@@ -7,7 +7,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/mercury/server
 Environment=PORT=8090
-Environment=ADMIN_KEY=change_me_please
+Environment=ADMIN_KEY=mercury
 ExecStart=/usr/bin/node /opt/mercury/server/server.js
 Restart=always
 RestartSec=3
