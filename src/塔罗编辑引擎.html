@@ -261,6 +261,8 @@ input[type=range]::-moz-range-thumb{width:14px; height:14px; border:0; border-ra
 .hidden{display:none !important;}
 .divider{height:1px; background:var(--line); margin:10px 0;}
 </style>
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
 </head>
 <body data-page-node-id="bwGIGHFEDqTl3i1OKEKBJ9">
 <header data-page-node-id="QkgGpD4oNcwQ3Sp5XwnMKH">
@@ -2079,5 +2081,6 @@ $('btn-hub-back').onclick = () => { location.href = 'index.html?hub=1'; };
 <script src="./orientation-lock.js" defer></script>
 <script src="./responsive.js" defer></script>
 <script src="./pwa-install.js" defer></script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['tarot']); })();</script>
 </body>
 </html>

@@ -6052,6 +6052,38 @@ function pullOnlineData(opt){
 /* 全新浏览器（本机一条地图数据都没有）：静默拉一次 —— 朋友打开就是陛下的地图 */
 function autoPullOnlineData(){ if(HAD_MAPS_AT_BOOT) return; pullOnlineData({ confirm:false, silent:true }); }
 
+/* ☁️ 云端资产库 —— 现在有真服务器了，陛下在后台「发布」的内容直接下发到每个玩家：
+   进游戏时问服务器一次，哪个槽位的线上版本比本机已应用的新，就写哪个。
+   记一本账 cloud_applied{槽位:版本号}，同版本不重复写，所以玩家自己的创作不会被反复冲掉。 */
+function applyCloudAssets(slots){
+  let applied = {};
+  try{ applied = JSON.parse(localStorage.getItem('cloud_applied') || '{}'); }catch(e){ applied = {}; }
+  let n = 0; const updated = [];
+  for(const slot of Object.keys(slots || {})){
+    const s = slots[slot];
+    if(!s || !s.items) continue;
+    const rev = (s.rev && s.rev.live) || 0;
+    if(!rev) continue;
+    if(applied[slot] === rev) continue;              // 这版已经用过，跳过
+    let wrote = 0;
+    for(const k of Object.keys(s.items)){
+      try{ localStorage.setItem(k, s.items[k]); wrote++; }catch(e){}
+    }
+    if(wrote){ applied[slot] = rev; n += wrote; updated.push((s.name || slot) + ' v' + rev); }
+  }
+  if(n){
+    try{ localStorage.setItem('cloud_applied', JSON.stringify(applied)); }catch(e){}
+    _mapsCache = null;
+    console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
+    try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
+  }
+}
+function autoPullCloudAssets(){
+  if(!window.Net) return;
+  Net.on('assetData', m=>{ try{ applyCloudAssets(m.slots); }catch(e){ console.warn('cloud-assets', e); } });
+  Net.connect().then(()=>{ Net.assetPull(''); }).catch(()=>{});   // 连不上就静默，不打扰单机玩家
+}
+
 /* ================= 地图 Schema v3 =================
    Map   = 导航容器，只保存 navTiles，不可走、无出生点、无运行时触发。
    Level = 可运行关卡，只保存 entities / spawns / walk，必须挂在 Map 下。
@@ -7730,6 +7762,7 @@ try{
 }
 try{ checkOrientation(); }catch(e){}
 try{ autoPullOnlineData(); }catch(e){ console.warn('online-data', e); }   // 全新浏览器静默同步线上地图
+try{ autoPullCloudAssets(); }catch(e){ console.warn('cloud-assets', e); } // 同步陛下在后台发布的云端内容
 if(window.__storageFallback){
   fatalBar('当前环境<b>禁用了本地存储</b>（隐私/无痕模式、或 file:// 直开会触发），'
     + '本局能玩，但<b>账号与进度不会保存</b>。' + protocolTip());

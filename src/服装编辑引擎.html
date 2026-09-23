@@ -381,6 +381,8 @@
   .pick-i .th img{max-width:100%; max-height:100%; object-fit:contain;}
   .pick-i .nm2{font-size:11px; font-weight:800; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
 </style>
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
 </head>
 <body data-page-node-id="BBqZMoGiDcmoelV3UbYabe">
   <header data-page-node-id="4rTvuE5nqgJol70Ca2ZosT">
@@ -3359,5 +3361,6 @@ const sessionStorage = _mkStore(window.sessionStorage);
 <script src="./orientation-lock.js" defer></script>
 <script src="./responsive.js" defer></script>
 <script src="./pwa-install.js" defer></script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['outfit','body']); })();</script>
 </body>
 </html>

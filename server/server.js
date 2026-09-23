@@ -32,6 +32,16 @@ function saveData(d){
   catch(e){ console.error('[server] 数据保存失败:', e.message); }
 }
 let DB = loadData();
+
+/* 云端资产库（老版本 data.json 没有这块，自动补上） */
+function cloudInit(){
+  if(!DB.cloud) DB.cloud = { rev:{}, draft:{}, live:{}, history:{}, log:[] };
+  const c = DB.cloud;
+  c.rev = c.rev || {}; c.draft = c.draft || {}; c.live = c.live || {};
+  c.history = c.history || {}; c.log = c.log || [];
+}
+cloudInit();
+
 function persist(){ saveData(DB); }
 
 /* 账号（服务器侧镜像玩家公开资料 + 背包/邮件索引）。
@@ -292,6 +302,192 @@ function handleAdminMail(c, msg){
   send(c.sock, { t:'sys', msg:'已发送 ' + sent + ' 封邮件' });
 }
 
+/* ================= 云端资产库（多人协作） =================
+   槽位 slot = body / outfit / map / npc / tarot / misc
+   每个槽位存一组 localStorage 键值，分三区：
+     draft   草稿区（编辑器提交上来，还没发布）
+     live    发布区（游戏端拉取的唯一真源）
+     history 历史版本（发布时自动归档旧版本，最多 10 份，可一键回滚）
+   版本锁：每槽位两个版本号 live / draft。提交时带 baseRev（上次看到的草稿版本），
+     对不上说明有人抢先改过 → 回 assetConflict；客户端问过人之后可带 force:true 强覆盖。
+   大资产分片：BEGIN(总分片数) → CHUNK×N → END，服务端按 token 拼接，
+     这样单条 WebSocket 消息永远很小，不会被 nginx / 代理掐断。 */
+const SLOTS = {
+  body:   { name:'素体',      keys:['engine_body_v4'] },
+  /* 注意：engine_outfits_v3（玩家自己存的穿搭）不进云端，否则发布一次就把玩家的搭配冲掉了 */
+  outfit: { name:'服装件',    keys:['engine_lib_v3','engine_outfitsets_v1'] },
+  map:    { name:'地图/关卡', keys:['game_maps'] },
+  npc:    { name:'NPC',       keys:['engine_npcs_v1'] },
+  tarot:  { name:'塔罗',      keys:['tarot_editor_v1'], prefixes:['tarot_assets_'] },
+  misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim'] },
+};
+const HISTORY_MAX = 10;
+const UPLOAD_TTL  = 10 * 60 * 1000;
+const pendingUploads = new Map();   // token -> {slot,by,total,chunks,got,ts}
+
+function slotRev(slot){
+  const r = DB.cloud.rev[slot] || {};
+  return { live: r.live || 0, draft: r.draft || 0 };
+}
+function bumpDraft(slot){
+  const r = DB.cloud.rev[slot] || (DB.cloud.rev[slot] = { live:0, draft:0 });
+  r.draft = (r.draft || 0) + 1;
+  return r.draft;
+}
+function cloudLog(slot, action, by, extra){
+  DB.cloud.log.unshift(Object.assign({ slot, action, by: by || '?', ts: Date.now() }, extra || {}));
+  if(DB.cloud.log.length > 200) DB.cloud.log.length = 200;
+}
+function adminOk(msg){ return !!(msg && msg.adminKey && msg.adminKey === (process.env.ADMIN_KEY || 'admin123')); }
+function when(ts){ try{ return new Date(ts).toLocaleString('zh-CN'); }catch(e){ return String(ts); } }
+
+/* 拉取：不需要权限（游戏端人人可拉 live） */
+function handleAssetPull(c, msg){
+  const want = (msg && msg.slot) ? [msg.slot] : Object.keys(SLOTS);
+  const slots = {};
+  for(const s of want){
+    if(!SLOTS[s]) continue;
+    const L = DB.cloud.live[s], D = DB.cloud.draft[s], rev = slotRev(s);
+    slots[s] = {
+      name: SLOTS[s].name,
+      items: L ? L.items : null,
+      rev,
+      live:  L ? { by:L.by, ts:L.ts, rev:rev.live, bytes:L.bytes } : null,
+      draft: D ? { by:D.by, ts:D.ts, bytes:D.bytes } : null,
+    };
+  }
+  send(c.sock, { t:'assetData', slots });
+}
+
+/* 列表：给后台管理引擎看（要权限） */
+function handleAssetList(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'sys', msg:'后台权限不足' }); return; }
+  const list = Object.keys(SLOTS).map(s=>{
+    const L = DB.cloud.live[s], D = DB.cloud.draft[s], rev = slotRev(s);
+    return {
+      slot:s, name:SLOTS[s].name, rev,
+      live:  L ? { by:L.by, ts:L.ts, bytes:L.bytes, rev:rev.live } : null,
+      draft: D ? { by:D.by, ts:D.ts, bytes:D.bytes } : null,
+      pending: !!D,
+      historyCount: (DB.cloud.history[s] || []).length,
+    };
+  });
+  send(c.sock, { t:'assetList', list, log: DB.cloud.log.slice(0, 60) });
+}
+
+/* 提交（分片）——第 1 步：申请 */
+function handlePushBegin(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'assetErr', msg:'后台权限不足（adminKey 不对）' }); return; }
+  const slot = String(msg.slot || '');
+  if(!SLOTS[slot]){ send(c.sock, { t:'assetErr', msg:'未知槽位：' + slot }); return; }
+  const cur = slotRev(slot).draft;
+  const baseRev = Number(msg.baseRev || 0);
+  if(baseRev !== cur && !msg.force){
+    const D = DB.cloud.draft[slot];
+    send(c.sock, { t:'assetConflict', slot, cur, base:baseRev, msg: D
+      ? ('「' + (D.by||'?') + '」在 ' + when(D.ts) + ' 提交过一份还没发布的草稿。要覆盖它吗？')
+      : ('云端版本已经变了（云端 v' + cur + '，你基于 v' + baseRev + '），请先拉取最新再改。') });
+    return;
+  }
+  const total = Math.max(1, Number(msg.total || 1));
+  const token = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  pendingUploads.set(token, { slot, by: msg.by || '?', total, chunks: new Array(total), got: 0, ts: Date.now() });
+  send(c.sock, { t:'assetPushReady', token });
+}
+/* 提交——第 2 步：收分片 */
+function handlePushChunk(c, msg){
+  const u = pendingUploads.get(msg.token);
+  if(!u){ return; }
+  const i = Number(msg.i || 0);
+  if(i >= 0 && i < u.total && u.chunks[i] === undefined){ u.chunks[i] = String(msg.chunk || ''); u.got++; }
+  u.ts = Date.now();
+}
+/* 提交——第 3 步：拼装入库 */
+function handlePushEnd(c, msg){
+  const u = pendingUploads.get(msg.token);
+  if(!u){ send(c.sock, { t:'assetErr', msg:'上传会话已失效，请重新提交' }); return; }
+  pendingUploads.delete(msg.token);
+  if(u.got !== u.total){ send(c.sock, { t:'assetErr', msg:'分片缺失（收到 ' + u.got + '/' + u.total + '），请重新提交' }); return; }
+  const raw = u.chunks.join('');
+  let items;
+  try{ items = JSON.parse(raw); }
+  catch(e){ send(c.sock, { t:'assetErr', msg:'数据解析失败：' + e.message }); return; }
+  const bytes = Buffer.byteLength(raw, 'utf8');
+  DB.cloud.draft[u.slot] = { items, by: u.by, ts: Date.now(), bytes };
+  const rev = bumpDraft(u.slot);
+  cloudLog(u.slot, 'draft', u.by, { bytes, rev });
+  persist();
+  send(c.sock, { t:'assetPushDone', slot:u.slot, rev, bytes, msg:'已提交到草稿区，等陛下发布' });
+  broadcast({ t:'assetDraftChanged', slot:u.slot, by:u.by, ts:Date.now() }, c.sock);
+  console.log('[cloud]', u.by, '提交草稿', u.slot, (bytes/1024).toFixed(0) + 'KB');
+}
+
+/* 发布：草稿 → 线上（旧线上进历史） */
+function handleAssetPublish(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'sys', msg:'后台权限不足' }); return; }
+  const slot = String(msg.slot || '');
+  const D = DB.cloud.draft[slot];
+  if(!D){ send(c.sock, { t:'sys', msg:'这个槽位没有待发布的草稿' }); return; }
+  const L = DB.cloud.live[slot];
+  if(L){
+    const H = DB.cloud.history[slot] || (DB.cloud.history[slot] = []);
+    H.unshift({ items:L.items, by:L.by, ts:L.ts, rev:slotRev(slot).live, archivedAt:Date.now() });
+    if(H.length > HISTORY_MAX) H.length = HISTORY_MAX;
+  }
+  DB.cloud.live[slot] = { items:D.items, by:D.by, ts:D.ts, publishedAt:Date.now(), bytes:D.bytes };
+  delete DB.cloud.draft[slot];
+  const r = DB.cloud.rev[slot] || (DB.cloud.rev[slot] = { live:0, draft:0 });
+  r.live = (r.live || 0) + 1;
+  cloudLog(slot, 'publish', msg.by || '陛下', { rev:r.live, from:D.by, bytes:D.bytes });
+  persist();
+  send(c.sock, { t:'sys', msg:'已发布：' + SLOTS[slot].name + ' → v' + r.live });
+  send(c.sock, { t:'assetListRefresh' });
+  broadcast({ t:'assetPublished', slot, rev:r.live, by:D.by });
+  console.log('[cloud] 发布', slot, 'v' + r.live, '作者', D.by);
+}
+
+/* 回滚：把历史里最新一份放回线上 */
+function handleAssetRollback(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'sys', msg:'后台权限不足' }); return; }
+  const slot = String(msg.slot || '');
+  const H = DB.cloud.history[slot] || [];
+  if(!H.length){ send(c.sock, { t:'sys', msg:'这个槽位没有可回滚的历史版本' }); return; }
+  const old = H.shift();
+  const L = DB.cloud.live[slot];
+  DB.cloud.live[slot] = { items:old.items, by:old.by, ts:old.ts, bytes:old.bytes, rolledBackAt:Date.now() };
+  if(L){
+    const H2 = DB.cloud.history[slot] || (DB.cloud.history[slot] = []);
+    H2.unshift({ items:L.items, by:L.by, ts:L.ts, rev:slotRev(slot).live, archivedAt:Date.now() });
+    if(H2.length > HISTORY_MAX) H2.length = HISTORY_MAX;
+  }
+  const r = DB.cloud.rev[slot] || (DB.cloud.rev[slot] = { live:0, draft:0 });
+  r.live = (r.live || 0) + 1;
+  cloudLog(slot, 'rollback', msg.by || '陛下', { rev:r.live, to:old.by });
+  persist();
+  send(c.sock, { t:'sys', msg:'已回滚到「' + (old.by||'?') + '」的版本' });
+  send(c.sock, { t:'assetListRefresh' });
+  broadcast({ t:'assetPublished', slot, rev:r.live, by:old.by });
+}
+
+/* 丢弃草稿 */
+function handleAssetDiscard(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'sys', msg:'后台权限不足' }); return; }
+  const slot = String(msg.slot || '');
+  if(!DB.cloud.draft[slot]){ send(c.sock, { t:'sys', msg:'没有草稿可丢弃' }); return; }
+  const D = DB.cloud.draft[slot];
+  delete DB.cloud.draft[slot];
+  cloudLog(slot, 'discard', msg.by || '陛下', { from:D.by });
+  persist();
+  send(c.sock, { t:'sys', msg:'已丢弃「' + (D.by||'?') + '」的草稿' });
+  send(c.sock, { t:'assetListRefresh' });
+}
+
+/* 半途而废的上传会话，定时清掉 */
+setInterval(()=>{
+  const now = Date.now();
+  for(const [k, u] of pendingUploads){ if(now - u.ts > UPLOAD_TTL) pendingUploads.delete(k); }
+}, 60 * 1000).unref();
+
 /* ================= 连接生命周期 ================= */
 function onMessage(sock, text){
   let msg;
@@ -327,6 +523,15 @@ function onMessage(sock, text){
     case 'rename': handleRename(c, msg); break;
     case 'adminList': handleAdminList(c, msg); break;
     case 'adminMail': handleAdminMail(c, msg); break;
+    /* 云端资产库 */
+    case 'assetPull':      handleAssetPull(c, msg); break;
+    case 'assetList':      handleAssetList(c, msg); break;
+    case 'assetPushBegin': handlePushBegin(c, msg); break;
+    case 'assetPushChunk': handlePushChunk(c, msg); break;
+    case 'assetPushEnd':   handlePushEnd(c, msg); break;
+    case 'assetPublish':   handleAssetPublish(c, msg); break;
+    case 'assetRollback':  handleAssetRollback(c, msg); break;
+    case 'assetDiscard':   handleAssetDiscard(c, msg); break;
   }
 }
 
@@ -344,8 +549,12 @@ function onClose(sock){
 /* ================= HTTP + WebSocket 握手 ================= */
 const server = http.createServer((req, res)=>{
   if(req.url.startsWith('/health')){
+    const cloud = {};
+    for(const s of Object.keys(SLOTS)){
+      cloud[s] = { name:SLOTS[s].name, live: slotRev(s).live, draft: slotRev(s).draft, pending: !!DB.cloud.draft[s] };
+    }
     res.writeHead(200, {'Content-Type':'application/json; charset=utf-8'});
-    res.end(JSON.stringify({ ok:true, online:clients.size, accounts:Object.keys(DB.accounts).length }));
+    res.end(JSON.stringify({ ok:true, online:clients.size, accounts:Object.keys(DB.accounts).length, cloud }));
     return;
   }
   res.writeHead(404, {'Content-Type':'text/plain; charset=utf-8'});

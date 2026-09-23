@@ -420,6 +420,8 @@
   .wk-clear{background:rgba(255,90,90,.16);border:1px solid rgba(255,90,90,.4)!important;color:#ffb3b3;}
   .wk-pct{font-size:12px;font-weight:800;color:var(--sub);}
 </style>
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
 </head>
 <body data-page-node-id="QQz0soQ2LAm2ljrQCyZquT">
 
@@ -4043,5 +4045,6 @@ async function pasteAllMapsData(){
 <script src="./orientation-lock.js" defer></script>
 <script src="./responsive.js" defer></script>
 <script src="./pwa-install.js" defer></script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['map']); })();</script>
 </body>
 </html>

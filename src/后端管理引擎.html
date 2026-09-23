@@ -61,7 +61,12 @@
   <div class="status"><span class="dot" id="net-dot"></span><span id="net-text">未连接</span></div>
 </div>
 
-<div class="wrap">
+<div class="tabs">
+  <button class="tab on" data-tab="players">👥 玩家</button>
+  <button class="tab" data-tab="assets">☁️ 云端资产（发布 / 回滚）</button>
+</div>
+
+<div class="wrap" id="tab-players">
   <!-- 左：玩家列表 -->
   <div class="panel">
     <h2>👥 所有玩家 <span id="player-count" style="font-size:13px;color:var(--c-sub)"></span></h2>
@@ -108,12 +113,42 @@
   </div>
 </div>
 
+<!-- 云端资产库 -->
+<div class="wrap" id="tab-assets" style="display:none">
+  <div class="panel">
+    <h2>☁️ 云端资产
+      <button class="btn ghost" id="btn-asset-refresh" style="margin-left:auto;font-size:12px;padding:6px 12px">🔄 刷新</button>
+    </h2>
+    <div class="hint" style="margin:0 0 12px">
+      编辑器提交的内容先进<b>草稿区</b>，陛下点「发布」后才对全服生效。发布时旧版本自动进历史，随时可回滚。
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="player-table">
+        <thead><tr>
+          <th>槽位</th><th>线上版本</th><th>作者 / 时间</th><th>草稿（待发布）</th><th>操作</th>
+        </tr></thead>
+        <tbody id="asset-tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="asset-empty" style="display:none">还没有人提交过资产</div>
+  </div>
+
+  <div class="panel">
+    <h2>📜 谁动过云端</h2>
+    <div id="asset-log" style="max-height:460px;overflow:auto;"></div>
+    <div class="hint" style="margin-top:10px">
+      口令不对时会提示「后台权限不足」——去服务器上 <code>/etc/systemd/system/mercury.service</code> 里看 <code>ADMIN_KEY</code>。
+    </div>
+  </div>
+</div>
+
 <!-- 管理员登录 -->
 <div class="admin-mask" id="admin-mask">
   <div class="admin-card">
     <h2>🔐 管理员登录</h2>
     <input id="admin-user" placeholder="账号" value="1">
     <input id="admin-pass" placeholder="密码" type="password" value="1">
+    <input id="admin-key" placeholder="后台口令 ADMIN_KEY" type="password">
     <button class="btn" id="admin-go" style="width:100%">进入后台</button>
     <div class="msg" id="admin-msg"></div>
   </div>
@@ -127,8 +162,10 @@ const $ = id => document.getElementById(id);
 /* ================= 管理员门禁 ================= */
 const ADMIN_USER='1', ADMIN_PASS='1';
 function doAdminLogin(){
-  const u=$('admin-user').value.trim(), p=$('admin-pass').value;
+  const u=$('admin-user').value.trim(), p=$('admin-pass').value, k=$('admin-key').value.trim();
   if(u===ADMIN_USER && p===ADMIN_PASS){
+    if(!k){ $('admin-msg').textContent='请填后台口令（服务器上的 ADMIN_KEY）'; return; }
+    Net.setAdminKey(k);          // 记住，后面所有后台请求都带它
     sessionStorage.setItem('adminLogin','true');
     $('admin-mask').style.display='none';
     connectServer();
@@ -141,7 +178,6 @@ $('admin-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doAdminLogin
 if(sessionStorage.getItem('adminLogin')==='true'){ $('admin-mask').style.display='none'; connectServer(); }
 
 /* ================= 服务器连接 ================= */
-const ADMIN_KEY = 'admin123';
 let players = [];
 let selected = new Set();
 
@@ -156,7 +192,7 @@ function connectServer(){
     $('net-text').textContent='连接失败（请先启动 server/server.js）';
   });
 }
-function refresh(){ Net.send({ t:'adminList', adminKey:ADMIN_KEY }); }
+function refresh(){ Net.send({ t:'adminList', adminKey: Net.adminKey }); }
 
 /* ================= 玩家列表渲染 ================= */
 function renderPlayers(){
@@ -267,9 +303,86 @@ $('btn-send-mail').onclick=()=>{
     if(a.type==='clothes'){ o.itemId=a.itemId; }
     return o;
   });
-  Net.send({ t:'adminMail', adminKey:ADMIN_KEY, targets, title, body, attach: attach.length?attach:null });
+  Net.send({ t:'adminMail', adminKey:Net.adminKey, targets, title, body, attach: attach.length?attach:null });
   $('send-msg').textContent='已提交发送请求，等待服务器确认…';
 };
+
+/* ================= 云端资产库 ================= */
+let assets = [], assetLog = [];
+function fmtBytes(b){
+  if(b===null||b===undefined) return '—';
+  if(b<1024) return b+'B';
+  if(b<1024*1024) return (b/1024).toFixed(0)+'KB';
+  return (b/1024/1024).toFixed(1)+'MB';
+}
+function fmtTime(ts){
+  if(!ts) return '—';
+  const d=new Date(ts);
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+function slotName(id){ const a=assets.find(x=>x.slot===id); return a?a.name:id; }
+function refreshAssets(){ Net.assetList(); }
+
+Net.on('assetList', m=>{
+  assets = m.list || []; assetLog = m.log || [];
+  renderAssets(); renderAssetLog();
+});
+Net.on('assetListRefresh', ()=>refreshAssets());
+Net.on('assetPublished', ()=>{ refreshAssets(); $('send-msg').textContent='云端已更新，玩家下次进游戏生效'; });
+
+function renderAssets(){
+  const tb=$('asset-tbody'); tb.innerHTML='';
+  $('asset-empty').style.display = assets.length ? 'none' : 'block';
+  assets.forEach(a=>{
+    const tr=document.createElement('tr');
+    const liveTxt = a.live ? ('v'+a.live.rev+' · '+fmtBytes(a.live.bytes)) : '（空）';
+    const liveBy  = a.live ? (a.live.by+' · '+fmtTime(a.live.ts)) : '—';
+    let ops='';
+    if(a.draft){
+      ops += '<button class="btn" data-act="pub" data-s="'+a.slot+'">✅ 发布</button> ';
+      ops += '<button class="rm" data-act="disc" data-s="'+a.slot+'">🗑 丢弃</button> ';
+    }
+    if(a.historyCount) ops += '<button class="btn ghost" data-act="rb" data-s="'+a.slot+'">↩️ 回滚('+a.historyCount+')</button>';
+    if(!ops) ops='<span style="color:var(--c-sub);font-size:12px">—</span>';
+    tr.innerHTML =
+      '<td><b>'+a.name+'</b><div style="font-size:11px;color:var(--c-sub)">'+a.slot+'</div></td>' +
+      '<td>'+(a.live?'<span class="badge live">线上</span>':'')+liveTxt+'</td>' +
+      '<td>'+liveBy+'</td>' +
+      '<td>'+(a.draft
+          ? '<span class="badge draft">待发布</span>'+a.draft.by+' · '+fmtTime(a.draft.ts)+'<br><span style="font-size:11px;color:var(--c-sub)">'+fmtBytes(a.draft.bytes)+'</span>'
+          : '<span style="color:var(--c-sub)">—</span>')+'</td>' +
+      '<td class="asset-ops">'+ops+'</td>';
+    tb.appendChild(tr);
+  });
+}
+function renderAssetLog(){
+  const box=$('asset-log');
+  const ACT={draft:'提交草稿', publish:'发布上线', rollback:'回滚', discard:'丢弃草稿'};
+  box.innerHTML = assetLog.length
+    ? assetLog.map(x=>'<div class="log-row">'+fmtTime(x.ts)+'　<b>'+(x.by||'?')+'</b>　'+(ACT[x.action]||x.action)+
+        '　<span style="color:var(--c-sub)">'+slotName(x.slot)+(x.rev?(' → v'+x.rev):'')+'</span></div>').join('')
+    : '<div class="empty">暂无记录</div>';
+}
+$('asset-tbody').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const slot=b.dataset.s, act=b.dataset.act;
+  if(act==='pub'){ if(confirm('发布「'+slotName(slot)+'」？\n\n发布后所有玩家下次进游戏就会用到这份内容。')) Net.assetPublish(slot,'陛下'); }
+  else if(act==='disc'){ if(confirm('丢弃这份草稿？对方的修改会丢失（已发布的线上版本不受影响）。')) Net.assetDiscard(slot,'陛下'); }
+  else if(act==='rb'){ if(confirm('回滚到上一个版本？当前线上版本会被换下来（还能再回滚回来）。')) Net.assetRollback(slot,'陛下'); }
+});
+$('btn-asset-refresh').onclick=refreshAssets;
+
+/* ================= 标签切换 ================= */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    const id=t.dataset.tab;
+    $('tab-players').style.display = (id==='players') ? '' : 'none';
+    $('tab-assets').style.display  = (id==='assets')  ? '' : 'none';
+    if(id==='assets') refreshAssets();
+  };
+});
 </script>
 </body>
 </html>

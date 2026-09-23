@@ -195,6 +195,8 @@
     .edit-grid{grid-template-columns:1fr;}
   }
 </style>
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -895,5 +897,6 @@ function boot(){
 }
 boot();
 </script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['npc']); })();</script>
 </body>
 </html>
