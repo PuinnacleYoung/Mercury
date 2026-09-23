@@ -2072,6 +2072,7 @@ const engine = {
   lib: {},                            // {hair:[], face:[], ...}
   animCfg: { waveArm:'armR', waveBase:-60, waveSwing:20, waveSpeed:1, walkPhase:0 },
   bodyReady: false,
+  footBox: null,                      // 脚底碰撞盒（engine_body_v4.footBox）：{x,y,w,h} 像素坐标
   _imgs: new Map(),                   // dataUrl -> Image（去重）
   _composed: new Map(),               // 懒合成缓存 key -> {dataUrl, ready}
 };
@@ -2094,6 +2095,10 @@ function hydrateBody(d){
     });
     engine.parts = parts;
     engine.bodyReady = ENG_PART_DEFS.every(def=> parts[def.key] && parts[def.key].img && parts[def.key].w>0);
+    // 脚底碰撞盒：旧存档没有就保持 null（回退到固定比例脚底宽度）
+    if(d && d.footBox && typeof d.footBox.x==='number'){
+      engine.footBox = { x:+d.footBox.x, y:+d.footBox.y, w:+d.footBox.w||60, h:+d.footBox.h||20 };
+    } else { engine.footBox = null; }
   }catch(e){ engine.parts={}; engine.bodyReady=false; }
 }
 function loadEngineBody(){
@@ -5691,6 +5696,73 @@ function nodeRect(n, W, H){
   return { x:(n.x - w/2)*W, y:(n.y - h/2)*H, w:w*W, h:h*H };
 }
 function inRect(px, py, r){ return px>=r.x && px<=r.x+r.w && py>=r.y && py<=r.y+r.h; }
+/* ===== 脚底锚点 / 底部碰撞区 / Y-Sort =====
+   建筑底部碰撞区（脚底形状）：角色脚底与它不重叠 = 不能踩进去。
+   中心点 y（footCenterY）同时是 Y-Sort 遮挡排序的脚底锚点。 */
+function tileFootGeom(n){
+  const w = (typeof n.footW==='number' && n.footW>0) ? n.footW : 0.30;
+  const h = (typeof n.footH==='number' && n.footH>0) ? n.footH : 0.08;
+  const cy = (typeof n.footCenterY==='number') ? n.footCenterY : 0.92;
+  return { w, h, cy, cx:0.5 };
+}
+/* 建筑脚底锚点：世界坐标里的 y（Y-Sort 排序键）。
+   有底部碰撞区就用它的中心点 y，没有就退回建筑下边缘（n.y + h/2）。 */
+function tileFootY(n, H){
+  const shape = n.footShape;
+  if(shape && shape !== 'none'){
+    const r = nodeRect(n, 1, 1);   // 用归一化 W=1,H=1 拿相对比例，避免依赖 W
+    const g = tileFootGeom(n);
+    return (r.y + g.cy * r.h) * H;
+  }
+  const h = (typeof n.h==='number' && n.h>0) ? n.h : (n.w||0.14);
+  return (n.y + h/2) * H;
+}
+/* 建筑底部碰撞区（世界坐标矩形）：角色脚底采样带与它重叠则阻挡 */
+function tileFootRect(n, W, H){
+  const shape = n.footShape;
+  if(!shape || shape==='none') return null;
+  const g = tileFootGeom(n);
+  const r = nodeRect(n, W, H);
+  const fw = g.w * r.w;           // 底部宽 = 地块宽的 footW 比例
+  const fh = g.h * r.h;
+  const fy = r.y + g.cy * r.h;    // 底部中心 y（世界坐标）
+  return { x: r.x + (r.w - fw)/2, y: fy - fh/2, w: fw, h: fh, shape: shape };
+}
+/* 点是否落在建筑底部形状内（椭圆/矩形/三角） */
+function pointInFoot(px, py, f){
+  if(!f) return false;
+  const dx = (px - (f.x + f.w/2)) / (f.w/2);
+  const dy = (py - (f.y + f.h/2)) / (f.h/2);
+  if(f.shape==='ellipse') return (dx*dx + dy*dy) <= 1;
+  if(f.shape==='triangle'){ return py >= f.y && py <= f.y+f.h && Math.abs(px-(f.x+f.w/2)) <= (f.w/2)*(1 - (py-f.y)/f.h); }
+  /* rect 默认 */
+  return Math.abs(dx)<=1 && Math.abs(dy)<=1;
+}
+/* 角色的脚底采样带宽度（世界像素）：读素体脚底 box，没存就退回固定比例。
+   footBox 是引擎像素坐标，用「身体高」归一化后映射到游戏内角色实际高度（charRatio × worldH）。 */
+function charFootHalfWidth(worldH){
+  const charH = charRatioOf() * worldH;   // 角色在游戏里的实际像素高度
+  const fb = engine.footBox;
+  if(fb && fb.w > 0){
+    const b = engBounds();
+    if(b){ const bodyH = Math.max(1, b.maxY - b.minY); return (fb.w / bodyH) * charH * 0.5; }
+  }
+  return charH * 0.16;   // 兜底：角色实际高度的 16% 半宽
+}
+/* 角色的 Y-Sort 脚底 y：优先用素体脚底 box 的中心，否则用脚底点本身 */
+function charFootY(px, py){
+  const fb = engine.footBox;
+  if(fb){
+    const b = engBounds();
+    if(b){
+      const bodyH = Math.max(1, b.maxY - b.minY);
+      // 脚底 box 中心相对脚底点（feetY）向上偏移的距离，映射到游戏世界
+      const off = (b.maxY - (fb.y + fb.h/2)) / bodyH * (charRatioOf() * mapRun.h);
+      return py - off;
+    }
+  }
+  return py;
+}
 /* 地块自己就有行为：跳转地图 / 打开界面（纯装饰已下线，改用「🌈 前景层」） */
 function nodeAction(n){
   if(!n) return 'none';
@@ -5739,6 +5811,33 @@ function runtimeWalkable(level,px,py){
   if(!level||!level.walk||!level.walk.data||!mapRun.walkReady||mapRun.walkMapId!==level.id||!mapRun.walkPixels)return true;
   const ix=Math.max(0,Math.min(191,Math.floor(px/Math.max(1,mapRun.w)*192))),iy=Math.max(0,Math.min(107,Math.floor(py/Math.max(1,mapRun.h)*108)));
   return mapRun.walkPixels[(iy*192+ix)*4+3]>32;
+}
+/* 角色脚底采样带：从 -半宽 到 +半宽 取 N 个点，只要任意一个点踩进不可走区就挡。
+   替代旧单点采样，解决「角色半边身子插进墙/家具」的穿模问题。 */
+function charFootBlocked(level, px, py){
+  const d = ensureMaps(), m = d.maps[mapState.currentId];
+  if(!m) return false;
+  const halfW = charFootHalfWidth(mapRun.h);
+  const N = 5;
+  const footY = charFootY(px, py);
+  // ① 脚底采样带 vs 行走区（walk map）：多个点采样
+  for(let i=0;i<N;i++){
+    const t = (i/(N-1) - 0.5) * 2;   // -1 ~ 1
+    const sx = px + t * halfW;
+    if(!runtimeWalkable(level, sx, footY)) return true;
+  }
+  // ② 脚底采样带 vs 建筑底部碰撞区：角色脚底不能与建筑底部形状重叠
+  for(const n of (m.nodes||[])){
+    if(n.kind!=='tile') continue;
+    const f = tileFootRect(n, mapRun.w, mapRun.h);
+    if(!f) continue;
+    for(let i=0;i<N;i++){
+      const t = (i/(N-1) - 0.5) * 2;
+      const sx = px + t * halfW;
+      if(pointInFoot(sx, footY, f)) return true;
+    }
+  }
+  return false;
 }
 /* ---- 进入关卡 ----
    Map 与 Level 严格分流：Map 打开导航，不创建角色；Level 才进入运行场景。 */
@@ -6103,7 +6202,7 @@ function stepMap(now){
   }
   const _bk = mapRun.h/720;   // 边界余量也随世界尺寸等比（720p 时维持原值 24/74/28）
   mapRun.px=Math.max(24*_bk,Math.min(mapRun.w-24*_bk,mapRun.px));mapRun.py=Math.max(74*_bk,Math.min(mapRun.h-28*_bk,mapRun.py));
-  const d=ensureMaps(),level=d.maps[mapState.currentId];if(!runtimeWalkable(level,mapRun.px,mapRun.py)){mapRun.px=prevX;mapRun.py=prevY;mapRun.moving=false;}
+  const d=ensureMaps(),level=d.maps[mapState.currentId];if(charFootBlocked(level,mapRun.px,mapRun.py)){mapRun.px=prevX;mapRun.py=prevY;mapRun.moving=false;}
   updateMapPop();
   updateNpcProximity();
   netTick();                    // 联机：上报自己位置
@@ -6748,8 +6847,58 @@ function drawTriggerBox(c, n, W, H, lb){
   const fs = Math.max(10, Math.min(15, H*0.030));
   drawNamePlate(c, n.name || (n.action==='panel' ? '交互' : '门口'), lb, { fs, rect:r0, anchor:(lb.pos&&lb.pos!=='below')?lb.pos:'above' });
 }
+/* ===== Y-Sort 排序绘制用到的三个片段函数（从 drawMap 抽出来，避免重复代码）===== */
+/* NPC 立绘 + 头顶名牌 + ID 小字 */
+function drawNpcNode(c, n, W, H, _lb){
+  const npc = npcById(n.npcId); if(!npc) return;
+  const h = (typeof n.h==='number' && n.h>0) ? n.h : 0.20;
+  const px = n.x*W, py = n.y*H;
+  const nm = (npc.name||'NPC') + (npc.event && npc.event.type==='tarot' ? ' 🔮' : '');
+  const lbFs = _lb.fs || 12;
+  const nsz = namePlateSize(c, nm, _lb, lbFs);
+  const lbInfo = drawNamePlate(c, nm, _lb, { fs:lbFs, cx:px, cy:(py - h*H - 14) - nsz.h/2 });
+  const nid = npcShortId(npc.id || n.npcId);
+  if(nid){
+    c.save(); c.textAlign='center'; c.textBaseline='bottom';
+    c.font = '600 10px ui-monospace,Menlo,Consolas,monospace';
+    const idY = lbInfo.cy - lbInfo.h/2 - 4;
+    c.fillStyle = 'rgba(0,0,0,.28)';
+    c.fillText('#'+nid, px+1, idY + 1);
+    c.fillStyle = 'rgba(255,255,255,.72)';
+    c.fillText('#'+nid, px, idY);
+    c.restore();
+  }
+  drawCharacter(c, px, py, npc.outfit || {}, -1, 0, h*H/ENG_BASE_H);
+}
+/* 玩家自己（立绘 + 头顶昵称） */
+function drawLocalPlayer(c, W, H, _lb){
+  const cs = charScaleOf(H);
+  drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, cs);
+  const nick = currentUser.nickname || currentUser.username;
+  const pLb = Object.assign({}, _lb, { dir:'h' });
+  const pFs = pLb.fs || 12;
+  const psz = namePlateSize(c, nick, pLb, pFs);
+  drawNamePlate(c, nick, pLb, { fs:pFs, cx:mapRun.px, cy:(mapRun.py - ENG_BASE_H*cs*1.14) - psz.h/2 });
+}
+/* 收集同屏联机玩家（不画，交给排序逻辑统一画） */
+function collectRemotePlayers(W, H){
+  const out = [];
+  if(!window.Net || !window.Net.connected) return out;
+  const players = Net.remotePlayers();
+  const me = mapState.currentId || 'lobby';
+  const arr = [];
+  for(const uname in players){
+    const p = players[uname];
+    if(p.mapId !== me) continue;
+    if(Date.now() - p.lastSeen > 5000) continue;
+    const sx = p.x*W, sy = p.y*H;
+    const dx = sx - mapRun.px, dy = sy - mapRun.py;
+    arr.push({ p, px:sx, py:sy, dist: dx*dx + dy*dy });
+  }
+  arr.sort((a,b)=>a.dist-b.dist);
+  return arr.slice(0, 8);
+}
 function drawMap(){
-  let c = mapRun.ctx;
   if(!c || !mapRun.canvas || !mapRun.canvas.width){ resizeMap(); c = mapRun.ctx; }
   if(!c) return;
   let W = mapRun.w, H = mapRun.h;              // 世界画布（16:9）
@@ -6791,49 +6940,39 @@ function drawMap(){
   });
   const _lb = mapLb(m);   /* 🏷 名牌样式：整张地图统一 */
   (m.nodes||[]).forEach(n=>{ if(n.kind==='trigger') drawTriggerBox(c, n, W, H, _lb); });
-  (m.nodes||[]).forEach(n=>{ if(n.kind==='tile')    drawMapTile(c, n, W, H, _lb); });
-  // NPC：从《NPC 引擎》挑好的人，用游戏同款换装管线画出来
-  (m.nodes||[]).forEach(n=>{
-    if(n.kind!=='npc') return;
-    const npc = npcById(n.npcId); if(!npc) return;
-    const h = (typeof n.h==='number' && n.h>0) ? n.h : 0.20;
-    const px = n.x*W, py = n.y*H;
-    // 名字牌（悬在头顶）：用地图级「🏷 名牌样式」渲染，ID 小字挂在名牌正上方
-    const nm = (npc.name||'NPC') + (npc.event && npc.event.type==='tarot' ? ' 🔮' : '');
-    const lbFs = _lb.fs || 12;
-    const nsz = namePlateSize(c, nm, _lb, lbFs);
-    const lbInfo = drawNamePlate(c, nm, _lb, { fs:lbFs, cx:px, cy:(py - h*H - 14) - nsz.h/2 });
-    /* NPC 也要有 ID —— 和名字牌同款小字，挂在名牌正上方 */
-    const nid = npcShortId(npc.id || n.npcId);
-    if(nid){
-      c.save(); c.textAlign='center'; c.textBaseline='bottom';
-      c.font = '600 10px ui-monospace,Menlo,Consolas,monospace';
-      const idY = lbInfo.cy - lbInfo.h/2 - 4;
-      c.fillStyle = 'rgba(0,0,0,.28)';
-      c.fillText('#'+nid, px+1, idY + 1);
-      c.fillStyle = 'rgba(255,255,255,.72)';
-      c.fillText('#'+nid, px, idY);
-      c.restore();
-    }
-    // 立绘（NPC 一律朝左面向玩家）
-    drawCharacter(c, px, py, npc.outfit || {}, -1, 0, h*H/ENG_BASE_H);
+  /* ===== Y-Sort：把 tile / NPC / 玩家 / 联机玩家按脚底 y 统一排序绘制 =====
+     脚底越靠下（y 越大）越后画 = 越靠前；脚底越靠上（y 越小）越先画 = 越靠后。
+     角色走到建筑后面 → 建筑脚底 y 更大 → 建筑盖住角色；走到前面 → 角色盖住建筑。 */
+  const cs = charScaleOf(H);   // 角色占比（相对地图背景固定）
+  const sortable = [];
+  // ① 建筑地块
+  (m.nodes||[]).forEach(n=>{ if(n.kind!=='tile') return;
+    sortable.push({ y: tileFootY(n, H), draw:()=>drawMapTile(c, n, W, H, _lb) });
   });
-  // 角色出生点 NaN 兜底：直接落到世界中央偏下
+  // ② NPC
+  (m.nodes||[]).forEach(n=>{ if(n.kind!=='npc') return;
+    const npc = npcById(n.npcId); if(!npc) return;
+    const py = n.y*H;
+    sortable.push({ y: py, draw:()=>drawNpcNode(c, n, W, H, _lb) });
+  });
+  // ③ 玩家自己
   if(!isFinite(mapRun.px) || !isFinite(mapRun.py)){ mapRun.px = W/2; mapRun.py = H*0.7; }
-  /* currentUser 为空时（没登录就直接进地图）绝不能抛 —— 抛一次就会把 rAF 循环一起带走，
-     表现就是「角色永远看不见」。 */
   if(currentUser){
-    const cs = charScaleOf(H);   // 角色占比相对地图背景固定（素体工坊可调），不再随窗口大小变化
-    drawCharacter(c, mapRun.px, mapRun.py, currentUser.outfit, mapRun.facing, mapRun.moving?mapRun.walkPhase:0, cs);
-    // 玩家自己头顶显示昵称（同款名牌样式；方向强制横排，位置固定头顶）
-    const nick = currentUser.nickname || currentUser.username;   // 昵称缺失时回退账号名
-    const pLb = Object.assign({}, _lb, { dir:'h' });
-    const pFs = pLb.fs || 12;
-    const psz = namePlateSize(c, nick, pLb, pFs);
-    drawNamePlate(c, nick, pLb, { fs:pFs, cx:mapRun.px, cy:(mapRun.py - ENG_BASE_H*cs*1.14) - psz.h/2 });
+    sortable.push({ y: charFootY(mapRun.px, mapRun.py), draw:()=>drawLocalPlayer(c, W, H, _lb) });
   }
-  // 联机：渲染其他玩家（同屏最多 8 人，只画最近的）
-  drawRemotePlayers(c, W, H);
+  // ④ 联机玩家
+  collectRemotePlayers(W, H).forEach(rp=>{
+    sortable.push({ y: rp.py, draw:()=>{
+      drawCharacter(c, rp.px, rp.py, rp.p.outfit || {}, rp.p.facing||1, rp.p.walk||0, cs);
+      const nick = rp.p.nick || '玩家';
+      const lb = Object.assign({}, _lb, { dir:'h' });
+      const fs = lb.fs || 12;
+      const sz = namePlateSize(c, nick, lb, fs);
+      drawNamePlate(c, nick, lb, { fs, cx:rp.px, cy:(rp.py - ENG_BASE_H*cs*1.14) - sz.h/2 });
+    } });
+  });
+  sortable.sort((a,b)=>a.y-b.y);
+  sortable.forEach(s=>s.draw());
   c.restore();
   // 空地图明确提示，防止用户以为是渲染坏了
   const nodeCount = (m.nodes||[]).length, spawnCount = (m.spawns||[]).length;

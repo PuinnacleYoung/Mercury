@@ -126,6 +126,10 @@
   .layer-el .flip-wrap{position:absolute; inset:0; transform-origin:center center;}
   .layer-el.selected{outline:2px solid var(--pink); outline-offset:2px; border-radius:4px;}
   .joint-dot{position:absolute; width:18px; height:18px; border-radius:50%; border:3px solid #fff; background:#c75050; box-shadow:0 2px 6px rgba(0,0,0,.3); z-index:15; transform:translate(-50%,-50%); cursor:grab; touch-action:none;}
+  /* 脚底碰撞盒（素体工坊专属）：橙色虚线框，本体拖移动、右下角黄点缩放 */
+  .foot-box{position:absolute; border:2px dashed #ff9f43; background:rgba(255,159,67,.18); z-index:9; cursor:move; touch-action:none; border-radius:3px;}
+  .foot-box .fb-label{position:absolute; left:50%; top:-19px; transform:translateX(-50%); font-size:10px; font-weight:800; color:#ff9f43; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.5); pointer-events:none;}
+  .foot-box .fb-scale{position:absolute; left:100%; top:100%; width:15px; height:15px; border-radius:50%; border:2px solid #fff; background:#ff9f43; transform:translate(-50%,-50%); cursor:nwse-resize; z-index:10;}
   .handle{position:absolute; width:16px; height:16px; border-radius:50%; border:2px solid #fff; z-index:12; touch-action:none; transform:translate(-50%,-50%); box-shadow:0 2px 5px rgba(0,0,0,.28); display:none;}
   .layer-el.selected .handle{display:block;}
   .handle.scale{background:var(--violet); left:100%; top:100%; cursor:nwse-resize;}
@@ -755,6 +759,9 @@ const sessionStorage = _mkStore(window.sessionStorage);
 
   let parts={};
   PART_DEFS.forEach(d=>{ parts[d.key]={img:null,x:0,y:0,w:100,h:100,rot:0,flipH:false,jointPct:d.hasJoint?{x:0.5,y:0}:null}; });
+  /* 脚底碰撞盒：角色「脚底」那一片，用于主游戏的碰撞采样带宽度 + Y-Sort 脚底锚点。
+     像素坐标（相对 stage 左上角），默认在舞台底部中间。可拖拽移动、右下角缩放。 */
+  let footBox = { x:120, y:480, w:60, h:20 };
   let library={};
   let outfits=[];
   let outfitSets=[];          // 套装库（可上架商店，区别于 outfits「穿搭方案」）
@@ -1073,6 +1080,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
 
   function saveBody(){
     try{ const d={}; PART_DEFS.forEach(p=>{ const pt=parts[p.key]; d[p.key]={x:pt.x,y:pt.y,w:pt.w,h:pt.h,rot:pt.rot,flipH:pt.flipH,jointPct:pt.jointPct?{...pt.jointPct}:null,imgSrc:pt.img?pt.img.src:null}; });
+      d.footBox = footBox ? { x:footBox.x, y:footBox.y, w:footBox.w, h:footBox.h } : null;
       localStorage.setItem(LS.body, JSON.stringify(d)); return true;
     }catch(e){
       // 图片 base64 太大把 localStorage(5MB) 撑爆：自动压缩所有已存图后重试
@@ -1097,6 +1105,8 @@ const sessionStorage = _mkStore(window.sessionStorage);
       PART_DEFS.forEach(p=>{ const s=d[p.key]; if(!s) return; const pt=parts[p.key];
         pt.x=s.x;pt.y=s.y;pt.w=s.w;pt.h=s.h;pt.rot=s.rot;pt.flipH=s.flipH;pt.jointPct=s.jointPct;
         if(s.imgSrc){ const img=new Image(); img.src=s.imgSrc; pt.img=img; anyImg=true; } });
+      // 脚底碰撞盒：旧存档没有就保持默认
+      if(d.footBox && typeof d.footBox.x==='number'){ footBox = { x:d.footBox.x, y:d.footBox.y, w:d.footBox.w||60, h:d.footBox.h||20 }; }
       // 有记录却一张图都没有 = 空壳（旧存档丢了图），当「没存过」继续走兜底
       return anyImg;
     }catch(e){ return false; }
@@ -1436,6 +1446,14 @@ const sessionStorage = _mkStore(window.sessionStorage);
         // 中线参考线（body 舞台专属）
         const mid=document.createElement('div'); mid.className='mid-line'; mid.id='midLine-'+mode;
         stageEl.appendChild(mid);
+        // 脚底碰撞盒：可拖拽移动、右下角缩放（决定主游戏碰撞宽度 + Y-Sort 脚底锚点）
+        const fb=document.createElement('div'); fb.className='foot-box'; fb.dataset.kind='footbox';
+        fb.style.left=footBox.x+'px'; fb.style.top=footBox.y+'px';
+        fb.style.width=footBox.w+'px'; fb.style.height=footBox.h+'px';
+        const fbl=document.createElement('div'); fbl.className='fb-label'; fbl.textContent='👣 脚底';
+        const fbs=document.createElement('div'); fbs.className='fb-scale'; fbs.dataset.fb='scale';
+        fb.appendChild(fbl); fb.appendChild(fbs);
+        stageEl.appendChild(fb);
         // 防御性对齐：symLink 开的时候，保证成对关节严格对称（哪怕之前 drift 过）
         if(symLink) enforceJointSymmetry();
         PART_DEFS.forEach(d=>{ if(!d.hasJoint) return; const p=parts[d.key]; if(!p.img) return;
@@ -1490,6 +1508,16 @@ const sessionStorage = _mkStore(window.sessionStorage);
       if(mode==='body'){
         const j=t.closest && t.closest('.joint-dot');
         if(j){ drag={mode:'joint', key:j.dataset.key, sc}; return; }
+        // 脚底碰撞盒：点缩放点=缩放，否则拖本体移动
+        const fbEl=t.closest && t.closest('.foot-box');
+        if(fbEl){
+          if(t.closest && t.closest('.fb-scale')){
+            drag={mode:'fbScale', sc, sx:p.x, sy:p.y, ow:footBox.w, oh:footBox.h};
+          } else {
+            drag={mode:'fbMove', sc, sx:p.x, sy:p.y, ox:footBox.x, oy:footBox.y};
+          }
+          return;
+        }
         const h=t.closest && t.closest('.handle');
         const b=t.closest && t.closest('.layer-el[data-kind="body"]');
         if(h && b){
@@ -1566,6 +1594,13 @@ const sessionStorage = _mkStore(window.sessionStorage);
           const mk=MIRROR_PAIR[drag.key];
           if(mk && parts[mk] && parts[mk].jointPct){ setVisAnchorX(parts[mk], 1-vx); parts[mk].jointPct.y=vy; }
         }
+        render();
+      } else if(drag.mode==='fbMove'){
+        footBox.x=drag.ox+dx; footBox.y=drag.oy+dy;
+        render();
+      } else if(drag.mode==='fbScale'){
+        footBox.w=Math.max(12, drag.ow+dx);
+        footBox.h=Math.max(6, drag.oh+dy);
         render();
       } else if(drag.mode==='move' && drag.kind==='body'){
         const key=drag.key; const pt=parts[key];
@@ -2163,6 +2198,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
       data.parts[p.key] = { x:pt.x, y:pt.y, w:pt.w, h:pt.h, rot:pt.rot, flipH:pt.flipH,
         jointPct: pt.jointPct ? {...pt.jointPct} : null, imgSrc: pt.img ? pt.img.src : null };
     });
+    data.footBox = footBox ? { x:footBox.x, y:footBox.y, w:footBox.w, h:footBox.h } : null;
     try{ data.animCfg = JSON.parse(localStorage.getItem(LS.anim) || 'null') || null; }catch(e){ data.animCfg = null; }
     return data;
   }
@@ -2180,6 +2216,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
       pt.jointPct = s.jointPct ? {...s.jointPct} : null;
       const im = new Image(); im.src = s.imgSrc; pt.img = im;
     });
+    if(src.footBox && typeof src.footBox.x==='number'){ footBox = { x:src.footBox.x, y:src.footBox.y, w:src.footBox.w||60, h:src.footBox.h||20 }; }
     saveBody();
     return true;
   }

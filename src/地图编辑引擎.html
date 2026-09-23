@@ -215,6 +215,12 @@
   .ed-tile.has-img.sel{box-shadow:0 0 0 3px var(--accent);border-radius:12px;background:rgba(167,140,217,.16);}
   /* 地块贴图独立铺一层：透明度只作用在图上，名牌 / 角标不受影响，始终清晰可读 */
   .ed-tile-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;}
+  /* 底部碰撞区（脚底形状）可视化：盖在建筑底部，角色踩不进这块 */
+  .ed-foot{position:absolute;pointer-events:none;z-index:4;border:2px solid #ff6b6b;background:rgba(255,107,107,.28);}
+  .ed-foot.center-dot{position:absolute;width:9px;height:9px;border-radius:50%;background:#ff4d4d;border:2px solid #fff;transform:translate(-50%,-50%);pointer-events:none;z-index:5;}
+  .ed-foot.ellipse{border-radius:50%;}
+  .ed-foot.rect{border-radius:3px;}
+  .ed-foot.triangle{border-radius:0;background:rgba(255,107,107,.24);}
   .ed-badge{position:absolute;top:-9px;right:-9px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;background:var(--gold);color:#3a2c05;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;}
 
   /* 占位素材选择 */
@@ -324,6 +330,9 @@
   .props-tile label{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-bottom:12px;}
   .props-tile label input[type=text],.props-tile label select{width:100%;margin-top:6px;padding:9px 12px;border:2px solid var(--line);border-radius:10px;font-size:13px;background:rgba(255,255,255,.05);}
   .props-tile label input[type=text]:focus,.props-tile label select:focus{outline:none;border-color:var(--accent);}
+  .foot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;}
+  .foot-shape{border:2px solid var(--line);border-radius:10px;background:rgba(255,255,255,.05);padding:8px 2px;font-size:12px;font-weight:800;cursor:pointer;color:var(--sub);}
+  .foot-shape.on{border-color:#ff6b6b;background:rgba(255,107,107,.18);color:#ff8f8f;box-shadow:0 0 0 2px rgba(255,107,107,.25);}
   .chk-row{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:12px;cursor:pointer;}
   .chk-row input{width:16px;height:16px;accent-color:var(--accent);}
   .sec-title{font-size:11px;font-weight:900;color:var(--gold);letter-spacing:.5px;margin:14px 0 8px;padding-top:10px;border-top:1px solid var(--line);}
@@ -647,6 +656,17 @@
       </select></label>
       <label data-page-node-id="y4yHTqkfhE77dN548tFIdY">提示语<input type="text" id="tl-tip" placeholder="例：推开木门，进去看看吧" data-page-node-id="wHEWKeYotsxALBJnjFtYaC"></label>
       <label data-page-node-id="X56vWS7ZFyJTw3kP20d8QY">备用图标（没贴图时才显示）<input type="text" id="tl-icon" data-page-node-id="44gxugtct6cryxmuvJLsGF"></label>
+      <div class="sec-title" style="margin-top:12px;">🧱 底部碰撞区 · 角色踩不进去 · 中心点即遮挡锚点</div>
+      <div class="foot-grid">
+        <button class="foot-shape" data-shape="none" title="不阻挡，角色可穿过">🚫 无</button>
+        <button class="foot-shape" data-shape="rect" title="矩形底（桌椅）">▭ 矩形</button>
+        <button class="foot-shape" data-shape="ellipse" title="椭圆底（圆桌）">⬭ 椭圆</button>
+        <button class="foot-shape" data-shape="triangle" title="三角底（尖顶物）">△ 三角</button>
+      </div>
+      <label>底部宽度 <b id="tl-footw-val" style="color:var(--accent);">自动</b><input type="range" id="tl-footw" min="0.02" max="1.0" step="0.01" value="0.30" style="width:100%"></label>
+      <label>底部高度 <b id="tl-footh-val" style="color:var(--accent);">自动</b><input type="range" id="tl-footh" min="0.01" max="0.50" step="0.01" value="0.08" style="width:100%"></label>
+      <label>中心点（Y-Sort 锚点） <b id="tl-footcy-val" style="color:var(--accent);">自动</b><input type="range" id="tl-footcy" min="0.2" max="1.0" step="0.01" value="0.92" style="width:100%"></label>
+      <button class="mini-btn" id="tl-foot-auto" title="按建筑贴图下边缘自动推算底部尺寸与中心点">↺ 自动推算</button>
       <div class="chk-row" data-page-node-id="tlLockRow01"><input type="checkbox" id="tl-lock" data-page-node-id="tlLockChk01"><span>🔒 锁定这个物件（调好参数后防误触）</span></div>
       <button class="del-tile" id="tl-del" data-page-node-id="YNe7S9IFG2xJRTHRQtaRMW">🗑 删除地块</button>
     </div>
@@ -948,7 +968,10 @@ function mkTile(name, icon, color, x, y, w, h, linkTo){
            linkTo:link, img: (ph ? ph.src : null),
            action: link ? 'teleport' : 'none',
            targetMap: link, targetSpawn:null,
-           panel:null, triggerMode:'click', tip:'', locked:false };
+           panel:null, triggerMode:'click', tip:'', locked:false,
+           /* 底部碰撞区（脚底形状）：角色脚底与它不重叠 = 不能踩进去；
+              footCenterY 同时充当 Y-Sort 遮挡排序的脚底锚点 */
+           footShape:'rect', footW:null, footH:null, footCenterY:null };
 }
 /* ===== 区域用途类型 =====
    陛下要求：新建区域时先选「这块区域是干嘛的」，编辑器用不同颜色的边框区分，
@@ -1819,8 +1842,39 @@ function buildTileEl(d, map, t){
   }
   if(t.locked) lockBadge(el);
   const lb=document.createElement('div'); lb.className='ed-label'; lb.textContent=t.name; el.appendChild(lb);
+  /* 底部碰撞区可视化：盖在建筑底部，角色踩不进这块（中心点=遮挡锚点） */
+  drawFootOverlay(el, t);
   bindDrag(el, ()=>t, 'tile', map);
   return el;
+}
+/* 计算建筑底部碰撞区（相对地块自身的归一化 0~1），默认取贴图下边缘整条 */
+function footGeom(t){
+  const w = (typeof t.footW==='number' && t.footW>0) ? t.footW : 0.30;
+  const h = (typeof t.footH==='number' && t.footH>0) ? t.footH : 0.08;
+  const cy = (typeof t.footCenterY==='number') ? t.footCenterY : 0.92;
+  return { w, h, cy, cx:0.5 };
+}
+function drawFootOverlay(el, t){
+  if(!t || t.footShape==='none') return;
+  const g = footGeom(t);
+  const foot = document.createElement('div');
+  foot.className = 'ed-foot ' + (t.footShape==='ellipse'?'ellipse':t.footShape==='triangle'?'triangle':'rect');
+  /* 底部区：中心在 (0.5, cy)，宽 w、高 h，相对地块自身 */
+  foot.style.left   = ((0.5 - g.w/2)*100)+'%';
+  foot.style.top    = ((g.cy - g.h/2)*100)+'%';
+  foot.style.width  = (g.w*100)+'%';
+  foot.style.height = (g.h*100)+'%';
+  if(t.footShape==='triangle'){
+    foot.style.background='linear-gradient(to bottom, rgba(255,107,107,.05), rgba(255,107,107,.42))';
+    foot.style.clipPath='polygon(50% 0, 100% 100%, 0 100%)';
+    foot.style.border='none';
+  }
+  el.appendChild(foot);
+  /* 中心点标记 = Y-Sort 锚点 */
+  const dot=document.createElement('div');
+  dot.className='ed-foot center-dot';
+  dot.style.left='50%'; dot.style.top=(g.cy*100)+'%';
+  el.appendChild(dot);
 }
 function buildTriggerEl(d, map, g){
   const el = document.createElement('div');
@@ -2774,6 +2828,30 @@ function renderProps(){
       if(_tr) _tr.onclick=()=>{ delete t.alpha; saveMapsData(d); renderEditor(); renderProps(); toast('↺ 已恢复完全不透明'); };
     }
     $('tl-tip').oninput  = ()=>{ t.tip=$('tl-tip').value; saveMapsData(d); };
+    /* ---- 底部碰撞区（脚底形状）编辑 ---- */
+    const _shape = t.footShape || 'rect';
+    document.querySelectorAll('#p-tile .foot-shape').forEach(b=>{
+      b.classList.toggle('on', b.dataset.shape===_shape);
+      b.onclick = ()=>{
+        t.footShape = b.dataset.shape;
+        if(t.footShape==='none'){ /* 无碰撞区就不显示可视化，但保留字段 */ }
+        saveMapsData(d); renderEditor(); renderProps();
+      };
+    });
+    const g0 = footGeom(t);
+    const _fw=$('tl-footw'), _fh=$('tl-footh'), _fc=$('tl-footcy');
+    const _fwv=$('tl-footw-val'), _fhv=$('tl-footh-val'), _fcv=$('tl-footcy-val');
+    if(_fw){ _fw.value=g0.w; _fwv.textContent=Math.round(g0.w*100)+'%'; _fw.disabled=(_shape==='none');
+      _fw.oninput=()=>{ t.footW=+_fw.value; _fwv.textContent=_fw.value+'%'; saveMapsData(d); renderEditor(); }; }
+    if(_fh){ _fh.value=g0.h; _fhv.textContent=Math.round(g0.h*100)+'%'; _fh.disabled=(_shape==='none');
+      _fh.oninput=()=>{ t.footH=+_fh.value; _fhv.textContent=_fh.value+'%'; saveMapsData(d); renderEditor(); }; }
+    if(_fc){ _fc.value=g0.cy; _fcv.textContent=Math.round(g0.cy*100)+'%'; _fc.disabled=(_shape==='none');
+      _fc.oninput=()=>{ t.footCenterY=+_fc.value; _fcv.textContent=_fc.value+'%'; saveMapsData(d); renderEditor(); }; }
+    const _fauto=$('tl-foot-auto');
+    if(_fauto) _fauto.onclick=()=>{
+      delete t.footW; delete t.footH; delete t.footCenterY;
+      saveMapsData(d); renderEditor(); renderProps(); toast('↺ 底部碰撞区已按贴图下边缘自动推算');
+    };
     $('tl-lock').checked = !!t.locked;
     $('tl-lock').onchange = ()=>{
       t.locked=$('tl-lock').checked; saveMapsData(d); renderEditor(); renderProps();
