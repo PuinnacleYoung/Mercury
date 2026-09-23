@@ -742,6 +742,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-world{position:absolute;overflow:hidden;background:#000;}
 .auth-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
 .auth-bg.is-video{object-fit:cover;}
+/* 背景多层（登录页面引擎 🎨 Tab 的 bgLayers）：图片层按顺序叠放，z 序 = 配置顺序 */
+.auth-bg-layer{position:absolute;inset:0;pointer-events:none;background-repeat:no-repeat;background-position:center;}
+/* 头像（卡片上的五行剪影 + 相框）：位置尺寸全按引擎 avatar 配置 */
+.auth-avatar{position:absolute;z-index:11;pointer-events:none;}
+.auth-avatar .av-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:contain;}
+.auth-avatar .av-frame{position:absolute;inset:-4%;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
 /* 占位视频背景：CSS 动态渐变 + 漂浮粒子，模拟循环视频 */
 .auth-bg.placeholder{background:radial-gradient(120% 120% at 30% 20%,#12344a 0%,#0a1a2a 45%,#060b12 100%);}
 .auth-bg.placeholder::before{
@@ -3191,6 +3197,16 @@ function authImgSrc(v){
   }
   return v;
 }
+/* 统一素材解析：'ms:xxx'（本机素材库 IndexedDB）→ 异步取 blob URL；
+   'srv:' → 服务器地址；data:/http: → 原样。结果经 cb 回调（ms: 是异步的）。 */
+function authAssetUrl(v, cb){
+  if(!v){ cb(''); return; }
+  if(v.slice(0, 3) === 'ms:'){
+    if(typeof MediaStore !== 'undefined'){
+      MediaStore.url(v.slice(3)).then(u=>cb(u||'')).catch(()=>cb(''));
+    } else cb('');
+  } else cb(authImgSrc(v));
+}
 function mountAuthStamp(world){
   const st = authCfg && authCfg.stamp;
   let el = $('auth-stamp');
@@ -3270,11 +3286,25 @@ function initAuthEngine(){
   const world = $('auth-world');
   if(!stage || !world) return;
 
-  // 1) 背景：有视频用视频，无视频用占位动态背景
+  // 1) 背景：① 引擎「背景多层」图片层（bgLayers） ② 登录动画视频（loginFx/老 videos[]）压上层 ③ 都没有才用占位
   const bg = $('auth-bg');
   bg.className = 'auth-bg';
-  /* 登录页背景动画：登录页引擎写的是 loginFx.src（✨ 登录动画层），老配置才是 videos[]。
-     以前只认 videos[]，陛下做的登录动画根本没被读走 —— 现在两种都认。 */
+  bg.innerHTML = '';
+  /* ⚠️ 以前只认 videos[] / loginFx 视频，引擎 🎨 Tab 做的「背景多层」图片根本没被读走
+     —— 表现为：引擎总览里是海浪背景，真登录页却是暗蓝占位渐变，两边「不相关」。 */
+  const layers = (authCfg.bgLayers || []).filter(l=>l && l.visible && l.src);
+  let layerCount = 0;
+  layers.forEach((l, i)=>{
+    const d = document.createElement('div');
+    d.className = 'auth-bg-layer';
+    d.style.zIndex = i;
+    d.style.opacity = (l.opacity != null) ? l.opacity : 1;
+    if(l.blend && l.blend !== 'normal') d.style.mixBlendMode = l.blend;
+    d.style.backgroundSize = l.fit === 'cover' ? 'cover' : (l.fit === 'contain' ? 'contain' : '100% 100%');
+    bg.appendChild(d);
+    authAssetUrl(l.src, u=>{ if(u){ d.style.backgroundImage = 'url(' + u + ')'; layerCount++; } });
+  });
+  /* 登录页背景动画：登录页引擎写的是 loginFx.src（✨ 登录动画层），老配置才是 videos[]。 */
   let bgSrc = '';
   const vids = (authCfg.videos || []).filter(v=>v && v.src);
   if(vids.length) bgSrc = vids[vids.length-1].src;
@@ -3283,7 +3313,7 @@ function initAuthEngine(){
     if(!u) return;
     const v = document.createElement('video');
     v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
-    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;';
+    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:30;';
     v.addEventListener('error', ()=>{ try{ v.remove(); }catch(e){} });   // 加载不出来就撤掉，别留一块黑
     v.src = u;
     bg.appendChild(v);
@@ -3292,41 +3322,78 @@ function initAuthEngine(){
   };
   if(bgSrc){
     bg.classList.add('is-video');
-    bg.innerHTML = '';
     if(bgSrc.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
-      /* 只存在作者本机的素材：玩家本机没有 → 取不到就当没配，走占位背景 */
+      /* 只存在作者本机的素材：玩家本机没有 → 取不到就当没配 */
       MediaStore.url(bgSrc.slice(3)).then(u=>{ if(u) mountBgVideo(u); }).catch(()=>{});
     } else {
       mountBgVideo(resolveVideoSrc(bgSrc));   // srv: → 服务器地址，边下边播
     }
-  } else {
+  }
+  if(!layers.length && !bgSrc){
     bg.classList.add('placeholder');
-    bg.innerHTML = '';
   }
 
   // 2) 身份证卡片（PNG 或占位）
+  /* ⚠️ 以前直接 url(card.src)：src 是 ms:/srv: 时浏览器根本读不出来 → 卡片空白。
+     现在统一走 authAssetUrl 解析（ms: 取本机素材库、srv: 走服务器）。 */
   const card = $('auth-card');
   card.className = 'auth-card';
   const pic = $('auth-card-pic');
-  pic.className = 'auth-card-pic';
-  if(authCfg.card.src){
-    pic.style.backgroundImage = 'url(' + authCfg.card.src + ')';
-    pic.style.opacity = authCfg.card.opacity;
-    pic.innerHTML = '';
-  } else {
+  const showCardPlaceholder = ()=>{
     pic.classList.add('placeholder');
-    pic.style.opacity = authCfg.card.opacity;
+    pic.style.backgroundImage = '';
     pic.innerHTML = '<span class="ph-chip">🪪</span><span class="ph-t">生物芯片身份证</span><span class="ph-s">IDENTITY CARD</span>';
-  }
+  };
+  pic.className = 'auth-card-pic';
+  pic.style.opacity = authCfg.card.opacity;
+  if(authCfg.card.src){
+    pic.innerHTML = '';
+    authAssetUrl(authCfg.card.src, u=>{
+      if(u) pic.style.backgroundImage = 'url(' + u + ')';
+      else showCardPlaceholder();
+    });
+  } else showCardPlaceholder();
   authSetBox(card, authCfg.card);
 
-  // 3) 姓名 / 防伪码输入框
+  // 3) 姓名 / 防伪码输入框（字号跟引擎配置，与引擎预览一致）
   const nameF = (authCfg.fields||[]).find(f=>f.type==='name');
   const codeF = (authCfg.fields||[]).find(f=>f.type==='code');
   const nameEl = $('auth-field-name');
   const codeEl = $('auth-field-code');
-  if(nameF){ authSetBox(nameEl, nameF); nameEl.placeholder = nameF.label||'姓名'; }
-  if(codeF){ authSetBox(codeEl, codeF); codeEl.placeholder = codeF.label||'特殊防伪码'; }
+  const applyField = (el, f, defLabel)=>{
+    if(!el || !f) return;
+    authSetBox(el, f);
+    el.placeholder = f.label || defLabel;
+    if(f.fontSize) el.style.fontSize = 'clamp(10px,' + (f.fontSize/100*5) + 'vw,' + (f.fontSize*1.4) + 'px)';
+  };
+  applyField(nameEl, nameF, '姓名');
+  applyField(codeEl, codeF, '特殊防伪码');
+
+  /* 3.5) 头像（卡片上的五行剪影 + 相框）：引擎 avatar 配置，位置尺寸照搬。
+     未配置任何剪影图就不画（不空框）。 */
+  try{
+    const av = authCfg.avatar;
+    if(av && (av.frameSrc || av.defaultSilhouette || (av.races||[]).some(r=>r.silhouette))){
+      let host = $('auth-avatar');
+      if(!host){
+        host = document.createElement('div');
+        host.id = 'auth-avatar'; host.className = 'auth-avatar';
+        host.innerHTML = '<div class="av-pic"></div><div class="av-frame"></div>';
+        world.appendChild(host);
+      }
+      authSetBox(host, av);
+      const avPic = host.querySelector('.av-pic');
+      const avFrame = host.querySelector('.av-frame');
+      avPic.style.backgroundImage = '';
+      avFrame.style.backgroundImage = '';
+      const silSrc = av.defaultSilhouette
+        || ((av.races||[]).find(r=>r.id===av.defaultRace) || {}).silhouette || '';
+      authAssetUrl(silSrc, u=>{ if(u) avPic.style.backgroundImage = 'url(' + u + ')'; });
+      authAssetUrl(av.frameSrc, u=>{ if(u) avFrame.style.backgroundImage = 'url(' + u + ')'; });
+    } else {
+      const old = $('auth-avatar'); if(old) old.remove();
+    }
+  }catch(e){ console.warn('avatar', e); }
 
   // 4) 核验触发框
   authSetBox($('auth-verify'), authCfg.verify || {x:0.5,y:0.72,w:0.24,h:0.13});
@@ -3573,7 +3640,13 @@ function showRaceModal(name){
     const sil = document.createElement('div');
     sil.className = 'rc-sil';
     const r = races ? races.find(x=>x.id===key) : null;
-    if(r && r.silhouette){ sil.style.backgroundImage = 'url(' + r.silhouette + ')'; }
+    if(r && r.silhouette){
+      /* ms:/srv: 统一解析（老写法直接 url() 会让本机素材库的剪影加载不出来） */
+      authAssetUrl(r.silhouette, u=>{
+        if(u) sil.style.backgroundImage = 'url(' + u + ')';
+        else { sil.textContent = e.glyph; sil.style.color = e.color; sil.style.background = 'rgba(255,255,255,.08)'; }
+      });
+    }
     else { sil.textContent = e.glyph; sil.style.color = e.color; sil.style.background = 'rgba(255,255,255,.08)'; }
     const nm = document.createElement('div'); nm.className = 'rc-name'; nm.textContent = e.name;
     nm.style.color = e.text;
