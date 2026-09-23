@@ -39,3 +39,6 @@ server/data.json
 
 # playwright-cli 临时输出（snapshot/console 日志，不入库）
 .playwright-cli/
+
+# 五宝工作记忆（内部笔记，不入库）
+.workbuddy/
