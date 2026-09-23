@@ -3037,9 +3037,20 @@ function startIntroVideo(src, o, onDone, opt){
     + 'background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
   const v = document.createElement('video');
   v.src = src;
-  v.autoplay = true; v.loop = false; v.playsInline = true; v.preload = 'auto';
+  /* ⚠️ autoplay 不能开：竖屏时必须等门闸放行，开了它浏览器就会自己抢跑 */
+  v.autoplay = false; v.loop = false; v.playsInline = true; v.preload = 'auto';
   v.muted = false; v.volume = vol;    /* 片子有声音就带声音播；被浏览器拦了会自动退成静音 */
-  v.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
+  /* 🛡 反劫持：手机浏览器的「视频助手」（进度条/下载/存网盘）专挑带声音的视频下手，
+     一旦抢走控制权，整个页面（含横屏提示）都会被压到它原生播放器底下。
+     能禁的全禁上 + 视频不吃点击，让浏览器尽量老实走内联播放。 */
+  try{
+    v.disablePictureInPicture = true;
+    v.disableRemotePlayback = true;
+    v.setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback nofullscreen');
+    v.setAttribute('x5-video-player-type', 'h5-page');       // 腾讯 X5 内核（微信/QQ/部分国产浏览器）强制内联
+    v.setAttribute('x5-video-orientation', 'landscape');
+  }catch(e){}
+  v.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;pointer-events:none;';
   layer.appendChild(v);
 
   const hint = document.createElement('div');
@@ -3098,6 +3109,30 @@ function startIntroVideo(src, o, onDone, opt){
   try{ (stageEl || document.body).appendChild(layer); }
   catch(e){ showCard(); onDone(); return; }
   setWatchdog(45000);
+
+  /* 📱 竖屏不播，先逼横屏：开场动画是横屏片子，竖屏播出来上下大黑边还容易被
+     浏览器劫成竖屏原生播放器。横过来了才开播。 */
+  const isPortrait = ()=>{ try{ return window.innerHeight > window.innerWidth; }catch(e){ return false; } };
+  if(isPortrait()){
+    hint.textContent = '🔄 请横屏观看开场动画';
+    hint.style.cssText += 'font-size:17px;bottom:50%;';
+    const onRotate = ()=>{
+      if(isPortrait()) return;
+      window.removeEventListener('resize', onRotate);
+      window.removeEventListener('orientationchange', onRotate);
+      hint.textContent = '';
+      hint.style.bottom = '8%';
+      setWatchdog(45000);
+      const pr = v.play && v.play();
+      if(pr && pr.catch) pr.catch(()=>{
+        try{ v.muted = true; const q = v.play && v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+      });
+    };
+    window.addEventListener('resize', onRotate);
+    window.addEventListener('orientationchange', onRotate);
+    return;   /* 横过来之前一个画面都不放 */
+  }
+
   const pr = v.play && v.play();
   if(pr && pr.catch) pr.catch(()=>{
     /* 手机拦了「带声音的自动播放」→ 退成静音也要把画面放出来，绝不能白屏 */

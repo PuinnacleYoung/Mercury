@@ -4045,6 +4045,49 @@ async function pasteAllMapsData(){
 <script src="./orientation-lock.js" defer></script>
 <script src="./responsive.js" defer></script>
 <script src="./pwa-install.js" defer></script>
-<script>(function(){ if(window.CloudSync) CloudSync.mount(['map']); })();</script>
+<script>(function(){
+  if(!window.CloudSync) return;
+  CloudSync.mount(['map']);
+  /* 🔄 云端认领：游戏端每次启动都会把「已发布的 map 槽位」按版本号写进本机（applyCloudAssets），
+     编辑器以前没这一步 —— 游戏里有银行、编辑器里没有；服装大楼还挂在华夏下，都是这台机器停在了旧版。
+     这里补齐：检测到云端比本机新时弹横幅，点一下应用（绝不自动覆盖，编辑到一半的内容不会丢）。 */
+  if(!window.Net) return;
+  var UN = Net.on('assetData', function(m){
+    var s = m.slots && m.slots.map;
+    if(!s || !s.items || !s.rev) return;
+    var live = s.rev.live || 0;
+    var applied = 0;
+    try{ applied = (JSON.parse(localStorage.getItem('cloud_applied') || '{}').map) || 0; }catch(e){}
+    if(live <= applied) return;
+    var bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:100000;' +
+      'background:rgba(26,21,48,.96);border:1px solid rgba(180,154,224,.4);border-radius:12px;' +
+      'padding:10px 14px;color:#f2eefc;font-size:13px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.4);' +
+      'display:flex;gap:10px;align-items:center;max-width:92vw;';
+    bar.innerHTML = '<span>☁️ 云端有更新的地图（v' + live + '，本机 v' + applied + '）——游戏端已经是新版，点「应用」编辑器也跟上</span>';
+    var btn = document.createElement('button');
+    btn.textContent = '应用';
+    btn.style.cssText = 'padding:6px 14px;border:0;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;flex:none;' +
+      'background:linear-gradient(135deg,#b49ae0,#7fc4e8);color:#fff;';
+    var no = document.createElement('button');
+    no.textContent = '×';
+    no.style.cssText = 'padding:6px 10px;border:0;border-radius:8px;cursor:pointer;flex:none;background:rgba(255,255,255,.12);color:#f2eefc;';
+    btn.onclick = function(){
+      if(!confirm('用云端 v' + live + ' 覆盖本机地图？\n\n⚠️ 本机没提交/没发布过的地图改动会被覆盖。\n（编辑到一半请先「☁️ 提交」再回来点应用）')) return;
+      var ok = 0;
+      Object.keys(s.items).forEach(function(k){ try{ localStorage.setItem(k, s.items[k]); ok++; }catch(e){} });
+      try{
+        var ap = {}; try{ ap = JSON.parse(localStorage.getItem('cloud_applied') || '{}'); }catch(e){}
+        ap.map = live; localStorage.setItem('cloud_applied', JSON.stringify(ap));
+      }catch(e){}
+      alert('✅ 已应用云端地图 v' + live + '（写入 ' + ok + ' 项），页面即将刷新');
+      location.reload();
+    };
+    no.onclick = function(){ bar.remove(); };
+    bar.appendChild(btn); bar.appendChild(no);
+    document.body.appendChild(bar);
+    UN();
+  });
+})();</script>
 </body>
 </html>
