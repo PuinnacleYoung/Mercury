@@ -145,7 +145,19 @@
   .login-fx-layer .fx-hint{font-size:12px;color:var(--sub);font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.8);}
 
   /* 开场动画层（Tab C，z 100） */
-  .intro-layer{position:absolute;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);}
+  /* 开场动画层：夹在「卡片(20)」与「登录动画(10)」之间 —— 陛下钦定。
+     这样卡片能浮在开场动画之上，播到指定时间再抖出来。 */
+  .intro-layer{position:absolute;inset:0;z-index:15;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
+  /* 卡片「抖动放大」入场：从小弹到大，带一点点回弹和歪头，最后稳住 */
+  @keyframes cardPopIn{
+    0%   { transform:scale(.30) rotate(-7deg); opacity:0; }
+    40%  { transform:scale(1.14) rotate(4deg); opacity:1; }
+    58%  { transform:scale(.92) rotate(-3deg); }
+    72%  { transform:scale(1.07) rotate(2deg); }
+    86%  { transform:scale(.97) rotate(-1deg); }
+    100% { transform:scale(1) rotate(0deg); opacity:1; }
+  }
+  .intro-pop{ animation:cardPopIn .85s cubic-bezier(.2,.85,.3,1.15) both; }
   .intro-layer .intro-hint{font-size:13px;color:var(--gold);font-weight:900;text-align:center;line-height:1.8;}
 
   /* 全局转场遮罩（z 90） */
@@ -386,7 +398,7 @@
      avatar: { frameSrc, defaultRace, defaultSilhouette, x, y, w, h, races:[{id,name,silhouette}] },
      fields: [ {id, type, label, x, y, w, h, fontSize, mask, maxLength} ],
      stamp: { x, y, w, h, hitShape, shake:{...}, appear:{...}, dismiss:{...} },
-     intro: { src, audio, skippable, fadeOut },
+     intro: { src, audio, skippable, fadeOut, cardAt, volume },
      loginFx: { src, audio, delay, coverDuration }
    }
    坐标全部归一化 0~1，x/y 是中心点，w/h 是相对 world-box 的宽高比。
@@ -424,7 +436,9 @@ function defaultConfig(){
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
     },
-    intro: { src:'', audio:'', skippable:true, fadeOut:3000 },
+    /* cardAt = 开场动画播到第几秒时卡片「抖动放大」出现（20 秒的片子配 18 就是第 18 秒弹出）
+       skippable = false：开场动画**不允许跳过**（陛下钦定），必须完整播完 */
+    intro: { src:'', audio:'', skippable:false, fadeOut:3000, cardAt:18, volume:100 },
     loginFx: { src:'', audio:'', delay:0, coverDuration:1600 },
   };
 }
@@ -553,7 +567,7 @@ function worldBoxEl(){ return $('edit-stage').querySelector('.world-box'); }
 const TAB_META = {
   card:     { title:'🪪 卡片环节元素', hint:'只编辑卡片环节：卡片 / 头像 / 输入框 / 盖章区。背景仅作参照底图（去 🎨 Tab 编辑）。', note:'🪪 卡片编辑器 · 背景为参照底图，元素可拖动缩放' },
   page:     { title:'🎨 背景多层', hint:'只编辑登录页背景多层：上传 PNG、适配模式、透明度、层序。', note:'🎨 登录页面编辑器 · 只含背景多层，环节内容在各自 Tab' },
-  intro:    { title:'🎬 开场环节', hint:'只配置开场动画层（z=100，压住所有）。', note:'🎬 开场动画层占位 · z=100 压住全部 · 素材在右侧配置' },
+  intro:    { title:'🎬 开场环节', hint:'配置开场动画层（z=15，夹在卡片与登录动画之间）。', note:'🎬 开场动画层 · z=15 夹在卡片(20)与登录动画(10)之间 · 素材在右侧配置' },
   login:    { title:'✨ 登录动画环节', hint:'只配置登录动画层（z=10，压背景、被卡片盖住）。', note:'✨ 登录动画层占位 · z=10 压背景 / 被卡片盖住' },
   overview: { title:'🔍 合成预览', hint:'全部环节按 z 层级合成（背景 → 登录动画 → 卡片 → 开场），可试玩完整流程。', note:'🔍 总预览 · 全环节合成 · 输入框可输入，点盖章区试核验' },
 };
@@ -670,18 +684,27 @@ function buildIntroEl(){
   el.className = 'intro-layer';
   const src = srcUrl(cfg.intro.src);
   if(src){ el.appendChild(makeFxVideo(src)); return el; }
-  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">还没传视频 · 在右边「开场动画」里上传一个 mp4/webm<br>（视频存 IndexedDB，几百 MB 都塞得下，不再受 5MB 限制）<br>总预览里默认不常驻，点「🎬 试开场」看效果</span></div>';
+  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=15 · 夹在卡片与登录动画之间）<br><span style="font-size:11px;color:var(--sub);">还没传视频 · 在右边「开场动画」里上传一个 mp4/webm<br>（视频存 IndexedDB，几百 MB 都塞得下，不再受 5MB 限制）<br>点工具栏「🎬 试开场」按真实节奏播一次（带声音 + 卡片到点弹出）</span></div>';
   return el;
 }
 
 /* 循环播放的动画层视频：自动播 + 静音 + 内联，手机也不会被强制全屏 */
-function makeFxVideo(src){
+function makeFxVideo(src, opt){
+  opt = opt || {};
   const v = document.createElement('video');
   v.src = src;
-  v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+  /* 编辑态默认静音循环（免得吵）；「🎬 试开场」预览会传 muted:false 带声音 */
+  v.muted = opt.muted !== false;
+  v.loop = opt.loop !== false;
+  v.autoplay = true; v.playsInline = true;
+  v.volume = (opt.volume == null) ? 1 : Math.max(0, Math.min(1, opt.volume));
   try{ v.setAttribute('playsinline',''); }catch(e){}
   v.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-  const p = v.play(); if(p && p.catch) p.catch(()=>{});
+  const p = v.play();
+  if(p && p.catch) p.catch(()=>{
+    /* 带声音被浏览器自动播放策略拦了 → 退成静音也要把画面放出来 */
+    try{ v.muted = true; const q = v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+  });
   return v;
 }
 
@@ -1303,7 +1326,7 @@ function renderIntroProps(c){
   c.innerHTML = `
     <h3>🎬 开场动画</h3>
     <div class="sec-title">说明</div>
-    <div class="props-empty" style="font-size:11px;">层级最高（z=100），压住所有东西。占位符：上传开场视频 + 音乐，配淡出时长。</div>
+    <div class="props-empty" style="font-size:11px;">层级 <b>z=15</b>：夹在<b>卡片(20)</b>和<b>登录动画(10)</b>中间。开场动画播到指定秒数时，卡片会「抖动放大」浮到动画上面登场；动画播完淡出，登录页接手。</div>
     <div class="prop-blk">
       <div class="sec-title">动画素材（占位）</div>
       <div class="file-drop" id="intro-drop">点击或拖入 MP4 / PNG 上传</div>
@@ -1313,14 +1336,23 @@ function renderIntroProps(c){
     </div>
     <div class="prop-blk">
       <div class="sec-title">参数</div>
-      <div class="chk-row"><input type="checkbox" id="intro-skip" ${cfg.intro.skippable?'checked':''}> 可点击跳过</div>
-      <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut}"><span class="val">ms</span></div>
-      <div class="props-empty" style="font-size:10px;opacity:.8;">淡出是在视频<b>最后</b>这段时间里进行，不额外拉长总时长：20 秒的片子设 3000 就是「第 17 秒开始淡出，第 20 秒进登录页」。</div>
+      <div class="field-row"><label>卡片出现</label><input type="number" id="intro-cardat" step="0.1" min="0" value="${cfg.intro.cardAt==null?18:cfg.intro.cardAt}"><span class="val">秒</span></div>
+      <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut||3000}"><span class="val">ms</span></div>
+      <div class="field-row"><label>🔊 音量</label><input type="number" id="intro-vol" min="0" max="100" value="${cfg.intro.volume==null?100:cfg.intro.volume}"><span class="val">%</span></div>
+      <div class="props-empty" style="font-size:10px;opacity:.8;">
+        <b>卡片出现</b>：开场动画播到第几秒时，卡片「抖动放大」登场（20 秒的片子填 18 ＝ 第 18 秒弹出，浮在动画上面）。<br>
+        <b>淡出</b>：在视频<b>最后</b>这段时间里进行，不额外拉长总时长——20 秒的片子设 3000 就是「第 17 秒开始淡出，第 20 秒进登录页」。<br>
+        <b>⛔ 开场动画不可跳过</b>：必须完整播完（嫌长就把片子剪短）。
+      </div>
+      <button class="btn" id="intro-trypreview" style="margin-top:8px;font-size:12px;">▶ 试播一次（带声音 · 卡片到点弹出）</button>
+      <div class="props-empty" style="font-size:10px;opacity:.7;">点它会自动跳到「总预览」并按真实节奏播一遍：播到上面填的秒数时卡片抖动放大登场，最后淡出。</div>
     </div>
   `;
   bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro', 'intro-pick');
-  $('intro-skip').onchange=e=>{cfg.intro.skippable=e.target.checked;saveCfg();};
-  $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||800;saveCfg();};
+  $('intro-cardat').onchange=e=>{cfg.intro.cardAt=Math.max(0,parseFloat(e.target.value)||0);saveCfg();};
+  $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||3000;saveCfg();};
+  $('intro-vol').onchange=e=>{cfg.intro.volume=Math.max(0,Math.min(100,+e.target.value||0));saveCfg();};
+  $('intro-trypreview').onclick=()=>{ switchTab('overview'); setTimeout(()=>playIntroPreview(), 300); };
 }
 
 /* --- 登录动画属性（Tab D） --- */
@@ -1689,7 +1721,109 @@ function playLayerDemo(build, holdMs, fadeMs){
     setTimeout(()=> el.remove(), fadeMs + 60);
   }, holdMs);
 }
-$('btn-play-intro').onclick = ()=> playLayerDemo(buildIntroEl, 1400, cfg.intro.fadeOut || 800);
+
+/* ================= 🎬 试开场：按真实节奏完整播一次 =================
+   以前这里只是「淡入 1.4 秒再淡出」，视频根本来不及加载就被拆掉 —— 这就是陛下说的「预览失效」。
+   现在：带声音完整播 → 播到「卡片出现」那一秒，卡片抖动放大登场 → 最后 fade 毫秒淡出收尾。
+   再点一次按钮＝停止。开场动画**不给跳过**（陛下钦定）。 */
+let introDemo = null;
+function stopIntroPreview(){
+  const d = introDemo; if(!d) return;
+  introDemo = null;
+  try{ clearTimeout(d.wd); }catch(e){}
+  try{ d.v.pause(); }catch(e){}
+  try{ d.layer.remove(); }catch(e){}
+  d.cardEls.forEach(el=>{
+    el.style.opacity=''; el.style.pointerEvents=''; el.style.transition='';
+    el.classList.remove('intro-pop');
+  });
+  const b = $('btn-play-intro'); if(b) b.textContent = '🎬 试开场';
+}
+function playIntroPreview(){
+  if(introDemo){ stopIntroPreview(); return; }
+  const wb = worldBoxEl(); if(!wb) return;
+  const src = srcUrl(cfg.intro.src);
+  if(!src){
+    try{ toast('⚠️ 还没上传开场动画，先在右边传一个 mp4'); }
+    catch(e){ alert('还没上传开场动画，先在右边传一个 mp4'); }
+    return;
+  }
+  const fade   = Math.max(0, Number(cfg.intro.fadeOut) || 3000);
+  let   at     = Number(cfg.intro.cardAt);
+  if(!isFinite(at) || at < 0) at = 18;
+  const vol    = Math.max(0, Math.min(1, (Number(cfg.intro.volume) || 100) / 100));
+
+  /* 卡片环节先藏起来，等动画播到点再抖出来 */
+  const cardEls = [].slice.call(wb.querySelectorAll('.id-card,.id-avatar,.id-field,.id-stamp,.rt-input'));
+  cardEls.forEach(el=>{
+    el.style.transition='none'; el.style.opacity='0'; el.style.pointerEvents='none';
+    el.classList.remove('intro-pop');
+  });
+
+  const layer = document.createElement('div');
+  layer.className = 'intro-layer';
+  layer.style.opacity = '0';
+  layer.style.transition = 'opacity .3s ease';
+  layer.appendChild(makeFxVideo(src, { muted:false, loop:false, volume:vol }));
+  const v = layer.firstChild;
+  wb.appendChild(layer);
+  requestAnimationFrame(()=>{ layer.style.opacity = '1'; });
+
+  const d = { layer, v, cardEls, wd:null, cardShown:false, ended:false };
+  introDemo = d;
+  const btn = $('btn-play-intro'); if(btn) btn.textContent = '■ 停止';
+  let fading = false;
+
+  const showCard = ()=>{
+    if(d.cardShown) return; d.cardShown = true;
+    cardEls.forEach(el=>{
+      el.style.transition=''; el.style.opacity=''; el.style.pointerEvents='';
+      void el.offsetWidth;                 // 强制重排，保证动画每次都重新播
+      el.classList.add('intro-pop');
+    });
+  };
+  const finish = ()=>{
+    if(d.ended) return; d.ended = true;
+    showCard();
+    try{ clearTimeout(d.wd); }catch(e){}
+    try{ v.pause(); }catch(e){}
+    layer.style.transition = 'opacity 260ms ease';
+    layer.style.opacity = '0';
+    setTimeout(()=>{
+      if(introDemo !== d) return;
+      introDemo = null;
+      try{ layer.remove(); }catch(e){}
+      cardEls.forEach(el=> el.classList.remove('intro-pop'));
+      if(btn) btn.textContent = '🎬 试开场';
+    }, 320);
+  };
+  const arm = ()=>{          /* 看门狗按真实时长算，绝不能把长片拦腰砍断 */
+    if(d.wd) clearTimeout(d.wd);
+    const dur = (v.duration && isFinite(v.duration)) ? v.duration : 0;
+    d.wd = setTimeout(finish, Math.max(8000, (dur || 40) * 1000 + 12000));
+  };
+
+  v.addEventListener('loadedmetadata', ()=>{
+    const dur = (v.duration && isFinite(v.duration)) ? v.duration : 0;
+    /* 片子比设定的秒数还短 → 自动提前，保证卡片一定来得及登场 */
+    if(dur && at > dur - 0.4) at = Math.max(0, dur - fade/1000 - 0.4);
+    arm();
+  });
+  v.addEventListener('timeupdate', ()=>{
+    if(!v.duration || !isFinite(v.duration)) return;
+    if(!d.cardShown && v.currentTime >= at) showCard();
+    if(!fading && !d.ended && (v.duration - v.currentTime) <= fade/1000 + 0.05){
+      fading = true;
+      layer.style.transition = 'opacity ' + fade + 'ms linear';
+      layer.style.opacity = '0';
+      setTimeout(finish, fade);
+    }
+  });
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish);
+  arm();
+}
+$('btn-play-intro').onclick = ()=> playIntroPreview();
 $('btn-play-loginfx').onclick = ()=> playLayerDemo(buildLoginFxEl, Math.max(800, cfg.loginFx.coverDuration || 1600), 500);
 
 $('btn-test-verify').onclick = ()=>{

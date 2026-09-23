@@ -762,6 +762,16 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 @keyframes authSweep{0%{left:-30%;}60%,100%{left:130%;}}
 
 /* 身份证卡片 */
+/* 开场动画期间卡片「抖动放大」登场：从小弹到大，带回弹和一点歪头，最后稳住 */
+@keyframes cardPopIn{
+  0%   { transform:scale(.30) rotate(-7deg); opacity:0; }
+  40%  { transform:scale(1.14) rotate(4deg); opacity:1; }
+  58%  { transform:scale(.92) rotate(-3deg); }
+  72%  { transform:scale(1.07) rotate(2deg); }
+  86%  { transform:scale(.97) rotate(-1deg); }
+  100% { transform:scale(1) rotate(0deg); opacity:1; }
+}
+.intro-pop{ animation:cardPopIn .85s cubic-bezier(.2,.85,.3,1.15) both; }
 .auth-card{position:absolute;cursor:pointer;z-index:10;transform-origin:center;border-radius:10px;}
 .auth-card-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;border-radius:10px;filter:drop-shadow(0 8px 26px rgba(0,0,0,.55));}
 .auth-card-pic.placeholder{
@@ -2874,8 +2884,14 @@ function resolveVideoSrc(v){
   return (v.slice(0, 4) === 'srv:') ? v.slice(4) : v;
 }
 function playIntroOnce(onDone){
-  try{ if(sessionStorage.getItem('introPlayed') === '1'){ onDone(); return; } }catch(e){}
-  try{ sessionStorage.setItem('introPlayed', '1'); }catch(e){}
+  /* 一个浏览器会话只播一次（省得每次刷新都重看 20 秒）；
+     想反复验收效果就加 ?intro=1 强制重播 */
+  const force = /[?&]intro=1/.test(location.search);
+  try{
+    if(!force && sessionStorage.getItem('introPlayed') === '1'){ onDone(); return; }
+    if(force) sessionStorage.removeItem('introPlayed');
+    else sessionStorage.setItem('introPlayed', '1');
+  }catch(e){}
   playIntro(onDone);
 }
 function playIntro(onDone){
@@ -2899,11 +2915,31 @@ function startIntroVideo(src, o, onDone){
   /* 淡出时长：陛下钦定 3 秒。语义是「在视频最后 3 秒开始淡出」——
      不额外拉长总时长（20 秒的片子就是 20 秒进游戏，不是 23 秒）。 */
   const fade  = Math.max(0, Number(o.fadeOut) || 3000);
-  const skippable = o.skippable !== false;
-  let done = false, fading = false, watchdog = null;
+  /* 卡片在第几秒「抖动放大」登场（20 秒的片子配 18 ＝ 第 18 秒弹出，而且浮在动画上面） */
+  let at = (o.cardAt == null || o.cardAt === '') ? 18 : Number(o.cardAt);
+  if(!isFinite(at) || at < 0) at = 18;
+  const vol = (o.volume == null) ? 1 : Math.max(0, Math.min(1, Number(o.volume)/100));
+  /* ⛔ 开场动画**不允许跳过**（陛下钦定）：必须完整播完 */
+  let done = false, fading = false, watchdog = null, cardShown = false;
+
+  /* 登录屏先摆好（会触发 initAuthEngine 渲染卡片）；开场动画层夹在卡片之下、背景之上 */
+  try{ showScreen('auth-screen'); }catch(e){}
+  const stageEl = document.getElementById('auth-stage');
+  const cardEls = ['auth-card','auth-field-name','auth-field-code','auth-verify']
+    .map(id=> document.getElementById(id)).filter(Boolean);
+  cardEls.forEach(el=>{ el.style.opacity='0'; el.style.pointerEvents='none'; });
+  const showCard = ()=>{
+    if(cardShown) return; cardShown = true;
+    cardEls.forEach(el=>{
+      el.style.opacity=''; el.style.pointerEvents='';
+      void el.offsetWidth;
+      el.classList.add('intro-pop');
+    });
+  };
 
   const finish = ()=>{
     if(done) return; done = true;
+    showCard();                       // 动画结束/出错：卡片必须恢复，不能永远藏着
     if(watchdog){ clearTimeout(watchdog); watchdog = null; }
     if(!fading){ fading = true; layer.style.transition = 'opacity 240ms ease'; layer.style.opacity = '0'; }
     setTimeout(()=>{
@@ -2921,11 +2957,15 @@ function startIntroVideo(src, o, onDone){
     watchdog = setTimeout(()=>{ if(!done) finish(); }, Math.max(8000, ms));
   };
 
+  /* 层级：开场动画 z=5 —— 夹在「卡片(z=10)」之下、背景之上，与登录页引擎完全一致。
+     这样卡片播到指定秒数时，能浮在动画上面抖出来。 */
   const layer = document.createElement('div');
-  layer.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+  layer.className = 'intro-film';
+  layer.style.cssText = 'position:absolute;inset:0;z-index:5;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
   const v = document.createElement('video');
   v.src = src;
-  v.autoplay = true; v.muted = true; v.loop = false; v.playsInline = true; v.preload = 'auto';
+  v.autoplay = true; v.loop = false; v.playsInline = true; v.preload = 'auto';
+  v.muted = false; v.volume = vol;    /* 片子有声音就带声音播；被浏览器拦了会自动退成静音 */
   v.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
   layer.appendChild(v);
 
@@ -2934,21 +2974,14 @@ function startIntroVideo(src, o, onDone){
   hint.style.cssText = 'position:absolute;left:0;right:0;bottom:8%;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;pointer-events:none;letter-spacing:1px;';
   layer.appendChild(hint);
 
-  /* 跳过按钮：只认这个按钮，不再「点屏幕任意处就跳过」——
-     陛下反馈过「播几秒就没了」，全屏点击太容易误触。 */
-  if(skippable){
-    const btn = document.createElement('div');
-    btn.textContent = '跳过 ▶';
-    btn.style.cssText = 'position:absolute;right:4%;bottom:6%;padding:8px 16px;border-radius:999px;cursor:pointer;' +
-      'background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:14px;font-weight:800;';
-    btn.onclick = e=>{ e.stopPropagation(); finish(); };
-    layer.appendChild(btn);
-  }
+  /* ⛔ 不给跳过了：陛下钦定开场动画必须完整播完（要短就自己剪片子）。
+     以前全屏一点就跳过，还容易误触，干脆整个去掉。 */
 
   /* 尾部淡出：播到最后 fade 毫秒就开始淡，淡完正好进登录页 */
   const maybeFadeOut = ()=>{
-    if(fading || done) return;
     if(!v.duration || !isFinite(v.duration)) return;
+    if(!cardShown && v.currentTime >= at) showCard();   /* 到点：卡片抖动放大登场 */
+    if(fading || done) return;
     const left = v.duration - v.currentTime;
     if(left <= fade / 1000 + 0.05){
       fading = true;
@@ -2960,16 +2993,25 @@ function startIntroVideo(src, o, onDone){
   v.addEventListener('timeupdate', maybeFadeOut);
   v.addEventListener('ended', finish);                       // duration 拿不到时的兜底
   v.addEventListener('error', finish);                       // 加载不出来也要放行
-  v.addEventListener('loadedmetadata', ()=>{ setWatchdog((v.duration || 20) * 1000 + 12000); });
+  v.addEventListener('loadedmetadata', ()=>{
+    const dur = (v.duration && isFinite(v.duration)) ? v.duration : 0;
+    /* 片子比设定的秒数还短 → 自动提前，保证卡片一定来得及登场 */
+    if(dur && at > dur - 0.4) at = Math.max(0, dur - fade/1000 - 0.4);
+    setWatchdog((dur || 20) * 1000 + 12000);
+  });
   v.addEventListener('playing', ()=>{
     hint.textContent = '';
     setWatchdog(((v.duration || 20) - v.currentTime) * 1000 + 12000);
   });
 
-  try{ document.body.appendChild(layer); }catch(e){ onDone(); return; }
+  try{ (stageEl || document.body).appendChild(layer); }
+  catch(e){ showCard(); onDone(); return; }
   setWatchdog(45000);
   const pr = v.play && v.play();
-  if(pr && pr.catch) pr.catch(()=>{ /* 手机拦自动播放：靠按钮或看门狗放行 */ });
+  if(pr && pr.catch) pr.catch(()=>{
+    /* 手机拦了「带声音的自动播放」→ 退成静音也要把画面放出来，绝不能白屏 */
+    try{ v.muted = true; const q = v.play && v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+  });
 }
 
 /* ================= 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ================= */
