@@ -103,3 +103,50 @@
     window.visualViewport.addEventListener('resize', update);
   }
 })();
+
+/* ============================================================
+   安全区整卡缩放（2026-09-23，与关卡编辑器同一思路）
+   —— 给卡片容器加 data-fit 标记（如昵称页的 .split）
+   —— 按屏幕可用比例把整张卡缩小，保证所有按钮都落在
+      安全区内、全部看得见点得到；桌面超大屏绝不放大
+   —— 优先用 zoom（缩放后布局占位同步变小，不出多余滚动条）；
+      不支持 zoom 的浏览器回退为不缩，仍有 safe center + 滚动兜底
+   ============================================================ */
+(function () {
+  var CAN_ZOOM = false;
+  try { CAN_ZOOM = window.CSS && CSS.supports && CSS.supports('zoom', '0.5'); } catch (e) { }
+  var raf = 0;
+
+  function fit() {
+    raf = 0;
+    var els = document.querySelectorAll('[data-fit]');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      el.style.zoom = '';            /* 先还原，量自然尺寸 */
+      var r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;   /* 隐藏中的屏不量 */
+      var vv = window.visualViewport;
+      var availW = (vv ? vv.width : window.innerWidth) - 24;   /* 左右各留 12px 安全边 */
+      var availH = (vv ? vv.height : window.innerHeight) - 20; /* 上下各留 10px 安全边 */
+      var s = Math.min(1, availW / r.width, availH / r.height);
+      if (CAN_ZOOM && s < 0.995) el.style.zoom = s.toFixed(4);
+    }
+  }
+  function queue() { if (!raf) raf = requestAnimationFrame(fit); }
+
+  window.addEventListener('resize', queue);
+  window.addEventListener('orientationchange', function () { setTimeout(queue, 150); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', queue);   /* 手机键盘弹起也重算 */
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { queue(); setTimeout(queue, 200); });
+  } else {
+    queue(); setTimeout(queue, 200);
+  }
+  /* screen 切换（hidden class 增删）后重新量一次 */
+  try {
+    new MutationObserver(queue).observe(document.documentElement,
+      { attributes: true, subtree: true, attributeFilter: ['class'] });
+  } catch (e) { }
+})();
