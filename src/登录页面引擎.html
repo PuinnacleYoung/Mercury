@@ -312,6 +312,7 @@
   <!-- 中：预览 -->
   <section class="panel center-panel">
     <div class="toolbar">
+      <button class="pill gold" id="btn-hub-back" title="回到引擎中枢（游戏首页）" style="font-weight:900;">⌂ 返回首页</button>
       <button class="pill gold hidden" id="btn-add-bg">🖼 加背景层</button>
       <button class="pill mint" id="btn-add-avatar">👤 选中头像</button>
       <button class="pill on hidden" id="btn-safe" title="显示全机型可见区 / UI 安全区参考框（与关卡编辑器同源算法）">🛡 安全区</button>
@@ -1456,6 +1457,7 @@ $('cred-close').onclick = ()=>{ $('account-modal-mask').classList.add('hidden');
 $('account-modal-mask').addEventListener('click', e=>{ if(e.target===$('account-modal-mask')) $('account-modal-mask').classList.add('hidden'); });
 
 /* ================= 工具栏 ================= */
+$('btn-hub-back').onclick = ()=>{ location.href = 'index.html?hub=1'; };   // 与 NPC/地图/塔罗/服装引擎同源：带 hub=1 且管理员已登录时直达引擎中枢
 $('btn-preview').onclick = ()=>{
   previewMode = !previewMode;
   $('btn-preview').textContent = previewMode ? '✎ 编辑模式' : '▶ 预览/编辑';

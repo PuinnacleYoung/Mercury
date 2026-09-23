@@ -2667,7 +2667,7 @@ function afterLandscape(){
     currentUser.outfit = normalizeOutfit(currentUser.outfit);
     normalizeUser(currentUser);
     if(!currentUser.nickname) showScreen('nickname-screen');
-    else if(!currentUser.element) showScreen('element-screen');
+    else if(!currentUser.element){ showScreen('element-screen'); renderElements(); }
     else { enterLobby(); checkCharacterSource(); }
   } else {
     showScreen('auth-screen');
@@ -2844,7 +2844,7 @@ function doAuthVerify(){
         currentUser.outfit = normalizeOutfit(currentUser.outfit);
         normalizeUser(currentUser);
         if(!currentUser.nickname) showScreen('nickname-screen');
-        else if(!currentUser.element) showScreen('element-screen');
+        else if(!currentUser.element){ showScreen('element-screen'); renderElements(); }
         else enterLobby();
       }, 700);
     } else {
@@ -2985,6 +2985,7 @@ $('nick-submit').onclick = ()=>{
 let selectedElement = null;
 function renderElements(){
   const grid = $('element-grid'); grid.innerHTML='';
+  const oldBtn = $('element-confirm'); if(oldBtn) oldBtn.remove();   // 按钮挂在 tip 后面、grid 外，重渲染前必须先删，否则重复堆叠
   Object.entries(ELEMENTS).forEach(([key,e])=>{
     const card = document.createElement('div');
     card.className = 'element-card';
