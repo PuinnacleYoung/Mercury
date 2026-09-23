@@ -551,6 +551,20 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .profile-stats .stat{background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);border-radius:14px;padding:12px;text-align:center;}
 .stat-label{display:block;font-size:12px;color:var(--c-sub);margin-bottom:4px;}
 .stat-val{font-size:18px;font-weight:800;color:var(--c-ink);}
+/* 职称面板（仅本人可见） */
+.profile-jobs{margin-bottom:16px;}
+.profile-jobs .pj-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:800;color:var(--c-ink);margin-bottom:9px;letter-spacing:.5px;}
+.profile-jobs .pj-head .pj-lock{font-size:11px;font-weight:700;color:var(--c-sub);}
+.job-row{display:flex;align-items:center;gap:11px;background:rgba(var(--glass-rgb),.6);border:1px solid var(--glass-border);border-radius:14px;padding:11px 13px;margin-bottom:8px;}
+.job-row:last-child{margin-bottom:0;}
+.job-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;color:#fff;}
+.job-main{flex:1;min-width:0;}
+.job-name{font-size:14px;font-weight:800;color:var(--c-ink);display:flex;align-items:center;gap:6px;}
+.job-name .job-lv{font-size:11px;font-weight:800;color:#fff;padding:1px 8px;border-radius:999px;background:var(--c-accent);}
+.job-shop{font-size:11px;color:var(--c-sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.job-bar{height:6px;border-radius:999px;background:rgba(var(--glass-rgb),.8);border:1px solid var(--glass-border);margin-top:6px;overflow:hidden;}
+.job-bar .job-fill{height:100%;border-radius:999px;transition:width .3s;}
+.job-exp{font-size:10px;color:var(--c-sub);margin-top:3px;text-align:right;}
 .profile-hide{display:flex;align-items:center;justify-content:space-between;font-size:14px;color:var(--c-ink);font-weight:700;margin-bottom:14px;background:rgba(var(--glass-rgb),.5);border:1px solid var(--glass-border);padding:12px 14px;border-radius:14px;}
 .profile-hide input{width:18px;height:18px;accent-color:var(--c-accent);}
 .profile-earn{width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#f6c344,#e8a33d);color:#5b3c00;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(246,195,68,.4);cursor:pointer;letter-spacing:1px;transition:.15s;}
@@ -1292,6 +1306,9 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
       <div class="stat"><span class="stat-label">💎 钻石</span><span class="stat-val" id="stat-diamond"></span></div>
       <div class="stat"><span class="stat-label">🦪 珍珠</span><span class="stat-val" id="stat-pearl"></span></div>
     </div>
+    <div class="profile-jobs" id="profile-jobs">
+      <div class="pj-head"><span>🏅 我的职称</span><span class="pj-lock">🔒 仅自己可见</span></div>
+    </div>
     <div class="profile-hide">
       <span>🔒 隐藏我的财富</span>
       <input type="checkbox" id="profile-hide-wealth">
@@ -1299,6 +1316,7 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
     <button class="profile-checkin" id="profile-checkin">📅 签到日历</button>
     <button class="profile-settings" id="profile-settings">⚙️ 设置</button>
     <button class="profile-earn" id="profile-earn">💰 领取测试货币（金+100 / 钻+20 / 珍+10）</button>
+    <button class="profile-settings" id="profile-job-test" style="margin-top:10px;">🧪 测试打工（技术工+30经验）</button>
   </div>
 </div>
 
@@ -1621,6 +1639,36 @@ const SHOP_ZONES = [
   {id:'limited', name:'限时', em:'⏰'},
   {id:'outfit',  name:'套装', em:'👗'},
 ];
+
+/* ================= 职称系统（职业等级，仅本人可见） =================
+   玩家去不同店铺打工可提升对应职业等级：
+   五宝的小卖部 → 技术工；服装店 → 裁缝；六顺的店 → 护工。
+   职称数据挂在 currentUser.jobs（账号级，跟 level 同级），别人看不到，只在个人资料页展示。
+   升级由打工玩法调用 addJobExp(jobId, exp)；这里也提供一个测试入口方便验收。 */
+const JOBS = [
+  { id:'tech',    name:'技术工', em:'🔧', shop:'五宝的小卖部', color:'#7fafe0', desc:'在五宝的店里打工磨炼手艺' },
+  { id:'tailor',  name:'裁缝',   em:'🧵', shop:'服装店',       color:'#e88bb0', desc:'去服装店帮忙提升裁缝技艺' },
+  { id:'care',    name:'护工',   em:'💊', shop:'六顺的店',     color:'#7cc4ad', desc:'在六顺的店打工积累照护经验' },
+];
+function jobById(id){ return JOBS.find(j=>j.id===id) || null; }
+/* 每级所需经验：等级 Lv.n → Lv.n+1 需要 expFor(n) */
+function jobExpFor(level){ return Math.floor(50 * Math.pow(level, 1.5)); }
+function jobLevel(exp){ // 由累计经验反推等级（Lv.1 起）
+  let lv = 1, need = jobExpFor(1);
+  while(exp >= need){ exp -= need; lv++; need = jobExpFor(lv); }
+  return { level: lv, cur: exp, need };
+}
+/* 打工：给某职业加经验，返回升级后等级（升了返回 {level, upgraded:true}） */
+function addJobExp(jobId, exp){
+  if(!currentUser) return null;
+  if(!currentUser.jobs) currentUser.jobs = {};
+  if(!currentUser.jobs[jobId]) currentUser.jobs[jobId] = 0;
+  const before = jobLevel(currentUser.jobs[jobId]).level;
+  currentUser.jobs[jobId] += (exp||0);
+  const after = jobLevel(currentUser.jobs[jobId]);
+  persistCurrent();
+  return { job: jobById(jobId), level: after.level, upgraded: after.level > before };
+}
 
 /* （旧大厅的占位建筑：塔罗 / 斗地主 / 麻将 / 五子棋 / 时装店 —— 已随旧大厅一起下线） */
 
@@ -2497,6 +2545,8 @@ function normalizeUser(u){
   if(typeof u.coins !== 'number') u.coins = 100;
   if(typeof u.hideWealth !== 'boolean') u.hideWealth = false;
   if(!u.avatar) u.avatar = PRESET_AVATARS[0].id;   // 旧存档补默认头像
+  if(!u.jobs || typeof u.jobs !== 'object') u.jobs = {};   // 职称等级（旧存档补空对象）
+  JOBS.forEach(j=>{ if(typeof u.jobs[j.id] !== 'number') u.jobs[j.id] = 0; });
   return u;
 }
 
@@ -4994,6 +5044,32 @@ function renderProfile(){
   refreshEngineData();
   paint();
   afterEngineReady(paint);
+  renderJobs();
+}
+/* 渲染职称面板（仅本人可见） */
+function renderJobs(){
+  const wrap = $('profile-jobs');
+  if(!wrap) return;
+  if(!currentUser.jobs || typeof currentUser.jobs !== 'object') currentUser.jobs = {};
+  const head = wrap.querySelector('.pj-head');
+  wrap.innerHTML = '';
+  wrap.appendChild(head);
+  JOBS.forEach(j=>{
+    const exp = currentUser.jobs[j.id] || 0;
+    const { level, cur, need } = jobLevel(exp);
+    const row = document.createElement('div');
+    row.className = 'job-row';
+    const pct = Math.min(100, Math.round(cur / need * 100));
+    row.innerHTML = `
+      <div class="job-ico" style="background:${j.color}">${j.em}</div>
+      <div class="job-main">
+        <div class="job-name">${j.name}<span class="job-lv">Lv.${level}</span></div>
+        <div class="job-shop">🏪 ${j.shop}</div>
+        <div class="job-bar"><div class="job-fill" style="width:${pct}%;background:${j.color}"></div></div>
+        <div class="job-exp">${cur} / ${need} 经验</div>
+      </div>`;
+    wrap.appendChild(row);
+  });
 }
 $('hud-card').onclick = openProfile;
 $('profile-close').onclick = closeProfile;
@@ -5010,6 +5086,12 @@ $('profile-earn').onclick = ()=>{
 $('btn-coins').onclick = ()=>{
   const c = (profile && profile.currency) || {coin:0, diamond:0, pearl:0};
   toast(`🪙${c.coin} · 💎${c.diamond} · 🦪${c.pearl}（名字卡片里可领取测试货币）`);
+};
+$('profile-job-test').onclick = ()=>{
+  const r = addJobExp('tech', 30);
+  renderJobs();
+  if(r.upgraded) toast('🔧 技术工升级到 Lv.' + r.level + '！');
+  else toast('🔧 技术工 +30 经验（当前 Lv.' + r.level + '）');
 };
 
 /* ================= 签到日历系统 ================= */
@@ -6899,6 +6981,7 @@ function collectRemotePlayers(W, H){
   return arr.slice(0, 8);
 }
 function drawMap(){
+  let c = mapRun.ctx;
   if(!c || !mapRun.canvas || !mapRun.canvas.width){ resizeMap(); c = mapRun.ctx; }
   if(!c) return;
   let W = mapRun.w, H = mapRun.h;              // 世界画布（16:9）
