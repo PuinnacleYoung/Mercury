@@ -265,6 +265,14 @@
   .save-btn{width:100%;padding:11px;border-radius:11px;font-size:13px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;cursor:pointer;margin-bottom:8px;}
   .close-btn{width:100%;padding:10px;border-radius:11px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);color:var(--sub);cursor:pointer;}
 
+  /* 种族选择页（金木水火土） */
+  .race-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+  .race-cell{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .race-cell:hover{background:rgba(255,255,255,.1);border-color:var(--accent);transform:translateY(-2px);}
+  .race-cell .rc-sil{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);background-size:cover;background-position:center;border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .race-cell .rc-name{font-size:14px;font-weight:900;color:var(--ink);}
+  .race-cell .rc-trait{font-size:9px;color:var(--sub);font-weight:700;}
+
   .hidden{display:none!important;}
 </style>
 </head>
@@ -352,6 +360,15 @@
   </div>
 </div>
 
+<div class="account-modal-mask hidden" id="race-modal-mask">
+  <div class="account-modal" style="width:360px;">
+    <h3>✨ 选择你的种族</h3>
+    <div class="sub">五行属性决定你的初始体质与天赋方向。选定后，卡片头像剪影会替换为对应种族剪影。</div>
+    <div class="race-grid" id="race-grid"></div>
+    <button class="close-btn" id="race-skip">暂时跳过</button>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
@@ -360,7 +377,7 @@
      version: 2,
      bgLayers: [ {id, src, fit, x, y, w, h, opacity, blend, visible, locked} ],
      card: { src, opacity, x, y, w, h },
-     avatar: { frameSrc, defaultRace, x, y, w, h, races:[{id,name,silhouette}] },
+     avatar: { frameSrc, defaultRace, defaultSilhouette, x, y, w, h, races:[{id,name,silhouette}] },
      fields: [ {id, type, label, x, y, w, h, fontSize, mask, maxLength} ],
      stamp: { x, y, w, h, hitShape, shake:{...}, appear:{...}, dismiss:{...} },
      intro: { src, audio, skippable, fadeOut },
@@ -381,7 +398,7 @@ function defaultConfig(){
     ],
     card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62, locked:false },
     avatar: {
-      frameSrc:'', defaultRace:'metal',
+      frameSrc:'', defaultRace:'metal', defaultSilhouette:'',
       x:0.5, y:0.28, w:0.16, h:0.20, locked:false,
       races: [
         { id:'metal', name:'金', silhouette:'' },
@@ -416,6 +433,7 @@ function normalizeCfg(){
   const def = defaultConfig();
   if(cfg.card && cfg.card.locked===undefined) cfg.card.locked = false;
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
+  if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
   (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
@@ -684,16 +702,36 @@ function buildCardEl(){
 }
 
 /* ================= 头像（卡片内部） ================= */
+/* 运行时状态：核验后当前登录账号对应的种族（金属/木/水/火/土），null 表示尚未核验 */
+let runtimeElement = null;
+
 function buildAvatarEl(){
   const el = document.createElement('div');
   el.className = 'id-avatar' + (selectedId==='avatar' ? ' sel' : '') + (cfg.avatar.locked ? ' locked' : '');
   el.dataset.kind = 'avatar';
   el.style.zIndex = 20;
-  const race = cfg.avatar.races.find(r=>r.id===cfg.avatar.defaultRace);
   const pic = document.createElement('div');
   pic.className = 'ava-pic';
-  if(race && race.silhouette){
-    pic.style.backgroundImage = 'url(' + race.silhouette + ')';
+
+  // 决定显示哪张剪影：
+  // 1) 运行时（预览/总预览）已核验 → 显示当前账号种族的剪影
+  // 2) 运行时未核验 → 显示默认剪影（通用占位）
+  // 3) 编辑模式（card Tab）→ 优先显示默认剪影，没设则显示 defaultRace 的种族剪影当预览
+  const effPreview = previewMode || activeTab === 'overview';
+  let src = '';
+  if(effPreview && runtimeElement){
+    const rr = cfg.avatar.races.find(r=>r.id===runtimeElement);
+    src = rr ? rr.silhouette : '';
+  } else if(effPreview){
+    src = cfg.avatar.defaultSilhouette || '';
+  } else {
+    // 编辑模式：默认剪影优先，否则用 defaultRace 剪影做视觉预览
+    if(cfg.avatar.defaultSilhouette) src = cfg.avatar.defaultSilhouette;
+    else { const rr = cfg.avatar.races.find(r=>r.id===cfg.avatar.defaultRace); src = rr ? rr.silhouette : ''; }
+  }
+
+  if(src){
+    pic.style.backgroundImage = 'url(' + src + ')';
   } else {
     pic.style.background = 'rgba(255,255,255,.12)';
     pic.style.border = '2px dashed var(--gold)';
@@ -711,6 +749,32 @@ function buildAvatarEl(){
   bindDrag(el, ()=>cfg.avatar, 'avatar');
   if(cfg.avatar.locked) lockBadge(el);
   return el;
+}
+
+/* 局部刷新头像剪影（核验/选种族后，不重建 stage，保留输入框与核验动画） */
+function refreshAvatarSilhouette(){
+  const el = $('edit-stage').querySelector('.id-avatar .ava-pic');
+  if(!el) return;
+  let src = '';
+  if(runtimeElement){
+    const rr = cfg.avatar.races.find(r=>r.id===runtimeElement);
+    src = rr ? rr.silhouette : '';
+  } else {
+    src = cfg.avatar.defaultSilhouette || '';
+  }
+  el.style.background = '';
+  el.style.border = '';
+  el.style.display = '';
+  el.textContent = '';
+  if(src){
+    el.style.backgroundImage = 'url(' + src + ')';
+  } else {
+    el.style.background = 'rgba(255,255,255,.12)';
+    el.style.border = '2px dashed var(--gold)';
+    el.style.display = 'flex'; el.style.alignItems='center'; el.style.justifyContent='center';
+    el.style.color = '#9cc5ce'; el.style.fontSize='11px';
+    el.textContent = '剪影';
+  }
 }
 
 /* ================= 输入框 ================= */
@@ -1030,6 +1094,13 @@ function renderAvatarProps(c){
   c.innerHTML = `
     <h3>👤 头像区</h3>
     <div class="prop-blk">
+      <div class="sec-title">默认剪影（未注册时的通用占位剪影）</div>
+      <div class="field-row">
+        <button class="btn-mini" id="ava-defsil" style="${cfg.avatar.defaultSilhouette?'color:var(--mint);border-color:var(--mint);':'color:var(--sub);'}">${cfg.avatar.defaultSilhouette?'已设默认剪影 ✓':'上传默认剪影'}</button>
+        ${cfg.avatar.defaultSilhouette?'<button class="btn-mini danger" id="ava-defsil-clear">✕</button>':''}
+      </div>
+    </div>
+    <div class="prop-blk">
       <div class="sec-title">头像框 PNG</div>
       <div class="file-drop" id="ava-frame-drop">点击或拖入 PNG 上传</div>
     </div>
@@ -1069,6 +1140,12 @@ function renderAvatarProps(c){
     $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
   });
   $('ava-lock').onchange = e=>{ cfg.avatar.locked = e.target.checked; saveCfg(); render(); };
+  // 默认剪影上传 / 清除
+  $('ava-defsil').onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg';
+    i.onchange=()=>{ if(i.files[0]) readFileTo(i.files[0], url=>{ cfg.avatar.defaultSilhouette=url; saveCfg(); render(); }); };
+    i.click(); };
+  const defClear = $('ava-defsil-clear');
+  if(defClear) defClear.onclick = ()=>{ cfg.avatar.defaultSilhouette=''; saveCfg(); render(); };
   // 种族剪影上传 / 清除
   document.querySelectorAll('.race-sil').forEach(btn=>{
     btn.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg';
@@ -1275,10 +1352,13 @@ function doVerify(){
 
   if(isNew){
     toastVerify('✅ 首次核验，自动注册成功');
-    setTimeout(()=> showAccountModal(name, code), 500);
+    setTimeout(()=>{ showAccountModal(name, code); showRaceModal(name); }, 500);
   } else {
     if(accounts[name].password === code){
       toastVerify('✅ 核验通过，欢迎回来 '+name);
+      // 已注册：头像剪影切换到该账号已选种族（局部刷新，不重建 stage 以免清掉核验动画）
+      runtimeElement = accounts[name].element || null;
+      refreshAvatarSilhouette();
     } else {
       toastVerify('❌ 防伪码与已注册账号不一致');
       cardEl && cardEl.classList.remove('verified');
@@ -1302,6 +1382,49 @@ function showAccountModal(name, code){
   $('cred-code').textContent = code;
   $('account-modal-mask').classList.remove('hidden');
 }
+
+/* 五行种族元信息（trait 与 index.html 主游戏一致） */
+const RACE_TRAIT = {
+  metal:{ trait:'坚韧 · 果决' }, wood:{ trait:'生机 · 成长' }, water:{ trait:'灵动 · 包容' },
+  fire:{ trait:'热情 · 勇敢' }, earth:{ trait:'稳重 · 踏实' },
+};
+
+/* 种族选择页：渲染金木水火土 5 个选项 */
+let pendingRaceAccount = null;   // 正在选种族的账号名
+function showRaceModal(name){
+  pendingRaceAccount = name;
+  const grid = $('race-grid');
+  grid.innerHTML = '';
+  cfg.avatar.races.forEach(r=>{
+    const cell = document.createElement('div');
+    cell.className = 'race-cell';
+    const sil = document.createElement('div');
+    sil.className = 'rc-sil';
+    if(r.silhouette) sil.style.backgroundImage = 'url(' + r.silhouette + ')';
+    else sil.textContent = r.name;
+    const nm = document.createElement('div'); nm.className = 'rc-name'; nm.textContent = r.name;
+    const tr = document.createElement('div'); tr.className = 'rc-trait'; tr.textContent = (RACE_TRAIT[r.id]||{}).trait || '';
+    cell.appendChild(sil); cell.appendChild(nm); cell.appendChild(tr);
+    cell.onclick = ()=> pickRace(r.id);
+    grid.appendChild(cell);
+  });
+  $('race-modal-mask').classList.remove('hidden');
+}
+function pickRace(raceId){
+  // 写入当前账号的 element
+  if(pendingRaceAccount){
+    const accounts = getGameAccounts();
+    if(accounts[pendingRaceAccount]){ accounts[pendingRaceAccount].element = raceId; saveGameAccounts(accounts); }
+  }
+  runtimeElement = raceId;
+  pendingRaceAccount = null;
+  $('race-modal-mask').classList.add('hidden');
+  const r = cfg.avatar.races.find(x=>x.id===raceId);
+  toastVerify('✨ 已选择种族「' + (r?r.name:raceId) + '」');
+  refreshAvatarSilhouette();
+}
+$('race-skip').onclick = ()=>{ pendingRaceAccount = null; $('race-modal-mask').classList.add('hidden'); };
+$('race-modal-mask').addEventListener('click', e=>{ if(e.target===$('race-modal-mask')){ pendingRaceAccount=null; $('race-modal-mask').classList.add('hidden'); } });
 
 const LS_GAME_ACCOUNTS = 'game_accounts';
 function getGameAccounts(){
@@ -1395,9 +1518,11 @@ $('btn-play-loginfx').onclick = ()=> playLayerDemo(buildLoginFxEl, Math.max(800,
 $('btn-test-verify').onclick = ()=>{
   previewMode = true;
   $('btn-preview').textContent = '✎ 编辑模式';
+  runtimeElement = null;          // 重置运行时种族，重新走完整流程
   render();
   const n = $('rt-f_name'), c = $('rt-f_code');
-  if(n) n.value = '暮眠';
+  // 每次用唯一账号，保证能演示「新注册 → 选种族」完整链路
+  if(n) n.value = '暮眠' + Date.now().toString().slice(-4);
   if(c) c.value = 'A7-9K2-5FQ';
   setTimeout(doVerify, 200);
 };
