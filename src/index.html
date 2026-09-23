@@ -565,6 +565,8 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .job-bar{height:6px;border-radius:999px;background:rgba(var(--glass-rgb),.8);border:1px solid var(--glass-border);margin-top:6px;overflow:hidden;}
 .job-bar .job-fill{height:100%;border-radius:999px;transition:width .3s;}
 .job-exp{font-size:10px;color:var(--c-sub);margin-top:3px;text-align:right;}
+.job-row-max{border-color:rgba(255,196,0,.5);background:linear-gradient(135deg,rgba(255,196,0,.10),rgba(var(--glass-rgb),.6));}
+.job-row-max .job-name .job-lv{background:linear-gradient(135deg,#f0a030,#e8b000);color:#3a2400;}
 .profile-hide{display:flex;align-items:center;justify-content:space-between;font-size:14px;color:var(--c-ink);font-weight:700;margin-bottom:14px;background:rgba(var(--glass-rgb),.5);border:1px solid var(--glass-border);padding:12px 14px;border-radius:14px;}
 .profile-hide input{width:18px;height:18px;accent-color:var(--c-accent);}
 .profile-earn{width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#f6c344,#e8a33d);color:#5b3c00;font-size:15px;font-weight:800;box-shadow:0 6px 18px rgba(246,195,68,.4);cursor:pointer;letter-spacing:1px;transition:.15s;}
@@ -1316,7 +1318,7 @@ body:has(#mergeshop-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
     <button class="profile-checkin" id="profile-checkin">📅 签到日历</button>
     <button class="profile-settings" id="profile-settings">⚙️ 设置</button>
     <button class="profile-earn" id="profile-earn">💰 领取测试货币（金+100 / 钻+20 / 珍+10）</button>
-    <button class="profile-settings" id="profile-job-test" style="margin-top:10px;">🧪 测试打工（技术工+30经验）</button>
+    <button class="profile-settings" id="profile-job-test" style="margin-top:10px;">🧪 测试打工（轮询各线+150经验）</button>
   </div>
 </div>
 
@@ -1641,33 +1643,61 @@ const SHOP_ZONES = [
 ];
 
 /* ================= 职称系统（职业等级，仅本人可见） =================
-   玩家去不同店铺打工可提升对应职业等级：
-   五宝的小卖部 → 技术工；服装店 → 裁缝；六顺的店 → 护工。
+   玩家去不同玩法线打工/探索可提升对应职称等级（全玩法职称体系 v3.0）。
+   10 条线：五宝零食铺/六顺异兽医院/风皇娱乐/皇途剧组/血旗/不死兵团/骑士团/京华大学/腾越集团/木十一财神门下。
+   每条线有固定职称名 + 累计 EXP 阈值表（见 ranks），玩家永远升不到组织一把手（顶点是"正下一档"）。
    职称数据挂在 currentUser.jobs（账号级，跟 level 同级），别人看不到，只在个人资料页展示。
-   升级由打工玩法调用 addJobExp(jobId, exp)；这里也提供一个测试入口方便验收。 */
+   升级由各玩法调用 addJobExp(jobId, exp)；所有玩家默认最低级（rankIndex 0）、经验 0。 */
 const JOBS = [
-  { id:'tech',    name:'技术工', em:'🔧', shop:'五宝的小卖部', color:'#7fafe0', desc:'在五宝的店里打工磨炼手艺' },
-  { id:'tailor',  name:'裁缝',   em:'🧵', shop:'服装店',       color:'#e88bb0', desc:'去服装店帮忙提升裁缝技艺' },
-  { id:'care',    name:'护工',   em:'💊', shop:'六顺的店',     color:'#7cc4ad', desc:'在六顺的店打工积累照护经验' },
+  { id:'snack',    name:'五宝零食铺',   em:'🍪', shop:'五宝零食铺',       color:'#f0a868', desc:'二合合成玩法', line:'五宝零食铺 · 生产工', apex:'镇店工',
+    ranks:[['见习工',0],['初级工',200],['中级工',600],['高级工',1500],['特级工',3500],['金牌工',8000],['首席工',18000],['镇店工',40000]] },
+  { id:'hospital', name:'六顺异兽医院', em:'🏥', shop:'六顺异兽医院',     color:'#7cc4ad', desc:'急诊分诊玩法', line:'六顺异兽医院 · 护理→医疗', apex:'主任医师',
+    ranks:[['见习护工',0],['一级护工',200],['二级护工',600],['三级护工',1500],['高级护工',3500],['实习医师',8000],['医师',18000],['主治医师',40000],['副主任医师',90000],['主任医师',200000]] },
+  { id:'fengwh',   name:'风皇娱乐',     em:'🎤', shop:'风皇娱乐',         color:'#e88bb0', desc:'艺人经纪经营', line:'风皇娱乐 · 经纪人', apex:'首席经纪人',
+    ranks:[['跑腿助理',0],['执行助理',160],['艺人助理',480],['执行经纪',1200],['经纪人',2800],['高级经纪人',6400],['资深经纪人',14400],['首席经纪人',32000]] },
+  { id:'huangtu',  name:'皇途剧组',     em:'🎬', shop:'皇途剧组',         color:'#b09be0', desc:'自走棋玩法', line:'皇途剧组', apex:'执行导演',
+    ranks:[['场务',0],['剧务',120],['道具师',360],['场记',900],['助理导演',2100],['副导演',4800],['分组导演',10800],['执行导演',24000]] },
+  { id:'xueqi',    name:'血旗',         em:'🚩', shop:'血旗',             color:'#e06a6a', desc:'战棋/战术玩法', line:'血旗 · 特勤', apex:'副首长',
+    ranks:[['入伍新兵',0],['列兵',120],['上等兵',360],['侦察尖兵',900],['特勤预备',2100],['正式队员',4800],['行动组长',10800],['分区指挥',24000],['副指挥官',54000],['副首长',120000]] },
+  { id:'bingsi',   name:'不死兵团',     em:'🥷', shop:'不死兵团',         color:'#8a9bb0', desc:'谍报潜入玩法', line:'不死兵团 · 谍报', apex:'副团长',
+    ranks:[['编外探子',0],['线人',100],['暗桩',300],['正式成员',750],['护法',1750],['副团长',4000]] },
+  { id:'qishi',    name:'骑士团',       em:'⚔️', shop:'骑士团',           color:'#7fafe0', desc:'应援打榜玩法', line:'骑士团 · 应援', apex:'首席骑士',
+    ranks:[['路人粉',0],['新粉',300],['学徒骑士',900],['见习骑士',2250],['正式骑士',5250],['资深骑士',12000],['圆桌骑士',27000],['首席骑士',60000]] },
+  { id:'jinghua',  name:'京华大学',     em:'🎓', shop:'京华大学·华星艺校', color:'#7cb8d0', desc:'答题/课程养成', line:'京华大学 · 华星艺校', apex:'教授',
+    ranks:[['旁听生',0],['插班生',140],['正式生',420],['优等生',1050],['交换生',2450],['助教',5600],['讲师',12600],['副教授',28000],['教授',63000]] },
+  { id:'tengyue',  name:'腾越集团',     em:'🏢', shop:'腾越集团',         color:'#d0a870', desc:'商战(飞行棋内核)', line:'腾越集团 · 商战', apex:'常务副总裁',
+    ranks:[['实习管培生',0],['业务专员',120],['项目经理',360],['部门总监',900],['事业部总经理',2100],['副总裁',4800],['常务副总裁',10800]] },
+  { id:'muyishi',  name:'木十一财神门下', em:'💰', shop:'木十一·财神门下', color:'#d8b860', desc:'金融模拟玩法', line:'木十一 · 财神门下', apex:'首席操盘手',
+    ranks:[['散户',0],['储户',140],['大户',420],['操盘手',1050],['分析师',2450],['风控经理',5600],['投资总监',12600],['首席操盘手',28000]] },
 ];
 function jobById(id){ return JOBS.find(j=>j.id===id) || null; }
-/* 每级所需经验：等级 Lv.n → Lv.n+1 需要 expFor(n) */
-function jobExpFor(level){ return Math.floor(50 * Math.pow(level, 1.5)); }
-function jobLevel(exp){ // 由累计经验反推等级（Lv.1 起）
-  let lv = 1, need = jobExpFor(1);
-  while(exp >= need){ exp -= need; lv++; need = jobExpFor(lv); }
-  return { level: lv, cur: exp, need };
+/* 由累计经验反推职称（rankIndex 从 0 起，即最低级；ranks 是 [职称名, 累计EXP阈值] 数组） */
+function jobLevelOf(job, exp){
+  exp = exp || 0;
+  const ranks = job.ranks;
+  let idx = 0;
+  for(let i=0;i<ranks.length;i++){
+    if(exp >= ranks[i][1]) idx = i;
+    else break;
+  }
+  const cur = exp - ranks[idx][1];
+  const need = idx < ranks.length-1 ? (ranks[idx+1][1] - ranks[idx][1]) : 0;
+  return { level: idx+1, rankIndex: idx, rankName: ranks[idx][0], cur, need,
+           nextRank: idx < ranks.length-1 ? ranks[idx+1][0] : null,
+           isMax: idx >= ranks.length-1 };
 }
-/* 打工：给某职业加经验，返回升级后等级（升了返回 {level, upgraded:true}） */
+/* 打工：给某职业加经验，返回升级后职称（升了返回 {job, rankName, level, upgraded}） */
 function addJobExp(jobId, exp){
   if(!currentUser) return null;
   if(!currentUser.jobs) currentUser.jobs = {};
   if(!currentUser.jobs[jobId]) currentUser.jobs[jobId] = 0;
-  const before = jobLevel(currentUser.jobs[jobId]).level;
+  const job = jobById(jobId);
+  if(!job) return null;
+  const before = jobLevelOf(job, currentUser.jobs[jobId]).rankIndex;
   currentUser.jobs[jobId] += (exp||0);
-  const after = jobLevel(currentUser.jobs[jobId]);
+  const after = jobLevelOf(job, currentUser.jobs[jobId]);
   persistCurrent();
-  return { job: jobById(jobId), level: after.level, upgraded: after.level > before };
+  return { job, rankName: after.rankName, level: after.level, upgraded: after.rankIndex > before };
 }
 
 /* （旧大厅的占位建筑：塔罗 / 斗地主 / 麻将 / 五子棋 / 时装店 —— 已随旧大厅一起下线） */
@@ -5056,17 +5086,23 @@ function renderJobs(){
   wrap.appendChild(head);
   JOBS.forEach(j=>{
     const exp = currentUser.jobs[j.id] || 0;
-    const { level, cur, need } = jobLevel(exp);
+    const st = jobLevelOf(j, exp);
     const row = document.createElement('div');
-    row.className = 'job-row';
-    const pct = Math.min(100, Math.round(cur / need * 100));
+    row.className = 'job-row' + (st.isMax ? ' job-row-max' : '');
+    const pct = st.need > 0 ? Math.min(100, Math.round(st.cur / st.need * 100)) : 100;
+    const rankLabel = st.isMax
+      ? '🏆 ' + st.rankName
+      : st.rankName;
+    const expText = st.isMax
+      ? '已达顶点 · 累计 ' + exp + ' 经验'
+      : st.cur + ' / ' + st.need + ' 经验 → ' + st.nextRank;
     row.innerHTML = `
       <div class="job-ico" style="background:${j.color}">${j.em}</div>
       <div class="job-main">
-        <div class="job-name">${j.name}<span class="job-lv">Lv.${level}</span></div>
+        <div class="job-name">${j.name}<span class="job-lv">${rankLabel}</span></div>
         <div class="job-shop">🏪 ${j.shop}</div>
         <div class="job-bar"><div class="job-fill" style="width:${pct}%;background:${j.color}"></div></div>
-        <div class="job-exp">${cur} / ${need} 经验</div>
+        <div class="job-exp">${expText}</div>
       </div>`;
     wrap.appendChild(row);
   });
@@ -5087,11 +5123,15 @@ $('btn-coins').onclick = ()=>{
   const c = (profile && profile.currency) || {coin:0, diamond:0, pearl:0};
   toast(`🪙${c.coin} · 💎${c.diamond} · 🦪${c.pearl}（名字卡片里可领取测试货币）`);
 };
+/* 测试入口：轮询给各条线加经验，方便逐条验收（点一下轮转到下一条线） */
+let _jobTestIdx = 0;
 $('profile-job-test').onclick = ()=>{
-  const r = addJobExp('tech', 30);
+  const j = JOBS[_jobTestIdx % JOBS.length];
+  const r = addJobExp(j.id, 150);
+  _jobTestIdx++;
   renderJobs();
-  if(r.upgraded) toast('🔧 技术工升级到 Lv.' + r.level + '！');
-  else toast('🔧 技术工 +30 经验（当前 Lv.' + r.level + '）');
+  if(r.upgraded) toast(j.em + ' ' + j.name + ' 升职为「' + r.rankName + '」！');
+  else toast(j.em + ' ' + j.name + ' +150 经验（当前「' + r.rankName + '」）');
 };
 
 /* ================= 签到日历系统 ================= */
