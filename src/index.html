@@ -2896,17 +2896,29 @@ function playIntro(onDone){
 }
 function startIntroVideo(src, o, onDone){
   if(!src){ onDone(); return; }
-  const fade  = Math.max(0, Number(o.fadeOut) || 800);
+  /* 淡出时长：陛下钦定 3 秒。语义是「在视频最后 3 秒开始淡出」——
+     不额外拉长总时长（20 秒的片子就是 20 秒进游戏，不是 23 秒）。 */
+  const fade  = Math.max(0, Number(o.fadeOut) || 3000);
   const skippable = o.skippable !== false;
-  let done = false;
+  let done = false, fading = false, watchdog = null;
+
   const finish = ()=>{
     if(done) return; done = true;
-    clearTimeout(watchdog);
-    layer.style.transition = 'opacity ' + fade + 'ms ease';
-    layer.style.opacity = '0';
-    setTimeout(()=>{ try{ layer.remove(); }catch(e){} }, fade + 60);
-    try{ v.pause(); }catch(e){}
+    if(watchdog){ clearTimeout(watchdog); watchdog = null; }
+    if(!fading){ fading = true; layer.style.transition = 'opacity 240ms ease'; layer.style.opacity = '0'; }
+    setTimeout(()=>{
+      try{ v.pause(); }catch(e){}
+      try{ layer.remove(); }catch(e){}
+    }, 320);
     onDone();
+  };
+  /* 兜底看门狗：宁可放宽也不能把长片拦腰砍断（以前固定 12 秒，20 秒的片子直接被砍到 12 秒）
+     - 还不知道时长：45 秒
+     - 知道时长：时长 + 12 秒（卡顿/重缓冲的余量）
+     - 已经开播：剩余时长 + 12 秒 */
+  const setWatchdog = ms=>{
+    if(watchdog) clearTimeout(watchdog);
+    watchdog = setTimeout(()=>{ if(!done) finish(); }, Math.max(8000, ms));
   };
 
   const layer = document.createElement('div');
@@ -2918,21 +2930,46 @@ function startIntroVideo(src, o, onDone){
   layer.appendChild(v);
 
   const hint = document.createElement('div');
-  hint.textContent = '加载中… 点击任意处跳过';
-  hint.style.cssText = 'position:absolute;left:0;right:0;bottom:6%;text-align:center;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;pointer-events:none;letter-spacing:1px;';
+  hint.textContent = '加载中…';
+  hint.style.cssText = 'position:absolute;left:0;right:0;bottom:8%;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;pointer-events:none;letter-spacing:1px;';
   layer.appendChild(hint);
 
-  if(skippable) layer.addEventListener('click', finish);
-  /* 出错 / 卡住也要放行：12 秒硬兜底 */
-  const watchdog = setTimeout(()=>{ if(!done) finish(); }, 12000);
-  v.addEventListener('ended', finish);
-  v.addEventListener('error', finish);
-  v.addEventListener('canplay', ()=>{ hint.textContent = '点击任意处跳过'; });
+  /* 跳过按钮：只认这个按钮，不再「点屏幕任意处就跳过」——
+     陛下反馈过「播几秒就没了」，全屏点击太容易误触。 */
+  if(skippable){
+    const btn = document.createElement('div');
+    btn.textContent = '跳过 ▶';
+    btn.style.cssText = 'position:absolute;right:4%;bottom:6%;padding:8px 16px;border-radius:999px;cursor:pointer;' +
+      'background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:14px;font-weight:800;';
+    btn.onclick = e=>{ e.stopPropagation(); finish(); };
+    layer.appendChild(btn);
+  }
+
+  /* 尾部淡出：播到最后 fade 毫秒就开始淡，淡完正好进登录页 */
+  const maybeFadeOut = ()=>{
+    if(fading || done) return;
+    if(!v.duration || !isFinite(v.duration)) return;
+    const left = v.duration - v.currentTime;
+    if(left <= fade / 1000 + 0.05){
+      fading = true;
+      layer.style.transition = 'opacity ' + fade + 'ms linear';
+      layer.style.opacity = '0';
+      setTimeout(finish, fade);
+    }
+  };
+  v.addEventListener('timeupdate', maybeFadeOut);
+  v.addEventListener('ended', finish);                       // duration 拿不到时的兜底
+  v.addEventListener('error', finish);                       // 加载不出来也要放行
+  v.addEventListener('loadedmetadata', ()=>{ setWatchdog((v.duration || 20) * 1000 + 12000); });
+  v.addEventListener('playing', ()=>{
+    hint.textContent = '';
+    setWatchdog(((v.duration || 20) - v.currentTime) * 1000 + 12000);
+  });
 
   try{ document.body.appendChild(layer); }catch(e){ onDone(); return; }
-  /* 手机不允许自动播放时，浏览器会一直不播 —— 兜底照样生效，不会卡住 */
+  setWatchdog(45000);
   const pr = v.play && v.play();
-  if(pr && pr.catch) pr.catch(()=>{ /* 自动播放被拦：等用户点击或兜底跳过 */ });
+  if(pr && pr.catch) pr.catch(()=>{ /* 手机拦自动播放：靠按钮或看门狗放行 */ });
 }
 
 /* ================= 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ================= */

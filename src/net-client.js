@@ -185,9 +185,19 @@
         });
         var un2 = Net.on('mediaDone', m=>{ if(finished) return; cleanup(); resolve(m); });
         var un3 = Net.on('mediaErr', m=>{ if(finished) return; cleanup(); reject(new Error(m.msg || '上传失败')); });
-        Net.send({ t:'mediaBegin', adminKey: Net.adminKey, name: file.name, size: file.size });
-        /* 视频大，给 3 分钟 */
-        setTimeout(()=>{ if(!finished){ cleanup(); reject(new Error('上传超时（3 分钟），请检查网络后重试')); } }, 180000);
+        /* 上传到一半掉线：以前 Net.send 只是静默丢弃，最后落一个 0 字节的片子 —— 现在立刻报错 */
+        var un4 = Net.on('disconnect', ()=>{
+          if(finished) return; cleanup();
+          reject(new Error('上传到一半网络断了，请重传（视频已存本机，不会丢）'));
+        });
+        function cleanup(){ finished = true; un1(); un2(); un3(); if(un4) un4(); }
+        /* 先确保连上再发：没连就发会被 Net.send 静默丢掉 */
+        const begin = ()=> Net.send({ t:'mediaBegin', adminKey: Net.adminKey, name: file.name, size: file.size });
+        if(Net.connected()) begin();
+        else if(Net.connect) Net.connect().then(begin, ()=>{ if(!finished){ cleanup(); reject(new Error('连不上服务器，检查网络后重试')); } });
+        else begin();
+        /* 视频大（几十 MB 要读很久），给 10 分钟 */
+        setTimeout(()=>{ if(!finished){ cleanup(); reject(new Error('上传超时（10 分钟），请检查网络后重试')); } }, 600000);
       });
     },
 

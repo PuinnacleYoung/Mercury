@@ -374,6 +374,15 @@ function handleMediaEnd(c, msg){
   const u = mediaUploads.get(msg.token);
   if(!u){ send(c.sock, { t:'mediaErr', msg:'上传会话已失效，请重传' }); return; }
   mediaUploads.delete(msg.token);
+  /* 一片都没收到 = 上传中途断了（页面刷新 / 网络掉线 / 客户端没连上）。
+     以前照样 rename，结果磁盘上留下一个 0 字节的 mp4 —— 播放器拿到空文件直接结束，
+     表现就是「播了几秒甚至一闪就没了」。现在：删掉空壳，明确报错，不留垃圾。 */
+  if(u.got === 0){
+    try{ u.stream.destroy(); }catch(e){}
+    try{ fs.unlinkSync(u.final + '.part'); }catch(e){}
+    send(c.sock, { t:'mediaErr', msg:'一片数据都没收到 —— 上传中断了（网页刷新过 / 网络断过）。请重新上传。' });
+    return;
+  }
   u.stream.end(()=>{
     try{ fs.renameSync(u.final + '.part', u.final); }
     catch(e){ send(c.sock, { t:'mediaErr', msg:'落盘失败：' + e.message }); return; }

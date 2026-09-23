@@ -424,7 +424,7 @@ function defaultConfig(){
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
     },
-    intro: { src:'', audio:'', skippable:true, fadeOut:800 },
+    intro: { src:'', audio:'', skippable:true, fadeOut:3000 },
     loginFx: { src:'', audio:'', delay:0, coverDuration:1600 },
   };
 }
@@ -1309,14 +1309,16 @@ function renderIntroProps(c){
       <div class="file-drop" id="intro-drop">点击或拖入 MP4 / PNG 上传</div>
       <div class="props-empty" id="intro-src" style="font-size:11px;margin-top:6px;"></div>
       <button class="btn hidden" id="intro-cloud" style="margin-top:6px;font-size:12px;">☁️ 传到服务器（让所有玩家都能看到）</button>
+      <select id="intro-pick" class="hidden" style="margin-top:6px;width:100%;font-size:12px;padding:5px;"></select>
     </div>
     <div class="prop-blk">
       <div class="sec-title">参数</div>
       <div class="chk-row"><input type="checkbox" id="intro-skip" ${cfg.intro.skippable?'checked':''}> 可点击跳过</div>
       <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut}"><span class="val">ms</span></div>
+      <div class="props-empty" style="font-size:10px;opacity:.8;">淡出是在视频<b>最后</b>这段时间里进行，不额外拉长总时长：20 秒的片子设 3000 就是「第 17 秒开始淡出，第 20 秒进登录页」。</div>
     </div>
   `;
-  bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro');
+  bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro', 'intro-pick');
   $('intro-skip').onchange=e=>{cfg.intro.skippable=e.target.checked;saveCfg();};
   $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||800;saveCfg();};
 }
@@ -1332,6 +1334,7 @@ function renderLoginProps(c){
       <div class="file-drop" id="login-drop">点击或拖入 MP4 上传</div>
       <div class="props-empty" id="login-src" style="font-size:11px;margin-top:6px;"></div>
       <button class="btn hidden" id="login-cloud" style="margin-top:6px;font-size:12px;">☁️ 传到服务器（让所有玩家都能看到）</button>
+      <select id="login-pick" class="hidden" style="margin-top:6px;width:100%;font-size:12px;padding:5px;"></select>
     </div>
     <div class="prop-blk">
       <div class="sec-title">参数</div>
@@ -1339,7 +1342,7 @@ function renderLoginProps(c){
       <div class="field-row"><label>覆盖时长</label><input type="number" id="login-cover" value="${cfg.loginFx.coverDuration}"><span class="val">ms</span></div>
     </div>
   `;
-  bindVideoUpload(cfg.loginFx, 'login-drop', 'login-src', 'login-cloud', 'loginfx');
+  bindVideoUpload(cfg.loginFx, 'login-drop', 'login-src', 'login-cloud', 'loginfx', 'login-pick');
   $('login-delay').onchange=e=>{cfg.loginFx.delay=+e.target.value||0;saveCfg();};
   $('login-cover').onchange=e=>{cfg.loginFx.coverDuration=+e.target.value||1600;saveCfg();};
 }
@@ -1447,7 +1450,29 @@ function srcBadge(o){
   return '💻 内嵌素材（小图，仅本机）';
 }
 /* 绑定「上传 / 显示来源 / 补传服务器」三件套 */
-function bindVideoUpload(o, dropId, tipId, cloudId, name){
+function bindVideoUpload(o, dropId, tipId, cloudId, name, pickId){
+  /* 服务器媒体库里已有的视频，直接选一个用 —— 不用再传一遍（大文件在浏览器里传容易断） */
+  const sel = pickId ? $(pickId) : null;
+  if(sel && window.Net && Net.mediaList){
+    const un = Net.on('mediaList', m=>{
+      try{ un(); }catch(e){}
+      const files = m.files || [];
+      sel.innerHTML = '<option value="">📁 从服务器已有视频里选…（' + files.length + '）</option>' +
+        files.map(f=>'<option value="' + f.url + '">' + f.name + ' · ' + (f.size/1048576).toFixed(1) + 'MB</option>').join('');
+      sel.classList.remove('hidden');
+      sel.onchange = ()=>{
+        const u = sel.value;
+        if(!u) return;
+        setVideoSrc(o, 'srv:' + u);
+        /* 陛下钦定淡出 3 秒：以前默认 800ms，选中服务器视频时顺手纠正过来 */
+        let fixed = '';
+        if(!o.fadeOut || o.fadeOut === 800){ o.fadeOut = 3000; fixed = '；淡出已设为 3 秒'; }
+        saveCfg(); render();
+        toastUploadTip('✅ 已选用服务器视频：' + u + '（所有人可见）' + fixed);
+      };
+    });
+    Net.mediaList();
+  }
   const drop = $(dropId);
   if(drop) drop.onclick = ()=>{
     const i = document.createElement('input');
