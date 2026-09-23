@@ -121,9 +121,11 @@
   .id-card .ed-resize{position:absolute;right:-8px;bottom:-8px;width:20px;height:20px;border-radius:6px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
 
   /* 头像区（卡片内部，Tab A） */
-  .id-avatar{position:absolute;border-radius:50%;pointer-events:none;}
-  .id-avatar .ava-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:contain;border-radius:50%;}
-  .id-avatar .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:50%;}
+  .id-avatar{position:absolute;border-radius:14%;cursor:move;touch-action:none;z-index:20;}
+  .id-avatar .ava-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:cover;border-radius:14%;}
+  .id-avatar .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:14%;pointer-events:none;}
+  .id-avatar.sel{box-shadow:0 0 0 3px var(--accent);border-radius:14%;}
+  .id-avatar .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
 
   /* 输入框（姓名 / 防伪码）—— 引擎里占位框，运行时真输入框 */
   .id-field{position:absolute;cursor:move;touch-action:none;z-index:21;border-radius:6px;}
@@ -379,12 +381,14 @@ function defaultConfig(){
     ],
     card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62, locked:false },
     avatar: {
-      frameSrc:'', defaultRace:'human',
+      frameSrc:'', defaultRace:'metal',
       x:0.5, y:0.28, w:0.16, h:0.20, locked:false,
       races: [
-        { id:'human', name:'人族', silhouette:'' },
-        { id:'elf',   name:'精灵', silhouette:'' },
-        { id:'beast', name:'兽族', silhouette:'' },
+        { id:'metal', name:'金', silhouette:'' },
+        { id:'wood',  name:'木', silhouette:'' },
+        { id:'water', name:'水', silhouette:'' },
+        { id:'fire',  name:'火', silhouette:'' },
+        { id:'earth', name:'土', silhouette:'' },
       ]
     },
     fields: [
@@ -415,6 +419,21 @@ function normalizeCfg(){
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
   (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
+  // 旧版本种族是 human/elf/beast，迁移为五行（金木水火土）
+  if(cfg.avatar && Array.isArray(cfg.avatar.races)){
+    const oldIds = cfg.avatar.races.map(r=>r.id).join(',');
+    if(oldIds.indexOf('human')>=0 || oldIds.indexOf('elf')>=0 || oldIds.indexOf('beast')>=0){
+      const oldMap = {};
+      cfg.avatar.races.forEach(r=>{ oldMap[r.id] = r.silhouette || ''; });
+      const migrated = def.avatar.races.map(r=>({ id:r.id, name:r.name, silhouette:'' }));
+      cfg.avatar.races = migrated;
+      // 旧默认种族 human → metal
+      if(cfg.avatar.defaultRace==='human' || cfg.avatar.defaultRace==='elf' || cfg.avatar.defaultRace==='beast') cfg.avatar.defaultRace='metal';
+    } else if(cfg.avatar.races.length < def.avatar.races.length){
+      // 补齐缺失的五行种族
+      def.avatar.races.forEach(r=>{ if(!cfg.avatar.races.find(x=>x.id===r.id)) cfg.avatar.races.push({id:r.id,name:r.name,silhouette:''}); });
+    }
+  }
 }
 function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
 
@@ -1021,9 +1040,12 @@ function renderAvatarProps(c){
       </select></div>
     </div>
     <div class="prop-blk">
-      <div class="sec-title">种族剪影映射（占位：后续上传剪影 PNG）</div>
+      <div class="sec-title">种族剪影映射（金木水火土 · 点击上传对应剪影 PNG）</div>
       ${cfg.avatar.races.map(r=>`
-        <div class="field-row"><label>${r.name}</label><span class="val" style="flex:1;text-align:left;color:${r.silhouette?'var(--mint)':'var(--sub)'};">${r.silhouette?'已设':'未设剪影'}</span></div>
+        <div class="field-row"><label style="min-width:36px;">${r.name}</label>
+          <button class="btn-mini race-sil" data-race="${r.id}" style="${r.silhouette?'color:var(--mint);border-color:var(--mint);':'color:var(--sub);'}">${r.silhouette?'已设剪影 ✓':'上传剪影'}</button>
+          ${r.silhouette?'<button class="btn-mini danger race-sil-clear" data-race="'+r.id+'">✕</button>':''}
+        </div>
       `).join('')}
     </div>
     <div class="prop-blk">
@@ -1047,6 +1069,15 @@ function renderAvatarProps(c){
     $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
   });
   $('ava-lock').onchange = e=>{ cfg.avatar.locked = e.target.checked; saveCfg(); render(); };
+  // 种族剪影上传 / 清除
+  document.querySelectorAll('.race-sil').forEach(btn=>{
+    btn.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg';
+      i.onchange=()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r&&i.files[0]) readFileTo(i.files[0], url=>{ r.silhouette=url; saveCfg(); render(); }); };
+      i.click(); };
+  });
+  document.querySelectorAll('.race-sil-clear').forEach(btn=>{
+    btn.onclick = ()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r){ r.silhouette=''; saveCfg(); render(); } };
+  });
 }
 
 /* --- 盖章属性 --- */
