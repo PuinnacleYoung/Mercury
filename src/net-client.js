@@ -18,6 +18,30 @@
      2) 网址参数 ?server=wss://xxx
      3) https 页面 => 同域 wss:///ws（nginx 反代 443 -> 8090，避免混合内容被浏览器拦）
      4) 其它（本地 / 局域网 http）=> ws://主机名:8090  */
+  /* 媒体库（开场动画等视频）所在的服务器主机。换服务器时改这一行就够了。
+     页面就在这个主机上打开 → 用同源相对路径（最稳，不会被浏览器当跨域/混合内容拦）。 */
+  const MEDIA_HOSTS = ['43.138.164.146'];
+  function mediaBase(){
+    /* 1) 页面里写死 / 网址参数 ?media=http://xxx 优先 */
+    if(window.MERCURY_MEDIA_BASE) return String(window.MERCURY_MEDIA_BASE).replace(/\/+$/, '');
+    try{
+      const q = new URLSearchParams(location.search).get('media');
+      if(q) return String(q).replace(/\/+$/, '');
+    }catch(e){}
+    /* 2) 本机手动指定过（在后台/引擎里改过就记住） */
+    try{
+      const m = localStorage.getItem('mercury_media_base');
+      if(m) return String(m).replace(/\/+$/, '');
+    }catch(e){}
+    /* 3) 当前页面就在媒体服务器上 → 同源，直接相对路径 */
+    const h = (location.hostname || '').toLowerCase();
+    if(h && MEDIA_HOSTS.indexOf(h) >= 0) return '';
+    /* 4) 在别处打开（GitHub Pages / 本机 file / localhost）→ 拼成服务器绝对地址。
+          以前这里只会返回 '/media/xxx.mp4'，落到当前域名下就是 404：
+          表现为「开场动画凭空跳过」「引擎里试播只见卡片弹一下」。 */
+    return 'http://' + MEDIA_HOSTS[0];
+  }
+
   function resolveUrl(){
     if(window.MERCURY_WS) return window.MERCURY_WS;
     const q = new URLSearchParams(location.search);
@@ -98,6 +122,23 @@
 
     /* 拉线上已发布的资产（不需要口令） */
     assetPull(slot){ Net.send({ t:'assetPull', slot: slot || '' }); },
+
+    /* 'srv:/media/xxx.mp4' → 真正能取到片子的网址。
+       在服务器上打开 → '/media/xxx.mp4'（同源）
+       在别处打开     → 'http://服务器/media/xxx.mp4'（绝对地址）
+       这样同一个配置，在服务器、在 GitHub Pages、在本机双击打开都能播。 */
+    mediaUrl(v){
+      if(!v || typeof v !== 'string') return v;
+      if(v.slice(0, 4) !== 'srv:') return v;
+      const p = v.slice(4);
+      const path = (p.charAt(0) === '/') ? p : ('/' + p);
+      const base = mediaBase();
+      /* https 页面去取 http 视频会被浏览器当「混合内容」拦掉，这里提前说一声，免得查半天 */
+      if(base && base.indexOf('http://') === 0 && location.protocol === 'https:'){
+        console.warn('[media] 当前是 https 页面，但媒体服务器只有 http，浏览器可能会拦截视频：' + base + path);
+      }
+      return base + path;
+    },
 
     /* 列清单 / 发布 / 回滚 / 丢草稿（都要口令） */
     assetList(){ Net.send({ t:'assetList', adminKey: Net.adminKey }); },

@@ -139,6 +139,12 @@
   .id-stamp .s-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:900;color:var(--mint);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
   .id-stamp.sel{background:rgba(55,200,176,.28);box-shadow:0 0 0 3px var(--mint);}
   .id-stamp .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--mint);cursor:nwse-resize;z-index:30;}
+  /* 「🎨 登录页面编辑器」里把卡片当底稿画出来：半透明、不抢鼠标事件 */
+  .card-ref{opacity:.5;pointer-events:none!important;filter:saturate(.7);}
+  /* 戳图：平时**看不见**且放大 1.5 倍待命，点一下才「盖」下来缩到 1 倍 */
+  .stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
+    opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
+    pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));z-index:24;}
 
   /* 登录动画层（Tab D，z 10） */
   .login-fx-layer{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(34,216,255,.08);}
@@ -297,6 +303,7 @@
     <div class="sub">生物芯片身份证 · 三阶段流程 · 4 Tab · 全占位符 · 复用关卡编辑器 coverFit</div>
   </div>
   <div class="spacer"></div>
+  <button class="top-btn" id="btn-cloud-pull" title="从服务器取回陛下「已发布」的最新配置（换浏览器/换电脑时点它，本机的本地配置会被覆盖）">☁️ 取云端配置</button>
   <button class="top-btn" id="btn-preview" title="切换预览模式：隐藏编辑框，显示真实运行效果">▶ 预览/编辑</button>
   <button class="top-btn" id="btn-test-verify" title="模拟一次核验流程">🔑 测试核验</button>
   <button class="top-btn primary" id="btn-export">📦 导出配置</button>
@@ -431,8 +438,12 @@ function defaultConfig(){
       { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.60, w:0.26, h:0.075, fontSize:16, mask:true, maxLength:32, locked:false },
     ],
     stamp: {
+      /* src：盖章用的 PNG（透明底最好），支持本机大图（自动进素材库）
+         keep：盖完保留在卡片上（false = 盖完播消失动画）
+         appear.fromScale→toScale：陛下钦定「放大 1.5 倍 → 缩小盖到 1 倍」 */
       x:0.5, y:0.82, w:0.2, h:0.12, hitShape:'circle', locked:false,
-      appear:{ duration:250, fromScale:1.6, toScale:1.0, rotation:-12 },
+      src:'', keep:true,
+      appear:{ duration:320, fromScale:1.5, toScale:1.0, rotation:-12 },
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
     },
@@ -615,12 +626,19 @@ function render(){
   /* --- 登录动画层（login Tab 编辑；overview 合成） --- */
   if(activeTab==='login' || activeTab==='overview') wb.appendChild(buildLoginFxEl());
 
-  /* --- 卡片环节（card Tab 编辑；overview 合成） --- */
-  if(activeTab==='card' || activeTab==='overview'){
-    wb.appendChild(buildCardEl());
-    wb.appendChild(buildAvatarEl());
-    cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
-    wb.appendChild(buildStampEl());
+  /* --- 卡片环节（card Tab 编辑；page Tab 作**参照**；overview 合成） ---
+     ⚠️ 以前只画在 card / overview 两个 Tab —— 陛下在「🎨 登录页面编辑器」里
+     看不到卡片编辑器做的卡片，还以为没生效（其实只是这个 Tab 不画它）。
+     现在 page Tab 也把卡片画出来当底稿（半透明、不抢鼠标），调背景时能对齐。 */
+  if(activeTab==='card' || activeTab==='page' || activeTab==='overview'){
+    const asRef = (activeTab === 'page');
+    const els = [buildCardEl(), buildAvatarEl()]
+      .concat(cfg.fields.map(f => buildFieldEl(f)))
+      .concat([buildStampEl()]);
+    els.forEach(el=>{
+      if(asRef) el.classList.add('card-ref');
+      wb.appendChild(el);
+    });
   }
 
   /* --- 安全区参考框（编辑辅助：card / page Tab；总预览是最终效果不画参考框） --- */
@@ -844,21 +862,96 @@ function buildFieldEl(f){
   return el;
 }
 
-/* ================= 盖章热区 ================= */
+/* ================= 盖章热区 =================
+   陛下钦定的手感：戳图平时**看不见**，点一下 —— 它先以 1.5 倍浮在空中，
+   再「啪」地缩小盖到 1 倍落定，带一点倾斜和回弹，像真的盖了个章。 */
+function stampAnim(st){
+  const ap = (st && st.appear) || {};
+  return {
+    from: (typeof ap.fromScale === 'number') ? ap.fromScale : 1.5,   // 放大倍数（陛下钦定 1.5）
+    to  : (typeof ap.toScale   === 'number') ? ap.toScale   : 1.0,   // 落定倍数
+    rot : (typeof ap.rotation  === 'number') ? ap.rotation  : -12,   // 落下的倾斜角
+    dur : Math.max(80, ap.duration || 320)
+  };
+}
+function playStamp(host, st){
+  const img = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return false;
+  st = st || cfg.stamp || {};
+  const k = stampAnim(st);
+  const base = 'translate(-50%,-50%) ';
+  img.style.display = '';
+  img.style.opacity = '0';
+  img.style.transform = base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)';
+  void img.offsetWidth;                       // 强制重排，保证连点也能重新播
+  const a = img.animate([
+    { transform: base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)', opacity: 0 },
+    { transform: base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)', opacity: .9, offset: .18 },
+    { transform: base + 'scale(' + k.to   + ') rotate(0deg)',             opacity: 1 }
+  ], { duration: k.dur, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'forwards' });
+  const settle = ()=>{
+    img.style.opacity = '1';
+    img.style.transform = base + 'scale(' + k.to + ') rotate(0deg)';
+    try{                                       // 落定后的小回弹，手感更实
+      img.animate([
+        { transform: base + 'scale(' + k.to + ') rotate(0deg)' },
+        { transform: base + 'scale(' + (k.to * 1.05) + ') rotate(1.2deg)', offset: .4 },
+        { transform: base + 'scale(' + k.to + ') rotate(0deg)' }
+      ], { duration: 240, easing: 'ease-out' });
+    }catch(e){}
+    if(st.keep === false) setTimeout(()=> dismissStamp(host, st), 900);
+  };
+  if(a && a.finished && a.finished.then) a.finished.then(settle).catch(settle);
+  else setTimeout(settle, k.dur);
+  return true;
+}
+function dismissStamp(host, st){
+  const img = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return;
+  st = st || cfg.stamp || {};
+  const d = st.dismiss || {};
+  const k = stampAnim(st);
+  const base = 'translate(-50%,-50%) ';
+  const a = img.animate([
+    { transform: img.style.transform || (base + 'scale(' + k.to + ')'), opacity: 1 },
+    { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
+  ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
+  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)'; };
+  if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
+  else setTimeout(done, (d.duration || 350));
+}
 function buildStampEl(){
   const el = document.createElement('div');
   el.className = 'id-stamp' + (selectedId==='stamp' ? ' sel' : '') + (cfg.stamp.locked ? ' locked' : '');
   el.dataset.kind = 'stamp';
   el.innerHTML = '<span style="font-size:22px;">🔍</span>';
+  /* 戳图 PNG：编辑时半透明显示（方便摆位置），预览/总预览里藏起来等盖章 */
+  const ms = cfg.stamp.src ? srcUrl(cfg.stamp.src) : '';
+  if(ms){
+    const mark = document.createElement('img');
+    mark.className = 'stamp-mark';
+    mark.src = ms;
+    mark.alt = '';
+    el.appendChild(mark);
+    if(!previewMode && activeTab !== 'overview'){
+      mark.style.opacity = '.35';
+      mark.style.transform = 'translate(-50%,-50%) scale(1)';
+    }
+  }
   const lb = document.createElement('div');
   lb.className = 's-label';
-  lb.textContent = '盖章区';
+  lb.textContent = cfg.stamp.src ? '盖章区（有戳图）' : '盖章区（未上传戳图）';
   el.appendChild(lb);
   setBox(el, cfg.stamp);
   bindDrag(el, ()=>cfg.stamp, 'stamp');
   if(cfg.stamp.locked) lockBadge(el);
   el.addEventListener('click', e=>{
-    if((previewMode || activeTab==='overview') && !e.target.classList.contains('ed-resize')) doVerify();
+    if(e.target.classList.contains('ed-resize')) return;
+    if(previewMode || activeTab==='overview'){
+      playStamp(el);                                  // 先盖下去：点一下总要有反应
+      const ok = doVerify();
+      if(ok === false) setTimeout(()=> dismissStamp(el), 800);   // 核验没过 → 章收回去
+    }
   });
   return el;
 }
@@ -1205,10 +1298,28 @@ function renderAvatarProps(c){
 
 /* --- 盖章属性 --- */
 function renderStampProps(c){
+  const st  = cfg.stamp;
+  const ap  = st.appear || {};
+  const has = !!st.src;
   c.innerHTML = `
     <h3>🔍 盖章触发区</h3>
     <div class="sec-title">说明</div>
-    <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域核验。通过后卡片播放晃动 + 流光。</div>
+    <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域核验 → 戳图<b>从看不见</b>，先以 <b>${ap.fromScale==null?1.5:ap.fromScale} 倍</b>放大浮出，再「啪」地缩小盖到 <b>${ap.toScale==null?1:ap.toScale} 倍</b>落定（带一点倾斜和回弹）。</div>
+    <div class="prop-blk">
+      <div class="sec-title">🖼 戳图 PNG</div>
+      <div class="file-drop" id="stamp-drop">${has ? '点击换一张' : '点击上传 PNG（透明底最好）'}</div>
+      <div class="props-empty" id="stamp-src" style="font-size:11px;margin-top:6px;">${has ? '✅ 已上传戳图' : '还没上传 —— 不上传就只有核验，没有盖章效果'}</div>
+      ${has ? '<button class="btn" id="stamp-clear" style="margin-top:6px;font-size:12px;">🗑 清除戳图</button>' : ''}
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">盖章动画</div>
+      <div class="field-row"><label>放大倍数</label><input type="number" id="s-from" step="0.1" min="1" value="${ap.fromScale==null?1.5:ap.fromScale}"><span class="val">倍</span></div>
+      <div class="field-row"><label>落定倍数</label><input type="number" id="s-to" step="0.1" value="${ap.toScale==null?1:ap.toScale}"><span class="val">倍</span></div>
+      <div class="field-row"><label>倾斜</label><input type="number" id="s-rot" step="1" value="${ap.rotation==null?-12:ap.rotation}"><span class="val">度</span></div>
+      <div class="field-row"><label>时长</label><input type="number" id="s-appear" value="${ap.duration||320}"><span class="val">ms</span></div>
+      <div class="chk-row"><input type="checkbox" id="s-keep" ${st.keep===false?'':'checked'}> 盖完保留（不自动消失）</div>
+      <button class="btn" id="s-test" style="margin-top:8px;font-size:12px;">🔍 试盖一次</button>
+    </div>
     <div class="prop-blk">
       <div class="sec-title">位置 / 大小</div>
       <div class="field-row"><label>X</label><input type="number" id="s-x" step="0.01" value="${cfg.stamp.x.toFixed(3)}"></div>
@@ -1217,22 +1328,38 @@ function renderStampProps(c){
       <div class="field-row"><label>高</label><input type="number" id="s-h" step="0.01" value="${cfg.stamp.h.toFixed(3)}"></div>
     </div>
     <div class="prop-blk">
-      <div class="sec-title">动画时长（ms）</div>
-      <div class="field-row"><label>出现</label><input type="number" id="s-appear" value="${cfg.stamp.appear.duration}"></div>
-      <div class="field-row"><label>抖动</label><input type="number" id="s-shake" value="${cfg.stamp.shake.duration}"></div>
-      <div class="field-row"><label>消失</label><input type="number" id="s-dismiss" value="${cfg.stamp.dismiss.duration}"></div>
+      <div class="sec-title">消失动画（勾掉「盖完保留」才生效）</div>
+      <div class="field-row"><label>时长</label><input type="number" id="s-dismiss" value="${(st.dismiss&&st.dismiss.duration)||350}"><span class="val">ms</span></div>
     </div>
     <div class="prop-blk">
       <div class="chk-row"><input type="checkbox" id="s-lock" ${cfg.stamp.locked?'checked':''}> 🔒 锁定此区域</div>
     </div>
   `;
   ['s-x','s-y','s-w','s-h'].forEach(id=>{
-    $(id).oninput=e=>{const k=id.slice(2);cfg.stamp[k]=parseFloat(e.target.value)||0;saveCfg();render();};
+    $(id).oninput=e=>{const k=id.slice(2);st[k]=parseFloat(e.target.value)||0;saveCfg();render();};
   });
-  $('s-appear').onchange=e=>{cfg.stamp.appear.duration=+e.target.value||250;saveCfg();};
-  $('s-shake').onchange=e=>{cfg.stamp.shake.duration=+e.target.value||400;saveCfg();};
-  $('s-dismiss').onchange=e=>{cfg.stamp.dismiss.duration=+e.target.value||350;saveCfg();};
-  $('s-lock').onchange=e=>{ cfg.stamp.locked=e.target.checked; saveCfg(); render(); };
+  const bd=(id,fn)=>{ const e=$(id); if(e) e.onchange=fn; };
+  bd('s-from',   e=>{ ap.fromScale=parseFloat(e.target.value)||1.5; st.appear=ap; saveCfg(); render(); });
+  bd('s-to',     e=>{ ap.toScale=parseFloat(e.target.value)||1;    st.appear=ap; saveCfg(); render(); });
+  bd('s-rot',    e=>{ ap.rotation=parseFloat(e.target.value)||0;   st.appear=ap; saveCfg(); render(); });
+  bd('s-appear', e=>{ ap.duration=+e.target.value||320;            st.appear=ap; saveCfg(); });
+  bd('s-dismiss',e=>{ st.dismiss=st.dismiss||{}; st.dismiss.duration=+e.target.value||350; saveCfg(); });
+  bd('s-keep',   e=>{ st.keep=!!e.target.checked; saveCfg(); });
+  bd('s-lock',   e=>{ st.locked=!!e.target.checked; saveCfg(); render(); });
+  const drop=$('stamp-drop');
+  if(drop) drop.onclick=()=>{
+    const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg,image/svg+xml';
+    i.onchange=()=>{ const f=i.files[0]; if(!f) return;
+      readAsset(f, u=>{ if(u){ st.src=u; saveCfg(); render(); toastVerify('✅ 戳图已上传，点「🔍 试盖一次」看效果'); } });
+    };
+    i.click();
+  };
+  const clr=$('stamp-clear'); if(clr) clr.onclick=()=>{ st.src=''; saveCfg(); render(); };
+  const tst=$('s-test');
+  if(tst) tst.onclick=()=>{
+    switchTab('overview');                       // 切到总预览，按真实运行效果盖一次
+    setTimeout(()=>{ const el=document.querySelector('.id-stamp'); if(el) playStamp(el); }, 400);
+  };
 }
 
 /* --- 输入框属性 --- */
@@ -1415,7 +1542,12 @@ function srcUrl(v){
   if(!v) return '';
   /* 'srv:/media/xxx.mp4' —— 视频在服务器上，直接把网址给 <video>，
      浏览器自己边下边播（不占 WebSocket、不用等下完），所有人都能看到 */
-  if(v.slice(0, 4) === 'srv:') return v.slice(4);
+  if(v.slice(0, 4) === 'srv:'){
+    /* 交给 net-client 统一解析：不在服务器上打开时自动补成服务器绝对地址，
+       免得 '/media/xxx.mp4' 落到当前域名变成 404（试播只见卡片弹、不见画面，就是它） */
+    try{ if(window.Net && typeof Net.mediaUrl === 'function') return Net.mediaUrl(v); }catch(e){}
+    return v.slice(4);
+  }
   if(v.slice(0, 3) !== 'ms:' || !window.MediaStore) return v;
   const id = v.slice(3);
   if(_mediaUrl[id]) return _mediaUrl[id];
@@ -1543,7 +1675,7 @@ function doVerify(){
   const code = codeInp ? codeInp.value.trim() : '';
   if(!name || !code){
     toastVerify('⚠️ 请先填写姓名和防伪码');
-    return;
+    return false;
   }
   const accounts = getGameAccounts();
   let isNew = false;
@@ -1563,15 +1695,18 @@ function doVerify(){
   if(isNew){
     toastVerify('✅ 首次核验，自动注册成功');
     setTimeout(()=>{ showAccountModal(name, code); showRaceModal(name); }, 500);
+    return true;                                   // 核验通过 → 章留着
   } else {
     if(accounts[name].password === code){
       toastVerify('✅ 核验通过，欢迎回来 '+name);
       // 已注册：头像剪影切换到该账号已选种族（局部刷新，不重建 stage 以免清掉核验动画）
       runtimeElement = accounts[name].element || null;
       refreshAvatarSilhouette();
+      return true;                                 // 核验通过 → 章留着
     } else {
       toastVerify('❌ 防伪码与已注册账号不一致');
       cardEl && cardEl.classList.remove('verified');
+      return false;                                // 没过 → 章收回去
     }
   }
 }
@@ -1746,8 +1881,8 @@ function playIntroPreview(){
   const wb = worldBoxEl(); if(!wb) return;
   const src = srcUrl(cfg.intro.src);
   if(!src){
-    try{ toast('⚠️ 还没上传开场动画，先在右边传一个 mp4'); }
-    catch(e){ alert('还没上传开场动画，先在右边传一个 mp4'); }
+    /* 换浏览器打开时本机是空的 → 明说去哪取，别让人干瞪眼 */
+    toastVerify('⚠️ 没有开场动画素材。换浏览器/换电脑的话，点右上角「☁️ 取云端配置」把陛下发布过的取回来');
     return;
   }
   const fade   = Math.max(0, Number(cfg.intro.fadeOut) || 1000);
@@ -1768,6 +1903,11 @@ function playIntroPreview(){
   layer.style.transition = 'opacity .3s ease';
   layer.appendChild(makeFxVideo(src, { muted:false, loop:false, volume:vol }));
   const v = layer.firstChild;
+  /* 加载不出来要**说清楚**（以前静默失败，看上去就像「只弹了个卡片」） */
+  v.addEventListener('error', ()=>{
+    console.warn('[intro] 开场动画加载失败：' + src);
+    try{ toastVerify('❌ 开场动画加载失败：' + src + '（看看这个地址在不在）'); }catch(e){}
+  });
   wb.appendChild(layer);
   requestAnimationFrame(()=>{ layer.style.opacity = '1'; });
 
@@ -1869,10 +2009,64 @@ $('btn-export').onclick = ()=>{
 /* ================= 窗口缩放适配 ================= */
 window.addEventListener('resize', ()=>{ layoutWorldBox(); });
 
+/* ================= ☁️ 云端配置：换浏览器时把陛下发布过的配置取回来 =================
+   引擎以前只认**本机 localStorage**：换个浏览器打开就是「空白默认配置」——
+   上传过的开场动画、调好的卡片全都不见了，于是「试播只见卡片弹一下」。
+   现在：本机是空的 → 自动去服务器取；本机有配置 → 不擅自覆盖（怕冲掉陛下正在改的），
+   改由右上角「☁️ 取云端配置」按钮手动取。 */
+let cloudCfgGot = false;
+function pullCloudCfg(force){
+  if(!window.Net || typeof Net.on !== 'function'){
+    toastVerify('⚠️ 没连上服务器（net-client 没加载）'); return;
+  }
+  let hasLocal = false;
+  try{ hasLocal = !!localStorage.getItem(LS_KEY); }catch(e){}
+  if(hasLocal && !force){
+    if(!confirm('本机已经有配置了。\n\n用服务器上「已发布」的版本覆盖它？\n（本机没提交过的改动会丢失）')) return;
+  }
+  toastVerify('☁️ 正在从服务器取配置…');
+  const off = Net.on('assetData', m=>{
+    const s = m && m.slots && m.slots.login;
+    const raw = s && s.items && s.items[LS_KEY];
+    if(!raw) return;
+    off(); cloudCfgGot = true;
+    try{
+      localStorage.setItem(LS_KEY, raw);
+      const rev = (s.rev && s.rev.live) || 0;
+      toastVerify('✅ 已取回云端配置 v' + rev + '，正在刷新…');
+      setTimeout(()=> location.reload(), 700);
+    }catch(e){ toastVerify('❌ 写入本机失败：' + e.message); }
+  });
+  try{ Net.connect().then(()=> Net.assetPull('login')).catch(()=>{}); }catch(e){}
+  setTimeout(()=>{ if(!cloudCfgGot){ try{ off(); }catch(e){} toastVerify('⚠️ 没取到云端配置（服务器没开？或这个槽位还没发布过）'); } }, 9000);
+}
+function autoPullCloudCfg(){
+  if(!window.Net || typeof Net.on !== 'function') return;
+  let hasLocal = false;
+  try{ hasLocal = !!localStorage.getItem(LS_KEY); }catch(e){ hasLocal = true; }
+  if(hasLocal) return;                 // 本机有配置就不动它
+  const off = Net.on('assetData', m=>{
+    const s = m && m.slots && m.slots.login;
+    const raw = s && s.items && s.items[LS_KEY];
+    if(!raw) return;
+    off(); cloudCfgGot = true;
+    try{
+      localStorage.setItem(LS_KEY, raw);
+      toastVerify('☁️ 本机是空的，已从云端取回已发布的配置');
+      setTimeout(()=> location.reload(), 900);
+    }catch(e){}
+  });
+  try{ Net.connect().then(()=> Net.assetPull('login')).catch(()=>{}); }catch(e){}
+  setTimeout(()=>{ if(!cloudCfgGot){ try{ off(); }catch(e){} } }, 12000);
+}
+
 /* ================= 初始化 ================= */
 loadCfg();
 switchTab('card');   // 统一入口：渲染 stage + 树 + 属性 + 工具栏显隐
 setDevice('iphone-15pm');
+/* 换浏览器打开（本机还没配置过）→ 自动去服务器把陛下发布过的配置取回来 */
+try{ autoPullCloudCfg(); }catch(e){ console.warn('cloud-cfg', e); }
+try{ $('btn-cloud-pull').onclick = ()=> pullCloudCfg(true); }catch(e){}
 
 $('edit-stage').addEventListener('pointerdown', e=>{
   if(e.target === $('edit-stage') || e.target.classList.contains('world-box')){

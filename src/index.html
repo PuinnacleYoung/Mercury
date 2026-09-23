@@ -824,6 +824,16 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-verify:active{transform:scale(.97);}
 .auth-verify-icon{font-size:18px;}
 .auth-verify-txt{font-size:12px;font-weight:900;letter-spacing:1px;}
+/* 盖章戳：戳图平时**看不见**，核验通过时从 1.5 倍「盖」下来缩到 1 倍 */
+.auth-stamp{position:absolute;pointer-events:none;z-index:26;}
+.stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
+  opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
+  pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
+/* 盖章戳：平时**看不见**且放大 1.5 倍待命，核验通过时才「盖」下来缩到 1 倍 */
+.auth-stamp{position:absolute;z-index:26;pointer-events:none;}
+.stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
+  opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
+  pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
 
 /* 标题 */
 .auth-title{position:absolute;z-index:5;font-size:clamp(20px,4vw,36px);font-weight:900;letter-spacing:4px;color:#eaf6ff;text-shadow:0 2px 18px rgba(120,210,255,.5);pointer-events:none;}
@@ -2872,7 +2882,12 @@ function waitCloudAssets(cb){
   let done = false;
   const go = ()=>{ if(done) return; done = true; try{ cb(); }catch(e){ console.warn(e); } };
   let wait = 2500;
-  try{ if(localStorage.getItem('cloud_applied')) wait = 1200; }catch(e){}
+  try{
+    if(localStorage.getItem('cloud_applied')) wait = 1200;
+    /* 本机已经存着开场动画配置 → 不用等服务器，立刻播（不然每次都白等一两秒） */
+    const s = localStorage.getItem('login_engine_config');
+    if(s){ const j = JSON.parse(s); if(j && j.intro && j.intro.src) wait = 120; }
+  }catch(e){}
   const timer = setTimeout(go, wait);
   try{
     if(window.Net && typeof Net.on === 'function'){
@@ -2908,7 +2923,12 @@ function afterLandscapeGo(){
    没有素材 / 加载失败 / 起不来 → 立刻放行进游戏，**绝不让人干等**（这条是底线）。 */
 function resolveVideoSrc(v){
   if(!v) return '';
-  return (v.slice(0, 4) === 'srv:') ? v.slice(4) : v;
+  if(v.slice(0, 4) !== 'srv:') return v;
+  /* 交给 net-client 统一解析：在服务器上打开用同源相对路径，
+     在别处（GitHub Pages / 本机 file / localhost）自动拼成服务器绝对地址。
+     （以前只会返回 '/media/xxx.mp4'，在非服务器域名下就是 404 → 动画被当成「跳过」） */
+  try{ if(window.Net && typeof Net.mediaUrl === 'function') return Net.mediaUrl(v); }catch(e){}
+  return v.slice(4);
 }
 function playIntroOnce(onDone){
   /* 陛下钦定：刷新就要能看到开场动画 → 不再做「一个会话只播一次」的门控。
@@ -3113,6 +3133,88 @@ function authSetBox(el, o){
   el.style.height = (o.h*100)+'%';
 }
 
+/* ================= 盖章戳（与登录页引擎同源） =================
+   戳图平时看不见；核验通过时从「放大 1.5 倍」盖下来缩到 1 倍落定。 */
+function authImgSrc(v){
+  if(!v) return '';
+  if(v.slice(0, 4) === 'srv:'){
+    try{ if(window.Net && typeof Net.mediaUrl === 'function') return Net.mediaUrl(v); }catch(e){}
+    return v.slice(4);
+  }
+  return v;
+}
+function mountAuthStamp(world){
+  const st = authCfg && authCfg.stamp;
+  let el = $('auth-stamp');
+  if(!st || !st.src){ if(el) el.style.display = 'none'; return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'auth-stamp'; el.className = 'auth-stamp';
+    (world || $('auth-world') || $('auth-stage')).appendChild(el);
+  }
+  el.style.display = '';
+  authSetBox(el, st);
+  el.innerHTML = '';
+  const img = document.createElement('img');
+  img.className = 'stamp-mark'; img.alt = '';
+  el.appendChild(img);
+  const setSrc = u=>{ if(u) img.src = u; else el.style.display = 'none'; };
+  if(st.src.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
+    MediaStore.url(st.src.slice(3)).then(setSrc).catch(()=> setSrc(''));
+  } else setSrc(authImgSrc(st.src));
+}
+function playAuthStamp(){
+  const host = $('auth-stamp');
+  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return false;
+  const st  = (authCfg && authCfg.stamp) || {};
+  const ap  = st.appear || {};
+  const from = (typeof ap.fromScale === 'number') ? ap.fromScale : 1.5;
+  const to   = (typeof ap.toScale   === 'number') ? ap.toScale   : 1.0;
+  const rot  = (typeof ap.rotation  === 'number') ? ap.rotation  : -12;
+  const dur  = Math.max(80, ap.duration || 320);
+  const base = 'translate(-50%,-50%) ';
+  img.style.opacity = '0';
+  img.style.transform = base + 'scale(' + from + ') rotate(' + rot + 'deg)';
+  void img.offsetWidth;
+  const a = img.animate([
+    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: 0 },
+    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: .9, offset: .18 },
+    { transform: base + 'scale(' + to   + ') rotate(0deg)',           opacity: 1 }
+  ], { duration: dur, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'forwards' });
+  const settle = ()=>{
+    img.style.opacity = '1';
+    img.style.transform = base + 'scale(' + to + ') rotate(0deg)';
+    try{
+      img.animate([
+        { transform: base + 'scale(' + to + ') rotate(0deg)' },
+        { transform: base + 'scale(' + (to * 1.05) + ') rotate(1.2deg)', offset: .4 },
+        { transform: base + 'scale(' + to + ') rotate(0deg)' }
+      ], { duration: 240, easing: 'ease-out' });
+    }catch(e){}
+    if(st.keep === false) setTimeout(dismissAuthStamp, 900);
+  };
+  if(a && a.finished && a.finished.then) a.finished.then(settle).catch(settle);
+  else setTimeout(settle, dur);
+  return true;
+}
+function dismissAuthStamp(){
+  const host = $('auth-stamp');
+  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return;
+  const st   = (authCfg && authCfg.stamp) || {};
+  const d    = st.dismiss || {};
+  const from = (st.appear && typeof st.appear.fromScale === 'number') ? st.appear.fromScale : 1.5;
+  const base = 'translate(-50%,-50%) ';
+  const a = img.animate([
+    { transform: img.style.transform || (base + 'scale(1)'), opacity: 1 },
+    { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
+  ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
+  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + from + ')'; };
+  if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
+  else setTimeout(done, (d.duration || 350));
+}
+
 /* 渲染登录页舞台（视频背景 + 卡片 + 输入框 + 核验框），按引擎配置布局 */
 function initAuthEngine(){
   authLoadCfg();
@@ -3181,6 +3283,12 @@ function initAuthEngine(){
   // 4) 核验触发框
   authSetBox($('auth-verify'), authCfg.verify || {x:0.5,y:0.72,w:0.24,h:0.13});
 
+  /* 4.5) 盖章戳：核验通过时从 1.5 倍盖下来缩到 1 倍（不配置戳图就不显示） */
+  try{ mountAuthStamp(world); }catch(e){ console.warn('stamp', e); }
+
+  /* 4.5) 盖章戳：平时看不见，核验通过时才从 1.5 倍盖下来缩到 1 倍 */
+  try{ renderAuthStamp(world); }catch(e){ console.warn('stamp', e); }
+
   // 5) 标题（配置无 title 字段时用默认位置显示）
   const tt = $('auth-title');
   const ti = authCfg.title || {};
@@ -3219,6 +3327,96 @@ function authToast(msg){
   authToastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
+/* 图片地址解析：'srv:/media/xxx.png' → 服务器上的真实地址 */
+function resolveImgSrc(v){
+  if(!v) return '';
+  if(v.slice(0, 4) === 'srv:'){
+    try{ if(window.Net && typeof Net.mediaUrl === 'function') return Net.mediaUrl(v); }catch(e){}
+    return v.slice(4);
+  }
+  return v;
+}
+/* 盖章戳：按引擎配置把戳图摆好，平时**看不见**（等核验通过才盖下来） */
+function renderAuthStamp(world){
+  const st = authCfg && authCfg.stamp;
+  let el = $('auth-stamp');
+  if(!st || !st.src){ if(el) el.style.display = 'none'; return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'auth-stamp';
+    el.className = 'auth-stamp';
+    (world || $('auth-world') || $('auth-stage')).appendChild(el);
+  }
+  el.style.display = '';
+  authSetBox(el, st);
+  el.innerHTML = '';
+  const img = document.createElement('img');
+  img.className = 'stamp-mark'; img.alt = '';
+  el.appendChild(img);
+  const raw = st.src;
+  if(raw.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
+    /* 只存在作者本机的素材：玩家本机没有 → 取不到就不显示（不能让玩家看到空白框） */
+    MediaStore.url(raw.slice(3)).then(u=>{ if(u) img.src = u; else el.style.display='none'; })
+      .catch(()=>{ el.style.display='none'; });
+  } else {
+    const u = resolveImgSrc(raw);
+    if(u) img.src = u; else el.style.display = 'none';
+  }
+}
+/* 盖下去：戳图从「看不见」→ 1.5 倍放大浮出 → 缩小盖到 1 倍落定（带倾斜 + 回弹） */
+function playAuthStamp(){
+  const host = $('auth-stamp');
+  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return false;
+  const st  = (authCfg && authCfg.stamp) || {};
+  const ap  = st.appear || {};
+  const from = (typeof ap.fromScale === 'number') ? ap.fromScale : 1.5;
+  const to   = (typeof ap.toScale   === 'number') ? ap.toScale   : 1.0;
+  const rot  = (typeof ap.rotation  === 'number') ? ap.rotation  : -12;
+  const dur  = Math.max(80, ap.duration || 320);
+  const base = 'translate(-50%,-50%) ';
+  img.style.opacity = '0';
+  img.style.transform = base + 'scale(' + from + ') rotate(' + rot + 'deg)';
+  void img.offsetWidth;                      // 强制重排，保证连续核验都能重新播
+  const a = img.animate([
+    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: 0 },
+    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: .9, offset: .18 },
+    { transform: base + 'scale(' + to   + ') rotate(0deg)',           opacity: 1 }
+  ], { duration: dur, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'forwards' });
+  const settle = ()=>{
+    img.style.opacity = '1';
+    img.style.transform = base + 'scale(' + to + ') rotate(0deg)';
+    try{
+      img.animate([
+        { transform: base + 'scale(' + to + ') rotate(0deg)' },
+        { transform: base + 'scale(' + (to * 1.05) + ') rotate(1.2deg)', offset: .4 },
+        { transform: base + 'scale(' + to + ') rotate(0deg)' }
+      ], { duration: 240, easing: 'ease-out' });
+    }catch(e){}
+    if(st.keep === false) setTimeout(dismissAuthStamp, 900);
+  };
+  if(a && a.finished && a.finished.then) a.finished.then(settle).catch(settle);
+  else setTimeout(settle, dur);
+  return true;
+}
+/* 核验没过：把刚盖的章收回去 */
+function dismissAuthStamp(){
+  const host = $('auth-stamp');
+  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!img) return;
+  const st = (authCfg && authCfg.stamp) || {};
+  const d  = st.dismiss || {};
+  const from = (st.appear && typeof st.appear.fromScale === 'number') ? st.appear.fromScale : 1.5;
+  const base = 'translate(-50%,-50%) ';
+  const a = img.animate([
+    { transform: img.style.transform || (base + 'scale(1)'), opacity: 1 },
+    { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
+  ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
+  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + from + ')'; };
+  if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
+  else setTimeout(done, (d.duration || 350));
+}
+
 /* 核验流程：未注册→自动注册+弹凭证；已注册→校验防伪码 */
 function doAuthVerify(){
   const name = $('auth-field-name').value.trim();
@@ -3244,6 +3442,7 @@ function doAuthVerify(){
 
   if(isNew){
     authToast('✅ 首次核验，自动注册成功');
+    try{ playAuthStamp(); }catch(e){}     // 核验通过 → 戳图从 1.5 倍盖下来
     setTimeout(()=>{
       $('auth-cred-name').textContent = name;
       $('auth-cred-code').textContent = code;
@@ -3252,6 +3451,7 @@ function doAuthVerify(){
   } else {
     if(accounts[name].password === code){
       authToast('✅ 核验通过，欢迎回来 ' + name);
+      try{ playAuthStamp(); }catch(e){}      // 核验通过 → 戳图从 1.5 倍盖下来
       // 登录成功 → 进入世界
       setTimeout(()=>{
         setCurrent(name); currentUser = accounts[name];
@@ -3265,6 +3465,7 @@ function doAuthVerify(){
     } else {
       authToast('❌ 防伪码与已注册账号不一致');
       card && card.classList.remove('verified');
+      try{ dismissAuthStamp(); }catch(e){}   // 没通过 → 把刚盖的章收回去
     }
   }
 }
@@ -7990,6 +8191,11 @@ window.addEventListener('resize', checkOrientation);
 
 /* ================= 启动 ================= */
 try{ applyTheme(currentTheme()); }catch(e){ console.warn('theme', e); }
+/* ⚠️ 顺序要紧：必须**先**连服务器把云端配置取回来，**再**决定播不播开场动画。
+   以前这两行排在开场动画后面 —— 新浏览器（第一次打开）本地是空的，
+   动画还没等服务器回话就播完了（或者直接跳过），表现就是「换个浏览器就没动画」。 */
+try{ autoPullCloudAssets(); }catch(e){ console.warn('cloud-assets', e); } // 同步陛下在后台发布的云端内容
+try{ autoPullOnlineData(); }catch(e){ console.warn('online-data', e); }   // 全新浏览器静默同步线上地图
 try{
   startLandscapePrompt();
 }catch(e){
@@ -7998,8 +8204,6 @@ try{
   fatalBar('横屏提示初始化失败，已直接放行：' + ((e && e.message) || e));
 }
 try{ checkOrientation(); }catch(e){}
-try{ autoPullOnlineData(); }catch(e){ console.warn('online-data', e); }   // 全新浏览器静默同步线上地图
-try{ autoPullCloudAssets(); }catch(e){ console.warn('cloud-assets', e); } // 同步陛下在后台发布的云端内容
 if(window.__storageFallback){
   fatalBar('当前环境<b>禁用了本地存储</b>（隐私/无痕模式、或 file:// 直开会触发），'
     + '本局能玩，但<b>账号与进度不会保存</b>。' + protocolTip());
