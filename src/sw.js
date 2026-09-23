@@ -93,10 +93,12 @@ self.addEventListener('fetch', e => {
 
   // 其他静态资源：缓存优先 + 后台更新
   e.respondWith((async () => {
+    // 带 Range 的请求（音视频分片等）不进缓存，直接透传（Cache 不收 206，硬塞会被吞成 504）
+    if (req.headers.has('range')) return fetch(req);
     const c = await caches.open(CACHE);
     const hit = await c.match(req);
     const net = fetch(req).then(r => {
-      if (r && r.ok) c.put(req, r.clone());
+      if (r && r.ok && r.status === 200) c.put(req, r.clone());
       return r;
     }).catch(() => null);
     return hit || (await net) || new Response('', { status: 504 });
