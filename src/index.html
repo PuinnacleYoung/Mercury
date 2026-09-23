@@ -2857,6 +2857,31 @@ function afterLandscape(){
     if(sessionStorage.getItem('adminLogin')==='true'){ showScreen('admin-hub-screen'); return; }
     if(typeof openAdminLogin === 'function'){ openAdminLogin(); return; }
   }
+  /* 🎬 开场动画：不管有没有登录，进游戏都先看一次（一个会话只播一次）。
+     以前它只挂在「未登录」那条分支上 —— 陛下早就登录了，所以永远看不到。
+     ⚠️ 必须**等云端配置落地**再决定播不播：否则读到的还是本机旧配置
+     （比如指向早就被删掉的旧视频文件），表现就是「明明配了却没有开场动画」。 */
+  waitCloudAssets(()=>{
+    try{ playIntroOnce(afterLandscapeGo); }
+    catch(e){ console.warn('intro', e); afterLandscapeGo(); }
+  });
+}
+
+/* 等云端资产落地：收到云端数据立刻走，最多等 1.5 秒（本机已经同步过的只要 0.35 秒）。
+   断网的玩家也只是多等一下 —— 换来的是「配置一定是最新的」。 */
+function waitCloudAssets(cb){
+  let done = false;
+  const go = ()=>{ if(done) return; done = true; try{ cb(); }catch(e){ console.warn(e); } };
+  let wait = 2500;
+  try{ if(localStorage.getItem('cloud_applied')) wait = 1200; }catch(e){}
+  const timer = setTimeout(go, wait);
+  try{
+    if(window.Net && typeof Net.on === 'function'){
+      Net.on('assetData', ()=>{ clearTimeout(timer); setTimeout(go, 150); });
+    }
+  }catch(e){}
+}
+function afterLandscapeGo(){
   const username = localStorage.getItem(LS_CURRENT);
   if(username && getAccounts()[username]){
     currentUser = getAccounts()[username];
@@ -2867,9 +2892,7 @@ function afterLandscape(){
     else if(!currentUser.element){ showRaceModal(username); }   // 旧数据没属性 → 补选（属性绑定账号）
     else { enterLobby(); checkCharacterSource(); }
   } else {
-    /* 🎬 开场动画：登录页引擎「开场动画」Tab 配的片子，进登录页前播一次 */
-    try{ playIntroOnce(()=>showScreen('auth-screen')); }
-    catch(e){ console.warn('intro', e); showScreen('auth-screen'); }
+    showScreen('auth-screen');
   }
 }
 
@@ -2896,25 +2919,40 @@ function playIntroOnce(onDone){
 }
 function playIntro(onDone){
   if(!authCfg) authLoadCfg();
-  const o = (authCfg && authCfg.intro) || {};
+  let o = (authCfg && authCfg.intro) || {};
+  /* ⚠️ 云端同步可能刚把新配置写进 localStorage，而内存里的 authCfg 还是旧的那份。
+     以 localStorage 为准，别拿旧配置去判断有没有开场动画。 */
+  try{
+    const s = localStorage.getItem(LS_AUTH_CFG);
+    if(s){ const j = JSON.parse(s); if(j && j.intro) o = j.intro; }
+  }catch(e){}
   const raw = o.src || '';
   if(!raw){ onDone(); return; }
+
+  /* 这次开场动画播完要去哪：没登录 → 进登录页（卡片能浮在动画上面弹出）；
+     已登录 → 直接进大厅（全屏盖一层就行，没有卡片可弹） */
+  let toLogin = true;
+  try{ const u = localStorage.getItem(LS_CURRENT); toLogin = !(u && getAccounts()[u]); }catch(e){}
+  const opt = { login: toLogin };
 
   /* 本机素材（ms:）：作者自己预览用，异步取；取不到就当没配，直接进游戏 */
   if(raw.slice(0, 3) === 'ms:'){
     if(!window.MediaStore){ onDone(); return; }
     MediaStore.url(raw.slice(3)).then(u=>{
-      if(u) startIntroVideo(u, o, onDone); else onDone();
+      if(u) startIntroVideo(u, o, onDone, opt); else onDone();
     }).catch(()=> onDone());
     return;
   }
-  startIntroVideo(resolveVideoSrc(raw), o, onDone);
+  const src = resolveVideoSrc(raw);
+  if(!src){ onDone(); return; }        // 脏数据（既不是 srv: 也不是网址）别白等
+  startIntroVideo(src, o, onDone, opt);
 }
-function startIntroVideo(src, o, onDone){
+function startIntroVideo(src, o, onDone, opt){
   if(!src){ onDone(); return; }
+  const toLogin = !opt || opt.login !== false;   // true＝这次要去登录页（有卡片可弹）
   /* 淡出时长：陛下钦定 3 秒。语义是「在视频最后 3 秒开始淡出」——
      不额外拉长总时长（20 秒的片子就是 20 秒进游戏，不是 23 秒）。 */
-  const fade  = Math.max(0, Number(o.fadeOut) || 3000);
+  const fade  = Math.max(0, Number(o.fadeOut) || 1000);   /* 陛下钦定：最后一秒才淡出 */
   /* 卡片在第几秒「抖动放大」登场（20 秒的片子配 18 ＝ 第 18 秒弹出，而且浮在动画上面） */
   let at = (o.cardAt == null || o.cardAt === '') ? 18 : Number(o.cardAt);
   if(!isFinite(at) || at < 0) at = 18;
@@ -2922,12 +2960,16 @@ function startIntroVideo(src, o, onDone){
   /* ⛔ 开场动画**不允许跳过**（陛下钦定）：必须完整播完 */
   let done = false, fading = false, watchdog = null, cardShown = false;
 
-  /* 登录屏先摆好（会触发 initAuthEngine 渲染卡片）；开场动画层夹在卡片之下、背景之上 */
-  try{ showScreen('auth-screen'); }catch(e){}
-  const stageEl = document.getElementById('auth-stage');
-  const cardEls = ['auth-card','auth-field-name','auth-field-code','auth-verify']
-    .map(id=> document.getElementById(id)).filter(Boolean);
-  cardEls.forEach(el=>{ el.style.opacity='0'; el.style.pointerEvents='none'; });
+  /* 要去登录页：先把登录屏摆好（会触发 initAuthEngine 渲染卡片），开场动画层夹在卡片之下、背景之上。
+     已登录直接进大厅的场合：没有卡片，就全屏盖一层（z=9999）。 */
+  let stageEl = document.body, cardEls = [];
+  if(toLogin){
+    try{ showScreen('auth-screen'); }catch(e){}
+    stageEl = document.getElementById('auth-stage') || document.body;
+    cardEls = ['auth-card','auth-field-name','auth-field-code','auth-verify']
+      .map(id=> document.getElementById(id)).filter(Boolean);
+    cardEls.forEach(el=>{ el.style.opacity='0'; el.style.pointerEvents='none'; });
+  }
   const showCard = ()=>{
     if(cardShown) return; cardShown = true;
     cardEls.forEach(el=>{
@@ -2961,7 +3003,8 @@ function startIntroVideo(src, o, onDone){
      这样卡片播到指定秒数时，能浮在动画上面抖出来。 */
   const layer = document.createElement('div');
   layer.className = 'intro-film';
-  layer.style.cssText = 'position:absolute;inset:0;z-index:5;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+  layer.style.cssText = (toLogin ? 'position:absolute;inset:0;z-index:5;' : 'position:fixed;inset:0;z-index:9999;')
+    + 'background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
   const v = document.createElement('video');
   v.src = src;
   v.autoplay = true; v.loop = false; v.playsInline = true; v.preload = 'auto';
@@ -2982,12 +3025,17 @@ function startIntroVideo(src, o, onDone){
     if(!v.duration || !isFinite(v.duration)) return;
     if(!cardShown && v.currentTime >= at) showCard();   /* 到点：卡片抖动放大登场 */
     if(fading || done) return;
+    /* 淡出必须等卡片登场之后才开始，否则「卡片在动画上亮相」就看不见了：
+       19.5 秒的片子 + 3 秒淡出，按原逻辑第 16.5 秒就开始淡，卡片第 18 秒出来时画面都快没了。
+       这里把淡出压缩进「卡片出现 → 片子结束」这一段（最短 0.3 秒）。 */
+    const room = Math.max(0, (v.duration - at) * 1000);
+    const eff  = Math.max(300, Math.min(fade, room));
     const left = v.duration - v.currentTime;
-    if(left <= fade / 1000 + 0.05){
+    if(left <= eff / 1000 + 0.05){
       fading = true;
-      layer.style.transition = 'opacity ' + fade + 'ms linear';
+      layer.style.transition = 'opacity ' + eff + 'ms linear';
       layer.style.opacity = '0';
-      setTimeout(finish, fade);
+      setTimeout(finish, eff);
     }
   };
   v.addEventListener('timeupdate', maybeFadeOut);

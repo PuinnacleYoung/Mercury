@@ -438,7 +438,7 @@ function defaultConfig(){
     },
     /* cardAt = 开场动画播到第几秒时卡片「抖动放大」出现（20 秒的片子配 18 就是第 18 秒弹出）
        skippable = false：开场动画**不允许跳过**（陛下钦定），必须完整播完 */
-    intro: { src:'', audio:'', skippable:false, fadeOut:3000, cardAt:18, volume:100 },
+    intro: { src:'', audio:'', skippable:false, fadeOut:1000, cardAt:18, volume:100 },
     loginFx: { src:'', audio:'', delay:0, coverDuration:1600 },
   };
 }
@@ -1337,11 +1337,11 @@ function renderIntroProps(c){
     <div class="prop-blk">
       <div class="sec-title">参数</div>
       <div class="field-row"><label>卡片出现</label><input type="number" id="intro-cardat" step="0.1" min="0" value="${cfg.intro.cardAt==null?18:cfg.intro.cardAt}"><span class="val">秒</span></div>
-      <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut||3000}"><span class="val">ms</span></div>
+      <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut||1000}"><span class="val">ms</span></div>
       <div class="field-row"><label>🔊 音量</label><input type="number" id="intro-vol" min="0" max="100" value="${cfg.intro.volume==null?100:cfg.intro.volume}"><span class="val">%</span></div>
       <div class="props-empty" style="font-size:10px;opacity:.8;">
         <b>卡片出现</b>：开场动画播到第几秒时，卡片「抖动放大」登场（20 秒的片子填 18 ＝ 第 18 秒弹出，浮在动画上面）。<br>
-        <b>淡出</b>：在视频<b>最后</b>这段时间里进行，不额外拉长总时长——20 秒的片子设 3000 就是「第 17 秒开始淡出，第 20 秒进登录页」。<br>
+        <b>淡出</b>：在视频<b>最后</b>这段时间里进行，不额外拉长总时长——20 秒的片子设 1000 就是「第 19 秒开始淡出，第 20 秒进登录页」（陛下钦定：最后一秒才淡）。<br>
         <b>⛔ 开场动画不可跳过</b>：必须完整播完（嫌长就把片子剪短）。
       </div>
       <button class="btn" id="intro-trypreview" style="margin-top:8px;font-size:12px;">▶ 试播一次（带声音 · 卡片到点弹出）</button>
@@ -1350,7 +1350,7 @@ function renderIntroProps(c){
   `;
   bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro', 'intro-pick');
   $('intro-cardat').onchange=e=>{cfg.intro.cardAt=Math.max(0,parseFloat(e.target.value)||0);saveCfg();};
-  $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||3000;saveCfg();};
+  $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||1000;saveCfg();};
   $('intro-vol').onchange=e=>{cfg.intro.volume=Math.max(0,Math.min(100,+e.target.value||0));saveCfg();};
   $('intro-trypreview').onclick=()=>{ switchTab('overview'); setTimeout(()=>playIntroPreview(), 300); };
 }
@@ -1498,7 +1498,7 @@ function bindVideoUpload(o, dropId, tipId, cloudId, name, pickId){
         setVideoSrc(o, 'srv:' + u);
         /* 陛下钦定淡出 3 秒：以前默认 800ms，选中服务器视频时顺手纠正过来 */
         let fixed = '';
-        if(!o.fadeOut || o.fadeOut === 800){ o.fadeOut = 3000; fixed = '；淡出已设为 3 秒'; }
+        if(!o.fadeOut || o.fadeOut === 800){ o.fadeOut = 1000; fixed = '；淡出已设为 1 秒（最后一秒淡出）'; }
         saveCfg(); render();
         toastUploadTip('✅ 已选用服务器视频：' + u + '（所有人可见）' + fixed);
       };
@@ -1748,7 +1748,7 @@ function playIntroPreview(){
     catch(e){ alert('还没上传开场动画，先在右边传一个 mp4'); }
     return;
   }
-  const fade   = Math.max(0, Number(cfg.intro.fadeOut) || 3000);
+  const fade   = Math.max(0, Number(cfg.intro.fadeOut) || 1000);
   let   at     = Number(cfg.intro.cardAt);
   if(!isFinite(at) || at < 0) at = 18;
   const vol    = Math.max(0, Math.min(1, (Number(cfg.intro.volume) || 100) / 100));
@@ -1812,11 +1812,14 @@ function playIntroPreview(){
   v.addEventListener('timeupdate', ()=>{
     if(!v.duration || !isFinite(v.duration)) return;
     if(!d.cardShown && v.currentTime >= at) showCard();
-    if(!fading && !d.ended && (v.duration - v.currentTime) <= fade/1000 + 0.05){
+    /* 淡出同样要等卡片登场之后才开始（与游戏端一致），不然卡片出来时画面已经淡完了 */
+    const room = Math.max(0, (v.duration - at) * 1000);
+    const eff  = Math.max(300, Math.min(fade, room));
+    if(!fading && !d.ended && (v.duration - v.currentTime) <= eff/1000 + 0.05){
       fading = true;
-      layer.style.transition = 'opacity ' + fade + 'ms linear';
+      layer.style.transition = 'opacity ' + eff + 'ms linear';
       layer.style.opacity = '0';
-      setTimeout(finish, fade);
+      setTimeout(finish, eff);
     }
   });
   v.addEventListener('ended', finish);
