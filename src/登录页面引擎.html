@@ -370,6 +370,11 @@
   </div>
 </div>
 
+<!-- 大素材仓库（IndexedDB）：开场/登录动画视频不再塞 localStorage，否则 5MB 直接爆 -->
+<script src="./media-store.js"></script>
+<!-- 云端资产同步：改完点右下角「☁️ 提交」，陛下在后台发布后全服生效 -->
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
 <script>
 /* ============================================================
    登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
@@ -574,7 +579,7 @@ function render(){
       el.style.zIndex = i;
       el.style.opacity = l.opacity;
       if(l.src){
-        el.style.backgroundImage = 'url(' + l.src + ')';
+        el.style.backgroundImage = 'url(' + srcUrl(l.src) + ')';
         el.style.backgroundSize = l.fit === 'cover' ? 'cover' : (l.fit==='contain' ? 'contain' : '100% 100%');
       } else {
         el.style.background = 'linear-gradient(135deg,#12344a,#1a5a6e 50%,#0f2230)';
@@ -653,7 +658,9 @@ function layoutWorldBox(){
 function buildLoginFxEl(){
   const el = document.createElement('div');
   el.className = 'login-fx-layer';
-  el.innerHTML = '<div class="fx-hint">✨ 登录动画层（z=10 · 压背景 / 被卡片盖住）<br><span style="font-size:10px;opacity:.7;">占位符：上传视频后在此播放 · 总预览里可用「✨ 试登录动画」播一段</span></div>';
+  const src = srcUrl(cfg.loginFx.src);
+  if(src){ el.appendChild(makeFxVideo(src)); return el; }
+  el.innerHTML = '<div class="fx-hint">✨ 登录动画层（z=10 · 压背景 / 被卡片盖住）<br><span style="font-size:10px;opacity:.7;">还没传视频 · 在右边「登录动画」里上传一个 mp4/webm<br>传了这里直接循环播放 · 总预览里可用「✨ 试登录动画」播一段</span></div>';
   return el;
 }
 
@@ -661,8 +668,21 @@ function buildLoginFxEl(){
 function buildIntroEl(){
   const el = document.createElement('div');
   el.className = 'intro-layer';
-  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">占位符：上传开场视频 + 音乐 + 淡出时长<br>总预览里默认不常驻，点「🎬 试开场」看效果</span></div>';
+  const src = srcUrl(cfg.intro.src);
+  if(src){ el.appendChild(makeFxVideo(src)); return el; }
+  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">还没传视频 · 在右边「开场动画」里上传一个 mp4/webm<br>（视频存 IndexedDB，几百 MB 都塞得下，不再受 5MB 限制）<br>总预览里默认不常驻，点「🎬 试开场」看效果</span></div>';
   return el;
+}
+
+/* 循环播放的动画层视频：自动播 + 静音 + 内联，手机也不会被强制全屏 */
+function makeFxVideo(src){
+  const v = document.createElement('video');
+  v.src = src;
+  v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+  try{ v.setAttribute('playsinline',''); }catch(e){}
+  v.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  const p = v.play(); if(p && p.catch) p.catch(()=>{});
+  return v;
 }
 
 /* 锁徽章：与地图编辑引擎一致 */
@@ -676,7 +696,7 @@ function buildCardEl(){
   const pic = document.createElement('div');
   pic.className = 'card-pic';
   if(cfg.card.src){
-    pic.style.backgroundImage = 'url(' + cfg.card.src + ')';
+    pic.style.backgroundImage = 'url(' + srcUrl(cfg.card.src) + ')';
     pic.style.opacity = cfg.card.opacity;
   } else {
     pic.style.background = 'linear-gradient(135deg,#123,#1a3a4a)';
@@ -1076,11 +1096,11 @@ function renderCardProps(c){
 function bindCardProps(){
   const drop = $('card-drop');
   const thumb = $('card-thumb');
-  if(cfg.card.src){ thumb.src = cfg.card.src; thumb.style.display='block'; }
-  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg'; i.onchange=()=>readFileTo(i.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); i.click(); };
+  if(cfg.card.src){ thumb.src = srcUrl(cfg.card.src); thumb.style.display='block'; }
+  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg'; i.onchange=()=>readAsset(i.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); i.click(); };
   drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag'); };
   drop.ondragleave = ()=> drop.classList.remove('drag');
-  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files[0]) readFileTo(e.dataTransfer.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); };
+  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files[0]) readAsset(e.dataTransfer.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); };
   $('card-opacity').oninput = e=>{ cfg.card.opacity = parseFloat(e.target.value); $('card-opacity-v').textContent = Math.round(cfg.card.opacity*100)+'%'; saveCfg(); render(); };
   ['card-x','card-y','card-w','card-h'].forEach(id=>{
     $(id).oninput = e=>{ const k = id.slice(5); cfg.card[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
@@ -1132,10 +1152,10 @@ function renderAvatarProps(c){
     </div>
   `;
   const fd = $('ava-frame-drop');
-  fd.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png'; i.onchange=()=>readFileTo(i.files[0], url=>{cfg.avatar.frameSrc=url; saveCfg(); render();}); i.click(); };
+  fd.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png'; i.onchange=()=>readAsset(i.files[0], url=>{cfg.avatar.frameSrc=url; saveCfg(); render();}); i.click(); };
   fd.ondragover=e=>{e.preventDefault();fd.classList.add('drag');};
   fd.ondragleave=()=>fd.classList.remove('drag');
-  fd.ondrop=e=>{e.preventDefault();fd.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{cfg.avatar.frameSrc=url;saveCfg();render();});};
+  fd.ondrop=e=>{e.preventDefault();fd.classList.remove('drag');if(e.dataTransfer.files[0])readAsset(e.dataTransfer.files[0],url=>{cfg.avatar.frameSrc=url;saveCfg();render();});};
   $('ava-race').onchange = e=>{ cfg.avatar.defaultRace = e.target.value; saveCfg(); render(); };
   ['ava-x','ava-y','ava-w','ava-h'].forEach(id=>{
     $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
@@ -1143,14 +1163,14 @@ function renderAvatarProps(c){
   $('ava-lock').onchange = e=>{ cfg.avatar.locked = e.target.checked; saveCfg(); render(); };
   // 默认剪影上传 / 清除
   $('ava-defsil').onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg';
-    i.onchange=()=>{ if(i.files[0]) readFileTo(i.files[0], url=>{ cfg.avatar.defaultSilhouette=url; saveCfg(); render(); }); };
+    i.onchange=()=>{ if(i.files[0]) readAsset(i.files[0], url=>{ cfg.avatar.defaultSilhouette=url; saveCfg(); render(); }); };
     i.click(); };
   const defClear = $('ava-defsil-clear');
   if(defClear) defClear.onclick = ()=>{ cfg.avatar.defaultSilhouette=''; saveCfg(); render(); };
   // 种族剪影上传 / 清除
   document.querySelectorAll('.race-sil').forEach(btn=>{
     btn.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg';
-      i.onchange=()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r&&i.files[0]) readFileTo(i.files[0], url=>{ r.silhouette=url; saveCfg(); render(); }); };
+      i.onchange=()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r&&i.files[0]) readAsset(i.files[0], url=>{ r.silhouette=url; saveCfg(); render(); }); };
       i.click(); };
   });
   document.querySelectorAll('.race-sil-clear').forEach(btn=>{
@@ -1265,11 +1285,11 @@ function renderBgProps(c){
     </div>
   `;
   const drop=$('bg-drop'), thumb=$('bg-thumb');
-  if(l.src){ thumb.src=l.src; thumb.style.display='block'; }
-  drop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readFileTo(i.files[0],url=>{l.src=url;saveCfg();render();});i.click();};
+  if(l.src){ thumb.src=srcUrl(l.src); thumb.style.display='block'; }
+  drop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readAsset(i.files[0],url=>{l.src=url;saveCfg();render();});i.click();};
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
   drop.ondragleave=()=>drop.classList.remove('drag');
-  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{l.src=url;saveCfg();render();});};
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])readAsset(e.dataTransfer.files[0],url=>{l.src=url;saveCfg();render();});};
   $('bg-fit').onchange=e=>{l.fit=e.target.value;saveCfg();render();};
   $('bg-opacity').oninput=e=>{l.opacity=parseFloat(e.target.value);$('bg-opacity-v').textContent=Math.round(l.opacity*100)+'%';saveCfg();render();};
   ['bg-x','bg-y','bg-w','bg-h'].forEach(id=>{$(id).oninput=e=>{const k=id.slice(3);l[k]=parseFloat(e.target.value)||0;saveCfg();render();};});
@@ -1294,7 +1314,7 @@ function renderIntroProps(c){
       <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut}"><span class="val">ms</span></div>
     </div>
   `;
-  $('intro-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm,image/png';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.intro.src=url;saveCfg();render();});i.click();};
+  $('intro-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm,image/png';i.onchange=()=>readAsset(i.files[0],url=>{cfg.intro.src=url;saveCfg();render();});i.click();};
   $('intro-skip').onchange=e=>{cfg.intro.skippable=e.target.checked;saveCfg();};
   $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||800;saveCfg();};
 }
@@ -1315,7 +1335,7 @@ function renderLoginProps(c){
       <div class="field-row"><label>覆盖时长</label><input type="number" id="login-cover" value="${cfg.loginFx.coverDuration}"><span class="val">ms</span></div>
     </div>
   `;
-  $('login-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.loginFx.src=url;saveCfg();render();});i.click();};
+  $('login-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm';i.onchange=()=>readAsset(i.files[0],url=>{cfg.loginFx.src=url;saveCfg();render();});i.click();};
   $('login-delay').onchange=e=>{cfg.loginFx.delay=+e.target.value||0;saveCfg();};
   $('login-cover').onchange=e=>{cfg.loginFx.coverDuration=+e.target.value||1600;saveCfg();};
 }
@@ -1324,6 +1344,41 @@ function readFileTo(file, cb){
   const r = new FileReader();
   r.onload = ()=> cb(r.result);
   r.readAsDataURL(file);
+}
+
+/* ---------- 大素材（开场/登录动画视频、大图）改存 IndexedDB ----------
+   localStorage 只有 5MB 上下，视频转 base64 必爆，而 saveCfg() 又把错误静默吞了，
+   表现就是「点了上传没反应」。现在：视频 / 超过 300KB 的素材一律进 MediaStore，
+   配置里只留一个 'ms:xxx' 引用，能存几百 MB 都没问题。 */
+const _mediaUrl = {};      // id -> objectURL 缓存，避免每次渲染都去开库
+function readAsset(file, cb){
+  if(!file){ cb(''); return; }
+  const isVideo = /^video\//.test(file.type || '');
+  if((isVideo || file.size > 300 * 1024) && window.MediaStore){
+    const id = 'login_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    MediaStore.put(id, file).then(()=>{
+      MediaStore.url(id).then(u=>{ if(u) _mediaUrl[id] = u; });
+      cb('ms:' + id);
+    }).catch(e=>{
+      alert('这个素材没存下（' + (file.size / 1048576).toFixed(1) + 'MB）：\n' +
+            ((e && e.message) || '浏览器存储失败') + '\n\n建议压小一点，或换个格式再试。');
+    });
+    return;
+  }
+  readFileTo(file, cb);
+}
+
+/* 渲染时把 'ms:xxx' 解析成能塞进 <video src> / url() 的地址；
+   老数据里的 dataURL 原样返回，不用改。首次拿到地址会再刷一次画面。 */
+function srcUrl(v){
+  if(!v) return '';
+  if(v.slice(0, 3) !== 'ms:' || !window.MediaStore) return v;
+  const id = v.slice(3);
+  if(_mediaUrl[id]) return _mediaUrl[id];
+  MediaStore.url(id).then(u=>{
+    if(u){ _mediaUrl[id] = u; if(typeof render === 'function') render(); }
+  });
+  return '';
 }
 
 /* ================= 核验流程 ================= */
@@ -1553,5 +1608,6 @@ $('edit-stage').addEventListener('pointerdown', e=>{
   }
 });
 </script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['login']); })();</script>
 </body>
 </html>

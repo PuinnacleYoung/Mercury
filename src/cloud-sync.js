@@ -23,6 +23,7 @@
     npc:    { name:'NPC',       keys:['engine_npcs_v1'] },
     tarot:  { name:'塔罗',      keys:['tarot_editor_v1'], prefixes:['tarot_assets_'] },
     misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim'] },
+    login:  { name:'登录页/开场动画', keys:['login_engine_config'] },
   };
 
   function fmtSize(b){
@@ -235,10 +236,13 @@
       var items = collect(CloudSync.slot);
       var keys = Object.keys(items);
       if(!keys.length){ alert('本机这个槽位还没有数据，先做点东西再提交吧'); return; }
-      var size = JSON.stringify(items).length;
+      var raw = JSON.stringify(items);
+      var size = raw.length;
+      var hasMedia = raw.indexOf('ms:') >= 0;   // 含 IndexedDB 素材引用（视频/大图）
       if(!confirm('提交到云端草稿区：\n\n' + keys.join('\n') +
           '\n\n署名：' + (Net.author() || '（没填）') +
           '\n大小：' + fmtSize(size) +
+          (hasMedia ? '\n\n⚠️ 里面有视频/大素材：云端只同步「配置」（位置、时长、层级），\n视频本体存在你这台电脑的 IndexedDB 里，别的电脑要自己再传一次。' : '') +
           (size > 8 * 1024 * 1024 ? '\n\n⚠️ 超过 8MB，可能很慢，建议先清理无用素材' : '') +
           '\n\n提交后要等陛下发布才会全服生效。确定吗？')) return;
 
