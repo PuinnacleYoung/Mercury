@@ -13,12 +13,17 @@
 (function(){
   'use strict';
 
-  /* 服务器地址：默认本地 8090，可用 ?server=ws://xxx 覆盖 */
+  /* 服务器地址（优先级从高到低）：
+     1) 页面里写死的 window.MERCURY_WS（部署到服务器时改这一行即可）
+     2) 网址参数 ?server=wss://xxx
+     3) https 页面 => 同域 wss:///ws（nginx 反代 443 -> 8090，避免混合内容被浏览器拦）
+     4) 其它（本地 / 局域网 http）=> ws://主机名:8090  */
   function resolveUrl(){
+    if(window.MERCURY_WS) return window.MERCURY_WS;
     const q = new URLSearchParams(location.search);
     const s = q.get('server');
     if(s) return s;
-    if(location.protocol === 'https:') return 'wss://' + location.hostname + ':8090';
+    if(location.protocol === 'https:') return 'wss://' + location.host + '/ws';
     return 'ws://' + (location.hostname || '127.0.0.1') + ':8090';
   }
 

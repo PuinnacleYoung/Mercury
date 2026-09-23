@@ -61,35 +61,78 @@ function packs(){
   }
   return _packs;
 }
+function applyDelta(base, delta){
+  let i = 0;
+  const rv = () => { let r=0,s=0; for(;;){ const b=delta[i++]; r|=(b&0x7f)<<s; s+=7; if(!(b&0x80)) return r; } };
+  rv(); // base size
+  const resultSize = rv();
+  const out = Buffer.alloc(resultSize); let o = 0;
+  while(i < delta.length){
+    const op = delta[i++];
+    if(op & 0x80){ // copy from base
+      let off=0, len=0;
+      if(op&0x01) off|=delta[i++]; if(op&0x02) off|=delta[i++]<<8;
+      if(op&0x04) off|=delta[i++]<<16; if(op&0x08) off|=delta[i++]<<24;
+      if(op&0x10) len|=delta[i++]; if(op&0x20) len|=delta[i++]<<8;
+      if(op&0x40) len|=delta[i++]<<16;
+      if(len===0) len=0x10000;
+      base.copy(out, o, off, off+len); o+=len;
+    } else { // literal
+      delta.copy(out, o, i, i+op); i+=op; o+=op;
+    }
+  }
+  return out;
+}
+
+function parseObjAt(pack, off){
+  let i=off, b=pack[i++];
+  const type=(b>>4)&0x7;
+  let size=b&0x0f, shift=4;
+  while(b&0x80){ b=pack[i++]; size|=(b&0x7f)<<shift; shift+=7; }
+  if(type===6){ // OFS_DELTA
+    let c=pack[i++], rel=c&0x7f;
+    while(c&0x80){ c=pack[i++]; rel=((rel+1)<<7)|(c&0x7f); }
+    const base=parseObjAt(pack, off-rel);
+    const delta=zlib.inflateSync(pack.slice(i));
+    return { type: base.type, body: applyDelta(base.body, delta) };
+  }
+  if(type===7){ // REF_DELTA
+    const baseSha=pack.slice(i, i+20).toString('hex'); i+=20;
+    const baseObj=readObj(baseSha);
+    const delta=zlib.inflateSync(pack.slice(i));
+    return { type: baseObj.type, body: applyDelta(baseObj.body, delta) };
+  }
+  const names={1:'commit',2:'tree',3:'blob',4:'tag'};
+  return { type: names[type]||('t'+type), body: zlib.inflateSync(pack.slice(i)) };
+}
+
 function findInPack(sha){
   const bin = Buffer.from(sha, 'hex');
   for(const {idx, pack} of packs()){
-    const cnt = (i)=>idx.readUInt32BE(i*4);
+    // idx v2 布局：magic(4)+version(4)+fanout(1024)+sha表+crc表+offset表+大offset表
+    if(idx.readUInt32BE(4) !== 2) continue;
+    const fanout = 8;
+    const cnt = (i)=>idx.readUInt32BE(fanout + i*4);
     const prev = bin[0]===0 ? 0 : cnt(bin[0]-1);
     const cur = cnt(bin[0]);
     if(cur<=prev) continue;
-    const base = 256*4;
+    const shaBase = fanout + 256*4;
+    const total = cnt(255);
+    const crcBase = shaBase + total*20;
+    const offBase = crcBase + total*4;
     let lo=prev, hi=cur-1, found=-1;
     while(lo<=hi){
       const mid=(lo+hi)>>1;
-      const s=idx.slice(base+mid*20, base+mid*20+20).toString('hex');
+      const s=idx.slice(shaBase+mid*20, shaBase+mid*20+20).toString('hex');
       if(s===sha){found=mid;break;} if(s<sha)lo=mid+1; else hi=mid-1;
     }
     if(found<0) continue;
-    const total=cnt(255);
-    const offBase=base+total*20;
     let off=idx.readUInt32BE(offBase+found*4);
     if(off & 0x80000000){
       const i64=off & 0x7fffffff;
       off=Number(idx.readBigUInt64BE(offBase+total*4+i64*8));
     }
-    let i=off, b=pack[i++];
-    const type=(b>>4)&0x7;
-    let size=b&0x0f, shift=4;
-    while(b&0x80){ b=pack[i++]; size|=(b&0x7f)<<shift; shift+=7; }
-    const names={1:'commit',2:'tree',3:'blob',4:'tag'};
-    try{ return { type: names[type]||('t'+type), body: zlib.inflateSync(pack.slice(i)) }; }
-    catch(e){ return null; }
+    return parseObjAt(pack, off);
   }
   return null;
 }

@@ -1,0 +1,18 @@
+[Unit]
+Description=Mercury Online Server (拾光·澈屿 联机 WebSocket 8090)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mercury/server
+Environment=PORT=8090
+Environment=ADMIN_KEY=change_me_please
+ExecStart=/usr/bin/node /opt/mercury/server/server.js
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/mercury.log
+StandardError=append:/var/log/mercury.log
+
+[Install]
+WantedBy=multi-user.target
