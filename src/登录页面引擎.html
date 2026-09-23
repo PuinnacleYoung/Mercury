@@ -390,10 +390,10 @@
 </div>
 
 <!-- 大素材仓库（IndexedDB）：开场/登录动画视频不再塞 localStorage，否则 5MB 直接爆 -->
-<script src="./media-store.js"></script>
+<script src="./media-store.js?v=20260924a"></script>
 <!-- 云端资产同步：改完点右下角「☁️ 提交」，陛下在后台发布后全服生效 -->
-<script src="./net-client.js"></script>
-<script src="./cloud-sync.js"></script>
+<script src="./net-client.js?v=20260924a"></script>
+<script src="./cloud-sync.js?v=20260924a"></script>
 <script>
 /* ============================================================
    登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
@@ -712,6 +712,9 @@ function buildIntroEl(){
 function makeFxVideo(src, opt){
   opt = opt || {};
   const v = document.createElement('video');
+  /* 错误监听必须在设 src **之前**挂上：load 失败可能快到监听器都来不及注册，
+     以前会漏掉第一次失败（表现为「只见卡片弹一下」却啥也没说） */
+  if(typeof opt.onErr === 'function') v.addEventListener('error', ()=>opt.onErr(v));
   v.src = src;
   /* 编辑态默认静音循环（免得吵）；「🎬 试开场」预览会传 muted:false 带声音 */
   v.muted = opt.muted !== false;
@@ -1864,6 +1867,32 @@ function playLayerDemo(build, holdMs, fadeMs){
    现在：带声音完整播 → 播到「卡片出现」那一秒，卡片抖动放大登场 → 最后 fade 毫秒淡出收尾。
    再点一次按钮＝停止。开场动画**不给跳过**（陛下钦定）。 */
 let introDemo = null;
+/* 开场视频加载失败：先自救（带缓存穿透参数重试一次），还不行再说清楚坏在哪。
+   陛下遇到过「服务器明明 206、就某一台 Edge 加载失败」——八成是本地缓存了坏条目
+   或扩展拦截，换个 URL 参数就能绕开；重试失败时把错误码 + 网络探测结果报出来，
+   不再让人对着「加载失败」干瞪眼。 */
+function introLoadErr(v){
+  const src = v.getAttribute('src') || '';
+  /* 第一次失败：自动重试一次（穿透缓存） */
+  if(!v.dataset.retried && src){
+    v.dataset.retried = '1';
+    const bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'cb=' + Date.now();
+    console.warn('[intro] 第一次加载失败，带缓存穿透参数重试：' + bust);
+    try{ v.src = bust; v.load(); const q = v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+    return;
+  }
+  /* 重试还失败：报出具体原因 */
+  const ec = v.error ? ('MediaError ' + v.error.code + (v.error.message ? (' · ' + v.error.message) : '')) : '未知错误';
+  console.warn('[intro] 开场动画加载失败：' + src + ' (' + ec + ')');
+  const probe = (typeof fetch === 'function')
+    ? fetch(src, { method:'HEAD', cache:'no-store' }).then(r=>'HTTP ' + r.status).catch(()=>'网络探测也失败（浏览器根本连不上/被拦）')
+    : Promise.resolve('浏览器不支持探测');
+  probe.then(info=>{
+    const msg = '❌ 开场动画加载失败（' + ec + ' · ' + info + '）';
+    try{ toastVerify(msg + ' ' + src + '。服务器是好的（换台电脑能播）→ 本机问题：试 Ctrl+F5，或无痕窗口（Ctrl+Shift+N）打开，或清一下本站缓存/关掉拦截类扩展'); }
+    catch(e){ try{ alert(msg); }catch(e2){} }
+  });
+}
 function stopIntroPreview(){
   const d = introDemo; if(!d) return;
   introDemo = null;
@@ -1901,13 +1930,8 @@ function playIntroPreview(){
   layer.className = 'intro-layer';
   layer.style.opacity = '0';
   layer.style.transition = 'opacity .3s ease';
-  layer.appendChild(makeFxVideo(src, { muted:false, loop:false, volume:vol }));
+  layer.appendChild(makeFxVideo(src, { muted:false, loop:false, volume:vol, onErr:introLoadErr }));
   const v = layer.firstChild;
-  /* 加载不出来要**说清楚**（以前静默失败，看上去就像「只弹了个卡片」） */
-  v.addEventListener('error', ()=>{
-    console.warn('[intro] 开场动画加载失败：' + src);
-    try{ toastVerify('❌ 开场动画加载失败：' + src + '（看看这个地址在不在）'); }catch(e){}
-  });
   wb.appendChild(layer);
   requestAnimationFrame(()=>{ layer.style.opacity = '1'; });
 

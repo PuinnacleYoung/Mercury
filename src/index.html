@@ -1651,12 +1651,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js"></script>
-<script src="./legacy-body-v4.js"></script>
+<script src="./body-template.js?v=20260924a"></script>
+<script src="./legacy-body-v4.js?v=20260924a"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js"></script>
-<script src="./media-store.js"></script>
-<script src="./net-client.js"></script>
+<script src="./map-placeholders.js?v=20260924a"></script>
+<script src="./media-store.js?v=20260924a"></script>
+<script src="./net-client.js?v=20260924a"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -3070,7 +3070,20 @@ function startIntroVideo(src, o, onDone, opt){
   };
   v.addEventListener('timeupdate', maybeFadeOut);
   v.addEventListener('ended', finish);                       // duration 拿不到时的兜底
-  v.addEventListener('error', finish);                       // 加载不出来也要放行
+  v.addEventListener('error', ()=>{                          // 加载失败：先自救再放行
+    /* 有的浏览器会把坏条目/被拦的请求缓存住（换台电脑就好就是它）——
+       带个一次性缓存穿透参数重试，能救回大半；重试还失败才放行进游戏 */
+    if(!v.dataset.retried && src){
+      v.dataset.retried = '1';
+      try{
+        v.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'cb=' + Date.now();
+        v.load();
+        const q = v.play(); if(q && q.catch) q.catch(()=>{});
+      }catch(e){}
+      return;
+    }
+    finish();
+  });                       // 加载不出来也要放行
   v.addEventListener('loadedmetadata', ()=>{
     const dur = (v.duration && isFinite(v.duration)) ? v.duration : 0;
     /* 片子比设定的秒数还短 → 自动提前，保证卡片一定来得及登场 */
@@ -8210,8 +8223,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js" defer></script>
-<script src="./responsive.js" defer></script>
-<script src="./pwa-install.js" defer></script>
+<script src="./orientation-lock.js?v=20260924a" defer></script>
+<script src="./responsive.js?v=20260924a" defer></script>
+<script src="./pwa-install.js?v=20260924a" defer></script>
 </body>
 </html>
