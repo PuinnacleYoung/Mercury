@@ -2857,8 +2857,82 @@ function afterLandscape(){
     else if(!currentUser.element){ showRaceModal(username); }   // 旧数据没属性 → 补选（属性绑定账号）
     else { enterLobby(); checkCharacterSource(); }
   } else {
-    showScreen('auth-screen');
+    /* 🎬 开场动画：登录页引擎「开场动画」Tab 配的片子，进登录页前播一次 */
+    try{ playIntroOnce(()=>showScreen('auth-screen')); }
+    catch(e){ console.warn('intro', e); showScreen('auth-screen'); }
   }
+}
+
+/* ================= 🎬 开场动画（A 方案：视频放服务器，边下边播） =================
+   视频地址三种形态：
+     'srv:/media/xxx.mp4' —— 在服务器上，<video> 直接边下边播，玩家不用等下载完
+     'ms:xxx'             —— 只在作者本机的 IndexedDB 里（玩家看不到，会自动跳过）
+     'data:...'           —— 老的内嵌小素材
+   没有素材 / 加载失败 / 起不来 → 立刻放行进游戏，**绝不让人干等**（这条是底线）。 */
+function resolveVideoSrc(v){
+  if(!v) return '';
+  return (v.slice(0, 4) === 'srv:') ? v.slice(4) : v;
+}
+function playIntroOnce(onDone){
+  try{ if(sessionStorage.getItem('introPlayed') === '1'){ onDone(); return; } }catch(e){}
+  try{ sessionStorage.setItem('introPlayed', '1'); }catch(e){}
+  playIntro(onDone);
+}
+function playIntro(onDone){
+  if(!authCfg) authLoadCfg();
+  const o = (authCfg && authCfg.intro) || {};
+  const raw = o.src || '';
+  if(!raw){ onDone(); return; }
+
+  /* 本机素材（ms:）：作者自己预览用，异步取；取不到就当没配，直接进游戏 */
+  if(raw.slice(0, 3) === 'ms:'){
+    if(!window.MediaStore){ onDone(); return; }
+    MediaStore.url(raw.slice(3)).then(u=>{
+      if(u) startIntroVideo(u, o, onDone); else onDone();
+    }).catch(()=> onDone());
+    return;
+  }
+  startIntroVideo(resolveVideoSrc(raw), o, onDone);
+}
+function startIntroVideo(src, o, onDone){
+  if(!src){ onDone(); return; }
+  const fade  = Math.max(0, Number(o.fadeOut) || 800);
+  const skippable = o.skippable !== false;
+  let done = false;
+  const finish = ()=>{
+    if(done) return; done = true;
+    clearTimeout(watchdog);
+    layer.style.transition = 'opacity ' + fade + 'ms ease';
+    layer.style.opacity = '0';
+    setTimeout(()=>{ try{ layer.remove(); }catch(e){} }, fade + 60);
+    try{ v.pause(); }catch(e){}
+    onDone();
+  };
+
+  const layer = document.createElement('div');
+  layer.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+  const v = document.createElement('video');
+  v.src = src;
+  v.autoplay = true; v.muted = true; v.loop = false; v.playsInline = true; v.preload = 'auto';
+  v.style.cssText = 'width:100%;height:100%;object-fit:cover;background:#000;';
+  layer.appendChild(v);
+
+  const hint = document.createElement('div');
+  hint.textContent = '加载中… 点击任意处跳过';
+  hint.style.cssText = 'position:absolute;left:0;right:0;bottom:6%;text-align:center;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;pointer-events:none;letter-spacing:1px;';
+  layer.appendChild(hint);
+
+  if(skippable) layer.addEventListener('click', finish);
+  /* 出错 / 卡住也要放行：12 秒硬兜底 */
+  const watchdog = setTimeout(()=>{ if(!done) finish(); }, 12000);
+  v.addEventListener('ended', finish);
+  v.addEventListener('error', finish);
+  v.addEventListener('canplay', ()=>{ hint.textContent = '点击任意处跳过'; });
+
+  try{ document.body.appendChild(layer); }catch(e){ onDone(); return; }
+  /* 手机不允许自动播放时，浏览器会一直不播 —— 兜底照样生效，不会卡住 */
+  const pr = v.play && v.play();
+  if(pr && pr.catch) pr.catch(()=>{ /* 自动播放被拦：等用户点击或兜底跳过 */ });
 }
 
 /* ================= 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ================= */
@@ -2912,15 +2986,32 @@ function initAuthEngine(){
   // 1) 背景：有视频用视频，无视频用占位动态背景
   const bg = $('auth-bg');
   bg.className = 'auth-bg';
+  /* 登录页背景动画：登录页引擎写的是 loginFx.src（✨ 登录动画层），老配置才是 videos[]。
+     以前只认 videos[]，陛下做的登录动画根本没被读走 —— 现在两种都认。 */
+  let bgSrc = '';
   const vids = (authCfg.videos || []).filter(v=>v && v.src);
-  if(vids.length){
+  if(vids.length) bgSrc = vids[vids.length-1].src;
+  else if(authCfg.loginFx && authCfg.loginFx.src) bgSrc = authCfg.loginFx.src;
+  const mountBgVideo = u=>{
+    if(!u) return;
+    const v = document.createElement('video');
+    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;';
+    v.addEventListener('error', ()=>{ try{ v.remove(); }catch(e){} });   // 加载不出来就撤掉，别留一块黑
+    v.src = u;
+    bg.appendChild(v);
+    const pr = v.play && v.play();
+    if(pr && pr.catch) pr.catch(()=>{});
+  };
+  if(bgSrc){
     bg.classList.add('is-video');
     bg.innerHTML = '';
-    const v = document.createElement('video');
-    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
-    v.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;';
-    v.src = vids[vids.length-1].src;
-    bg.appendChild(v);
+    if(bgSrc.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
+      /* 只存在作者本机的素材：玩家本机没有 → 取不到就当没配，走占位背景 */
+      MediaStore.url(bgSrc.slice(3)).then(u=>{ if(u) mountBgVideo(u); }).catch(()=>{});
+    } else {
+      mountBgVideo(resolveVideoSrc(bgSrc));   // srv: → 服务器地址，边下边播
+    }
   } else {
     bg.classList.add('placeholder');
     bg.innerHTML = '';

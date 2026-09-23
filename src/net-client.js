@@ -139,6 +139,58 @@
       });
     },
 
+    /* ================= 媒体库（开场动画 / 登录动画视频） =================
+       视频单独放服务器 /media/ 目录，由 nginx 当静态文件发出去（URL 就是 /media/xxx.mp4）。
+       玩家 <video src="/media/xxx.mp4"> 是边下边播，不占 WebSocket、不阻塞首屏。
+       上传走 WS 分片 Base64（要后台口令），单文件上限 60MB。
+       mediaUpload(file, onProgress) -> Promise<{url,name,size}> */
+    mediaList(){ Net.send({ t:'mediaList' }); },
+    mediaDelete(name){ Net.send({ t:'mediaDelete', adminKey: Net.adminKey, name }); },
+
+    mediaUpload(file, onProgress){
+      return new Promise((resolve, reject)=>{
+        if(!file){ reject(new Error('没选文件')); return; }
+        if(!Net.adminKey){ reject(new Error('还没有后台口令，请先设置')); return; }
+        if(file.size > 60 * 1024 * 1024){
+          reject(new Error('文件 ' + (file.size/1048576).toFixed(1) + 'MB，超过 60MB 上限。\n请先压小（720p / 1~1.5Mbps / 10 秒内 ≈ 1~2MB）'));
+          return;
+        }
+        const CHUNK = 192 * 1024;                       // 192KB 原始字节 → base64 约 256KB，一片不会太大
+        const total = Math.max(1, Math.ceil(file.size / CHUNK));
+        let finished = false;
+        function cleanup(){ finished = true; un1(); un2(); un3(); }
+        /* 一片一片读，读完就发；顺序发，服务器按到达顺序追加 */
+        function sliceB64(blob){
+          return new Promise((res, rej)=>{
+            const r = new FileReader();
+            r.onload = ()=>{
+              const s = String(r.result || '');
+              const i = s.indexOf(',');
+              res(i >= 0 ? s.slice(i + 1) : s);
+            };
+            r.onerror = ()=> rej(new Error('读取分片失败'));
+            r.readAsDataURL(blob);
+          });
+        }
+        var un1 = Net.on('mediaReady', async m=>{
+          try{
+            for(let i = 0; i < total; i++){
+              if(finished) return;
+              const b64 = await sliceB64(file.slice(i * CHUNK, (i + 1) * CHUNK));
+              Net.send({ t:'mediaChunk', token: m.token, chunk: b64 });
+              if(onProgress) onProgress((i + 1) / total);
+            }
+            Net.send({ t:'mediaEnd', token: m.token });
+          }catch(e){ if(!finished){ cleanup(); reject(e); } }
+        });
+        var un2 = Net.on('mediaDone', m=>{ if(finished) return; cleanup(); resolve(m); });
+        var un3 = Net.on('mediaErr', m=>{ if(finished) return; cleanup(); reject(new Error(m.msg || '上传失败')); });
+        Net.send({ t:'mediaBegin', adminKey: Net.adminKey, name: file.name, size: file.size });
+        /* 视频大，给 3 分钟 */
+        setTimeout(()=>{ if(!finished){ cleanup(); reject(new Error('上传超时（3 分钟），请检查网络后重试')); } }, 180000);
+      });
+    },
+
     close(){ if(sock){ try{ sock.close(); }catch(e){} sock = null; connected = false; } },
   };
 

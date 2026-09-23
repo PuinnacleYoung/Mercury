@@ -328,6 +328,78 @@ const HISTORY_MAX = 10;
 const UPLOAD_TTL  = 10 * 60 * 1000;
 const pendingUploads = new Map();   // token -> {slot,by,total,chunks,got,ts}
 
+/* ============================================================
+   媒体库（开场动画 / 登录动画视频）
+   ------------------------------------------------------------
+   视频不能塞 localStorage（5MB 会爆），也不能塞 data.json（几十 MB 会把服务器撑爆）。
+   所以视频单独放 /opt/mercury/media/，nginx 直接当静态文件发（root 就是 /opt/mercury，
+   URL 天然是 /media/xxx.mp4），玩家 <video src> 边下边播，不占 WebSocket 带宽。
+   上传走 WS 分片（Base64），要 adminKey。单文件上限 60MB。
+   ============================================================ */
+const MEDIA_DIR  = path.join(__dirname, '..', 'media');
+const MEDIA_MAX  = 60 * 1024 * 1024;
+const mediaUploads = new Map();     // token -> {name,size,got,stream}
+try{ fs.mkdirSync(MEDIA_DIR, { recursive:true }); }catch(e){}
+
+function safeMediaName(n){
+  let s = String(n || '').replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^\.+/, '');
+  s = s.slice(0, 60);
+  if(!/\.[a-z0-9]{2,5}$/i.test(s)) s += '.mp4';
+  return s;
+}
+function handleMediaBegin(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'mediaErr', msg:'后台权限不足（adminKey 不对）' }); return; }
+  const size = Number(msg.size || 0);
+  if(size > MEDIA_MAX){ send(c.sock, { t:'mediaErr', msg:'文件太大（' + (size/1048576).toFixed(1) + 'MB），上限 60MB' }); return; }
+  const token = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const name  = safeMediaName(msg.name);
+  const final = path.join(MEDIA_DIR, name);
+  let stream;
+  try{ stream = fs.createWriteStream(final + '.part'); }
+  catch(e){ send(c.sock, { t:'mediaErr', msg:'无法写入媒体目录：' + e.message }); return; }
+  mediaUploads.set(token, { name, size, got:0, stream, final, ts:Date.now() });
+  send(c.sock, { t:'mediaReady', token, name, url:'/media/' + name });
+}
+function handleMediaChunk(c, msg){
+  const u = mediaUploads.get(msg.token);
+  if(!u) return;
+  let buf;
+  try{ buf = Buffer.from(String(msg.chunk || ''), 'base64'); }
+  catch(e){ return; }
+  u.got += buf.length; u.ts = Date.now();
+  if(u.got > MEDIA_MAX){ u.stream.destroy(); mediaUploads.delete(msg.token); send(c.sock, { t:'mediaErr', msg:'超过 60MB 上限，已中断' }); return; }
+  u.stream.write(buf);
+}
+function handleMediaEnd(c, msg){
+  const u = mediaUploads.get(msg.token);
+  if(!u){ send(c.sock, { t:'mediaErr', msg:'上传会话已失效，请重传' }); return; }
+  mediaUploads.delete(msg.token);
+  u.stream.end(()=>{
+    try{ fs.renameSync(u.final + '.part', u.final); }
+    catch(e){ send(c.sock, { t:'mediaErr', msg:'落盘失败：' + e.message }); return; }
+    const st = fs.statSync(u.final);
+    send(c.sock, { t:'mediaDone', url:'/media/' + u.name, name:u.name, size:st.size });
+    console.log('[media] 上传完成', u.name, (st.size/1048576).toFixed(2) + 'MB');
+  });
+}
+function handleMediaList(c){
+  let files = [];
+  try{
+    files = fs.readdirSync(MEDIA_DIR).filter(f=>!f.endsWith('.part')).map(f=>{
+      const st = fs.statSync(path.join(MEDIA_DIR, f));
+      return { name:f, url:'/media/' + f, size:st.size, ts:st.mtimeMs };
+    }).sort((a,b)=>b.ts - a.ts);
+  }catch(e){}
+  send(c.sock, { t:'mediaList', files });
+}
+function handleMediaDelete(c, msg){
+  if(!adminOk(msg)){ send(c.sock, { t:'mediaErr', msg:'后台权限不足' }); return; }
+  const name = String(msg.name || '');
+  if(!name || name.indexOf('/') >= 0 || name.indexOf('..') >= 0){ send(c.sock, { t:'mediaErr', msg:'文件名不合法' }); return; }
+  try{ fs.unlinkSync(path.join(MEDIA_DIR, name)); send(c.sock, { t:'mediaDeleted', name }); }
+  catch(e){ send(c.sock, { t:'mediaErr', msg:'删除失败：' + e.message }); }
+}
+
 function slotRev(slot){
   const r = DB.cloud.rev[slot] || {};
   return { live: r.live || 0, draft: r.draft || 0 };
@@ -535,6 +607,13 @@ function onMessage(sock, text){
     case 'assetPublish':   handleAssetPublish(c, msg); break;
     case 'assetRollback':  handleAssetRollback(c, msg); break;
     case 'assetDiscard':   handleAssetDiscard(c, msg); break;
+
+    /* 媒体库（开场动画 / 登录动画视频） */
+    case 'mediaBegin':  handleMediaBegin(c, msg); break;
+    case 'mediaChunk':  handleMediaChunk(c, msg); break;
+    case 'mediaEnd':    handleMediaEnd(c, msg); break;
+    case 'mediaList':   handleMediaList(c); break;
+    case 'mediaDelete': handleMediaDelete(c, msg); break;
   }
 }
 

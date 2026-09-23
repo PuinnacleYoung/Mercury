@@ -1307,6 +1307,8 @@ function renderIntroProps(c){
     <div class="prop-blk">
       <div class="sec-title">动画素材（占位）</div>
       <div class="file-drop" id="intro-drop">点击或拖入 MP4 / PNG 上传</div>
+      <div class="props-empty" id="intro-src" style="font-size:11px;margin-top:6px;"></div>
+      <button class="btn hidden" id="intro-cloud" style="margin-top:6px;font-size:12px;">☁️ 传到服务器（让所有玩家都能看到）</button>
     </div>
     <div class="prop-blk">
       <div class="sec-title">参数</div>
@@ -1314,7 +1316,7 @@ function renderIntroProps(c){
       <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut}"><span class="val">ms</span></div>
     </div>
   `;
-  $('intro-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm,image/png';i.onchange=()=>readAsset(i.files[0],url=>{cfg.intro.src=url;saveCfg();render();});i.click();};
+  bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro');
   $('intro-skip').onchange=e=>{cfg.intro.skippable=e.target.checked;saveCfg();};
   $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||800;saveCfg();};
 }
@@ -1328,6 +1330,8 @@ function renderLoginProps(c){
     <div class="prop-blk">
       <div class="sec-title">动画素材（占位）</div>
       <div class="file-drop" id="login-drop">点击或拖入 MP4 上传</div>
+      <div class="props-empty" id="login-src" style="font-size:11px;margin-top:6px;"></div>
+      <button class="btn hidden" id="login-cloud" style="margin-top:6px;font-size:12px;">☁️ 传到服务器（让所有玩家都能看到）</button>
     </div>
     <div class="prop-blk">
       <div class="sec-title">参数</div>
@@ -1335,7 +1339,7 @@ function renderLoginProps(c){
       <div class="field-row"><label>覆盖时长</label><input type="number" id="login-cover" value="${cfg.loginFx.coverDuration}"><span class="val">ms</span></div>
     </div>
   `;
-  $('login-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm';i.onchange=()=>readAsset(i.files[0],url=>{cfg.loginFx.src=url;saveCfg();render();});i.click();};
+  bindVideoUpload(cfg.loginFx, 'login-drop', 'login-src', 'login-cloud', 'loginfx');
   $('login-delay').onchange=e=>{cfg.loginFx.delay=+e.target.value||0;saveCfg();};
   $('login-cover').onchange=e=>{cfg.loginFx.coverDuration=+e.target.value||1600;saveCfg();};
 }
@@ -1372,6 +1376,9 @@ function readAsset(file, cb){
    老数据里的 dataURL 原样返回，不用改。首次拿到地址会再刷一次画面。 */
 function srcUrl(v){
   if(!v) return '';
+  /* 'srv:/media/xxx.mp4' —— 视频在服务器上，直接把网址给 <video>，
+     浏览器自己边下边播（不占 WebSocket、不用等下完），所有人都能看到 */
+  if(v.slice(0, 4) === 'srv:') return v.slice(4);
   if(v.slice(0, 3) !== 'ms:' || !window.MediaStore) return v;
   const id = v.slice(3);
   if(_mediaUrl[id]) return _mediaUrl[id];
@@ -1379,6 +1386,94 @@ function srcUrl(v){
     if(u){ _mediaUrl[id] = u; if(typeof render === 'function') render(); }
   });
   return '';
+}
+
+/* ---------- 视频上传：本机存一份 + 同步传服务器 ----------
+   只存本机（ms:xxx）：只有陛下这台电脑能看到，玩家手机上是空白。
+   传上服务器（srv:/media/xxx.mp4）：所有人都能看到，玩家边下边播，不用等。
+   所以上传时两件都做：先落本机保证本机一定能预览，再后台传服务器。
+   传失败也不慌 —— 回退成本机地址，配置照存，随时可以点「☁️ 传到服务器」重试。 */
+function pickVideo(file, done){
+  if(!file){ done && done(''); return; }
+  const isVideo = /^video\//.test(file.type || '');
+  if(!isVideo && file.size <= 300 * 1024){ readFileTo(file, done); return; }   // 小图：照旧走 dataURL
+
+  /* 1) 本机 IndexedDB（作者自己永远能预览） */
+  const toLocal = cb => {
+    if(!window.MediaStore){ readFileTo(file, cb); return; }
+    const id = 'login_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    MediaStore.put(id, file).then(()=>{
+      MediaStore.url(id).then(u=>{ if(u) _mediaUrl[id] = u; });
+      cb('ms:' + id);
+    }).catch(()=> cb(''));
+  };
+
+  toLocal(local => {
+    if(local){ done && done(local); }                       // 先让本机立刻能预览
+    /* 2) 传服务器（要后台口令 + 连着服务器） */
+    if(!window.Net || !Net.mediaUpload){ if(local) return; }
+    if(!Net.adminKey){ if(local) toastUploadTip('没填后台口令，只有本机能看到这片动画'); return; }
+    toastUploadTip('正在传到服务器… 0%');
+    Net.mediaUpload(file, p => toastUploadTip('正在传到服务器… ' + Math.round(p * 100) + '%'))
+      .then(m => {
+        done && done('srv:' + m.url);                       // 换成服务器地址，人人可见
+        toastUploadTip('✅ 已传到服务器：' + m.url + '（约 ' + (m.size/1048576).toFixed(1) + 'MB）');
+      })
+      .catch(e => {
+        if(local) toastUploadTip('⚠️ 传服务器失败（' + (e && e.message || '未知') + '）—— 先存本机，只有本机能看到');
+        else toastUploadTip('❌ 上传失败：' + (e && e.message || '未知'));
+      });
+  });
+}
+/* 上传状态提示：优先用登录页自己的 toast，没有就退化成 console，绝不弹窗打断陛下 */
+function toastUploadTip(txt){
+  try{ if(typeof toast === 'function'){ toast(txt); return; } }catch(e){}
+  const el = document.getElementById('upload-tip');
+  if(el){ el.textContent = txt; el.style.display = 'block'; }
+  console.log('[upload]', txt);
+}
+
+/* 把回调给的素材地址写回配置：从本机地址升级成服务器地址时，旧的留作回退 */
+function setVideoSrc(o, url){
+  if(!url) return;
+  if(url.slice(0, 4) === 'srv:' && o.src && o.src.slice(0, 3) === 'ms:') o.local = o.src;
+  o.src = url;
+}
+/* 素材来源一句话说明 */
+function srcBadge(o){
+  if(!o.src) return '⚪ 还没上传素材';
+  if(o.src.slice(0, 4) === 'srv:') return '🌐 在服务器上 ' + o.src.slice(4) + ' —— 所有人都能看到';
+  if(o.src.slice(0, 3) === 'ms:') return '💻 只存在本机 —— 玩家手机上看不到，建议点下面按钮传服务器';
+  return '💻 内嵌素材（小图，仅本机）';
+}
+/* 绑定「上传 / 显示来源 / 补传服务器」三件套 */
+function bindVideoUpload(o, dropId, tipId, cloudId, name){
+  const drop = $(dropId);
+  if(drop) drop.onclick = ()=>{
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = 'video/mp4,video/webm,image/png';
+    i.onchange = ()=> pickVideo(i.files[0], url=>{ setVideoSrc(o, url); saveCfg(); render(); });
+    i.click();
+  };
+  const tip = $(tipId);
+  if(tip) tip.textContent = srcBadge(o);
+  const btn = $(cloudId);
+  if(btn){
+    const isSrv = o.src && o.src.slice(0, 4) === 'srv:';
+    btn.classList.toggle('hidden', !o.src || isSrv || !(window.Net && Net.mediaUpload));
+    btn.onclick = ()=>{
+      const src = o.src || '';
+      if(src.slice(0, 3) !== 'ms:'){ toastUploadTip('这个素材不需要补传'); return; }
+      MediaStore.get(src.slice(3)).then(b=>{
+        if(!b){ toastUploadTip('本机找不到这片视频了，请重新上传一次'); return; }
+        const f = new File([b], name + '.mp4', { type: b.type || 'video/mp4' });
+        toastUploadTip('正在传到服务器… 0%');
+        Net.mediaUpload(f, p => toastUploadTip('正在传到服务器… ' + Math.round(p * 100) + '%'))
+          .then(m => { setVideoSrc(o, 'srv:' + m.url); saveCfg(); render(); toastUploadTip('✅ 已传到服务器：' + m.url); })
+          .catch(e => toastUploadTip('⚠️ 传服务器失败：' + (e && e.message || '未知')));
+      });
+    };
+  }
 }
 
 /* ================= 核验流程 ================= */

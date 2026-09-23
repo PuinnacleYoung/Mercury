@@ -1,6 +1,6 @@
 /* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
    其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v45';
+const CACHE = 'shuguang-v46';
 const PRECACHE = [
   './',
   './index.html',
@@ -51,6 +51,10 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  // 媒体视频（/media/*.mp4）：不进 Cache Storage —— 几十 MB 会把配额撑爆。
+  // 直接放行给浏览器，靠 nginx 的 7 天 HTTP 缓存 + 浏览器自己的视频缓存，第二次照样秒开。
+  if (url.pathname.indexOf('/media/') >= 0) return;
 
   // HTML 导航：网络优先（2.5s 超时回缓存）—— 改代码立刻生效，离线也能用
   if (req.mode === 'navigate' || (req.destination === 'document')) {

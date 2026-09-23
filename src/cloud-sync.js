@@ -238,11 +238,13 @@
       if(!keys.length){ alert('本机这个槽位还没有数据，先做点东西再提交吧'); return; }
       var raw = JSON.stringify(items);
       var size = raw.length;
-      var hasMedia = raw.indexOf('ms:') >= 0;   // 含 IndexedDB 素材引用（视频/大图）
+      var hasMedia = raw.indexOf('ms:') >= 0;   // 含 IndexedDB 素材引用（视频/大图 —— 只有本机能看）
+      var hasSrv   = raw.indexOf('srv:') >= 0;  // 含服务器素材地址（/media/xxx.mp4 —— 所有人可看）
       if(!confirm('提交到云端草稿区：\n\n' + keys.join('\n') +
           '\n\n署名：' + (Net.author() || '（没填）') +
           '\n大小：' + fmtSize(size) +
-          (hasMedia ? '\n\n⚠️ 里面有视频/大素材：云端只同步「配置」（位置、时长、层级），\n视频本体存在你这台电脑的 IndexedDB 里，别的电脑要自己再传一次。' : '') +
+          (hasMedia ? '\n\n⚠️ 里面有视频/大素材：云端只同步「配置」（位置、时长、层级），\n视频本体存在你这台电脑的 IndexedDB 里，别的电脑要自己再传一次\n（想要所有人都看到，点素材下面的「☁️ 传到服务器」）。' : '') +
+          (hasSrv ? '\n\n✅ 视频已传到服务器（/media/…），玩家边下边播，不用等。' : '') +
           (size > 8 * 1024 * 1024 ? '\n\n⚠️ 超过 8MB，可能很慢，建议先清理无用素材' : '') +
           '\n\n提交后要等陛下发布才会全服生效。确定吗？')) return;
 
