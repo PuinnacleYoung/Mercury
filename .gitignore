@@ -36,3 +36,6 @@ outputs/
 
 # 联机服务器运行时数据（玩家账号/好友/邮件/背包，动态变化不入库）
 server/data.json
+
+# playwright-cli 临时输出（snapshot/console 日志，不入库）
+.playwright-cli/

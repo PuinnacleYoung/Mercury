@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>银行引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#1c1a24">
+<style>
+  :root{
+    --bg:#12151c; --bg2:#1b2029;
+    --panel:rgba(255,255,255,.05); --panel2:rgba(255,255,255,.026);
+    --line:#343b48;
+    --ink:#eaf0f6; --sub:#97a3b3;
+    --accent:#4cc9f0; --accent2:#7ad8f5;
+    --gold:#f5c542; --green:#6fcf97; --red:#eb5757; --blue:#56ccf2; --purple:#9b7df0; --pink:#ff6bd6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    background:linear-gradient(135deg,var(--bg),var(--bg2));
+    color:var(--ink);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;color:var(--ink);}
+
+  header{display:flex;align-items:center;gap:14px;padding:12px 20px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line);backdrop-filter:blur(10px);}
+  header .logo{font-size:26px;}
+  header h1{font-size:17px;font-weight:800;letter-spacing:.5px;}
+  header .sub{font-size:11px;color:var(--sub);margin-top:2px;}
+  header .spacer{flex:1;}
+  .top-btn{padding:9px 16px;border-radius:12px;font-size:13px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:.18s;white-space:nowrap;}
+  .top-btn:hover{background:rgba(255,255,255,.12);}
+  .top-btn.primary{background:linear-gradient(135deg,var(--gold),#e8a33d);border-color:transparent;color:#3a2c05;box-shadow:0 6px 18px rgba(245,197,66,.35);}
+  .top-btn.primary:hover{filter:brightness(1.08);}
+
+  main{flex:1;display:flex;min-height:0;margin:12px 14px 14px;gap:12px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);overflow:hidden;display:flex;flex-direction:column;}
+
+  .tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.15);}
+  .tab-btn{padding:10px 16px;border-radius:11px;font-size:13px;font-weight:800;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:.15s;white-space:nowrap;}
+  .tab-btn:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .tab-btn.on{background:linear-gradient(135deg,var(--accent),var(--blue));border-color:transparent;color:#0a2430;box-shadow:0 4px 14px rgba(76,201,240,.3);}
+
+  .list-panel{width:250px;flex-shrink:0;}
+  .list-head{padding:12px;border-bottom:1px solid var(--line);}
+  .list-head h2{font-size:14px;font-weight:800;margin-bottom:8px;}
+  .list-head .hint{font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:10px;}
+  .list{flex:1;overflow-y:auto;padding:8px;}
+  .list-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;cursor:pointer;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px;transition:.15s;}
+  .list-row:hover{background:rgba(255,255,255,.07);color:var(--ink);}
+  .list-row.sel{background:rgba(76,201,240,.16);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(76,201,240,.4);}
+  .list-row .k{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:14px;flex-shrink:0;}
+  .list-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);}
+  .pill{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;transition:.15s;}
+  .pill:hover{background:rgba(255,255,255,.12);}
+  .pill.gold{background:linear-gradient(135deg,var(--gold),var(--accent2));border-color:transparent;color:#3a2c05;}
+  .pill.danger{background:rgba(235,87,87,.16);border-color:rgba(235,87,87,.4);color:#ffb4b4;}
+
+  .preview-box{flex:1;overflow:auto;padding:16px;}
+  .preview-title{font-size:13px;font-weight:900;color:var(--accent);letter-spacing:.5px;margin-bottom:12px;}
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px;}
+  .stat-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;}
+  .stat-card .sc-label{font-size:10px;color:var(--sub);font-weight:800;letter-spacing:.5px;margin-bottom:6px;}
+  .stat-card .sc-val{font-size:20px;font-weight:900;}
+  .stat-card .sc-sub{font-size:10px;color:var(--sub);margin-top:4px;}
+
+  .props-panel{width:320px;flex-shrink:0;overflow-y:auto;padding:14px;}
+  .props-panel h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .props-empty{color:var(--sub);font-size:12px;line-height:1.7;}
+  .sec-title{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:1px;margin:14px 0 8px;}
+  .field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .field-row label{font-size:12px;color:var(--sub);flex-shrink:0;min-width:52px;}
+  .field-row input[type=text],.field-row input[type=number],.field-row textarea,.field-row select{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);outline:none;min-width:0;}
+  .field-row input:focus,.field-row textarea:focus{border-color:var(--accent);}
+  .field-row input[type=range]{flex:1;}
+  .field-row .val{font-size:11px;color:var(--accent2);font-weight:800;min-width:40px;text-align:right;}
+  .btn-mini{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(255,255,255,.08);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .btn-mini:hover{background:rgba(255,255,255,.14);}
+  .btn-mini.danger{color:#ff9e9e;border-color:rgba(229,115,115,.4);}
+  .btn-mini.gold{background:linear-gradient(135deg,var(--gold),#e8a33d);color:#3a2c05;border-color:transparent;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .hint-line{font-size:11px;color:var(--sub);line-height:1.7;background:rgba(76,201,240,.06);border:1px solid rgba(76,201,240,.2);border-radius:10px;padding:9px 12px;margin-top:10px;}
+  .warn{background:rgba(235,87,87,.12);border:1px solid rgba(235,87,87,.3);color:#ffb4b4;border-radius:10px;padding:9px 12px;font-size:11px;line-height:1.6;margin-top:10px;}
+  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;color:var(--ink);font-weight:700;}
+  .toggle-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;}
+
+  .hot-badge{display:inline-block;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,#eb5757,#ff8a5c);color:#fff;}
+  .limit-badge{display:inline-block;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;background:rgba(245,197,66,.2);color:var(--gold);}
+
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏦</div>
+  <div>
+    <h1>银行引擎</h1>
+    <div class="sub">储蓄 / 借贷 / 股市 · 档位 · 利率 · 走向 · 限购</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="top-btn" id="btn-reset" title="恢复出厂默认配置">↺ 恢复默认</button>
+  <button class="top-btn primary" id="btn-export">📦 导出配置</button>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab-btn on" data-tab="saving">🏦 储蓄</button>
+  <button class="tab-btn" data-tab="loan">💳 借贷</button>
+  <button class="tab-btn" data-tab="stock">📈 股市</button>
+</div>
+
+<main>
+  <aside class="panel list-panel">
+    <div class="list-head">
+      <h2 id="list-title">🏦 储蓄档位</h2>
+      <div class="hint" id="list-hint">点选条目在右侧编辑。数据本地自动保存。</div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <section class="panel center-panel">
+    <div class="toolbar">
+      <button class="pill gold" id="btn-hub-back" title="回到引擎中枢（游戏首页）" style="font-weight:900;">⌂ 返回首页</button>
+      <button class="pill gold" id="btn-add">➕ 新增</button>
+    </div>
+    <div class="preview-box" id="preview-box">
+      <div class="preview-title" id="preview-title">📊 档位总览</div>
+      <div id="preview-content"></div>
+    </div>
+  </section>
+
+  <aside class="panel props-panel" id="props-panel">
+    <div class="props-empty" id="props-empty">点选左侧条目进行配置。</div>
+    <div id="props-content" class="hidden"></div>
+  </aside>
+</main>
+
+<script>
+/* ============================================================
+   银行引擎 · 拾光·澈屿
+   数据模型（localStorage: engine_bank_cfg）：
+   {
+     version: 1,
+     savings: [ {id, name, termDays, rate, currency} ],      // rate=年化利率(小数)，termDays=0为活期
+     loans:   [ {id, name, termDays, rate, maxAmount, currency} ], // rate=年化利率(小数)
+     stocks:  [ {id, code, name, sector, country, basePrice, trend:[...], dailyLimit, hot} ]
+   }
+   trend：预设每日涨跌幅序列（百分比，如 +2 表示涨2%），按游戏天数循环使用。
+   dailyLimit：每日限购股数（0=不限购）。hot：是否大热股（前端标红+可能限购）。
+   ============================================================ */
+const LS_KEY = 'engine_bank_cfg';
+const CURR = {
+  coin:{key:'coin',em:'🪙',nm:'金币'},
+  diamond:{key:'diamond',em:'💎',nm:'钻石'},
+  pearl:{key:'pearl',em:'🦪',nm:'珍珠'},
+};
+const CURR_KEYS = ['coin','diamond','pearl'];
+const SECTORS = ['传媒娱乐','科技游戏','综合财团','地产','军工','服务','影视','综合'];
+const COUNTRIES = { Z:'🇨🇳 国内', M:'🇺🇸 美帝斯(M国)', R:'🇯🇵 木菱(R国)' };
+
+/* 默认 19 支股票：纯原文考据（国内15 + 国外4），不编造 */
+function defaultStocks(){
+  return [
+    { id:'S01', code:'FHHB', name:'风皇娱乐', sector:'传媒娱乐', country:'Z', basePrice:48.0,  trend:[2,-1,3,1,5,-2], dailyLimit:0, hot:true,  desc:'司凰总裁 · 主角股' },
+    { id:'S02', code:'FHHY', name:'风华娱乐', sector:'传媒娱乐', country:'Z', basePrice:22.5,  trend:[-3,2,-1,-4,1,2], dailyLimit:0, hot:false, desc:'司智韩 · 剧情波动大' },
+    { id:'S03', code:'DYCM', name:'东娱传媒', sector:'传媒娱乐', country:'Z', basePrice:30.0,  trend:[1,-2,2,-1,3,-1], dailyLimit:0, hot:false, desc:'田成乒 · 竞对' },
+    { id:'S04', code:'SJTX', name:'世纪天雄娱乐联盟集团', sector:'传媒娱乐', country:'Z', basePrice:85.0,  trend:[1,2,3,-1,2,1], dailyLimit:0, hot:true, desc:'夏栖桐/野火组持股 · 权重股' },
+    { id:'S05', code:'JNWH', name:'金鸟文化集团', sector:'传媒娱乐', country:'Z', basePrice:18.0,  trend:[-1,1,-2,2,1,-1], dailyLimit:0, hot:false, desc:'太叔伍所属' },
+    { id:'S06', code:'JXYL', name:'金星娱乐', sector:'传媒娱乐', country:'Z', basePrice:9.5,   trend:[2,-1,3,-1,-2,1], dailyLimit:0, hot:false, desc:'安逸元所属 · 小盘' },
+    { id:'S07', code:'FWYX', name:'蜂窝游戏公司', sector:'科技游戏', country:'Z', basePrice:66.0,  trend:[3,-2,4,2,-3,5], dailyLimit:0, hot:true, desc:'季家 · 继承权事件' },
+    { id:'S08', code:'ZSYS', name:'真实娱声', sector:'传媒娱乐', country:'Z', basePrice:12.0,  trend:[-2,-1,1,-3,2,-1], dailyLimit:0, hot:false, desc:'商公才 · 黑料源' },
+    { id:'S09', code:'TTYL', name:'天天娱乐', sector:'传媒娱乐', country:'Z', basePrice:15.0,  trend:[1,2,1,-1,2,1], dailyLimit:0, hot:false, desc:'挺司凰' },
+    { id:'S10', code:'BGBG', name:'八卦报告', sector:'传媒娱乐', country:'Z', basePrice:6.8,   trend:[3,-2,-1,2,-2,1], dailyLimit:0, hot:false, desc:'小盘' },
+    { id:'S11', code:'TYJT', name:'腾越集团', sector:'综合财团', country:'Z', basePrice:120.0, trend:[1,2,1,3,2,4], dailyLimit:0, hot:true, desc:'窦文清总裁 · 大盘权重' },
+    { id:'S12', code:'WHJT', name:'万恒集团', sector:'地产', country:'Z', basePrice:55.0,  trend:[2,-1,3,1,-2,4], dailyLimit:0, hot:false, desc:'李继明家 · 地产事件多' },
+    { id:'S13', code:'SUS',  name:'苏氏', sector:'地产', country:'Z', basePrice:40.0,  trend:[4,-2,5,-3,2,-1], dailyLimit:0, hot:true, desc:'苏月半家 · 黄金粪土地皮' },
+    { id:'S14', code:'WAJT', name:'卫安集团', sector:'军工', country:'Z', basePrice:92.0,  trend:[1,3,2,4,3,5], dailyLimit:0, hot:true, desc:'秦梵 · 主角关联' },
+    { id:'S15', code:'ZXJZ', name:'真心家政', sector:'服务', country:'Z', basePrice:3.2,   trend:[5,-3,4,-2,3,-1], dailyLimit:0, hot:false, desc:'彩蛋/仙股' },
+    { id:'S16', code:'MDS',  name:'美帝斯电影公司', sector:'影视', country:'M', basePrice:76.0,  trend:[1,2,-1,3,1,2], dailyLimit:0, hot:true, desc:'M国十大电影公司 · 境外大盘' },
+    { id:'S17', code:'FKS',  name:'福克斯电影公司', sector:'影视', country:'M', basePrice:34.0,  trend:[-1,2,1,-2,3,1], dailyLimit:0, hot:false, desc:'M国影视' },
+    { id:'S18', code:'MLJT', name:'木菱集团', sector:'综合', country:'R', basePrice:68.0,  trend:[2,1,3,2,-1,4], dailyLimit:0, hot:true, desc:'R国老牌 · 木菱麻衣' },
+    { id:'S19', code:'DYJT', name:'道英集团', sector:'综合', country:'R', basePrice:51.0,  trend:[3,-1,2,4,-2,3], dailyLimit:0, hot:true, desc:'野火组产业 · 千叶白' },
+  ];
+}
+
+function defaultConfig(){
+  return {
+    version: 1,
+    savings: [
+      { id:'SV1', name:'活期存款', termDays:0, rate:0.001, currency:'coin', desc:'随时可取，利率极低' },
+      { id:'SV2', name:'定期3天', termDays:3, rate:0.03, currency:'coin', desc:'短周期，小额高周转' },
+      { id:'SV3', name:'定期7天', termDays:7, rate:0.06, currency:'coin', desc:'经典稳健档' },
+      { id:'SV4', name:'定期30天', termDays:30, rate:0.18, currency:'coin', desc:'长线大额，利率可观' },
+      { id:'SV5', name:'钻石定期7天', termDays:7, rate:0.08, currency:'diamond', desc:'钻石专属理财' },
+      { id:'SV6', name:'珍珠定期30天', termDays:30, rate:0.20, currency:'pearl', desc:'珍珠专属，贵宾级' },
+    ],
+    loans: [
+      { id:'LN1', name:'应急小额贷', termDays:7, rate:0.10, maxAmount:5000, currency:'coin', desc:'门槛低，利率高' },
+      { id:'LN2', name:'经营周转贷', termDays:30, rate:0.08, maxAmount:50000, currency:'coin', desc:'额度大，利率中' },
+      { id:'LN3', name:'钻石抵押贷', termDays:30, rate:0.06, maxAmount:200, currency:'diamond', desc:'钻石抵押，利率低' },
+      { id:'LN4', name:'珍珠信用贷', termDays:30, rate:0.05, maxAmount:100, currency:'pearl', desc:'珍珠信用，VIP专属' },
+    ],
+    stocks: defaultStocks(),
+  };
+}
+
+let cfg;
+function loadCfg(){
+  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); if(cfg.version!==1) cfg = defaultConfig(); return; } }catch(e){}
+  cfg = defaultConfig();
+  saveCfg();  // 首次打开时把默认配置写回 localStorage，确保游戏端能读到引擎配置
+}
+function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const clamp = (a,b,v) => Math.max(a, Math.min(b, v));
+
+let activeTab = 'saving';
+let selectedId = null;
+
+const TAB_META = {
+  saving: { title:'🏦 储蓄档位', hint:'每个档位的期限 + 年化利率 + 币种。termDays=0 为活期。', add:'新增储蓄档',
+    listOf:()=>cfg.savings.map(s=>({id:s.id, k:CURR[s.currency]?.em||'💰', nm:s.name})),
+    get:()=>cfg.savings.find(s=>s.id===selectedId) },
+  loan: { title:'💳 借贷档位', hint:'每个档位的期限 + 年化利率 + 额度上限 + 币种。', add:'新增借贷档',
+    listOf:()=>cfg.loans.map(l=>({id:l.id, k:CURR[l.currency]?.em||'💳', nm:l.name})),
+    get:()=>cfg.loans.find(l=>l.id===selectedId) },
+  stock: { title:'📈 股市股票', hint:'19 支原文公司。可编辑价格、走向、限购。', add:'',
+    listOf:()=>cfg.stocks.map(s=>({id:s.id, k:s.hot?'🔥':'📊', nm:s.name})),
+    get:()=>cfg.stocks.find(s=>s.id===selectedId) },
+};
+
+function uid(p){ return p + Math.random().toString(36).slice(2,7); }
+
+/* ================= 渲染 ================= */
+function render(){
+  renderTabs();
+  renderList();
+  renderPreview();
+  renderProps();
+}
+
+function renderTabs(){
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('on', b.dataset.tab===activeTab);
+  });
+}
+
+function renderList(){
+  const meta = TAB_META[activeTab];
+  $('list-title').textContent = meta.title;
+  $('list-hint').textContent = meta.hint;
+  $('btn-add').style.display = meta.add ? '' : 'none';
+  $('btn-add').textContent = meta.add ? '➕ '+meta.add : '';
+  const l = $('list');
+  l.innerHTML = '';
+  meta.listOf().forEach(item=>{
+    const d = document.createElement('div');
+    d.className = 'list-row' + (item.id===selectedId ? ' sel':'');
+    d.innerHTML = `<div class="k">${item.k}</div><div class="nm">${item.nm}</div>`;
+    d.onclick = ()=>{ selectedId = item.id; render(); };
+    l.appendChild(d);
+  });
+}
+
+function renderPreview(){
+  $('preview-title').textContent = TAB_META[activeTab].title + ' · 总览';
+  const box = $('preview-content');
+  box.innerHTML = '';
+  if(activeTab==='saving'){
+    box.innerHTML = `<div class="stat-cards">` + cfg.savings.map(s=>{
+      const r = (s.rate*100).toFixed(s.rate<0.01?2:1);
+      return `<div class="stat-card">
+        <div class="sc-label">${CURR[s.currency]?.em} ${s.name}</div>
+        <div class="sc-val">${s.termDays===0?'活期':s.termDays+'天'} · ${r}%</div>
+        <div class="sc-sub">年化利率</div>
+      </div>`;
+    }).join('') + `</div>`;
+  } else if(activeTab==='loan'){
+    box.innerHTML = `<div class="stat-cards">` + cfg.loans.map(l=>{
+      const r = (l.rate*100).toFixed(1);
+      return `<div class="stat-card">
+        <div class="sc-label">${CURR[l.currency]?.em} ${l.name}</div>
+        <div class="sc-val">${l.termDays}天 · ${r}%</div>
+        <div class="sc-sub">额度上限 ${l.maxAmount.toLocaleString()}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  } else {
+    const bySector = {};
+    cfg.stocks.forEach(s=>{ (bySector[s.sector]=bySector[s.sector]||[]).push(s); });
+    let html = '';
+    Object.keys(bySector).forEach(sec=>{
+      html += `<div class="preview-title" style="margin-top:6px;">${sec}</div><div class="stat-cards">`;
+      html += bySector[sec].map(s=>{
+        const hot = s.hot ? '<span class="hot-badge">🔥大热</span>' : '';
+        const lim = s.dailyLimit>0 ? `<span class="limit-badge">限购${s.dailyLimit}/日</span>` : '';
+        return `<div class="stat-card">
+          <div class="sc-label">${s.code} · ${COUNTRIES[s.country]||s.country}</div>
+          <div class="sc-val" style="font-size:15px;">${s.name} ${hot}${lim}</div>
+          <div class="sc-sub">现价 ¥${s.basePrice.toFixed(1)} · 波动 ${s.trend.length}天序列</div>
+        </div>`;
+      }).join('');
+      html += `</div>`;
+    });
+    box.innerHTML = html;
+  }
+}
+
+function renderProps(){
+  const meta = TAB_META[activeTab];
+  const item = meta.get();
+  const empty = $('props-empty'), content = $('props-content');
+  if(!item){ empty.classList.remove('hidden'); content.classList.add('hidden'); return; }
+  empty.classList.add('hidden'); content.classList.remove('hidden');
+
+  if(activeTab==='saving') renderSavingProps(item);
+  else if(activeTab==='loan') renderLoanProps(item);
+  else renderStockProps(item);
+}
+
+function currencySelect(cur, onchange){
+  return `<select class="cur-sel" data-key="currency">
+    ${CURR_KEYS.map(k=>`<option value="${k}" ${cur===k?'selected':''}>${CURR[k].em} ${CURR[k].nm}</option>`).join('')}
+  </select>`;
+}
+
+function renderSavingProps(s){
+  $('props-content').innerHTML = `
+    <h3>🏦 储蓄档位</h3>
+    <div class="field-row"><label>名称</label><input type="text" data-key="name" value="${s.name}"></div>
+    <div class="field-row"><label>币种</label>${currencySelect(s.currency)}</div>
+    <div class="field-row"><label>期限</label><input type="number" data-key="termDays" value="${s.termDays}" min="0" step="1"><span class="val">天</span></div>
+    <div class="sec-title">利率设置</div>
+    <div class="field-row"><label>年化利率</label><input type="range" data-key="rate" min="0" max="0.5" step="0.005" value="${s.rate}"><span class="val rate-val">${(s.rate*100).toFixed(1)}%</span></div>
+    <div class="hint-line">年化利率 = 到期收益比例。活期(0天)按日结算极小值。示例：定期30天 18% → 存100到期得118。</div>
+    <div class="field-row"><label>说明</label><input type="text" data-key="desc" value="${s.desc||''}"></div>
+    <div class="btn-row"><button class="btn-mini danger" data-act="del">🗑 删除</button></div>
+  `;
+  bindProps(s);
+}
+
+function renderLoanProps(l){
+  $('props-content').innerHTML = `
+    <h3>💳 借贷档位</h3>
+    <div class="field-row"><label>名称</label><input type="text" data-key="name" value="${l.name}"></div>
+    <div class="field-row"><label>币种</label>${currencySelect(l.currency)}</div>
+    <div class="field-row"><label>期限</label><input type="number" data-key="termDays" value="${l.termDays}" min="1" step="1"><span class="val">天</span></div>
+    <div class="sec-title">利率与额度</div>
+    <div class="field-row"><label>年化利率</label><input type="range" data-key="rate" min="0" max="0.6" step="0.005" value="${l.rate}"><span class="val rate-val">${(l.rate*100).toFixed(1)}%</span></div>
+    <div class="field-row"><label>额度上限</label><input type="number" data-key="maxAmount" value="${l.maxAmount}" min="1" step="100"></div>
+    <div class="hint-line">年化利率 = 到期需还利息比例。示例：10% → 借5000到期还5500。</div>
+    <div class="field-row"><label>说明</label><input type="text" data-key="desc" value="${l.desc||''}"></div>
+    <div class="btn-row"><button class="btn-mini danger" data-act="del">🗑 删除</button></div>
+  `;
+  bindProps(l);
+}
+
+function renderStockProps(s){
+  const trendStr = (s.trend||[]).join(',');
+  $('props-content').innerHTML = `
+    <h3>📈 ${s.name}</h3>
+    <div class="field-row"><label>代码</label><input type="text" data-key="code" value="${s.code}"></div>
+    <div class="field-row"><label>名称</label><input type="text" data-key="name" value="${s.name}"></div>
+    <div class="field-row"><label>板块</label><select data-key="sector">${SECTORS.map(x=>`<option ${x===s.sector?'selected':''}>${x}</option>`).join('')}</select></div>
+    <div class="field-row"><label>地区</label><select data-key="country">${Object.keys(COUNTRIES).map(k=>`<option value="${k}" ${k===s.country?'selected':''}>${COUNTRIES[k]}</option>`).join('')}</select></div>
+    <div class="sec-title">价格与走向</div>
+    <div class="field-row"><label>初始价</label><input type="number" data-key="basePrice" value="${s.basePrice}" min="0.1" step="0.1"><span class="val">¥</span></div>
+    <div class="field-row"><label>走向序列</label><input type="text" data-key="trend" value="${trendStr}" placeholder="2,-1,3,..."></div>
+    <div class="hint-line">走向序列 = 未来每日涨跌幅(%)，按游戏天数循环。正数涨、负数跌。例：2,-1,3 表示 第1天+2%、第2天-1%、第3天+3% 循环。</div>
+    <div class="sec-title">限购与大热</div>
+    <div class="toggle-row"><input type="checkbox" data-key="hot" ${s.hot?'checked':''}> 🔥 标记为大热股（醒目显示）</div>
+    <div class="field-row"><label>每日限购</label><input type="number" data-key="dailyLimit" value="${s.dailyLimit}" min="0" step="1"><span class="val">股</span></div>
+    <div class="hint-line">每日限购 = 玩家每天最多买入股数。0 = 不限购。大热股建议设限（如 100 股/日）。</div>
+    <div class="field-row"><label>说明</label><input type="text" data-key="desc" value="${s.desc||''}"></div>
+  `;
+  bindProps(s);
+}
+
+function bindProps(item){
+  $('props-content').querySelectorAll('[data-key]').forEach(el=>{
+    const key = el.dataset.key;
+    const type = el.type;
+    if(type==='range'){
+      el.oninput = ()=>{
+        item[key] = parseFloat(el.value);
+        const v = $('props-content').querySelector('.rate-val');
+        if(v) v.textContent = (item[key]*100).toFixed(1)+'%';
+        saveCfg(); renderPreview();
+      };
+    } else if(type==='checkbox'){
+      el.onchange = ()=>{ item[key] = el.checked; saveCfg(); renderPreview(); };
+    } else if(type==='number'){
+      el.onchange = ()=>{ item[key] = parseFloat(el.value)||0; saveCfg(); renderPreview(); };
+    } else {
+      el.onchange = ()=>{
+        if(key==='trend'){ item.trend = el.value.split(/[,，\s]+/).map(x=>parseFloat(x)).filter(x=>!isNaN(x)); }
+        else item[key] = el.value;
+        saveCfg(); renderPreview();
+      };
+    }
+  });
+  $('props-content').querySelectorAll('[data-act="del"]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const arr = activeTab==='saving' ? cfg.savings : (activeTab==='loan' ? cfg.loans : null);
+      if(!arr){ toast('股票不可删除（原文考据清单固定 19 支）'); return; }
+      const idx = arr.findIndex(x=>x.id===item.id);
+      if(idx>=0) arr.splice(idx,1);
+      selectedId = null; saveCfg(); render();
+    };
+  });
+}
+
+function toast(msg){
+  let t = $('toast');
+  if(!t){ t = document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#0a2430;color:#fff;padding:10px 22px;border-radius:999px;font-size:13px;font-weight:800;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.4);'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._t); t._t = setTimeout(()=>t.style.opacity='0', 1800);
+}
+
+/* ================= 事件 ================= */
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.onclick = ()=>{ activeTab = b.dataset.tab; selectedId = null; render(); };
+});
+$('btn-add').onclick = ()=>{
+  if(activeTab==='saving'){
+    const it = { id:uid('SV'), name:'新储蓄档', termDays:7, rate:0.05, currency:'coin', desc:'' };
+    cfg.savings.push(it); selectedId = it.id;
+  } else if(activeTab==='loan'){
+    const it = { id:uid('LN'), name:'新借贷档', termDays:30, rate:0.08, maxAmount:10000, currency:'coin', desc:'' };
+    cfg.loans.push(it); selectedId = it.id;
+  }
+  saveCfg(); render();
+};
+$('btn-hub-back').onclick = ()=>{ location.href = 'index.html'; };
+$('btn-reset').onclick = ()=>{
+  if(confirm('确定恢复出厂默认配置？会覆盖当前所有储蓄/借贷/股市设置。')){
+    cfg = defaultConfig(); saveCfg(); selectedId = null; render(); toast('已恢复默认配置');
+  }
+};
+$('btn-export').onclick = ()=>{
+  const blob = new Blob([JSON.stringify({ engine_bank_cfg: JSON.stringify(cfg) }, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '银行配置_导出.json';
+  a.click();
+  toast('已导出配置 JSON');
+};
+
+/* 初始化 */
+loadCfg();
+render();
+</script>
+</body>
+</html>
