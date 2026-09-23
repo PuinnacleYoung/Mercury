@@ -141,10 +141,13 @@
   .id-stamp .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--mint);cursor:nwse-resize;z-index:30;}
   /* 「🎨 登录页面编辑器」里把卡片当底稿画出来：半透明、不抢鼠标事件 */
   .card-ref{opacity:.5;pointer-events:none!important;filter:saturate(.7);}
-  /* 戳图：平时**看不见**且放大 1.5 倍待命，点一下才「盖」下来缩到 1 倍 */
+  /* 戳图：盖章后图平时**看不见**且放大 1.5 倍待命，核验通过才「盖」下来缩到 1 倍 */
   .stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
     opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
     pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));z-index:24;}
+  /* 盖章前图：平时就显示在盖章区（这块区域本身就是核验按钮） */
+  .stamp-idle{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
+    transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
 
   /* 登录动画层（Tab D，z 10） */
   .login-fx-layer{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(34,216,255,.08);}
@@ -442,7 +445,9 @@ function defaultConfig(){
          keep：盖完保留在卡片上（false = 盖完播消失动画）
          appear.fromScale→toScale：陛下钦定「放大 1.5 倍 → 缩小盖到 1 倍」 */
       x:0.5, y:0.82, w:0.2, h:0.12, hitShape:'circle', locked:false,
-      src:'', keep:true,
+      src:'', src2:'', keep:true,
+      /* src  = 盖章前图：平时就显示在盖章区，这块区域本身就是「核验按钮」
+         src2 = 盖章后图：核验通过后盖下来的章（没配就沿用第一张） */
       appear:{ duration:320, fromScale:1.5, toScale:1.0, rotation:-12 },
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
@@ -468,6 +473,7 @@ function normalizeCfg(){
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
+  if(cfg.stamp && cfg.stamp.src2===undefined) cfg.stamp.src2 = '';   // 双图：盖章后图（老配置补空）
   (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
   (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
   // 旧版本种族是 human/elf/beast，迁移为五行（金木水火土）
@@ -491,6 +497,14 @@ function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }cat
 const $ = id => document.getElementById(id);
 const clamp01 = v => Math.max(0, Math.min(1, v));
 const clamp = (a,b,v) => Math.max(a, Math.min(b, v));
+
+/* '#rrggbb' + 透明度 0~1 → 'rgba(r,g,b,a)'；不是 6 位 hex 就原样返回 */
+function hexA(hex, a){
+  a = (a == null) ? 1 : Math.max(0, Math.min(1, Number(a)));
+  const m = /^#([0-9a-fA-F]{6})$/.test(hex||'') ? hex.match(/^#(..)(..)(..)$/) : null;
+  if(!m) return hex || '';
+  return 'rgba(' + parseInt(m[1],16) + ',' + parseInt(m[2],16) + ',' + parseInt(m[3],16) + ',' + a + ')';
+}
 
 /* ================= 世界坐标（cover，与地图编辑引擎一致） ================= */
 function coverFit(vw, vh, wa){
@@ -658,6 +672,9 @@ function render(){
       inp.type = f.mask ? 'password' : 'text';
       setBox(inp, f);
       inp.style.fontSize = 'clamp(10px, '+ (f.fontSize/100*5) +'vw, '+ (f.fontSize*1.4) +'px)';
+      /* 样式跟配置走：底色 / 透明度 / 边框颜色（没配就保持默认黑底青框） */
+      if(f.bg) inp.style.background = hexA(f.bg, f.bgOpacity);
+      if(f.border) inp.style.borderColor = f.border;
       wb.appendChild(inp);
     });
   } else {
@@ -868,6 +885,9 @@ function buildFieldEl(f){
   lb.textContent = f.label;
   el.appendChild(lb);
   setBox(el, f);
+  /* 编辑态也吃样式配置，所见即所得 */
+  if(f.bg) el.style.background = hexA(f.bg, f.bgOpacity);
+  if(f.border) el.style.borderColor = f.border;
   bindDrag(el, ()=>f, f.id);
   if(f.locked) lockBadge(el);
   return el;
@@ -889,6 +909,12 @@ function playStamp(host, st){
   const img = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
   if(!img) return false;
   st = st || cfg.stamp || {};
+  /* 双图方案（陛下钦定）：盖下去之前换成「盖章后图」，没配就沿用第一张；
+     盖章前图同时让位（淡出），落定后台上就是盖章后图 */
+  const after = st.src2 || st.src || '';
+  if(after) img.src = srcUrl(after);
+  const idle = (host && host.querySelector) ? host.querySelector('.stamp-idle') : null;
+  if(idle) idle.style.opacity = '0';
   const k = stampAnim(st);
   const base = 'translate(-50%,-50%) ';
   img.style.display = '';
@@ -920,6 +946,7 @@ function dismissStamp(host, st){
   const img = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
   if(!img) return;
   st = st || cfg.stamp || {};
+  const idle = (host && host.querySelector) ? host.querySelector('.stamp-idle') : null;
   const d = st.dismiss || {};
   const k = stampAnim(st);
   const base = 'translate(-50%,-50%) ';
@@ -927,7 +954,7 @@ function dismissStamp(host, st){
     { transform: img.style.transform || (base + 'scale(' + k.to + ')'), opacity: 1 },
     { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
   ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
-  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)'; };
+  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + k.from + ') rotate(' + k.rot + 'deg)'; if(idle) idle.style.opacity = ''; };
   if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
   else setTimeout(done, (d.duration || 350));
 }
@@ -935,23 +962,27 @@ function buildStampEl(){
   const el = document.createElement('div');
   el.className = 'id-stamp' + (selectedId==='stamp' ? ' sel' : '') + (cfg.stamp.locked ? ' locked' : '');
   el.dataset.kind = 'stamp';
-  el.innerHTML = '<span style="font-size:22px;">🔍</span>';
-  /* 戳图 PNG：编辑时半透明显示（方便摆位置），预览/总预览里藏起来等盖章 */
-  const ms = cfg.stamp.src ? srcUrl(cfg.stamp.src) : '';
-  if(ms){
-    const mark = document.createElement('img');
-    mark.className = 'stamp-mark';
-    mark.src = ms;
-    mark.alt = '';
-    el.appendChild(mark);
-    if(!previewMode && activeTab !== 'overview'){
-      mark.style.opacity = '.35';
-      mark.style.transform = 'translate(-50%,-50%) scale(1)';
-    }
+  /* 盖章前图：平时就显示在盖章区（这块区域本身就是核验按钮）。
+     编辑态半透明方便摆位；预览/总预览全亮度，就是玩家看到的样子。 */
+  const idleSrc = cfg.stamp.src ? srcUrl(cfg.stamp.src) : '';
+  if(!idleSrc && (previewMode || activeTab==='overview')) el.innerHTML = '<span style="font-size:22px;">🔍</span>';
+  if(idleSrc){
+    const idle = document.createElement('img');
+    idle.className = 'stamp-idle';
+    idle.src = idleSrc;
+    idle.alt = '';
+    el.appendChild(idle);
+    if(!previewMode && activeTab !== 'overview') idle.style.opacity = '.35';
   }
+  /* 盖章后图：平时藏着，核验通过后 playStamp 换上它盖下来 */
+  const mark = document.createElement('img');
+  mark.className = 'stamp-mark';
+  mark.alt = '';
+  el.appendChild(mark);
+  const has2 = !!cfg.stamp.src2;
   const lb = document.createElement('div');
   lb.className = 's-label';
-  lb.textContent = cfg.stamp.src ? '盖章区（有戳图）' : '盖章区（未上传戳图）';
+  lb.textContent = '盖章区' + (cfg.stamp.src ? (has2 ? '（双图）' : '（有戳图）') : '（未上传戳图）');
   el.appendChild(lb);
   setBox(el, cfg.stamp);
   bindDrag(el, ()=>cfg.stamp, 'stamp');
@@ -959,9 +990,8 @@ function buildStampEl(){
   el.addEventListener('click', e=>{
     if(e.target.classList.contains('ed-resize')) return;
     if(previewMode || activeTab==='overview'){
-      playStamp(el);                                  // 先盖下去：点一下总要有反应
       const ok = doVerify();
-      if(ok === false) setTimeout(()=> dismissStamp(el), 800);   // 核验没过 → 章收回去
+      if(ok !== false){ playStamp(el); }              // 核验通过 → 换盖章后图盖下来
     }
   });
   return el;
@@ -1311,16 +1341,23 @@ function renderAvatarProps(c){
 function renderStampProps(c){
   const st  = cfg.stamp;
   const ap  = st.appear || {};
-  const has = !!st.src;
+  const has  = !!st.src;
+  const has2 = !!st.src2;
   c.innerHTML = `
-    <h3>🔍 盖章触发区</h3>
+    <h3>🔍 盖章区（核验按钮）</h3>
     <div class="sec-title">说明</div>
-    <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域核验 → 戳图<b>从看不见</b>，先以 <b>${ap.fromScale==null?1.5:ap.fromScale} 倍</b>放大浮出，再「啪」地缩小盖到 <b>${ap.toScale==null?1:ap.toScale} 倍</b>落定（带一点倾斜和回弹）。</div>
+    <div class="props-empty" style="font-size:11px;">这块区域<b>本身就是核验按钮</b>：玩家填完姓名 + 防伪码后点它核验。平时显示<b>盖章前图</b>；核验通过换成<b>盖章后图</b>，先以 <b>${ap.fromScale==null?1.5:ap.fromScale} 倍</b>放大浮出，再「啪」地缩小盖到 <b>${ap.toScale==null?1:ap.toScale} 倍</b>落定（带倾斜 + 回弹）。</div>
     <div class="prop-blk">
-      <div class="sec-title">🖼 戳图 PNG</div>
+      <div class="sec-title">🖼 盖章前图（平时显示 · 也是核验热区）</div>
       <div class="file-drop" id="stamp-drop">${has ? '点击换一张' : '点击上传 PNG（透明底最好）'}</div>
-      <div class="props-empty" id="stamp-src" style="font-size:11px;margin-top:6px;">${has ? '✅ 已上传戳图' : '还没上传 —— 不上传就只有核验，没有盖章效果'}</div>
-      ${has ? '<button class="btn" id="stamp-clear" style="margin-top:6px;font-size:12px;">🗑 清除戳图</button>' : ''}
+      <div class="props-empty" id="stamp-src" style="font-size:11px;margin-top:6px;">${has ? '✅ 已上传盖章前图' : '还没上传 —— 不传的话盖章区就是隐形的，玩家没东西可点'}</div>
+      ${has ? '<button class="btn" id="stamp-clear" style="margin-top:6px;font-size:12px;">🗑 清除盖章前图</button>' : ''}
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">🖼 盖章后图（核验通过后盖下来的章）</div>
+      <div class="file-drop" id="stamp-drop2">${has2 ? '点击换一张' : '点击上传 PNG（不传就沿用盖章前图）'}</div>
+      <div class="props-empty" id="stamp-src2" style="font-size:11px;margin-top:6px;">${has2 ? '✅ 已上传盖章后图' : '没配 —— 核验通过后会把第一张图再盖一次'}</div>
+      ${has2 ? '<button class="btn" id="stamp-clear2" style="margin-top:6px;font-size:12px;">🗑 清除盖章后图</button>' : ''}
     </div>
     <div class="prop-blk">
       <div class="sec-title">盖章动画</div>
@@ -1357,15 +1394,20 @@ function renderStampProps(c){
   bd('s-dismiss',e=>{ st.dismiss=st.dismiss||{}; st.dismiss.duration=+e.target.value||350; saveCfg(); });
   bd('s-keep',   e=>{ st.keep=!!e.target.checked; saveCfg(); });
   bd('s-lock',   e=>{ st.locked=!!e.target.checked; saveCfg(); render(); });
-  const drop=$('stamp-drop');
-  if(drop) drop.onclick=()=>{
-    const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg,image/svg+xml';
-    i.onchange=()=>{ const f=i.files[0]; if(!f) return;
-      readAsset(f, u=>{ if(u){ st.src=u; saveCfg(); render(); toastVerify('✅ 戳图已上传，点「🔍 试盖一次」看效果'); } });
+  const pickImg = (dropId, key, msg)=>{
+    const dp=$(dropId); if(!dp) return;
+    dp.onclick=()=>{
+      const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg,image/svg+xml';
+      i.onchange=()=>{ const f=i.files[0]; if(!f) return;
+        readAsset(f, u=>{ if(u){ st[key]=u; saveCfg(); render(); toastVerify(msg); } });
+      };
+      i.click();
     };
-    i.click();
   };
+  pickImg('stamp-drop',  'src',  '✅ 盖章前图已上传，平时就显示在盖章区');
+  pickImg('stamp-drop2', 'src2', '✅ 盖章后图已上传，核验通过就盖这一张');
   const clr=$('stamp-clear'); if(clr) clr.onclick=()=>{ st.src=''; saveCfg(); render(); };
+  const clr2=$('stamp-clear2'); if(clr2) clr2.onclick=()=>{ st.src2=''; saveCfg(); render(); };
   const tst=$('s-test');
   if(tst) tst.onclick=()=>{
     switchTab('overview');                       // 切到总预览，按真实运行效果盖一次
@@ -1387,6 +1429,13 @@ function renderFieldProps(c){
       <div class="field-row"><label>最大长度</label><input type="number" id="f-maxlen" value="${f.maxLength}"></div>
     </div>
     <div class="prop-blk">
+      <div class="sec-title">样式（底色 / 透明度 / 边框颜色）</div>
+      <div class="field-row"><label>底色</label><input type="color" id="f-bg" value="${f.bg||'#1b2a3a'}" style="width:46px;height:28px;padding:0;border:none;background:none;cursor:pointer;"><span class="val">${f.bg||'默认'}</span></div>
+      <div class="field-row"><label>底色透明度</label><input type="range" id="f-bgop" min="0" max="1" step="0.05" value="${f.bgOpacity==null?1:f.bgOpacity}"><span class="val" id="f-bgop-v">${Math.round((f.bgOpacity==null?1:f.bgOpacity)*100)}%</span></div>
+      <div class="field-row"><label>边框颜色</label><input type="color" id="f-border" value="${f.border||'#22b8cf'}" style="width:46px;height:28px;padding:0;border:none;background:none;cursor:pointer;"><span class="val">${f.border||'默认'}</span></div>
+      <div class="btn-row"><button class="btn-mini" id="f-style-reset">↺ 恢复默认样式</button></div>
+    </div>
+    <div class="prop-blk">
       <div class="sec-title">位置 / 大小（相对卡片，必须可调）</div>
       <div class="field-row"><label>X</label><input type="number" id="f-x" step="0.01" value="${f.x.toFixed(3)}"></div>
       <div class="field-row"><label>Y</label><input type="number" id="f-y" step="0.01" value="${f.y.toFixed(3)}"></div>
@@ -1402,6 +1451,11 @@ function renderFieldProps(c){
   $('f-font').oninput = e=>{ f.fontSize = +e.target.value; $('f-font-v').textContent = f.fontSize+'px'; saveCfg(); render(); };
   $('f-mask').onchange = e=>{ f.mask = e.target.checked; saveCfg(); render(); };
   $('f-maxlen').onchange = e=>{ f.maxLength = +e.target.value||16; saveCfg(); };
+  /* 样式：底色 / 底色透明度 / 边框颜色 —— 游戏端登录页吃同一套配置 */
+  $('f-bg').oninput = e=>{ f.bg = e.target.value; saveCfg(); render(); };
+  $('f-bgop').oninput = e=>{ f.bgOpacity = parseFloat(e.target.value); $('f-bgop-v').textContent = Math.round(f.bgOpacity*100)+'%'; saveCfg(); render(); };
+  $('f-border').oninput = e=>{ f.border = e.target.value; saveCfg(); render(); };
+  $('f-style-reset').onclick = ()=>{ delete f.bg; delete f.bgOpacity; delete f.border; saveCfg(); render(); };
   ['f-x','f-y','f-w','f-h'].forEach(id=>{
     $(id).oninput = e=>{ const k = id.slice(2); f[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
   });

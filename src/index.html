@@ -824,19 +824,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-field:focus{border-color:#37c8b0;box-shadow:0 0 14px rgba(55,200,176,.55);}
 .auth-field::placeholder{color:rgba(255,255,255,.45);}
 
-/* 核验触发框（z=35，最顶层） */
-.auth-verify{position:absolute;z-index:35;border:2px dashed rgba(55,200,176,.8);background:rgba(55,200,176,.16);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:.15s;color:#bff5ea;pointer-events:auto;}
-.auth-verify:hover{background:rgba(55,200,176,.3);box-shadow:0 0 20px rgba(55,200,176,.4);}
-.auth-verify:active{transform:scale(.97);}
-.auth-verify-icon{font-size:18px;}
-.auth-verify-txt{font-size:12px;font-weight:900;letter-spacing:1px;}
-/* 盖章戳：戳图平时**看不见**，核验通过时从 1.5 倍「盖」下来缩到 1 倍 */
-.auth-stamp{position:absolute;pointer-events:none;z-index:26;}
-.stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
-  opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
-  pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
-/* 盖章戳：平时**看不见**且放大 1.5 倍待命，核验通过时才「盖」下来缩到 1 倍 */
-.auth-stamp{position:absolute;z-index:26;pointer-events:none;}
+/* 盖章区：平时显示「盖章前图」，点击它＝核验身份；核验通过换成「盖章后图」从 1.5 倍盖到 1 倍 */
+.auth-stamp{position:absolute;z-index:26;cursor:pointer;}
+.auth-stamp .stamp-idle{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
 .stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
   opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
   pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
@@ -1227,10 +1217,6 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
       </div>
       <input class="auth-field" id="auth-field-name" placeholder="姓名" autocomplete="off">
       <input class="auth-field" id="auth-field-code" placeholder="特殊防伪码" autocomplete="off">
-      <div class="auth-verify" id="auth-verify" title="点击核验身份">
-        <span class="auth-verify-icon">🔍</span>
-        <span class="auth-verify-txt">核验身份</span>
-      </div>
       <div class="auth-toast" id="auth-toast"></div>
       <div class="auth-title" id="auth-title">拾光·澈屿</div>
     </div>
@@ -2913,11 +2899,8 @@ function afterLandscapeGo(){
     else { enterLobby(); checkCharacterSource(); }
   } else {
     showScreen('auth-screen');
-    /* hub=1 但没有管理员登录态：动画播完、落到登录页后，把管理员登录框弹出来
-      （以前是开局就弹、代价是把开场动画整个跳过 —— 现在挪到动画后面） */
-    if(/[?&]hub/.test(location.search) && sessionStorage.getItem('adminLogin')!=='true' && typeof openAdminLogin === 'function'){
-      try{ openAdminLogin(); }catch(e){}
-    }
+    /* 陛下钦定：刷新**不再自动弹**管理员登录框 —— 想进引擎中枢，
+       自己点登录页右下角的「⚙ 管理员登录」 */
   }
 }
 
@@ -2937,10 +2920,14 @@ function resolveVideoSrc(v){
   return v.slice(4);
 }
 function playIntroOnce(onDone){
-  /* 陛下钦定：刷新就要能看到开场动画 → 不再做「一个会话只播一次」的门控。
-     （以前每次刷新都被 sessionStorage 拦住，看起来就像动画凭空消失了。）
-     不想看的人可以 ?intro=0 跳过。 */
   if(/[?&]intro=0/.test(location.search)){ onDone(); return; }
+  /* 陛下钦定：**已登录**的玩家刷新 = 直接进世界，不播开场动画；
+     只有**未登录**（要走登录/注册）才播。想强制重看 → ?intro=1 */
+  if(!/[?&]intro=1/.test(location.search)){
+    let logged = false;
+    try{ const u = localStorage.getItem(LS_CURRENT); logged = !!(u && getAccounts()[u]); }catch(e){}
+    if(logged){ onDone(); return; }
+  }
   playIntro(onDone);
 }
 function playIntro(onDone){
@@ -2992,7 +2979,7 @@ function startIntroVideo(src, o, onDone, opt){
   if(toLogin){
     try{ showScreen('auth-screen'); }catch(e){}
     stageEl = document.getElementById('auth-stage') || document.body;
-    cardEls = ['auth-card','auth-field-name','auth-field-code','auth-verify']
+    cardEls = ['auth-card','auth-field-name','auth-field-code']
       .map(id=> document.getElementById(id)).filter(Boolean);
     cardEls.forEach(el=>{ el.style.opacity='0'; el.style.pointerEvents='none'; });
   }
@@ -3132,6 +3119,7 @@ function startIntroVideo(src, o, onDone, opt){
       const pr = v.play && v.play();
       if(pr && pr.catch) pr.catch(()=>{
         try{ v.muted = true; const q = v.play && v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+        showSoundTap();
       });
     };
     window.addEventListener('resize', onRotate);
@@ -3141,9 +3129,29 @@ function startIntroVideo(src, o, onDone, opt){
 
   const pr = v.play && v.play();
   if(pr && pr.catch) pr.catch(()=>{
-    /* 手机拦了「带声音的自动播放」→ 退成静音也要把画面放出来，绝不能白屏 */
+    /* 浏览器拦了「带声音的自动播放」→ 先退成静音把画面放出来（绝不能白屏），
+       再浮一个「🔊 轻触开启声音」按钮：玩家点一下（算用户手势）就恢复声音 */
     try{ v.muted = true; const q = v.play && v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+    showSoundTap();
   });
+}
+
+/* 自动播放被拦时的兜底：浮一个可点的「轻触开启声音」，点了恢复音量继续播 */
+function showSoundTap(){
+  const layerEl = document.querySelector('.intro-film');
+  if(!layerEl || layerEl.querySelector('.intro-sound-tap')) return;
+  const v = layerEl.querySelector('video'); if(!v) return;
+  const tap = document.createElement('div');
+  tap.className = 'intro-sound-tap';
+  tap.textContent = '🔊 轻触开启声音';
+  tap.style.cssText = 'position:absolute;right:4%;bottom:10%;padding:10px 20px;border-radius:999px;'
+    + 'background:rgba(0,0,0,.55);color:#fff;font-size:14px;font-weight:900;cursor:pointer;'
+    + 'pointer-events:auto;z-index:10;letter-spacing:1px;';
+  tap.onclick = ()=>{
+    try{ v.muted = false; const q = v.play && v.play(); if(q && q.catch) q.catch(()=>{}); }catch(e){}
+    tap.remove();
+  };
+  layerEl.appendChild(tap);
 }
 
 /* ================= 登录/注册（引擎驱动：视频背景 + 生物芯片身份证 + 核验） ================= */
@@ -3161,8 +3169,11 @@ function authDefaultCfg(){
       { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.325, w:0.24, h:0.075, fontSize:18 },
       { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.515, w:0.24, h:0.075, fontSize:16 },
     ],
-    verify: { x:0.5, y:0.72, w:0.24, h:0.13 },
-    title: { show:true, x:0.5, y:0.14, text:'拾光·澈屿' },
+    /* 盖章区＝核验按钮：平时显示「盖章前图」，点它核验；通过后换「盖章后图」盖章 */
+    stamp: { x:0.5, y:0.82, w:0.2, h:0.12, src:'', src2:'', keep:true,
+             appear:{ duration:320, fromScale:1.5, toScale:1.0, rotation:-12 } },
+    /* 标题默认不显示（陛下自己在引擎里加图层当 logo），配置里 title.show===true 才画 */
+    title: { show:false, x:0.5, y:0.14, text:'拾光·澈屿' },
   };
 }
 let authCfg = null;
@@ -3207,79 +3218,17 @@ function authAssetUrl(v, cb){
     } else cb('');
   } else cb(authImgSrc(v));
 }
-function mountAuthStamp(world){
-  const st = authCfg && authCfg.stamp;
-  let el = $('auth-stamp');
-  if(!st || !st.src){ if(el) el.style.display = 'none'; return; }
-  if(!el){
-    el = document.createElement('div');
-    el.id = 'auth-stamp'; el.className = 'auth-stamp';
-    (world || $('auth-world') || $('auth-stage')).appendChild(el);
-  }
-  el.style.display = '';
-  authSetBox(el, st);
-  el.innerHTML = '';
-  const img = document.createElement('img');
-  img.className = 'stamp-mark'; img.alt = '';
-  el.appendChild(img);
-  const setSrc = u=>{ if(u) img.src = u; else el.style.display = 'none'; };
-  if(st.src.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
-    MediaStore.url(st.src.slice(3)).then(setSrc).catch(()=> setSrc(''));
-  } else setSrc(authImgSrc(st.src));
+/* '#rrggbb' + 透明度 0~1 → 'rgba(r,g,b,a)'；颜色非法就原样返回 */
+function authHexA(hex, a){
+  a = (a == null) ? 1 : Math.max(0, Math.min(1, Number(a)));
+  const m = /^#([0-9a-f]{6})$/i.test(hex) ? hex.match(/^#(..)(..)(..)$/) : null;
+  if(!m) return hex || '';
+  return 'rgba(' + parseInt(m[1],16) + ',' + parseInt(m[2],16) + ',' + parseInt(m[3],16) + ',' + a + ')';
 }
-function playAuthStamp(){
-  const host = $('auth-stamp');
-  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
-  if(!img) return false;
-  const st  = (authCfg && authCfg.stamp) || {};
-  const ap  = st.appear || {};
-  const from = (typeof ap.fromScale === 'number') ? ap.fromScale : 1.5;
-  const to   = (typeof ap.toScale   === 'number') ? ap.toScale   : 1.0;
-  const rot  = (typeof ap.rotation  === 'number') ? ap.rotation  : -12;
-  const dur  = Math.max(80, ap.duration || 320);
-  const base = 'translate(-50%,-50%) ';
-  img.style.opacity = '0';
-  img.style.transform = base + 'scale(' + from + ') rotate(' + rot + 'deg)';
-  void img.offsetWidth;
-  const a = img.animate([
-    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: 0 },
-    { transform: base + 'scale(' + from + ') rotate(' + rot + 'deg)', opacity: .9, offset: .18 },
-    { transform: base + 'scale(' + to   + ') rotate(0deg)',           opacity: 1 }
-  ], { duration: dur, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'forwards' });
-  const settle = ()=>{
-    img.style.opacity = '1';
-    img.style.transform = base + 'scale(' + to + ') rotate(0deg)';
-    try{
-      img.animate([
-        { transform: base + 'scale(' + to + ') rotate(0deg)' },
-        { transform: base + 'scale(' + (to * 1.05) + ') rotate(1.2deg)', offset: .4 },
-        { transform: base + 'scale(' + to + ') rotate(0deg)' }
-      ], { duration: 240, easing: 'ease-out' });
-    }catch(e){}
-    if(st.keep === false) setTimeout(dismissAuthStamp, 900);
-  };
-  if(a && a.finished && a.finished.then) a.finished.then(settle).catch(settle);
-  else setTimeout(settle, dur);
-  return true;
-}
-function dismissAuthStamp(){
-  const host = $('auth-stamp');
-  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
-  if(!img) return;
-  const st   = (authCfg && authCfg.stamp) || {};
-  const d    = st.dismiss || {};
-  const from = (st.appear && typeof st.appear.fromScale === 'number') ? st.appear.fromScale : 1.5;
-  const base = 'translate(-50%,-50%) ';
-  const a = img.animate([
-    { transform: img.style.transform || (base + 'scale(1)'), opacity: 1 },
-    { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
-  ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
-  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + from + ')'; };
-  if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
-  else setTimeout(done, (d.duration || 350));
-}
+/* （盖章区唯一实现在下方 mountAuthStamp / playAuthStamp / dismissAuthStamp ——
+   以前有两套同名函数互相覆盖，已合并成一套：双图 + 点击核验） */
 
-/* 渲染登录页舞台（视频背景 + 卡片 + 输入框 + 核验框），按引擎配置布局 */
+/* 渲染登录页舞台（视频背景 + 卡片 + 输入框），按引擎配置布局 */
 function initAuthEngine(){
   authLoadCfg();
   const stage = $('auth-stage');
@@ -3365,6 +3314,9 @@ function initAuthEngine(){
     authSetBox(el, f);
     el.placeholder = f.label || defLabel;
     if(f.fontSize) el.style.fontSize = 'clamp(10px,' + (f.fontSize/100*5) + 'vw,' + (f.fontSize*1.4) + 'px)';
+    /* 样式跟着引擎走：底色 / 底色透明度 / 边框颜色（不配就保持游戏端默认样式） */
+    if(f.bg)    el.style.background   = authHexA(f.bg, f.bgOpacity);
+    if(f.border) el.style.borderColor = f.border;
   };
   applyField(nameEl, nameF, '姓名');
   applyField(codeEl, codeF, '特殊防伪码');
@@ -3395,19 +3347,13 @@ function initAuthEngine(){
     }
   }catch(e){ console.warn('avatar', e); }
 
-  // 4) 核验触发框
-  authSetBox($('auth-verify'), authCfg.verify || {x:0.5,y:0.72,w:0.24,h:0.13});
-
-  /* 4.5) 盖章戳：核验通过时从 1.5 倍盖下来缩到 1 倍（不配置戳图就不显示） */
+  /* 4.5) 盖章区＝核验按钮：平时显示「盖章前图」，点它核验；通过后换「盖章后图」盖章 */
   try{ mountAuthStamp(world); }catch(e){ console.warn('stamp', e); }
 
-  /* 4.5) 盖章戳：平时看不见，核验通过时才从 1.5 倍盖下来缩到 1 倍 */
-  try{ renderAuthStamp(world); }catch(e){ console.warn('stamp', e); }
-
-  // 5) 标题（配置无 title 字段时用默认位置显示）
+  // 5) 标题：陛下钦定不要游戏端自带的 logo —— 只在配置里**明确**写 show:true 才显示
   const tt = $('auth-title');
   const ti = authCfg.title || {};
-  if(ti.show !== false){
+  if(ti.show === true){
     tt.style.display = 'block';
     tt.style.left = ((ti.x!=null?ti.x:0.5)*100)+'%';
     tt.style.top  = ((ti.y!=null?ti.y:0.12)*100)+'%';
@@ -3451,11 +3397,16 @@ function resolveImgSrc(v){
   }
   return v;
 }
-/* 盖章戳：按引擎配置把戳图摆好，平时**看不见**（等核验通过才盖下来） */
-function renderAuthStamp(world){
+/* 盖章区＝核验按钮（陛下钦定的双图方案）：
+   · 平时显示「盖章前图」（stamp.src），这一块本身就是核验按钮 —— 点它＝核验
+   · 核验通过 → 换成「盖章后图」（stamp.src2，没配就沿用第一张）并走盖章动画
+     （从 appear.fromScale 放大浮出 → 缩到 toScale 落定，带倾斜 + 回弹）
+   · 核验没过 → 把盖下来的章收回去，恢复显示盖章前图
+   · 什么图都没配：不显示任何东西（引擎里配了图才有得看） */
+function mountAuthStamp(world){
   const st = authCfg && authCfg.stamp;
   let el = $('auth-stamp');
-  if(!st || !st.src){ if(el) el.style.display = 'none'; return; }
+  if(!st || (!st.src && !st.src2)){ if(el) el.remove(); return; }
   if(!el){
     el = document.createElement('div');
     el.id = 'auth-stamp';
@@ -3463,33 +3414,38 @@ function renderAuthStamp(world){
     (world || $('auth-world') || $('auth-stage')).appendChild(el);
   }
   el.style.display = '';
+  el.style.cursor = 'pointer';
   authSetBox(el, st);
   el.innerHTML = '';
-  const img = document.createElement('img');
-  img.className = 'stamp-mark'; img.alt = '';
-  el.appendChild(img);
-  const raw = st.src;
-  if(raw.slice(0, 3) === 'ms:' && typeof MediaStore !== 'undefined'){
-    /* 只存在作者本机的素材：玩家本机没有 → 取不到就不显示（不能让玩家看到空白框） */
-    MediaStore.url(raw.slice(3)).then(u=>{ if(u) img.src = u; else el.style.display='none'; })
-      .catch(()=>{ el.style.display='none'; });
-  } else {
-    const u = resolveImgSrc(raw);
-    if(u) img.src = u; else el.style.display = 'none';
-  }
+  /* 盖章前图：平时就摆在这儿 */
+  const idle = document.createElement('img');
+  idle.className = 'stamp-idle'; idle.alt = '';
+  el.appendChild(idle);
+  authAssetUrl(st.src, u=>{ if(u) idle.src = u; else idle.remove(); });
+  /* 盖章后图：平时藏着，核验通过才盖下来 */
+  const mark = document.createElement('img');
+  mark.className = 'stamp-mark'; mark.alt = '';
+  el.appendChild(mark);
+  /* 点这块区域＝核验身份（原来的「核验身份」框已按陛下御令删除） */
+  el.onclick = ()=>{ try{ doAuthVerify(); }catch(e){ console.warn(e); } };
 }
-/* 盖下去：戳图从「看不见」→ 1.5 倍放大浮出 → 缩小盖到 1 倍落定（带倾斜 + 回弹） */
 function playAuthStamp(){
   const host = $('auth-stamp');
-  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!host) return false;
+  const img  = host.querySelector('.stamp-mark');
+  const idle = host.querySelector('.stamp-idle');
   if(!img) return false;
   const st  = (authCfg && authCfg.stamp) || {};
+  /* 换上「盖章后图」再盖（没配第二张就沿用第一张） */
+  const after = st.src2 || st.src || '';
+  if(after) authAssetUrl(after, u=>{ if(u) img.src = u; });
   const ap  = st.appear || {};
   const from = (typeof ap.fromScale === 'number') ? ap.fromScale : 1.5;
   const to   = (typeof ap.toScale   === 'number') ? ap.toScale   : 1.0;
   const rot  = (typeof ap.rotation  === 'number') ? ap.rotation  : -12;
   const dur  = Math.max(80, ap.duration || 320);
   const base = 'translate(-50%,-50%) ';
+  if(idle) idle.style.opacity = '0';        // 盖章前图让位给盖章后图
   img.style.opacity = '0';
   img.style.transform = base + 'scale(' + from + ') rotate(' + rot + 'deg)';
   void img.offsetWidth;                      // 强制重排，保证连续核验都能重新播
@@ -3514,10 +3470,12 @@ function playAuthStamp(){
   else setTimeout(settle, dur);
   return true;
 }
-/* 核验没过：把刚盖的章收回去 */
+/* 核验没过：把刚盖的章收回去，恢复显示盖章前图 */
 function dismissAuthStamp(){
   const host = $('auth-stamp');
-  const img  = (host && host.querySelector) ? host.querySelector('.stamp-mark') : null;
+  if(!host) return;
+  const img  = host.querySelector('.stamp-mark');
+  const idle = host.querySelector('.stamp-idle');
   if(!img) return;
   const st = (authCfg && authCfg.stamp) || {};
   const d  = st.dismiss || {};
@@ -3527,7 +3485,10 @@ function dismissAuthStamp(){
     { transform: img.style.transform || (base + 'scale(1)'), opacity: 1 },
     { transform: base + 'scale(' + (d.toScale || 0.2) + ') rotate(' + (d.rotation || 6) + 'deg)', opacity: 0 }
   ], { duration: Math.max(80, d.duration || 350), easing: 'ease-in', fill: 'forwards' });
-  const done = ()=>{ img.style.opacity = '0'; img.style.transform = base + 'scale(' + from + ')'; };
+  const done = ()=>{
+    img.style.opacity = '0'; img.style.transform = base + 'scale(' + from + ')';
+    if(idle) idle.style.opacity = '';      // 盖章前图回到台前
+  };
   if(a && a.finished && a.finished.then) a.finished.then(done).catch(done);
   else setTimeout(done, (d.duration || 350));
 }
@@ -3678,8 +3639,7 @@ $('race-skip').onclick = ()=>{
   else enterLobby();
 };
 
-/* 核验触发：点击核验框 或 点击卡片 均可 */
-$('auth-verify').onclick = doAuthVerify;
+/* 核验触发：点击盖章区（原「核验身份」框已按陛下御令删除） */
 $('auth-card').onclick = doAuthVerify;
 $('auth-field-code').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuthVerify(); });
 $('auth-field-name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('auth-field-code').focus(); });
@@ -3722,11 +3682,12 @@ function doAdminLogin(){
     $('admin-msg').textContent = '账号或密码不对';
   }
 }
-/* 打开管理员登录框：账号密码已预填（1 / 1，本来就写在代码里的），点一下就进 */
+/* 打开管理员登录框：陛下钦定**不再预填**账号密码（以前预填 1/1，等于把钥匙挂门上），
+   想登进去必须自己知道账号密码；刷新也不会再自动弹这个框，要点「⚙ 管理员登录」才出 */
 function openAdminLogin(){
   const m = $('admin-login-mask'); if(!m) return;
-  $('admin-user').value = ADMIN_USER; $('admin-pass').value = ADMIN_PASS; $('admin-msg').textContent = '';
-  m.classList.remove('hidden'); setTimeout(()=>{ try{ $('admin-pass').focus(); }catch(e){} }, 60);
+  $('admin-user').value = ''; $('admin-pass').value = ''; $('admin-msg').textContent = '';
+  m.classList.remove('hidden'); setTimeout(()=>{ try{ $('admin-user').focus(); }catch(e){} }, 60);
 }
 $('btn-admin-corner').onclick = openAdminLogin;
 $('admin-login-cancel').onclick = ()=> $('admin-login-mask').classList.add('hidden');
