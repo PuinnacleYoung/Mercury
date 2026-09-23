@@ -58,8 +58,102 @@
     return items;
   }
 
+  /* ================= 素材跟着配置一起上云 =================
+     陛下在 A 电脑上传的 PNG / 视频，本体躺在浏览器 IndexedDB（MediaStore）里，
+     配置里只留一个 'ms:xxx' 的引用。以前 collect() 只搬 localStorage，
+     图根本没跟着走 —— 别人（或另一台电脑）拉下来就是「布局在、图全空」。
+
+     现在提交时把配置里所有 ms: 引用读出来，转成 dataURL 一起塞进 __media__；
+     拉下来时再写回各人本机的 MediaStore（id 原样保留 → 配置里的 ms:xxx 照样解析）。
+     id 不变是关键：换机器也认得同一张图。 */
+  var MEDIA_KEY      = '__media__';
+  var MEDIA_ONE_MAX  = 12 * 1024 * 1024;   // 单个素材上限（转 base64 之前算）
+  var MEDIA_ALL_MAX  = 24 * 1024 * 1024;   // 一次提交的总上限
+
+  function blobToDataUrl(blob){
+    return new Promise(function(res, rej){
+      try{
+        var fr = new FileReader();
+        fr.onload  = function(){ res(String(fr.result || '')); };
+        fr.onerror = function(){ rej(new Error('读取素材失败')); };
+        fr.readAsDataURL(blob);
+      }catch(e){ rej(e); }
+    });
+  }
+  function dataUrlToBlob(u){
+    var m = /^data:([^;,]*);base64,([\s\S]*)$/.exec(u || '');
+    if(!m) return null;
+    var bin = atob(m[2]);
+    var arr = new Uint8Array(bin.length);
+    for(var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    try{ return new Blob([arr], { type: m[1] || 'application/octet-stream' }); }
+    catch(e){ return null; }
+  }
+  /* 从收集到的配置文本里挑出所有 'ms:xxx' 引用（去重） */
+  function findMediaRefs(items){
+    var seen = {}, out = [];
+    Object.keys(items).forEach(function(k){
+      var s = items[k];
+      if(typeof s !== 'string') return;
+      var re = /ms:([A-Za-z0-9_\-.]+)/g, m;
+      while((m = re.exec(s))){ if(!seen[m[1]]){ seen[m[1]] = 1; out.push(m[1]); } }
+    });
+    return out;
+  }
+  /* 打包：ms: 素材 → dataURL，挂到 items.__media__。resolve {n, bytes, skipped} */
+  function packMedia(items){
+    return new Promise(function(res){
+      if(!window.MediaStore || typeof MediaStore.get !== 'function'){ res({ n:0, bytes:0, skipped:0 }); return; }
+      var ids = findMediaRefs(items);
+      if(!ids.length){ res({ n:0, bytes:0, skipped:0 }); return; }
+      var out = {}, bytes = 0, skipped = 0, i = 0;
+      (function next(){
+        if(i >= ids.length){
+          if(Object.keys(out).length) items[MEDIA_KEY] = JSON.stringify(out);
+          res({ n:Object.keys(out).length, bytes:bytes, skipped:skipped });
+          return;
+        }
+        var id = ids[i++];
+        try{
+          MediaStore.get(id).then(function(b){
+            if(b && b.size && b.size <= MEDIA_ONE_MAX && bytes + b.size <= MEDIA_ALL_MAX){
+              return blobToDataUrl(b).then(function(u){
+                if(u){ out['ms:' + id] = u; bytes += u.length; } else skipped++;
+              }).catch(function(){ skipped++; });
+            }
+            skipped++;
+          }).catch(function(){ skipped++; }).then(next, next);
+        }catch(e){ skipped++; next(); }
+      })();
+    });
+  }
+  /* 落本机：把 __media__ 里的素材写回 IndexedDB。cb(写入个数) */
+  function restoreMedia(items, cb){
+    var raw = items && items[MEDIA_KEY];
+    if(!raw || !window.MediaStore || typeof MediaStore.put !== 'function'){
+      if(cb) cb(0); return Promise.resolve(0);
+    }
+    var map = null;
+    try{ map = JSON.parse(raw); }catch(e){ map = null; }
+    var keys = map ? Object.keys(map) : [];
+    if(!keys.length){ if(cb) cb(0); return Promise.resolve(0); }
+    var q = Promise.resolve(0);
+    keys.forEach(function(k){
+      q = q.then(function(n){
+        var blob = dataUrlToBlob(map[k]);
+        if(!blob) return n;
+        return MediaStore.put(String(k).slice(3), blob).then(function(){ return n + 1; })
+                 .catch(function(){ return n; });
+      });
+    });
+    return q.then(function(n){ if(cb) cb(n); return n; });
+  }
+
   var CloudSync = {
     SLOT_DEF: SLOT_DEF,
+    MEDIA_KEY: MEDIA_KEY,
+    packMedia: packMedia,
+    restoreMedia: restoreMedia,
     slot: null,
     def: null,
     el: null,
@@ -200,9 +294,12 @@
         if(done) return; done = true; un(); CloudSync.setBusy('');
         var s = m.slots && m.slots[CloudSync.slot];
         if(!s || !s.items){ alert('云端这个槽位还没有发布过内容，去让陛下先发布一份'); return; }
-        var keys = Object.keys(s.items);
+        /* __media__ 是随配置一起下发的素材本体（PNG/视频），要写进 IndexedDB 而不是 localStorage */
+        var keys = Object.keys(s.items).filter(function(k){ return k !== MEDIA_KEY; });
+        var nMedia = (s.items[MEDIA_KEY] ? 1 : 0);
         var who = (s.live && s.live.by) || '?';
         if(!confirm('用云端版本覆盖本机？\n\n' + keys.join('\n') +
+            (nMedia ? '\n＋ 随配置一起的素材图（写进本机素材库）' : '') +
             '\n\n作者：' + who + '　时间：' + when(s.live && s.live.ts) +
             '\n大小：' + fmtSize(s.live && s.live.bytes) +
             '\n\n⚠️ 本机同名数据会被替换，确定继续？')) return;
@@ -211,8 +308,11 @@
           try{ localStorage.setItem(k, s.items[k]); }catch(e){ fail++; }
         });
         if(fail){ alert('有 ' + fail + ' 项写入失败（可能是本机存储空间不够）'); return; }
-        alert('✅ 已写入本机 ' + keys.length + ' 项，页面即将刷新加载云端内容');
-        location.reload();
+        restoreMedia(s.items, function(n){
+          alert('✅ 已写入本机 ' + keys.length + ' 项' + (n ? '，外加 ' + n + ' 个素材图' : '') +
+                '\n\n页面即将刷新加载云端内容');
+          location.reload();
+        });
       });
       Net.assetPull(CloudSync.slot);
       setTimeout(function(){ if(!done){ done = true; un(); CloudSync.setBusy(''); alert('拉取超时，服务器可能没开'); } }, 10000);
@@ -236,22 +336,27 @@
       var items = collect(CloudSync.slot);
       var keys = Object.keys(items);
       if(!keys.length){ alert('本机这个槽位还没有数据，先做点东西再提交吧'); return; }
-      var raw = JSON.stringify(items);
-      var size = raw.length;
-      var hasMedia = raw.indexOf('ms:') >= 0;   // 含 IndexedDB 素材引用（视频/大图 —— 只有本机能看）
-      var hasSrv   = raw.indexOf('srv:') >= 0;  // 含服务器素材地址（/media/xxx.mp4 —— 所有人可看）
-      if(!confirm('提交到云端草稿区：\n\n' + keys.join('\n') +
-          '\n\n署名：' + (Net.author() || '（没填）') +
-          '\n大小：' + fmtSize(size) +
-          (hasMedia ? '\n\n⚠️ 里面有视频/大素材：云端只同步「配置」（位置、时长、层级），\n视频本体存在你这台电脑的 IndexedDB 里，别的电脑要自己再传一次\n（想要所有人都看到，点素材下面的「☁️ 传到服务器」）。' : '') +
-          (hasSrv ? '\n\n✅ 视频已传到服务器（/media/…），玩家边下边播，不用等。' : '') +
-          (size > 8 * 1024 * 1024 ? '\n\n⚠️ 超过 8MB，可能很慢，建议先清理无用素材' : '') +
-          '\n\n提交后要等陛下发布才会全服生效。确定吗？')) return;
+      /* 先把本机素材库里的 PNG / 视频打包进来 —— 不打包的话别人拉下来只有布局、没有图 */
+      CloudSync.setBusy('打包素材');
+      packMedia(items).then(function(info){
+        CloudSync.setBusy('');
+        var size = (JSON.stringify(items) || '').length;
+        var hasSrv = (JSON.stringify(items) || '').indexOf('srv:') >= 0;   // 服务器素材地址（/media/… 人人可看）
+        if(!confirm('提交到云端草稿区：\n\n' + keys.join('\n') +
+            (info.n ? '\n＋ 本机素材 ' + info.n + ' 个（' + fmtSize(info.bytes) + '，PNG/视频本体一起传）' : '') +
+            '\n\n署名：' + (Net.author() || '（没填）') +
+            '\n大小：' + fmtSize(size) +
+            (info.n ? '\n\n✅ 素材会和配置一起走：别的电脑「拉取线上」后图也在，不用各自重传。' : '') +
+            (info.skipped ? '\n\n⚠️ 有 ' + info.skipped + ' 个素材太大或读不出来，没打包进去\n（单个上限 12MB、整批上限 24MB；超大视频建议走「☁️ 传到服务器」）' : '') +
+            (hasSrv ? '\n\n✅ 含服务器素材（/media/…），玩家边下边播，不用等。' : '') +
+            (size > 8 * 1024 * 1024 ? '\n\n⚠️ 超过 8MB，可能很慢，建议先清理无用素材' : '') +
+            '\n\n提交后要等陛下发布才会全服生效。确定吗？')) return;
 
-      CloudSync.setBusy('检查版本');
-      CloudSync.refresh(function(ok){
-        if(!ok){ CloudSync.setBusy(''); alert('连不上服务器，稍后再试'); return; }
-        CloudSync.doPush(items);
+        CloudSync.setBusy('检查版本');
+        CloudSync.refresh(function(ok){
+          if(!ok){ CloudSync.setBusy(''); alert('连不上服务器，稍后再试'); return; }
+          CloudSync.doPush(items);
+        });
       });
     },
 

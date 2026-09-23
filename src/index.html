@@ -768,16 +768,18 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 @keyframes authSweep{0%{left:-30%;}60%,100%{left:130%;}}
 
 /* 身份证卡片 */
-/* 开场动画期间卡片「抖动放大」登场：从小弹到大，带回弹和一点歪头，最后稳住 */
+/* 开场动画期间卡片登场：整块卡片由小放大到正常尺寸，顺带**左右摆两下**（阻尼摆动）再稳住。
+   注意：摆动是「左→右→左→右」来回两轮，不是朝一个方向歪过去又拉回来 —— 那样看着很生硬。 */
 @keyframes cardPopIn{
-  0%   { transform:scale(.30) rotate(-7deg); opacity:0; }
-  40%  { transform:scale(1.14) rotate(4deg); opacity:1; }
-  58%  { transform:scale(.92) rotate(-3deg); }
-  72%  { transform:scale(1.07) rotate(2deg); }
-  86%  { transform:scale(.97) rotate(-1deg); }
-  100% { transform:scale(1) rotate(0deg); opacity:1; }
+  0%   { transform:translateX(-16px) scale(.55) rotate(-7deg);   opacity:0; }
+  16%  { transform:translateX(-7px)  scale(.84) rotate(-4.4deg); opacity:1; }
+  34%  { transform:translateX(10px)  scale(1.10) rotate(5deg);   opacity:1; }
+  50%  { transform:translateX(-9px)  scale(.95)  rotate(-4.2deg);opacity:1; }
+  66%  { transform:translateX(6px)   scale(1.05) rotate(3deg);   opacity:1; }
+  82%  { transform:translateX(-3.5px)scale(.985) rotate(-1.6deg);opacity:1; }
+  100% { transform:translateX(0)     scale(1)    rotate(0deg);   opacity:1; }
 }
-.intro-pop{ animation:cardPopIn .85s cubic-bezier(.2,.85,.3,1.15) both; }
+.intro-pop{ animation:cardPopIn 1.15s cubic-bezier(.22,.9,.28,1) both; }
 .auth-card{position:absolute;cursor:pointer;z-index:10;transform-origin:center;border-radius:10px;}
 .auth-card-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;border-radius:10px;filter:drop-shadow(0 8px 26px rgba(0,0,0,.55));}
 .auth-card-pic.placeholder{
@@ -2976,30 +2978,56 @@ function startIntroVideo(src, o, onDone, opt){
   /* 要去登录页：先把登录屏摆好（会触发 initAuthEngine 渲染卡片），开场动画层夹在卡片之下、背景之上。
      已登录直接进大厅的场合：没有卡片，就全屏盖一层（z=9999）。 */
   let stageEl = document.body, cardEls = [];
+  /* 卡片登场关键帧：整块**由小放到正常尺寸**，同时左右摆两下再稳住。
+     摆动是「左→右→左→右」来回两轮的阻尼摆动（不是朝一个方向歪过去硬拉回来，那样很生硬）。 */
+  const CARD_POP_KF = [
+    { transform:'translateX(-16px) scale(.55) rotate(-7deg)',     opacity:0, offset:0   },
+    { transform:'translateX(-7px)  scale(.84) rotate(-4.4deg)',   opacity:1, offset:.16 },
+    { transform:'translateX(10px)  scale(1.10) rotate(5deg)',     opacity:1, offset:.34 },
+    { transform:'translateX(-9px)  scale(.95)  rotate(-4.2deg)',  opacity:1, offset:.50 },
+    { transform:'translateX(6px)   scale(1.05) rotate(3deg)',     opacity:1, offset:.66 },
+    { transform:'translateX(-3.5px) scale(.985) rotate(-1.6deg)', opacity:1, offset:.82 },
+    { transform:'translateX(0) scale(1) rotate(0deg)',            opacity:1, offset:1   },
+  ];
+  /* 卡片的零件可能晚一步才被 initAuthEngine 建出来（盖章区、头像是动态的），所以取两次 */
+  const grabCardParts = ()=> ['auth-card','auth-field-name','auth-field-code','auth-stamp','auth-avatar']
+      .map(id=> document.getElementById(id)).filter(Boolean);
   if(toLogin){
     try{ showScreen('auth-screen'); }catch(e){}
     stageEl = document.getElementById('auth-stage') || document.body;
-    cardEls = ['auth-card','auth-field-name','auth-field-code']
-      .map(id=> document.getElementById(id)).filter(Boolean);
+    cardEls = grabCardParts();
     cardEls.forEach(el=>{ el.style.opacity='0'; el.style.pointerEvents='none'; });
   }
   const showCard = ()=>{
     if(cardShown) return; cardShown = true;
-    /* 整组一起弹：姓名框、防伪码、核验按钮是卡片的兄弟节点，以前各弹各的，
+    /* 整组一起弹：姓名框、防伪码、盖章区是卡片的兄弟节点，以前各弹各的，
        陛下看着像散架。现在所有元素共用「卡片中心」当 transform-origin，
-       缩放/歪头/抖动都围绕同一个点 → 视觉上就是整块卡片一体登场。 */
+       缩放/摆动都围绕同一个点 → 视觉上就是整块卡片一体登场。 */
+    const parts = cardEls.length ? cardEls : grabCardParts();
+    let ax = 0, ay = 0;
     try{
-      const a = document.getElementById('auth-card') || cardEls[0];
-      const ax = a.offsetLeft + a.offsetWidth / 2, ay = a.offsetTop + a.offsetHeight / 2;
-      cardEls.forEach(el=>{
-        el.style.opacity = ''; el.style.pointerEvents = '';
-        el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px';
-        void el.offsetWidth;
-        el.classList.add('intro-pop');
-      });
-    }catch(e){
-      cardEls.forEach(el=>{ el.style.opacity=''; el.style.pointerEvents=''; el.classList.add('intro-pop'); });
-    }
+      const a = document.getElementById('auth-card') || parts[0];
+      ax = a.offsetLeft + a.offsetWidth / 2; ay = a.offsetTop + a.offsetHeight / 2;
+    }catch(e){}
+    parts.forEach(el=>{
+      el.style.opacity = ''; el.style.pointerEvents = '';
+      try{ el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px'; }catch(e){}
+      /* ⚠️ 必须用 Web Animations API，不能只挂 CSS 动画类：
+         动画播完后 onDone 会再走一次 showScreen('auth-screen') → initAuthEngine() 重跑，
+         它一句 card.className='auth-card' 就把 .intro-pop 抹了 → 卡片「啪」地从 .55
+         弹回原始尺寸（陛下看到的就是「弹的时候挺小，播完突然变大」）。
+         animate() 挂在元素本身上，重刷 class 也冲不掉。 */
+      try{
+        if(typeof el.animate === 'function'){
+          const an = el.animate(CARD_POP_KF, { duration:1150, easing:'cubic-bezier(.22,.9,.28,1)', fill:'forwards' });
+          /* 最后一帧本来就等于「没变换」，播完立刻撤掉，免得长期霸占 transform
+             把后面的卡片晃动（authShake）挡住 */
+          const drop = ()=>{ try{ an.cancel(); }catch(e){} };
+          if(an.finished && an.finished.then) an.finished.then(drop).catch(drop);
+          else setTimeout(drop, 1200);
+        } else el.classList.add('intro-pop');
+      }catch(e){ el.classList.add('intro-pop'); }
+    });
   };
 
   const finish = ()=>{
@@ -6587,8 +6615,10 @@ function applyCloudAssets(slots){
     if(applied[slot] === rev) continue;              // 这版已经用过，跳过
     let wrote = 0;
     for(const k of Object.keys(s.items)){
+      if(k === '__media__') continue;                // 素材本体走 IndexedDB，不进 localStorage
       try{ localStorage.setItem(k, s.items[k]); wrote++; }catch(e){}
     }
+    try{ restoreCloudMedia(s.items); }catch(e){}      // 把 PNG/视频写回本机素材库（异步，不阻塞）
     if(wrote){ applied[slot] = rev; n += wrote; updated.push((s.name || slot) + ' v' + rev); }
   }
   if(n){
@@ -6597,6 +6627,30 @@ function applyCloudAssets(slots){
     console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
     try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
   }
+}
+/* 云端带下来的素材本体（PNG / 视频）写回本机 IndexedDB。
+   __media__ 里是 { 'ms:xxx': 'data:image/png;base64,…' }，id 原样保留，
+   所以配置里的 ms:xxx 引用换台机器照样能解析 —— 不会再出现「布局在、图全空」。 */
+function restoreCloudMedia(items){
+  const raw = items && items.__media__;
+  if(!raw || typeof MediaStore === 'undefined' || !MediaStore.put) return;
+  let map = null;
+  try{ map = JSON.parse(raw); }catch(e){ return; }
+  if(!map) return;
+  const put = k=>{
+    const m = /^data:([^;,]*);base64,([\s\S]*)$/.exec(map[k] || '');
+    if(!m) return Promise.resolve(0);
+    try{
+      const bin = atob(m[2]); const arr = new Uint8Array(bin.length);
+      for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return MediaStore.put(String(k).slice(3), new Blob([arr], { type: m[1] || 'application/octet-stream' }))
+        .then(()=> 1).catch(()=> 0);
+    }catch(e){ return Promise.resolve(0); }
+  };
+  Promise.all(Object.keys(map).map(put)).then(r=>{
+    const n = r.reduce((a, b)=> a + b, 0);
+    if(n) console.log('[cloud] 恢复云端素材 ' + n + ' 个');
+  }).catch(()=>{});
 }
 function autoPullCloudAssets(){
   if(!window.Net) return;

@@ -2119,8 +2119,14 @@ function pullCloudCfg(force){
     try{
       localStorage.setItem(LS_KEY, raw);
       const rev = (s.rev && s.rev.live) || 0;
-      toastVerify('✅ 已取回云端配置 v' + rev + '，正在刷新…');
-      setTimeout(()=> location.reload(), 700);
+      const done = ()=> setTimeout(()=> location.reload(), 700);
+      if(window.CloudSync && typeof CloudSync.restoreMedia === 'function'){
+        toastVerify('✅ 配置 v' + rev + ' 已取回，正在恢复素材图…');
+        CloudSync.restoreMedia(s.items, n=>{
+          toastVerify('✅ 云端配置 v' + rev + (n ? ' ＋ ' + n + ' 张素材图' : '') + ' 已就位，正在刷新…');
+          done();
+        });
+      } else { toastVerify('✅ 已取回云端配置 v' + rev + '，正在刷新…'); done(); }
     }catch(e){ toastVerify('❌ 写入本机失败：' + e.message); }
   });
   try{ Net.connect().then(()=> Net.assetPull('login')).catch(()=>{}); }catch(e){}
@@ -2138,8 +2144,11 @@ function autoPullCloudCfg(){
     off(); cloudCfgGot = true;
     try{
       localStorage.setItem(LS_KEY, raw);
-      toastVerify('☁️ 本机是空的，已从云端取回已发布的配置');
-      setTimeout(()=> location.reload(), 900);
+      const done = ()=> setTimeout(()=> location.reload(), 900);
+      if(window.CloudSync && typeof CloudSync.restoreMedia === 'function'){
+        toastVerify('☁️ 本机是空的，已从云端取回已发布的配置（含素材图）');
+        CloudSync.restoreMedia(s.items, done);
+      } else { toastVerify('☁️ 本机是空的，已从云端取回已发布的配置'); done(); }
     }catch(e){}
   });
   try{ Net.connect().then(()=> Net.assetPull('login')).catch(()=>{}); }catch(e){}
