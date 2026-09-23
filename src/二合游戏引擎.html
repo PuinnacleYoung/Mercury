@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二合游戏引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#1c1a24">
+<style>
+  :root{
+    --bg:#1c1a24; --bg2:#26232f;
+    --panel:rgba(255,255,255,.05); --panel2:rgba(255,255,255,.026);
+    --line:#3a3549;
+    --ink:#ece8f4; --sub:#9a93ad;
+    --accent:#f5a623; --accent2:#ffd166;
+    --green:#6fcf97; --red:#eb5757; --blue:#56ccf2; --purple:#9b7df0; --pink:#ff6bd6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    background:linear-gradient(135deg,var(--bg),var(--bg2));
+    color:var(--ink);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;color:var(--ink);}
+
+  header{display:flex;align-items:center;gap:14px;padding:12px 20px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line);backdrop-filter:blur(10px);}
+  header .logo{font-size:24px;}
+  header h1{font-size:17px;font-weight:800;letter-spacing:.5px;}
+  header .sub{font-size:11px;color:var(--sub);margin-top:2px;}
+  header .spacer{flex:1;}
+  .top-btn{padding:9px 16px;border-radius:12px;font-size:13px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:.18s;white-space:nowrap;}
+  .top-btn:hover{background:rgba(255,255,255,.12);}
+  .top-btn.primary{background:linear-gradient(135deg,var(--accent),#f0a500);border-color:transparent;color:#3a2c05;box-shadow:0 6px 18px rgba(245,166,35,.35);}
+  .top-btn.primary:hover{filter:brightness(1.08);}
+
+  main{flex:1;display:flex;min-height:0;margin:12px 14px 14px;gap:12px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);overflow:hidden;display:flex;flex-direction:column;}
+
+  /* 顶部 5 Tab */
+  .tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.15);}
+  .tab-btn{padding:9px 15px;border-radius:11px;font-size:13px;font-weight:800;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:.15s;white-space:nowrap;}
+  .tab-btn:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .tab-btn.on{background:linear-gradient(135deg,var(--accent),#f0a500);border-color:transparent;color:#3a2c05;box-shadow:0 4px 14px rgba(245,166,35,.3);}
+
+  /* 左：列表 */
+  .list-panel{width:240px;flex-shrink:0;}
+  .list-head{padding:12px;border-bottom:1px solid var(--line);}
+  .list-head h2{font-size:14px;font-weight:800;margin-bottom:8px;}
+  .list-head .hint{font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:10px;}
+  .list{flex:1;overflow-y:auto;padding:8px;}
+  .list-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;cursor:pointer;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px;transition:.15s;}
+  .list-row:hover{background:rgba(255,255,255,.07);color:var(--ink);}
+  .list-row.sel{background:rgba(245,166,35,.16);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(245,166,35,.4);}
+  .list-row .k{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:14px;flex-shrink:0;}
+  .list-row .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* 中：预览 stage */
+  .center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);}
+  .pill{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);cursor:pointer;white-space:nowrap;transition:.15s;}
+  .pill:hover{background:rgba(255,255,255,.12);}
+  .pill.gold{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#3a2c05;}
+  .device-sel{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding:0 10px;height:32px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;}
+
+  .stage-frame{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:8px;background:rgba(0,0,0,.18);border-radius:16px;min-height:280px;flex:1;}
+  .device-name{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.5px;padding:0 4px;}
+  .device-viewport{position:relative;width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:14px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 10px,rgba(0,0,0,.18) 10px 20px);border-radius:12px;min-height:240px;overflow:hidden;}
+  .stage{position:relative;width:100%;aspect-ratio:16/9;max-height:62vh;border-radius:14px;border:2px dashed rgba(245,166,35,.45);overflow:hidden;background:#1a1822;min-height:260px;}
+
+  .device-none .device-viewport{padding:0;background:transparent;}
+  .device-iphone-se .stage,.device-iphone-15pm .stage,.device-android .stage,.device-ipad .stage{width:min(100%,760px);height:auto;min-height:0;max-height:none;border:4px solid #111116;box-shadow:0 0 0 5px #303038,0 18px 48px rgba(0,0,0,.62);}
+  .device-iphone-se .stage{aspect-ratio:667/375;border-radius:26px;}
+  .device-iphone-15pm .stage{aspect-ratio:932/430;border-radius:30px;}
+  .device-android .stage{aspect-ratio:19.5/9;border-radius:24px;}
+  .device-ipad .stage{aspect-ratio:4/3;max-width:650px;border-radius:18px;}
+  .device-pc-1280 .stage{aspect-ratio:16/9;max-width:560px;max-height:380px;width:auto;border:2px solid #2c2c38;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+
+  .stage-hint{text-align:center;font-size:11px;color:var(--sub);padding:8px 0 4px;}
+
+  /* 二合玩法预览：世界容器 + 订单列 + 棋盘 */
+  .world-box{position:absolute;overflow:hidden;background:#1a1822;}
+  .ms-preview{position:absolute;inset:0;display:flex;gap:10px;padding:10px;}
+  .ms-orders{width:30%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .ms-order-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:5px;}
+  .ms-o-head{display:flex;align-items:center;gap:6px;}
+  .ms-o-avatar{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .ms-o-name{font-size:11px;font-weight:800;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ms-o-type{font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;}
+  .ms-o-type.normal{background:rgba(86,204,242,.15);color:var(--blue);}
+  .ms-o-type.vip{background:rgba(245,166,35,.18);color:var(--accent);}
+  .ms-o-type.rush{background:rgba(235,87,87,.18);color:var(--red);}
+  .ms-o-type.clean{background:rgba(155,125,240,.18);color:var(--purple);}
+  .ms-o-type.story{background:rgba(255,107,214,.18);color:var(--pink);}
+  .ms-o-reqs{display:flex;flex-wrap:wrap;gap:4px;}
+  .ms-o-req{display:flex;align-items:center;gap:3px;background:#332f41;border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;}
+  .ms-o-reward{font-size:10px;color:var(--accent2);font-weight:700;}
+  .ms-o-btn{padding:5px;border-radius:7px;font-size:11px;font-weight:800;background:#332f41;color:var(--sub);text-align:center;}
+  .ms-o-btn.ready{background:var(--green);color:#1c1a24;}
+  .ms-board{flex:1;display:flex;align-items:center;justify-content:center;}
+  .ms-grid{display:grid;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;}
+  .ms-cell{width:30px;height:30px;background:#332f41;border-radius:6px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .ms-cell.gen{background:linear-gradient(135deg,#4a4168,#332e46);border-color:#6a5d95;}
+
+  /* 右：属性面板 */
+  .props-panel{width:300px;flex-shrink:0;overflow-y:auto;padding:14px;}
+  .props-panel h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .props-empty{color:var(--sub);font-size:12px;line-height:1.7;}
+  .prop-blk{margin-bottom:16px;}
+  .sec-title{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:1px;margin:14px 0 8px;}
+  .field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .field-row label{font-size:12px;color:var(--sub);flex-shrink:0;min-width:48px;}
+  .field-row input[type=text],.field-row input[type=number],.field-row textarea,.field-row select{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);outline:none;}
+  .field-row input:focus,.field-row textarea:focus{border-color:var(--accent);}
+  .field-row input[type=range]{flex:1;}
+  .field-row .val{font-size:11px;color:var(--accent2);font-weight:800;min-width:36px;text-align:right;}
+  .btn-mini{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(255,255,255,.08);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .btn-mini:hover{background:rgba(255,255,255,.14);}
+  .btn-mini.danger{color:#ff9e9e;border-color:rgba(229,115,115,.4);}
+  .btn-mini.gold{background:linear-gradient(135deg,var(--accent),#f0a500);color:#3a2c05;border-color:transparent;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .file-drop{border:2px dashed var(--line);border-radius:12px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:var(--sub);transition:.15s;background:rgba(255,255,255,.03);}
+  .file-drop:hover{border-color:var(--accent);color:var(--ink);}
+  .file-drop.drag{border-color:var(--green);background:rgba(111,207,151,.1);}
+  .thumb-preview{margin-top:8px;max-width:100%;max-height:100px;border-radius:8px;display:none;object-fit:contain;background:rgba(0,0,0,.3);}
+  .warn{background:rgba(235,87,87,.12);border:1px solid rgba(235,87,87,.3);color:#ffb4b4;border-radius:10px;padding:9px 12px;font-size:11px;line-height:1.6;margin-top:10px;}
+
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🍬</div>
+  <div>
+    <h1>二合游戏引擎</h1>
+    <div class="sub">五宝零食铺 · 合成链 / 生成器 / NPC / 订单 · 全占位符</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="top-btn" id="btn-preview" title="切换预览模式：显示玩法真实效果">▶ 预览玩法</button>
+  <button class="top-btn primary" id="btn-export">📦 导出配置</button>
+</header>
+
+<!-- 5 Tab -->
+<div class="tabs" id="tabs">
+  <button class="tab-btn on" data-tab="chain">🔗 合成链</button>
+  <button class="tab-btn" data-tab="gen">⚙️ 生成器</button>
+  <button class="tab-btn" data-tab="npc">👥 客户 NPC</button>
+  <button class="tab-btn" data-tab="order">📋 订单模板</button>
+  <button class="tab-btn" data-tab="page">🎨 页面全局</button>
+</div>
+
+<main>
+  <!-- 左：列表 -->
+  <aside class="panel list-panel">
+    <div class="list-head">
+      <h2 id="list-title">🔗 合成链</h2>
+      <div class="hint" id="list-hint">点选条目在右侧编辑。数据本地自动保存。</div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <!-- 中：预览 -->
+  <section class="panel center-panel">
+    <div class="toolbar">
+      <button class="pill gold" id="btn-add">➕ 新增</button>
+      <span style="width:1px;height:22px;background:var(--line);margin:0 2px;"></span>
+      <select class="device-sel" id="device-sel">
+        <option value="none">🖥 无（16:9 全屏）</option>
+        <option value="iphone-se">📱 iPhone SE · 横屏</option>
+        <option value="iphone-15pm" selected>📱 iPhone 15 Pro Max · 横屏</option>
+        <option value="android">📱 Android 20:9 · 横屏</option>
+        <option value="ipad">📱 iPad 4:3 · 横屏</option>
+        <option value="pc-1280">💻 PC 1280</option>
+      </select>
+    </div>
+    <div class="stage-frame" id="stage-frame">
+      <div class="device-name" id="device-name">📱 iPhone 15 Pro Max · 横屏 932×430</div>
+      <div class="device-viewport" id="device-viewport">
+        <div class="stage" id="edit-stage"></div>
+      </div>
+    </div>
+    <div class="stage-hint" id="stage-hint">编辑各项配置，点「▶ 预览玩法」看棋盘 + 订单列整体效果</div>
+  </section>
+
+  <!-- 右：属性 -->
+  <aside class="panel props-panel" id="props-panel">
+    <div class="props-empty" id="props-empty">点选左侧条目进行配置。</div>
+    <div id="props-content" class="hidden"></div>
+  </aside>
+</main>
+
+<script>
+/* ============================================================
+   二合游戏引擎 · 拾光·澈屿
+   数据模型（localStorage: merge_engine_config）：
+   {
+     version: 1,
+     chains: [ {id, key, name, tiers:[{n, em, price}×10]} ],
+     generators: [ {id, name, em, chainKey, cooldown, desc} ],
+     npcs: [ {id, name, em, avatar, lines:[...]} ],
+     orderTemplates: [ {id, type, reqs:[{chainKey, tier, qty}], reward, timeLimit} ],
+     page: { bg, gridBg, cols, rows, orderColWidth }
+   }
+   素材全占位符（emoji + 色块）。
+   适配复用关卡编辑器 coverFit。
+   ============================================================ */
+const LS_KEY = 'merge_engine_config';
+const WA = 16/9;
+
+/* 默认配置 = 策划案精简版（A/B/C 三条链 + 3 生成器 + 7 NPC + 5 订单类型） */
+function defaultConfig(){
+  return {
+    version: 1,
+    chains: [
+      { id:'A', key:'A', name:'主食罐头链', tiers:[
+        {n:'空罐',em:'🥫',price:1},{n:'果肉罐头',em:'🥫',price:2},{n:'糖水鸡肉罐',em:'🍗',price:5},
+        {n:'黄桃鸡肉罐',em:'🍑',price:12},{n:'主食罐头礼盒',em:'🎁',price:28},{n:'战备罐头箱',em:'📦',price:64},
+        {n:'十年陈罐头',em:'🏺',price:145},{n:'黄金罐头',em:'🥇',price:330},{n:'罐头金库',em:'🏦',price:750},
+        {n:'余晖铁皮罐头',em:'🌇',price:1700}
+      ]},
+      { id:'B', key:'B', name:'灵猫零食链', tiers:[
+        {n:'鱼干碎',em:'🐟',price:1},{n:'一把鱼干',em:'🐟',price:2},{n:'小鱼干条',em:'🍢',price:5},
+        {n:'猫草饼',em:'🌿',price:12},{n:'木天蓼枝',em:'🌱',price:28},{n:'仓鼠条',em:'🐹',price:64},
+        {n:'夜巡鱼条',em:'🌙',price:145},{n:'黑猫总督小鱼干',em:'👑',price:330}
+      ]},
+      { id:'C', key:'C', name:'瑞兽零食链', tiers:[
+        {n:'竹简屑',em:'🎋',price:1},{n:'残页',em:'📜',price:2},{n:'墨香酥',em:'🖌️',price:5},
+        {n:'典故糕',em:'📖',price:12},{n:'云纹酥',em:'☁️',price:28},{n:'万卷酥',em:'📚',price:64},
+        {n:'知味露',em:'💧',price:145},{n:'白泽无字酥',em:'✨',price:330}
+      ]},
+    ],
+    generators: [
+      { id:'G1', name:'五宝的腮帮子', em:'🐹', chainKey:'B', cooldown:3000, desc:'灵猫零食链' },
+      { id:'G2', name:'后仓进货口', em:'🚪', chainKey:'A', cooldown:3000, desc:'主食罐头链' },
+      { id:'G3', name:'瑞兽配料台', em:'🖌️', chainKey:'C', cooldown:3000, desc:'瑞兽零食链' },
+    ],
+    npcs: [
+      { id:'N1', name:'战后老兵·老周', em:'🧓', avatar:'', lines:['来罐鸡肉罐头，冰的。十年了，我家那只还是只吃冰的。','战备罐头箱，整箱。喂我家的，不是喂我。'] },
+      { id:'N2', name:'麒麟血脉觉醒者', em:'🔥', avatar:'', lines:['给我家那祖宗来点硬的，今晚要守夜。','听说这条街以前打过仗？我爸说过，那天火烧了半天。'] },
+      { id:'N3', name:'星光舞台粉丝', em:'⭐', avatar:'', lines:['星星姐姐同款宠物项圈有吗？','我要那个金闪闪猫战袍！'] },
+      { id:'N4', name:'跑商铁灰', em:'🐺', avatar:'', lines:['黑市货。别问装什么，问就是主粮。','血脉结晶？你这儿还做这生意？胆子不小。'] },
+      { id:'N5', name:'闪闪(10岁)', em:'🌟', avatar:'', lines:['五宝哥哥在吗？我给他带了糖。','叔叔，五宝是不是又翘班了？我知道他藏在哪儿。'] },
+      { id:'N6', name:'微服的司凰', em:'🦅', avatar:'', lines:['深夜小鱼干条，双份。开发票，抬头写凌晨三点。','他跑了？正常。给我来杯冰的，我等他回来。'] },
+      { id:'N7', name:'常客大妈', em:'👵', avatar:'', lines:['黄桃鸡肉罐给我留一箱，我家猫下月满月。','你们这店，老板是只仓鼠吧？'] },
+    ],
+    orderTemplates: [
+      { id:'O1', type:'normal', reqs:[{chainKey:'A',tier:3,qty:2}], reward:20, timeLimit:0 },
+      { id:'O2', type:'vip', reqs:[{chainKey:'B',tier:5,qty:1}], reward:98, timeLimit:480 },
+      { id:'O3', type:'rush', reqs:[{chainKey:'C',tier:2,qty:3}], reward:45, timeLimit:90 },
+      { id:'O4', type:'clean', reqs:[{chainKey:'A',tier:1,qty:5}], reward:15, timeLimit:0 },
+      { id:'O5', type:'story', reqs:[{chainKey:'B',tier:4,qty:2}], reward:60, timeLimit:0 },
+    ],
+    page: { bg:'', gridBg:'', cols:8, rows:7, orderColWidth:300 },
+  };
+}
+
+let cfg;
+function loadCfg(){
+  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); if(cfg.version!==1) cfg = defaultConfig(); return; } }catch(e){}
+  cfg = defaultConfig();
+}
+function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const clamp = (a,b,v) => Math.max(a, Math.min(b, v));
+
+function coverFit(vw, vh, wa){
+  wa = (wa && isFinite(wa) && wa>0) ? wa : WA;
+  const scale = Math.max(vw/wa, vh);
+  return { w: wa*scale, h: scale, ox:(vw-wa*scale)/2, oy:(vh-scale)/2, scale };
+}
+
+const DEVICE_INFO = {
+  'none':'🖥 无（16:9 全屏）',
+  'iphone-se':'📱 iPhone SE · 横屏 667×375',
+  'iphone-15pm':'📱 iPhone 15 Pro Max · 横屏 932×430',
+  'android':'📱 Android 20:9 · 横屏',
+  'ipad':'📱 iPad 4:3 · 横屏',
+  'pc-1280':'💻 PC 1280×720',
+};
+function setDevice(dev){
+  const frame = $('stage-frame');
+  frame.classList.remove('device-none','device-iphone-se','device-iphone-15pm','device-android','device-ipad','device-pc-1280');
+  if(dev !== 'none') frame.classList.add('device-'+dev);
+  $('device-name').textContent = DEVICE_INFO[dev] || dev;
+}
+$('device-sel').onchange = ()=> setDevice($('device-sel').value);
+
+/* ================= 状态 ================= */
+let activeTab = 'chain';
+let selectedId = null;
+let previewMode = false;
+
+const TAB_META = {
+  chain: { title:'🔗 合成链', hint:'每条链 T1~T10 的名称 + 图标 + 售价。', add:'新增链', listOf:()=>cfg.chains.map(c=>({id:c.id,k:c.tiers[0]?.em||'🔗',nm:c.name})) },
+  gen:   { title:'⚙️ 生成器', hint:'生成器名称 + 图标 + 挂哪条链 + 冷却。', add:'新增生成器', listOf:()=>cfg.generators.map(g=>({id:g.id,k:g.em||'⚙️',nm:g.name})) },
+  npc:   { title:'👥 客户 NPC', hint:'NPC 头像 + 名字 + 台词库。', add:'新增 NPC', listOf:()=>cfg.npcs.map(n=>({id:n.id,k:n.em||'👤',nm:n.name})) },
+  order: { title:'📋 订单模板', hint:'订单类型 + 需求 + 报酬 + 限时。', add:'新增订单', listOf:()=>cfg.orderTemplates.map(o=>({id:o.id,k:'📦',nm:orderTypeName(o.type)})) },
+  page:  { title:'🎨 页面全局', hint:'生成页背景 + 网格背景 + 棋盘尺寸。', add:'', listOf:()=>[] },
+};
+
+function orderTypeName(t){ return {normal:'普通',vip:'VIP',rush:'加急',clean:'清理',story:'剧情'}[t] || t; }
+
+/* ================= 渲染 ================= */
+function render(){
+  renderList();
+  renderPreview();
+  renderProps();
+}
+
+function renderList(){
+  const t = $('list-title'), h = $('list-hint'), l = $('list');
+  const meta = TAB_META[activeTab];
+  t.textContent = meta.title;
+  h.textContent = meta.hint;
+  $('btn-add').style.display = meta.add ? '' : 'none';
+  $('btn-add').textContent = meta.add ? '➕ '+meta.add : '';
+  l.innerHTML = '';
+  meta.listOf().forEach(r=>{
+    const d = document.createElement('div');
+    d.className = 'list-row' + (selectedId===r.id ? ' sel' : '');
+    d.innerHTML = '<span class="k">'+r.k+'</span><span class="nm">'+r.nm+'</span>';
+    d.onclick = ()=>{ selectedId = r.id; renderList(); renderProps(); };
+    l.appendChild(d);
+  });
+}
+
+/* 预览：显示二合玩法整体效果 */
+function renderPreview(){
+  const stage = $('edit-stage');
+  stage.innerHTML = '';
+  const wb = document.createElement('div');
+  wb.className = 'world-box';
+
+  if(previewMode){
+    // 玩法预览：订单列 + 棋盘
+    const p = document.createElement('div');
+    p.className = 'ms-preview';
+    // 订单列
+    const orders = document.createElement('div');
+    orders.className = 'ms-orders';
+    const npcByEm = {};
+    cfg.npcs.forEach(n=> npcByEm[n.id]=n);
+    cfg.orderTemplates.forEach((o, idx)=>{
+      const npc = cfg.npcs[idx % cfg.npcs.length];
+      const card = document.createElement('div');
+      card.className = 'ms-order-card';
+      const reqHtml = o.reqs.map(r=>{
+        const ch = cfg.chains.find(c=>c.key===r.chainKey);
+        const t = ch && ch.tiers[r.tier-1];
+        return '<span class="ms-o-req">'+(t?t.em:'?')+' T'+r.tier+' ×'+r.qty+'</span>';
+      }).join('');
+      card.innerHTML = `
+        <div class="ms-o-head"><span class="ms-o-avatar">${npc?npc.em:'👤'}</span><span class="ms-o-name">${npc?npc.name:'客户'}</span><span class="ms-o-type ${o.type}">${orderTypeName(o.type)}</span></div>
+        <div class="ms-o-reqs">${reqHtml}</div>
+        <div class="ms-o-reward">💰 ${o.reward} 罐头${o.timeLimit?' · ⏱ '+o.timeLimit+'s':''}</div>
+        <div class="ms-o-btn">✅ 交付</div>
+      `;
+      orders.appendChild(card);
+    });
+    p.appendChild(orders);
+    // 棋盘
+    const boardWrap = document.createElement('div');
+    boardWrap.className = 'ms-board';
+    const grid = document.createElement('div');
+    grid.className = 'ms-grid';
+    grid.style.gridTemplateColumns = 'repeat('+cfg.page.cols+', 30px)';
+    grid.style.gridTemplateRows = 'repeat('+cfg.page.rows+', 30px)';
+    const total = cfg.page.cols * cfg.page.rows;
+    // 前 3 格放生成器
+    const genEm = cfg.generators.map(g=>g.em);
+    for(let i=0;i<total;i++){
+      const cell = document.createElement('div');
+      cell.className = 'ms-cell';
+      if(i < genEm.length){ cell.classList.add('gen'); cell.textContent = genEm[i]; }
+      else if(i < genEm.length + 4){ cell.textContent = ['🥫','🥫','🐟','🐟'][i-genEm.length]; }
+      grid.appendChild(cell);
+    }
+    boardWrap.appendChild(grid);
+    p.appendChild(boardWrap);
+    wb.appendChild(p);
+  } else {
+    // 编辑模式：显示当前 Tab 的占位说明
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#9a93ad;font-size:13px;';
+    const icons = { chain:'🔗', gen:'⚙️', npc:'👥', order:'📋', page:'🎨' };
+    hint.innerHTML = '<div style="font-size:40px;">'+icons[activeTab]+'</div><div>'+TAB_META[activeTab].title+' 编辑中<br><span style="font-size:11px;opacity:.7;">点「▶ 预览玩法」看棋盘 + 订单列整体效果</span></div>';
+    wb.appendChild(hint);
+  }
+
+  stage.appendChild(wb);
+  layoutWorldBox();
+}
+
+function layoutWorldBox(){
+  const stage = $('edit-stage');
+  const wb = stage.querySelector('.world-box');
+  if(!wb) return;
+  const rect = stage.getBoundingClientRect();
+  const f = coverFit(rect.width, rect.height, WA);
+  wb.style.left = f.ox+'px';
+  wb.style.top = f.oy+'px';
+  wb.style.width = f.w+'px';
+  wb.style.height = f.h+'px';
+}
+
+/* ================= Tab 切换 ================= */
+function switchTab(tab){
+  activeTab = tab;
+  selectedId = null;
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('on', b.dataset.tab===tab));
+  render();
+}
+document.querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>switchTab(b.dataset.tab));
+
+/* ================= 属性面板 ================= */
+function renderProps(){
+  const empty = $('props-empty');
+  const content = $('props-content');
+  if(activeTab==='page'){
+    empty.classList.add('hidden');
+    content.classList.remove('hidden');
+    renderPageProps(content);
+    return;
+  }
+  if(!selectedId){
+    empty.classList.remove('hidden');
+    content.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  content.classList.remove('hidden');
+  if(activeTab==='chain') renderChainProps(content);
+  else if(activeTab==='gen') renderGenProps(content);
+  else if(activeTab==='npc') renderNpcProps(content);
+  else if(activeTab==='order') renderOrderProps(content);
+}
+
+/* --- 合成链属性 --- */
+function renderChainProps(c){
+  const ch = cfg.chains.find(x=>x.id===selectedId);
+  if(!ch){ selectedId=null; renderProps(); return; }
+  let tiersHtml = '';
+  ch.tiers.forEach((t,i)=>{
+    tiersHtml += `
+      <div style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;">
+        <div class="field-row"><label style="min-width:26px;">T${i+1}</label><input type="text" id="tier-name-${i}" value="${t.n}" placeholder="名称"></div>
+        <div class="field-row"><label style="min-width:26px;">图标</label><input type="text" id="tier-em-${i}" value="${t.em}" placeholder="emoji"><label style="min-width:26px;">售价</label><input type="number" id="tier-price-${i}" value="${t.price}"></div>
+      </div>
+    `;
+  });
+  c.innerHTML = `
+    <h3>🔗 合成链</h3>
+    <div class="prop-blk">
+      <div class="sec-title">链名</div>
+      <div class="field-row"><label>名称</label><input type="text" id="chain-name" value="${ch.name}"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">T1~T${ch.tiers.length} 各阶（名称 / 图标 / 售价）</div>
+      ${tiersHtml}
+    </div>
+    <div class="btn-row">
+      <button class="btn-mini" id="chain-add-tier">➕ 加一阶</button>
+      <button class="btn-mini" id="chain-del-tier">➖ 减一阶</button>
+      <button class="btn-mini danger" id="chain-del">🗑 删除此链</button>
+    </div>
+  `;
+  $('chain-name').oninput = e=>{ ch.name = e.target.value; saveCfg(); renderList(); };
+  ch.tiers.forEach((t,i)=>{
+    $('tier-name-'+i).oninput = e=>{ t.n = e.target.value; saveCfg(); renderPreview(); };
+    $('tier-em-'+i).oninput = e=>{ t.em = e.target.value; saveCfg(); renderPreview(); };
+    $('tier-price-'+i).onchange = e=>{ t.price = +e.target.value||0; saveCfg(); };
+  });
+  $('chain-add-tier').onclick = ()=>{ ch.tiers.push({n:'新物品',em:'🆕',price:0}); saveCfg(); renderProps(); };
+  $('chain-del-tier').onclick = ()=>{ if(ch.tiers.length>2){ ch.tiers.pop(); saveCfg(); renderProps(); } };
+  $('chain-del').onclick = ()=>{ cfg.chains = cfg.chains.filter(x=>x.id!==ch.id); selectedId=null; saveCfg(); render(); };
+}
+
+/* --- 生成器属性 --- */
+function renderGenProps(c){
+  const g = cfg.generators.find(x=>x.id===selectedId);
+  if(!g){ selectedId=null; renderProps(); return; }
+  c.innerHTML = `
+    <h3>⚙️ 生成器</h3>
+    <div class="prop-blk">
+      <div class="sec-title">基本</div>
+      <div class="field-row"><label>名称</label><input type="text" id="gen-name" value="${g.name}"></div>
+      <div class="field-row"><label>图标</label><input type="text" id="gen-em" value="${g.em}" placeholder="emoji"></div>
+      <div class="field-row"><label>产出链</label><select id="gen-chain">
+        ${cfg.chains.map(ch=>'<option value="'+ch.key+'"'+(g.chainKey===ch.key?' selected':'')+'>'+ch.name+'</option>').join('')}
+      </select></div>
+      <div class="field-row"><label>冷却</label><input type="number" id="gen-cd" value="${g.cooldown}"><span class="val">ms</span></div>
+      <div class="field-row"><label>说明</label><input type="text" id="gen-desc" value="${g.desc}"></div>
+    </div>
+    <div class="btn-row"><button class="btn-mini danger" id="gen-del">🗑 删除此生成器</button></div>
+  `;
+  $('gen-name').oninput = e=>{ g.name = e.target.value; saveCfg(); renderList(); };
+  $('gen-em').oninput = e=>{ g.em = e.target.value; saveCfg(); renderList(); };
+  $('gen-chain').onchange = e=>{ g.chainKey = e.target.value; saveCfg(); };
+  $('gen-cd').onchange = e=>{ g.cooldown = +e.target.value||0; saveCfg(); };
+  $('gen-desc').oninput = e=>{ g.desc = e.target.value; saveCfg(); };
+  $('gen-del').onclick = ()=>{ cfg.generators = cfg.generators.filter(x=>x.id!==g.id); selectedId=null; saveCfg(); render(); };
+}
+
+/* --- NPC 属性 --- */
+function renderNpcProps(c){
+  const n = cfg.npcs.find(x=>x.id===selectedId);
+  if(!n){ selectedId=null; renderProps(); return; }
+  let linesHtml = '';
+  n.lines.forEach((ln,i)=>{
+    linesHtml += `<div class="field-row"><label style="min-width:20px;">${i+1}</label><textarea id="line-${i}" style="height:44px;">${ln}</textarea></div>`;
+  });
+  c.innerHTML = `
+    <h3>👥 客户 NPC</h3>
+    <div class="prop-blk">
+      <div class="sec-title">头像 PNG</div>
+      <div class="file-drop" id="npc-drop">点击或拖入 PNG 上传（占位：默认 emoji 圆底）</div>
+      <img class="thumb-preview" id="npc-thumb">
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">基本</div>
+      <div class="field-row"><label>名字</label><input type="text" id="npc-name" value="${n.name}"></div>
+      <div class="field-row"><label>图标</label><input type="text" id="npc-em" value="${n.em}" placeholder="emoji"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">台词库（多条）</div>
+      ${linesHtml}
+      <button class="btn-mini" id="npc-add-line">➕ 加台词</button>
+    </div>
+    <div class="btn-row"><button class="btn-mini danger" id="npc-del">🗑 删除此 NPC</button></div>
+  `;
+  const drop=$('npc-drop'), thumb=$('npc-thumb');
+  if(n.avatar){ thumb.src=n.avatar; thumb.style.display='block'; }
+  drop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readFileTo(i.files[0],url=>{n.avatar=url;saveCfg();renderProps();});i.click();};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+  drop.ondragleave=()=>drop.classList.remove('drag');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{n.avatar=url;saveCfg();renderProps();});};
+  $('npc-name').oninput = e=>{ n.name = e.target.value; saveCfg(); renderList(); };
+  $('npc-em').oninput = e=>{ n.em = e.target.value; saveCfg(); renderList(); };
+  n.lines.forEach((ln,i)=>{
+    $('line-'+i).oninput = e=>{ n.lines[i] = e.target.value; saveCfg(); };
+  });
+  $('npc-add-line').onclick = ()=>{ n.lines.push(''); saveCfg(); renderProps(); };
+  $('npc-del').onclick = ()=>{ cfg.npcs = cfg.npcs.filter(x=>x.id!==n.id); selectedId=null; saveCfg(); render(); };
+}
+
+/* --- 订单模板属性 --- */
+function renderOrderProps(c){
+  const o = cfg.orderTemplates.find(x=>x.id===selectedId);
+  if(!o){ selectedId=null; renderProps(); return; }
+  let reqsHtml = '';
+  o.reqs.forEach((r,i)=>{
+    reqsHtml += `
+      <div style="border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:6px;">
+        <div class="field-row"><label>链</label><select id="req-chain-${i}">${cfg.chains.map(ch=>'<option value="'+ch.key+'"'+(r.chainKey===ch.key?' selected':'')+'>'+ch.name+'</option>').join('')}</select></div>
+        <div class="field-row"><label>阶数</label><input type="number" id="req-tier-${i}" value="${r.tier}" min="1" max="10"></div>
+        <div class="field-row"><label>数量</label><input type="number" id="req-qty-${i}" value="${r.qty}" min="1"></div>
+      </div>
+    `;
+  });
+  c.innerHTML = `
+    <h3>📋 订单模板</h3>
+    <div class="prop-blk">
+      <div class="sec-title">订单类型</div>
+      <div class="field-row"><label>类型</label><select id="order-type">
+        <option value="normal" ${o.type==='normal'?'selected':''}>普通客户单（×2.0）</option>
+        <option value="vip" ${o.type==='vip'?'selected':''}>VIP 单（×3.5 高阶）</option>
+        <option value="rush" ${o.type==='rush'?'selected':''}>加急单（×5.0 倒计时）</option>
+        <option value="clean" ${o.type==='clean'?'selected':''}>清理单（X 脏污链）</option>
+        <option value="story" ${o.type==='story'?'selected':''}>剧情单（解锁剧情）</option>
+      </select></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">需求构成（多件）</div>
+      ${reqsHtml}
+      <button class="btn-mini" id="order-add-req">➕ 加需求</button>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">报酬</div>
+      <div class="field-row"><label>罐头</label><input type="number" id="order-reward" value="${o.reward}"></div>
+      <div class="field-row"><label>限时</label><input type="number" id="order-time" value="${o.timeLimit}"><span class="val">秒(0=不限)</span></div>
+    </div>
+    <div class="btn-row"><button class="btn-mini danger" id="order-del">🗑 删除此订单</button></div>
+  `;
+  $('order-type').onchange = e=>{ o.type = e.target.value; saveCfg(); renderList(); };
+  o.reqs.forEach((r,i)=>{
+    $('req-chain-'+i).onchange = e=>{ r.chainKey = e.target.value; saveCfg(); };
+    $('req-tier-'+i).onchange = e=>{ r.tier = clamp(1,10,+e.target.value||1); saveCfg(); };
+    $('req-qty-'+i).onchange = e=>{ r.qty = +e.target.value||1; saveCfg(); };
+  });
+  $('order-add-req').onclick = ()=>{ o.reqs.push({chainKey:cfg.chains[0].key, tier:1, qty:1}); saveCfg(); renderProps(); };
+  $('order-reward').onchange = e=>{ o.reward = +e.target.value||0; saveCfg(); };
+  $('order-time').onchange = e=>{ o.timeLimit = +e.target.value||0; saveCfg(); };
+  $('order-del').onclick = ()=>{ cfg.orderTemplates = cfg.orderTemplates.filter(x=>x.id!==o.id); selectedId=null; saveCfg(); render(); };
+}
+
+/* --- 页面全局属性 --- */
+function renderPageProps(c){
+  c.innerHTML = `
+    <h3>🎨 页面全局</h3>
+    <div class="prop-blk">
+      <div class="sec-title">生成页背景 PNG</div>
+      <div class="file-drop" id="page-bg-drop">点击或拖入 PNG 上传（占位：纯色）</div>
+      <img class="thumb-preview" id="page-bg-thumb">
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">网格整体背景 PNG</div>
+      <div class="file-drop" id="grid-bg-drop">点击或拖入 PNG 上传（占位：纯色）</div>
+      <img class="thumb-preview" id="grid-bg-thumb">
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">棋盘尺寸</div>
+      <div class="field-row"><label>列数</label><input type="number" id="page-cols" value="${cfg.page.cols}" min="4" max="12"></div>
+      <div class="field-row"><label>行数</label><input type="number" id="page-rows" value="${cfg.page.rows}" min="4" max="12"></div>
+      <div class="field-row"><label>订单列宽</label><input type="number" id="page-ow" value="${cfg.page.orderColWidth}"><span class="val">px</span></div>
+    </div>
+    <div class="warn">💡 纯静态 PNG + 色块（一期不做循环视频）。上传后运行时优先读图，未上传用占位色块。</div>
+  `;
+  const bgDrop=$('page-bg-drop'), bgThumb=$('page-bg-thumb');
+  if(cfg.page.bg){ bgThumb.src=cfg.page.bg; bgThumb.style.display='block'; }
+  bgDrop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.page.bg=url;saveCfg();renderProps();});i.click();};
+  bgDrop.ondragover=e=>{e.preventDefault();bgDrop.classList.add('drag');};
+  bgDrop.ondragleave=()=>bgDrop.classList.remove('drag');
+  bgDrop.ondrop=e=>{e.preventDefault();bgDrop.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{cfg.page.bg=url;saveCfg();renderProps();});};
+  const gDrop=$('grid-bg-drop'), gThumb=$('grid-bg-thumb');
+  if(cfg.page.gridBg){ gThumb.src=cfg.page.gridBg; gThumb.style.display='block'; }
+  gDrop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.page.gridBg=url;saveCfg();renderProps();});i.click();};
+  gDrop.ondragover=e=>{e.preventDefault();gDrop.classList.add('drag');};
+  gDrop.ondragleave=()=>gDrop.classList.remove('drag');
+  gDrop.ondrop=e=>{e.preventDefault();gDrop.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{cfg.page.gridBg=url;saveCfg();renderProps();});};
+  $('page-cols').onchange=e=>{cfg.page.cols=clamp(4,12,+e.target.value||8);saveCfg();renderPreview();};
+  $('page-rows').onchange=e=>{cfg.page.rows=clamp(4,12,+e.target.value||7);saveCfg();renderPreview();};
+  $('page-ow').onchange=e=>{cfg.page.orderColWidth=+e.target.value||300;saveCfg();};
+}
+
+function readFileTo(file, cb){
+  const r = new FileReader();
+  r.onload = ()=> cb(r.result);
+  r.readAsDataURL(file);
+}
+
+/* ================= 新增 ================= */
+$('btn-add').onclick = ()=>{
+  const t = Date.now();
+  if(activeTab==='chain'){
+    const id = 'C'+t;
+    cfg.chains.push({ id, key:id, name:'新合成链', tiers:[{n:'新物品',em:'🆕',price:1},{n:'升级品',em:'🆕',price:2}] });
+    selectedId = id;
+  } else if(activeTab==='gen'){
+    const id = 'G'+t;
+    cfg.generators.push({ id, name:'新生成器', em:'⚙️', chainKey:cfg.chains[0]?.key||'A', cooldown:3000, desc:'' });
+    selectedId = id;
+  } else if(activeTab==='npc'){
+    const id = 'N'+t;
+    cfg.npcs.push({ id, name:'新客户', em:'👤', avatar:'', lines:[''] });
+    selectedId = id;
+  } else if(activeTab==='order'){
+    const id = 'O'+t;
+    cfg.orderTemplates.push({ id, type:'normal', reqs:[{chainKey:cfg.chains[0]?.key||'A',tier:1,qty:1}], reward:10, timeLimit:0 });
+    selectedId = id;
+  }
+  saveCfg(); render();
+};
+
+/* ================= 预览模式 ================= */
+$('btn-preview').onclick = ()=>{
+  previewMode = !previewMode;
+  $('btn-preview').textContent = previewMode ? '✎ 编辑模式' : '▶ 预览玩法';
+  $('stage-hint').textContent = previewMode ? '当前为玩法预览：订单列 + 棋盘（占位素材）' : '编辑各项配置，点「▶ 预览玩法」看整体效果';
+  renderPreview();
+};
+
+/* ================= 导出 ================= */
+$('btn-export').onclick = ()=>{
+  const data = JSON.stringify(cfg, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a');
+  a.download = '二合玩法配置.json';
+  a.href = URL.createObjectURL(blob);
+  a.click();
+};
+
+/* ================= 窗口缩放适配 ================= */
+window.addEventListener('resize', ()=>{ layoutWorldBox(); });
+
+/* ================= 初始化 ================= */
+loadCfg();
+render();
+setDevice('iphone-15pm');
+</script>
+</body>
+</html>

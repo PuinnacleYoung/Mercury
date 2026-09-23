@@ -2908,6 +2908,7 @@ const ENGINES = [
   { ico:'🖥', nm:'后端管理引擎',    ds:'查看所有玩家 · 定向发邮件 · 附带资产发放', file:'后端管理引擎.html' },
   { ico:'🛠', nm:'数据恢复工具',    ds:'改坏了？勾选素体 / 服装 / NPC / 地图，一键拉回云端默认', file:'数据恢复工具.html' },
   { ico:'🪪', nm:'登录页面引擎',    ds:'循环视频背景 · 生物芯片身份证卡片 · 姓名/防伪码定位 · 核验触发', file:'登录页面引擎.html' },
+  { ico:'🛍', nm:'二合游戏引擎',    ds:'合成链 · 生成器 · 客户 NPC · 订单模板 · 页面全局背景', file:'二合游戏引擎.html' },
 ];
 function buildAdminHub(){
   const g = $('hub-grid'); if(!g) return;
@@ -4560,18 +4561,26 @@ function exitMergeShop(){
 }
 $('ms-back').onclick = ()=>exitMergeShop();
 
-/* ---- 合成链配置（占位符） ---- */
-const MS_CHAINS = {
-  A: { gen:'后仓进货口', gemoji:'🚪', genDesc:'主食罐头链',
-    tiers:[{n:'空罐',em:'🥫'},{n:'果肉罐头',em:'🥫'},{n:'糖水鸡肉罐',em:'🍗'},{n:'黄桃鸡肉罐',em:'🍑'},{n:'主食罐头礼盒',em:'🎁'},{n:'战备罐头箱',em:'📦'},{n:'十年陈罐头',em:'🏺'},{n:'黄金罐头',em:'🥇'},{n:'罐头金库',em:'🏦'},{n:'余晖铁皮罐头',em:'🌇'}] },
-  B: { gen:'五宝的腮帮子', gemoji:'🐹', genDesc:'灵猫零食链',
-    tiers:[{n:'鱼干碎',em:'🐟'},{n:'一把鱼干',em:'🐟'},{n:'小鱼干条',em:'🍢'},{n:'猫草饼',em:'🌿'},{n:'木天蓼枝',em:'🌱'},{n:'仓鼠条',em:'🐹'},{n:'夜巡鱼条',em:'🌙'},{n:'黑猫总督小鱼干',em:'👑'}] },
-  C: { gen:'瑞兽配料台', gemoji:'🖌️', genDesc:'瑞兽零食链',
-    tiers:[{n:'竹简屑',em:'🎋'},{n:'残页',em:'📜'},{n:'墨香酥',em:'🖌️'},{n:'典故糕',em:'📖'},{n:'云纹酥',em:'☁️'},{n:'万卷酥',em:'📚'},{n:'知味露',em:'💧'},{n:'白泽无字酥',em:'✨'}] }
+/* ---- 合成链配置（默认占位，可被二合引擎 merge_engine_config 覆盖） ---- */
+let MS_CHAINS = {
+  A: { name:'主食罐头链',
+    tiers:[{n:'空罐',em:'🥫',price:1},{n:'果肉罐头',em:'🥫',price:2},{n:'糖水鸡肉罐',em:'🍗',price:5},{n:'黄桃鸡肉罐',em:'🍑',price:12},{n:'主食罐头礼盒',em:'🎁',price:28},{n:'战备罐头箱',em:'📦',price:64},{n:'十年陈罐头',em:'🏺',price:145},{n:'黄金罐头',em:'🥇',price:330},{n:'罐头金库',em:'🏦',price:750},{n:'余晖铁皮罐头',em:'🌇',price:1700}] },
+  B: { name:'灵猫零食链',
+    tiers:[{n:'鱼干碎',em:'🐟',price:1},{n:'一把鱼干',em:'🐟',price:2},{n:'小鱼干条',em:'🍢',price:5},{n:'猫草饼',em:'🌿',price:12},{n:'木天蓼枝',em:'🌱',price:28},{n:'仓鼠条',em:'🐹',price:64},{n:'夜巡鱼条',em:'🌙',price:145},{n:'黑猫总督小鱼干',em:'👑',price:330}] },
+  C: { name:'瑞兽零食链',
+    tiers:[{n:'竹简屑',em:'🎋',price:1},{n:'残页',em:'📜',price:2},{n:'墨香酥',em:'🖌️',price:5},{n:'典故糕',em:'📖',price:12},{n:'云纹酥',em:'☁️',price:28},{n:'万卷酥',em:'📚',price:64},{n:'知味露',em:'💧',price:145},{n:'白泽无字酥',em:'✨',price:330}] }
 };
-function msTierPrice(t){ return Math.round(Math.pow(2.25, t-1)); }
+/* 生成器列表（默认占位，可被引擎覆盖）：{key,name,em,chainKey,cooldown,desc} */
+let MS_GENS = [
+  { key:'A', name:'后仓进货口', em:'🚪', chainKey:'A', cooldown:600, desc:'主食罐头链' },
+  { key:'B', name:'五宝的腮帮子', em:'🐹', chainKey:'B', cooldown:600, desc:'灵猫零食链' },
+  { key:'C', name:'瑞兽配料台', em:'🖌️', chainKey:'C', cooldown:600, desc:'瑞兽零食链' },
+];
+function msTierPrice(t){ const tInf = MS_CHAINS && MS_CHAINS.A && MS_CHAINS.A.tiers[t-1]; if(tInf && tInf.price) return tInf.price; return Math.round(Math.pow(2.25, t-1)); }
 
-const MS_COLS = 8, MS_ROWS = 7;
+let MS_COLS = 8, MS_ROWS = 7;
+let MS_CUSTOMERS = ['战后老兵·老周','麒麟觉醒者','星光粉丝','跑商铁灰','闪闪(10岁)','常客大妈','微服的司凰'];
+let MS_TEXTS = ['来罐鸡肉罐头，冰的。','给我家祖宗来点硬的。','星星姐姐同款有吗？','黑市货，问就是主粮。','五宝哥哥在吗？','黄桃鸡肉罐留一箱。','深夜小鱼干条，双份。'];
 let msBoard = [], msEnergy = 100, msMoney = 0, msExp = 0, msBoost = 1, msBoostIdx = 0;
 let msOrders = [], msNextId = 1, msGenCd = {};
 let msDragging = null, msHover = null, msTimer = null, msInited = false;
@@ -4591,9 +4600,37 @@ function msFloat(x, y, txt){
 }
 function msTierColor(t){ return 't' + Math.min(9, t); }
 
+/* ---- 读取二合引擎配置（localStorage: merge_engine_config）覆盖默认占位 ---- */
+function msLoadEngineCfg(){
+  let ec = null;
+  try{ const s = localStorage.getItem('merge_engine_config'); if(s){ ec = JSON.parse(s); if(!ec || ec.version!==1) ec = null; } }catch(e){ ec = null; }
+  if(!ec) return;   // 无配置 → 用内置占位
+  // 1) 合成链：chains[{key,name,tiers[{n,em,price}]}] → MS_CHAINS
+  if(Array.isArray(ec.chains) && ec.chains.length){
+    const m = {};
+    ec.chains.forEach(c=>{ if(c && c.key){ m[c.key] = { name: c.name||c.key, tiers: (c.tiers||[]).map(t=>({n:t.n||'',em:t.em||'🆕',price:t.price||0})) }; } });
+    if(Object.keys(m).length) MS_CHAINS = m;
+  }
+  // 2) 生成器：generators[{id,name,em,chainKey,cooldown,desc}] → MS_GENS
+  if(Array.isArray(ec.generators) && ec.generators.length){
+    MS_GENS = ec.generators.map((g,i)=>({ key: g.chainKey || ('G'+(i+1)), name: g.name||'', em: g.em||'⚙️', chainKey: g.chainKey, cooldown: g.cooldown||600, desc: g.desc||'' }));
+  }
+  // 3) 棋盘尺寸：page.cols/rows
+  if(ec.page){ if(ec.page.cols>=4) MS_COLS = ec.page.cols; if(ec.page.rows>=4) MS_ROWS = ec.page.rows; }
+  // 4) 客户 NPC → 客户名 + 台词
+  if(Array.isArray(ec.npcs) && ec.npcs.length){
+    MS_CUSTOMERS = ec.npcs.map(n=>n.name||'客户');
+    MS_TEXTS = ec.npcs.map(n=> (Array.isArray(n.lines) && n.lines.length) ? n.lines[0] : '');
+  }
+  // 5) 订单模板（可选）：后续 msGenOrder 优先用模板，这里先存下
+  try{ msCfgOrderTemplates = (Array.isArray(ec.orderTemplates) && ec.orderTemplates.length) ? ec.orderTemplates : null; }catch(e){}
+}
+let msCfgOrderTemplates = null;
+
 function msInit(){
   if(msInited) return;
   msInited = true;
+  msLoadEngineCfg();
   msReset();
   msEl('ms-back').onclick = ()=>exitMergeShop();
   msEl('ms-refresh').onclick = ()=>{
@@ -4606,10 +4643,27 @@ function msInit(){
 function msReset(){
   msBoard = [];
   for(let r=0;r<MS_ROWS;r++){ msBoard[r]=[]; for(let c=0;c<MS_COLS;c++) msBoard[r][c]=null; }
-  msBoard[0][0] = { gen:'A' }; msBoard[0][1] = { gen:'B' }; msBoard[1][0] = { gen:'C' };
-  msPlace(0,2,{chain:'A',tier:1}); msPlace(0,3,{chain:'A',tier:1});
-  msPlace(1,2,{chain:'B',tier:1}); msPlace(1,3,{chain:'B',tier:1});
-  msPlace(2,2,{chain:'A',tier:2}); msPlace(2,3,{chain:'B',tier:2});
+  // 生成器按引擎配置（或默认占位）铺到左上角：逐行排布，每行最多 3 个
+  const gens = MS_GENS.length ? MS_GENS : [{key:'A'},{key:'B'},{key:'C'}];
+  gens.forEach((g, i)=>{ const r = Math.floor(i/3), c = i%3; msBoard[r][c] = { gen: g.key }; });
+  // 初始物品：给每条链各铺两个 T1 + 一个 T2（链数量可变时按链铺）
+  const chainKeys = Object.keys(MS_CHAINS);
+  let ci = 0;
+  chainKeys.forEach(k=>{
+    const r = Math.floor(ci/2), c = 3 + (ci%2);
+    if(r < MS_ROWS && c < MS_COLS){ msPlace(r,c,{chain:k,tier:1}); }
+    ci++;
+  });
+  chainKeys.forEach(k=>{
+    const r = Math.floor(ci/2), c = 3 + (ci%2);
+    if(r < MS_ROWS && c < MS_COLS){ msPlace(r,c,{chain:k,tier:1}); }
+    ci++;
+  });
+  chainKeys.forEach(k=>{
+    const r = Math.floor(ci/2), c = 3 + (ci%2);
+    if(r < MS_ROWS && c < MS_COLS){ msPlace(r,c,{chain:k,tier:2}); }
+    ci++;
+  });
   msEnergy = 100; msMoney = 0; msExp = 0; msBoost = 1; msBoostIdx = 0;
   msOrders = []; for(let i=0;i<3;i++) msOrders.push(msGenOrder());
   msGenCd = {}; msDragging = null;
@@ -4626,6 +4680,10 @@ function msStop(){ if(msTimer){ clearInterval(msTimer); msTimer = null; } }
 function msRender(){
   const g = msEl('ms-grid'); if(!g) return;
   g.innerHTML = '';
+  // 动态适配棋盘行列（引擎配置可改 cols/rows）
+  g.style.gridTemplateColumns = `repeat(${MS_COLS},minmax(0,1fr))`;
+  g.style.gridTemplateRows = `repeat(${MS_ROWS},minmax(0,1fr))`;
+  g.style.maxWidth = `calc((100vh - 96px) * ${MS_COLS} / ${MS_ROWS})`;
   for(let r=0;r<MS_ROWS;r++){
     for(let c=0;c<MS_COLS;c++){
       const cell = document.createElement('div');
@@ -4650,10 +4708,10 @@ function msRenderItem(item){
   return d;
 }
 function msRenderGen(chainKey){
-  const ch = MS_CHAINS[chainKey];
+  const gen = MS_GENS.find(g=>g.key===chainKey) || { key:chainKey, name:chainKey, em:'⚙️', desc:'' };
   const d = document.createElement('div');
   d.className = 'ms-gen';
-  d.innerHTML = `<span class="em">${ch.gemoji}</span><span class="gn">${ch.gen}</span><span class="gc">${ch.genDesc}</span>`;
+  d.innerHTML = `<span class="em">${gen.em}</span><span class="gn">${gen.name}</span><span class="gc">${gen.desc||''}</span>`;
   d.addEventListener('pointerdown', e=>msGenDown(e, chainKey));
   return d;
 }
@@ -4663,17 +4721,19 @@ function msFindEmpty(){
 }
 function msGenDown(e, chainKey){
   e.stopPropagation();
+  const gen = MS_GENS.find(g=>g.key===chainKey) || { cooldown:600 };
   const now = Date.now(), cd = msGenCd[chainKey] || 0;
   if(now < cd){ msToast('⏳ 生成器冷却中…'); return; }
   if(msEnergy < 1){ msToast('⚡ 体力不足！'); return; }
   const empty = msFindEmpty();
   if(!empty){ msToast('🚫 棋盘满了！先合成腾格子'); return; }
   msEnergy -= 1;
-  msGenCd[chainKey] = now + 600;
+  msGenCd[chainKey] = now + (gen.cooldown || 600);
   let placed = 0;
-  for(let i=0;i<msBoost;i++){ const slot = msFindEmpty(); if(!slot) break; msPlace(slot.r, slot.c, {chain:chainKey, tier:1}); placed++; }
+  const prodChain = gen.chainKey || chainKey;
+  for(let i=0;i<msBoost;i++){ const slot = msFindEmpty(); if(!slot) break; msPlace(slot.r, slot.c, {chain:prodChain, tier:1}); placed++; }
   msUpdateStats(); msRender(); msUpdateOrdersReady();
-  if(placed>0){ const info = MS_CHAINS[chainKey].tiers[0]; msFloat(e.clientX, e.clientY, `+${placed} ${info.em}`); }
+  if(placed>0){ const ch = MS_CHAINS[prodChain] || MS_CHAINS[chainKey]; const info = ch && ch.tiers[0]; if(info) msFloat(e.clientX, e.clientY, `+${placed} ${info.em}`); }
 }
 function msItemDown(e, item){
   e.preventDefault(); e.stopPropagation();
@@ -4727,10 +4787,17 @@ function msMerge(itemA, itemB, r, c){
   msRender(); msUpdateStats(); msUpdateOrdersReady();
 }
 
-const MS_CUSTOMERS = ['战后老兵·老周','麒麟觉醒者','星光粉丝','跑商铁灰','闪闪(10岁)','常客大妈','微服的司凰'];
-const MS_TEXTS = ['来罐鸡肉罐头，冰的。','给我家祖宗来点硬的。','星星姐姐同款有吗？','黑市货，问就是主粮。','五宝哥哥在吗？','黄桃鸡肉罐留一箱。','深夜小鱼干条，双份。'];
 function msGenOrder(){
-  const chain = ['A','B','C'][Math.floor(Math.random()*3)];
+  // 优先用引擎订单模板（merge_engine_config.orderTemplates）
+  if(msCfgOrderTemplates && msCfgOrderTemplates.length){
+    const t = msCfgOrderTemplates[Math.floor(Math.random()*msCfgOrderTemplates.length)];
+    const ci = Math.floor(Math.random()*MS_CUSTOMERS.length);
+    const reqs = (t.reqs||[]).map(r=>({ chain: r.chainKey, tier: r.tier, qty: r.qty||1, have:0 }));
+    const reward = t.reward || 0;
+    return { id: msNextId++, customer: MS_CUSTOMERS[ci], text: MS_TEXTS[ci]||'', type: t.type||'normal', reqs, reward };
+  }
+  const chainKeys = Object.keys(MS_CHAINS);
+  const chain = chainKeys[Math.floor(Math.random()*chainKeys.length)] || 'A';
   const tier = 1 + Math.floor(Math.random()*3);
   const qty = 1 + Math.floor(Math.random()*2);
   const type = Math.random()<0.7 ? 'normal' : (Math.random()<0.6?'vip':'rush');
@@ -4738,23 +4805,25 @@ function msGenOrder(){
   const reward = msTierPrice(tier) * qty * (type==='normal'?2:type==='vip'?3.5:5);
   return { id: msNextId++, customer: MS_CUSTOMERS[ci], text: MS_TEXTS[ci], type, reqs:[{chain, tier, qty, have:0}], reward: Math.round(reward) };
 }
+const MS_TYPE_LABEL = { normal:'普通', vip:'VIP', rush:'加急', clean:'清理', story:'剧情' };
 function msRenderOrders(){
   const list = msEl('ms-order-list'); if(!list) return;
   list.innerHTML = '';
   msOrders.forEach(o=>{
     const d = document.createElement('div');
     d.className = 'ms-order-card';
-    const typeLabel = o.type==='normal'?'普通':o.type==='vip'?'VIP':'加急';
+    const typeLabel = MS_TYPE_LABEL[o.type] || '普通';
     let reqHtml = '';
     o.reqs.forEach(r=>{
-      const info = MS_CHAINS[r.chain].tiers[r.tier-1];
+      const ch = MS_CHAINS[r.chain]; if(!ch) return;
+      const info = ch.tiers[r.tier-1]; if(!info) return;
       const done = r.have >= r.qty;
       reqHtml += `<div class="mo-req ${done?'done':''}"><span>${info.em}</span><span>T${r.tier} ${info.n}</span><span class="${done?'have':'need'}">${done?'✓':'('+r.have+'/'+r.qty+')'}</span></div>`;
     });
     const allReady = o.reqs.every(r=>r.have>=r.qty);
     d.innerHTML = `<div class="mo-head"><span>${o.customer}</span><span class="mo-type ${o.type}">${typeLabel}</span></div>
       <div class="mo-ask">${reqHtml}</div>
-      <div class="mo-text">💬 「${o.text}」</div>
+      <div class="mo-text">💬 「${o.text||''}」</div>
       <div class="mo-reward">💰 奖励 ${o.reward} 罐头</div>
       <button class="mo-go ${allReady?'ready':''}" ${allReady?'':'disabled'}>${allReady?'✅ 交付':'凑齐后可交付'}</button>`;
     d.querySelector('.mo-go').addEventListener('click', ()=>msDeliver(o.id));

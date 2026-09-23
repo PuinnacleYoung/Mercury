@@ -51,8 +51,18 @@
   main{flex:1;display:flex;min-height:0;margin:12px 14px 14px;gap:12px;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px);overflow:hidden;display:flex;flex-direction:column;}
 
+  /* 顶部 Tab 栏 */
+  .tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.15);}
+  .tab-btn{
+    padding:9px 16px;border-radius:11px;font-size:13px;font-weight:800;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--sub);
+    cursor:pointer;transition:.15s;white-space:nowrap;
+  }
+  .tab-btn:hover{background:rgba(255,255,255,.1);color:var(--ink);}
+  .tab-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(15,122,140,.35);}
+
   /* 左：图层/元素树 */
-  .tree-panel{width:230px;flex-shrink:0;}
+  .tree-panel{width:220px;flex-shrink:0;}
   .tree-head{padding:12px;border-bottom:1px solid var(--line);}
   .tree-head h2{font-size:14px;font-weight:800;margin-bottom:8px;}
   .tree-head .hint{font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:10px;}
@@ -71,6 +81,7 @@
   .pill.on{outline:2px solid var(--accent);outline-offset:2px;background:rgba(34,184,207,.14);}
   .pill.mint{background:linear-gradient(135deg,#37c8b0,#22b8cf);border-color:transparent;color:#042f28;}
   .pill.gold{background:linear-gradient(135deg,#f5c542,#f0a500);border-color:transparent;color:#3a2c05;}
+  .pill.gray{background:rgba(255,255,255,.08);border-color:var(--line);color:var(--ink);}
   .device-sel{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);padding:0 10px;height:32px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;}
 
   .stage-frame{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;padding:8px;background:rgba(0,0,0,.18);border-radius:16px;min-height:280px;flex:1;}
@@ -92,39 +103,60 @@
 
   .stage-hint{text-align:center;font-size:11px;color:var(--sub);padding:8px 0 4px;}
 
-  /* 世界容器：视频背景 + 卡片 + 元素都住在这里，共享同一 cover 变换 */
+  /* 世界容器：共享同一 cover 变换 */
   .world-box{position:absolute;overflow:hidden;background:#000;}
-  .world-bg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
 
-  /* 生物芯片身份证卡片 */
-  .id-card{position:absolute;cursor:move;touch-action:none;z-index:10;transform-origin:center;border-radius:8px;}
+  /* ===== 背景多层（Tab B，z 0~9） ===== */
+  .bg-layer{position:absolute;cursor:move;touch-action:none;background-repeat:no-repeat;background-position:center;}
+  .bg-layer .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;display:none;}
+  .bg-layer.sel .ed-resize{display:block;}
+  .bg-layer.sel{box-shadow:0 0 0 2px var(--accent);}
+  .bg-layer .bg-tag{position:absolute;top:-20px;left:0;font-size:11px;font-weight:900;color:var(--accent);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);display:none;}
+  .bg-layer.sel .bg-tag{display:block;}
+
+  /* ===== 卡片层（Tab A，z 20） ===== */
+  .id-card{position:absolute;cursor:move;touch-action:none;z-index:20;transform-origin:center;border-radius:8px;}
   .id-card .card-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;pointer-events:none;border-radius:8px;filter:drop-shadow(0 6px 20px rgba(0,0,0,.5));}
   .id-card.sel{box-shadow:0 0 0 3px var(--accent);border-radius:8px;}
   .id-card .ed-resize{position:absolute;right:-8px;bottom:-8px;width:20px;height:20px;border-radius:6px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
 
-  /* 输入框（姓名 / 防伪码）—— 引擎里用占位框，运行时变成真输入框 */
-  .id-field{position:absolute;cursor:move;touch-action:none;z-index:20;border-radius:6px;}
+  /* 头像区（卡片内部，Tab A） */
+  .id-avatar{position:absolute;border-radius:50%;pointer-events:none;}
+  .id-avatar .ava-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:contain;border-radius:50%;}
+  .id-avatar .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:50%;}
+
+  /* 输入框（姓名 / 防伪码）—— 引擎里占位框，运行时真输入框 */
+  .id-field{position:absolute;cursor:move;touch-action:none;z-index:21;border-radius:6px;}
   .id-field .field-box{position:absolute;inset:0;border:2px dashed var(--gold);background:rgba(240,165,0,.14);border-radius:6px;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;}
   .id-field .field-label{position:absolute;top:-20px;left:0;font-size:11px;font-weight:900;color:var(--gold);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
   .id-field.sel .field-box{border-color:#fff;background:rgba(255,255,255,.16);box-shadow:0 0 0 3px var(--accent);}
   .id-field .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--gold);cursor:nwse-resize;z-index:30;}
 
-  /* 核验触发框 */
-  .id-verify{position:absolute;cursor:move;touch-action:none;z-index:25;border:2px dashed var(--mint);background:rgba(55,200,176,.14);border-radius:8px;display:flex;align-items:center;justify-content:center;}
-  .id-verify .v-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:900;color:var(--mint);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
-  .id-verify.sel{background:rgba(55,200,176,.28);box-shadow:0 0 0 3px var(--mint);}
-  .id-verify .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--mint);cursor:nwse-resize;z-index:30;}
+  /* 盖章触发热区（Tab A，z 20.4） */
+  .id-stamp{position:absolute;cursor:move;touch-action:none;z-index:22;border:2px dashed var(--mint);background:rgba(55,200,176,.14);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .id-stamp .s-label{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:900;color:var(--mint);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+  .id-stamp.sel{background:rgba(55,200,176,.28);box-shadow:0 0 0 3px var(--mint);}
+  .id-stamp .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--mint);cursor:nwse-resize;z-index:30;}
 
-  /* 预览模式：隐藏编辑虚线框，展示真实效果 */
+  /* 登录动画层（Tab D，z 10） */
+  .login-fx-layer{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(34,216,255,.08);}
+  .login-fx-layer .fx-hint{font-size:12px;color:var(--sub);font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.8);}
+
+  /* 开场动画层（Tab C，z 100） */
+  .intro-layer{position:absolute;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);}
+  .intro-layer .intro-hint{font-size:13px;color:var(--gold);font-weight:900;text-align:center;line-height:1.8;}
+
+  /* 全局转场遮罩（z 90） */
+  .transition-mask{position:absolute;inset:0;z-index:90;background:#000;opacity:0;pointer-events:none;}
+
+  /* 预览模式：隐藏编辑虚线框 */
   .stage.preview .id-field .field-box,
-  .stage.preview .id-verify{border-color:transparent;background:transparent;box-shadow:none;}
-  .stage.preview .id-field .field-label,
-  .stage.preview .id-verify .v-label,
-  .stage.preview .ed-resize,
-  .stage.preview .id-card .ed-resize{display:none;}
+  .stage.preview .id-stamp{border-color:transparent;background:transparent;box-shadow:none;}
+  .stage.preview .field-label,.stage.preview .s-label,.stage.preview .bg-tag,
+  .stage.preview .ed-resize{display:none!important;}
 
-  /* 运行时输入框（预览模式里的真输入框） */
-  .rt-input{position:absolute;background:rgba(0,0,0,.55);border:2px solid rgba(34,184,207,.7);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);}
+  /* 运行时输入框 */
+  .rt-input{position:absolute;background:rgba(0,0,0,.55);border:2px solid rgba(34,184,207,.7);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);z-index:21;}
   .rt-input:focus{border-color:#37c8b0;box-shadow:0 0 12px rgba(55,200,176,.5);}
 
   /* 卡片动画：晃动 + 流光 */
@@ -141,7 +173,7 @@
     90%{transform:rotate(-.1deg) translateX(0);}
   }
   .id-card.verified{animation:idShake .9s ease both;}
-  .id-card .flow-layer{position:absolute;inset:0;border-radius:8px;pointer-events:none;overflow:hidden;opacity:0;z-index:15;}
+  .id-card .flow-layer{position:absolute;inset:0;border-radius:8px;pointer-events:none;overflow:hidden;opacity:0;z-index:23;}
   .id-card.verified .flow-layer{opacity:1;}
   .id-card .flow-layer::before{
     content:'';position:absolute;top:-50%;left:-80%;width:45%;height:200%;
@@ -149,33 +181,22 @@
     transform:skewX(-20deg);
     animation:flowSweep 1.6s ease-in-out infinite;
   }
-  @keyframes flowSweep{
-    0%{left:-80%;}
-    55%{left:135%;}
-    100%{left:135%;}
-  }
+  @keyframes flowSweep{0%{left:-80%;}55%{left:135%;}100%{left:135%;}}
   .id-card .flow-layer::after{
     content:'';position:absolute;inset:0;border-radius:8px;
     background:linear-gradient(135deg,rgba(34,216,255,.0) 0%,rgba(34,216,255,.25) 30%,rgba(245,197,66,.2) 60%,rgba(34,216,255,0) 100%);
-    background-size:300% 300%;
-    animation:flowShimmer 2.4s ease-in-out infinite;
-    mix-blend-mode:screen;
+    background-size:300% 300%;animation:flowShimmer 2.4s ease-in-out infinite;mix-blend-mode:screen;
   }
-  @keyframes flowShimmer{
-    0%{background-position:0% 50%;}
-    50%{background-position:100% 50%;}
-    100%{background-position:0% 50%;}
-  }
-  /* 核验成功提示 */
+  @keyframes flowShimmer{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
   .verify-toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);background:linear-gradient(135deg,#37c8b0,#22b8cf);color:#042f28;font-size:14px;font-weight:900;padding:10px 22px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:99;white-space:nowrap;animation:toastPop .35s ease;pointer-events:none;}
   @keyframes toastPop{from{transform:translateX(-50%) scale(.7);opacity:0;}to{transform:translateX(-50%) scale(1);opacity:1;}}
 
   /* 右：属性面板 */
-  .props-panel{width:280px;flex-shrink:0;overflow-y:auto;padding:14px;}
+  .props-panel{width:300px;flex-shrink:0;overflow-y:auto;padding:14px;}
   .props-panel h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
   .props-empty{color:var(--sub);font-size:12px;line-height:1.7;}
   .prop-blk{margin-bottom:16px;}
-  .sec-title{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:1px;margin:14px 0 8px;text-transform:uppercase;}
+  .sec-title{font-size:11px;font-weight:900;color:var(--accent);letter-spacing:1px;margin:14px 0 8px;}
   .field-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .field-row label{font-size:12px;color:var(--sub);flex-shrink:0;min-width:44px;}
   .field-row input[type=text],.field-row input[type=number]{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--ink);outline:none;}
@@ -196,7 +217,7 @@
   .chk-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);margin-bottom:8px;}
   .warn{background:rgba(229,115,115,.12);border:1px solid rgba(229,115,115,.3);color:#ffb4b4;border-radius:10px;padding:9px 12px;font-size:11px;line-height:1.6;margin-top:10px;}
 
-  /* 账号密码弹窗（核验通过自动注册时弹出） */
+  /* 账号密码弹窗 */
   .account-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
   .account-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid var(--line);border-radius:18px;padding:22px;width:320px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
   .account-modal h3{font-size:16px;font-weight:900;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
@@ -218,20 +239,28 @@
   <div class="logo">🪪</div>
   <div>
     <h1>登录页面引擎</h1>
-    <div class="sub">生物芯片身份证 · 循环视频背景 · 机型预览 · 核验流程</div>
+    <div class="sub">生物芯片身份证 · 三阶段流程 · 4 Tab · 全占位符 · 复用关卡编辑器 coverFit</div>
   </div>
   <div class="spacer"></div>
   <button class="top-btn" id="btn-preview" title="切换预览模式：隐藏编辑框，显示真实运行效果">▶ 预览/编辑</button>
-  <button class="top-btn" id="btn-test-verify" title="模拟一次核验流程（填入当前姓名+防伪码）">🔑 测试核验</button>
+  <button class="top-btn" id="btn-test-verify" title="模拟一次核验流程">🔑 测试核验</button>
   <button class="top-btn primary" id="btn-export">📦 导出配置</button>
 </header>
+
+<!-- 顶部 4 Tab -->
+<div class="tabs" id="tabs">
+  <button class="tab-btn on" data-tab="card">🪪 卡片编辑器</button>
+  <button class="tab-btn" data-tab="page">🎨 登录页面编辑器</button>
+  <button class="tab-btn" data-tab="intro">🎬 开场动画</button>
+  <button class="tab-btn" data-tab="login">✨ 登录动画</button>
+</div>
 
 <main>
   <!-- 左：元素树 -->
   <aside class="panel tree-panel">
     <div class="tree-head">
       <h2>🪪 登录页元素</h2>
-      <div class="hint">点选元素在右侧配置位置/大小。所有元素共享同一 cover 变换，不同机型下相对卡片位置恒定。</div>
+      <div class="hint">点选元素在右侧配置。所有元素共享同一 cover 变换，不同机型下相对卡片位置恒定。</div>
     </div>
     <div class="tree" id="tree"></div>
   </aside>
@@ -239,9 +268,8 @@
   <!-- 中：预览 -->
   <section class="panel center-panel">
     <div class="toolbar">
-      <button class="pill mint" id="btn-add-card">🪪 加卡片</button>
-      <button class="pill" id="btn-add-field">✍ 加输入框</button>
-      <button class="pill gold" id="btn-add-verify">🔍 加核验框</button>
+      <button class="pill mint" id="btn-add-bg">🖼 加背景层</button>
+      <button class="pill gold" id="btn-add-avatar">👤 加头像</button>
       <span style="width:1px;height:22px;background:var(--line);margin:0 2px;"></span>
       <select class="device-sel" id="device-sel" title="切换不同机型预览">
         <option value="none">🖥 无（16:9 全屏）</option>
@@ -258,12 +286,12 @@
         <div class="stage" id="edit-stage"></div>
       </div>
     </div>
-    <div class="stage-hint">拖动移动 · 拖右下角缩放 · 点元素在右侧配置 · 「▶ 预览」看真实效果</div>
+    <div class="stage-hint">拖动移动 · 拖右下角缩放 · 点元素配置 · 「▶ 预览」看真实效果</div>
   </section>
 
   <!-- 右：属性 -->
   <aside class="panel props-panel" id="props-panel">
-    <div class="props-empty" id="props-empty">点击左侧元素或画布中的卡片 / 输入框 / 核验框进行配置</div>
+    <div class="props-empty" id="props-empty">点击画布元素进行配置；未选中时显示全局设置。</div>
     <div id="props-content" class="hidden"></div>
   </aside>
 </main>
@@ -284,34 +312,59 @@
 
 <script>
 /* ============================================================
-   登录页面引擎 · 拾光·澈屿
+   登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
    数据模型（localStorage: login_engine_config）：
    {
-     videos: [ {src, name} ],        // 循环播放的视频列表
-     card: { src, opacity, x, y, w, h },  // 生物芯片身份证卡片 PNG
-     fields: [ {id, type:'name'|'code', label, x, y, w, h, fontSize} ],
-     verify: { x, y, w, h },
-     currentVideoIndex
+     version: 2,
+     bgLayers: [ {id, src, fit, x, y, w, h, opacity, blend, visible, locked} ],
+     card: { src, opacity, x, y, w, h },
+     avatar: { frameSrc, defaultRace, x, y, w, h, races:[{id,name,silhouette}] },
+     fields: [ {id, type, label, x, y, w, h, fontSize, mask, maxLength} ],
+     stamp: { x, y, w, h, hitShape, shake:{...}, appear:{...}, dismiss:{...} },
+     intro: { src, audio, skippable, fadeOut },
+     loginFx: { src, audio, delay, coverDuration }
    }
    坐标全部归一化 0~1，x/y 是中心点，w/h 是相对 world-box 的宽高比。
+   适配复用关卡编辑器 coverFit：scale = max(vw/wa, vh)，世界坐标归一化。
    ============================================================ */
 const LS_KEY = 'login_engine_config';
+const WA = 16/9;   // 与关卡编辑器 WORLD_ASPECT_FALLBACK 一致
 
 function defaultConfig(){
   return {
-    videos: [],
-    card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62 },
-    fields: [
-      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.42, w:0.24, h:0.07, fontSize:18 },
-      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.58, w:0.24, h:0.07, fontSize:16 },
+    version: 2,
+    bgLayers: [
+      { id:'bg_main', src:'', fit:'cover', x:0.5, y:0.5, w:1.0, h:1.0, opacity:1, blend:'normal', visible:true, locked:false },
+      { id:'bg_fx',   src:'', fit:'contain', x:0.82, y:0.22, w:0.3, h:0.24, opacity:0.8, blend:'screen', visible:true, locked:false },
     ],
-    verify: { x:0.5, y:0.78, w:0.22, h:0.14 },
+    card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62 },
+    avatar: {
+      frameSrc:'', defaultRace:'human',
+      x:0.5, y:0.28, w:0.16, h:0.20,
+      races: [
+        { id:'human', name:'人族', silhouette:'' },
+        { id:'elf',   name:'精灵', silhouette:'' },
+        { id:'beast', name:'兽族', silhouette:'' },
+      ]
+    },
+    fields: [
+      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.45, w:0.26, h:0.075, fontSize:18, mask:false, maxLength:16 },
+      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.60, w:0.26, h:0.075, fontSize:16, mask:true, maxLength:32 },
+    ],
+    stamp: {
+      x:0.5, y:0.82, w:0.2, h:0.12, hitShape:'circle',
+      appear:{ duration:250, fromScale:1.6, toScale:1.0, rotation:-12 },
+      shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
+      dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
+    },
+    intro: { src:'', audio:'', skippable:true, fadeOut:800 },
+    loginFx: { src:'', audio:'', delay:0, coverDuration:1600 },
   };
 }
 
 let cfg;
 function loadCfg(){
-  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); return; } }catch(e){}
+  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); if(cfg.version!==2) cfg = defaultConfig(); return; } }catch(e){}
   cfg = defaultConfig();
 }
 function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
@@ -321,7 +374,6 @@ const clamp01 = v => Math.max(0, Math.min(1, v));
 const clamp = (a,b,v) => Math.max(a, Math.min(b, v));
 
 /* ================= 世界坐标（cover，与地图编辑引擎一致） ================= */
-const WA = 16/9;
 function coverFit(vw, vh, wa){
   wa = (wa && isFinite(wa) && wa>0) ? wa : WA;
   const scale = Math.max(vw/wa, vh);
@@ -334,7 +386,7 @@ function setBox(el, o){
   el.style.height = (o.h*100)+'%';
 }
 
-/* ================= 机型预览 ================= */
+/* ================= 机型预览（复用关卡编辑器 RUNTIME_ASPECTS 同源） ================= */
 const DEVICE_INFO = {
   'none':'🖥 无（16:9 全屏）',
   'iphone-se':'📱 iPhone SE · 横屏 667×375',
@@ -351,44 +403,66 @@ function setDevice(dev){
 }
 $('device-sel').onchange = ()=> setDevice($('device-sel').value);
 
-/* ================= 渲染 ================= */
-let selectedId = null;   // 当前选中的元素 id（card / f_name / verify）
+/* ================= 状态 ================= */
+let selectedId = null;    // card / avatar / f_name / f_code / stamp / bg_xxx
 let previewMode = false;
 let verifyToastTimer = null;
+let activeTab = 'card';
 
-function worldBoxEl(){
-  return $('edit-stage').querySelector('.world-box');
-}
+function worldBoxEl(){ return $('edit-stage').querySelector('.world-box'); }
 
+/* ================= 渲染 ================= */
 function render(){
   const stage = $('edit-stage');
   stage.innerHTML = '';
-  // 世界容器（cover 变换）
   const wb = document.createElement('div');
   wb.className = 'world-box';
-  // 视频背景
-  const curVid = cfg.videos[cfg.videos.length-1]; // 简单起见用最后一个；循环播放全部则由 videos 数组管理
-  if(cfg.videos.length){
-    const v = document.createElement('video');
-    v.className = 'world-bg-video';
-    v.autoplay = true; v.muted = true; v.loop = true; v.playsInline = true;
-    v.src = cfg.videos[cfg.videos.length-1].src;
-    v.style.opacity = 1;
-    wb.appendChild(v);
-  } else {
-    const ph = document.createElement('div');
-    ph.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#9cc5ce;font-size:13px;';
-    ph.innerHTML = '<div style="font-size:40px;">🎬</div><div>暂无视频背景<br><span style="font-size:11px;opacity:.7;">在右侧「视频背景」上传 MP4/WebM</span></div>';
-    wb.appendChild(ph);
-  }
-  // 卡片
-  wb.appendChild(buildCardEl());
-  // 输入框
-  cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
-  // 核验框
-  wb.appendChild(buildVerifyEl());
 
-  // 在 preview 模式下，注入真实输入框
+  // 背景多层（z 0~9，索引越大越靠上）
+  cfg.bgLayers.forEach((l, i) => {
+    if(!l.visible) return;
+    const el = document.createElement('div');
+    el.className = 'bg-layer' + (selectedId===l.id ? ' sel' : '');
+    el.dataset.kind = 'bg';
+    el.dataset.bid = l.id;
+    el.style.zIndex = i;
+    el.style.opacity = l.opacity;
+    if(l.src){
+      el.style.backgroundImage = 'url(' + l.src + ')';
+      el.style.backgroundSize = l.fit === 'cover' ? 'cover' : (l.fit==='contain' ? 'contain' : '100% 100%');
+    } else {
+      // 占位：CSS 动态渐变
+      el.style.background = 'linear-gradient(135deg,#12344a,#1a5a6e 50%,#0f2230)';
+      el.style.backgroundSize = 'cover';
+    }
+    const tag = document.createElement('div'); tag.className='bg-tag'; tag.textContent = '背景层 '+(i+1);
+    el.appendChild(tag);
+    setBox(el, l);
+    bindDrag(el, ()=>l, l.id);
+    wb.appendChild(el);
+  });
+
+  // 登录动画层（z 10，背景与卡片之间）
+  wb.appendChild(buildLoginFxEl());
+
+  // 卡片层（z 20）
+  wb.appendChild(buildCardEl());
+  // 头像（卡片内部，z 20.1）
+  wb.appendChild(buildAvatarEl());
+  // 输入框（z 20.2 / 20.3）
+  cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
+  // 盖章热区（z 20.4）
+  wb.appendChild(buildStampEl());
+
+  // 转场遮罩（z 90）
+  const mask = document.createElement('div');
+  mask.className = 'transition-mask';
+  wb.appendChild(mask);
+
+  // 开场动画层（z 100）
+  wb.appendChild(buildIntroEl());
+
+  // preview 模式：注入真实输入框
   if(previewMode){
     stage.classList.add('preview');
     cfg.fields.forEach(f => {
@@ -396,10 +470,8 @@ function render(){
       inp.className = 'rt-input';
       inp.id = 'rt-' + f.id;
       inp.placeholder = f.label;
-      inp.style.left = ((f.x - f.w/2)*100)+'%';
-      inp.style.top = ((f.y - f.h/2)*100)+'%';
-      inp.style.width = (f.w*100)+'%';
-      inp.style.height = (f.h*100)+'%';
+      inp.type = f.mask ? 'password' : 'text';
+      setBox(inp, f);
       inp.style.fontSize = 'clamp(10px, '+ (f.fontSize/100*5) +'vw, '+ (f.fontSize*1.4) +'px)';
       wb.appendChild(inp);
     });
@@ -425,6 +497,22 @@ function layoutWorldBox(){
   wb.style.height = f.h+'px';
 }
 
+/* ================= 登录动画层（Tab D） ================= */
+function buildLoginFxEl(){
+  const el = document.createElement('div');
+  el.className = 'login-fx-layer';
+  el.innerHTML = '<div class="fx-hint">✨ 登录动画层（z=10 · 压背景 / 被卡片盖住）<br><span style="font-size:10px;opacity:.7;">占位符：上传视频后在此播放</span></div>';
+  return el;
+}
+
+/* ================= 开场动画层（Tab C） ================= */
+function buildIntroEl(){
+  const el = document.createElement('div');
+  el.className = 'intro-layer';
+  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">占位符：上传开场视频 + 音乐 + 淡出时长</span></div>';
+  return el;
+}
+
 /* ================= 卡片 ================= */
 function buildCardEl(){
   const el = document.createElement('div');
@@ -444,21 +532,46 @@ function buildCardEl(){
     pic.style.justifyContent = 'center';
     pic.style.color = '#9cc5ce';
     pic.style.fontSize = '13px';
-    pic.textContent = '🪪 上传身份证 PNG';
+    pic.textContent = '🪪 身份证卡片（占位）';
   }
   el.appendChild(pic);
-  // 流光层
   const flow = document.createElement('div');
   flow.className = 'flow-layer';
   el.appendChild(flow);
   setBox(el, cfg.card);
   bindDrag(el, ()=>({...cfg.card, id:'card'}), 'card');
-  // 点击卡片触发核验（预览模式下）
   el.addEventListener('click', e=>{
-    if(previewMode && !e.target.classList.contains('ed-resize')){
-      doVerify();
-    }
+    if(previewMode && !e.target.classList.contains('ed-resize')) doVerify();
   });
+  return el;
+}
+
+/* ================= 头像（卡片内部） ================= */
+function buildAvatarEl(){
+  const el = document.createElement('div');
+  el.className = 'id-avatar' + (selectedId==='avatar' ? ' sel' : '');
+  el.dataset.kind = 'avatar';
+  el.style.zIndex = 20;
+  const race = cfg.avatar.races.find(r=>r.id===cfg.avatar.defaultRace);
+  const pic = document.createElement('div');
+  pic.className = 'ava-pic';
+  if(race && race.silhouette){
+    pic.style.backgroundImage = 'url(' + race.silhouette + ')';
+  } else {
+    pic.style.background = 'rgba(255,255,255,.12)';
+    pic.style.border = '2px dashed var(--gold)';
+    pic.style.display = 'flex'; pic.style.alignItems='center'; pic.style.justifyContent='center';
+    pic.style.color = '#9cc5ce'; pic.style.fontSize='11px';
+    pic.textContent = '剪影';
+  }
+  el.appendChild(pic);
+  const frame = document.createElement('div');
+  frame.className = 'ava-frame';
+  if(cfg.avatar.frameSrc) frame.style.backgroundImage = 'url(' + cfg.avatar.frameSrc + ')';
+  else { frame.style.border = '2px solid rgba(255,255,255,.4)'; }
+  el.appendChild(frame);
+  setBox(el, cfg.avatar);
+  bindDrag(el, ()=>({...cfg.avatar, id:'avatar'}), 'avatar');
   return el;
 }
 
@@ -482,22 +595,20 @@ function buildFieldEl(f){
   return el;
 }
 
-/* ================= 核验框 ================= */
-function buildVerifyEl(){
+/* ================= 盖章热区 ================= */
+function buildStampEl(){
   const el = document.createElement('div');
-  el.className = 'id-verify' + (selectedId==='verify' ? ' sel' : '');
-  el.dataset.kind = 'verify';
+  el.className = 'id-stamp' + (selectedId==='stamp' ? ' sel' : '');
+  el.dataset.kind = 'stamp';
   el.innerHTML = '<span style="font-size:22px;">🔍</span>';
   const lb = document.createElement('div');
-  lb.className = 'v-label';
-  lb.textContent = '核验区';
+  lb.className = 's-label';
+  lb.textContent = '盖章区';
   el.appendChild(lb);
-  setBox(el, cfg.verify);
-  bindDrag(el, ()=>({...cfg.verify, id:'verify'}), 'verify');
+  setBox(el, cfg.stamp);
+  bindDrag(el, ()=>({...cfg.stamp, id:'stamp'}), 'stamp');
   el.addEventListener('click', e=>{
-    if(previewMode && !e.target.classList.contains('ed-resize')){
-      doVerify();
-    }
+    if(previewMode && !e.target.classList.contains('ed-resize')) doVerify();
   });
   return el;
 }
@@ -529,8 +640,8 @@ function bindDrag(el, getObj, id){
     const rect=dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ow=o.w, oh=o.h;
     const move=ev=>{
-      o.w = clamp(0.04, 0.95, ow + (ev.clientX-sx)/rect.width);
-      o.h = clamp(0.03, 0.9, oh + (ev.clientY-sy)/rect.height);
+      o.w = clamp(0.04, 0.98, ow + (ev.clientX-sx)/rect.width);
+      o.h = clamp(0.03, 0.95, oh + (ev.clientY-sy)/rect.height);
       setBox(el,o);
     };
     const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);saveCfg();};
@@ -540,10 +651,12 @@ function bindDrag(el, getObj, id){
 
 function refreshSelection(){
   const stage = $('edit-stage');
-  stage.querySelectorAll('.id-card,.id-field,.id-verify').forEach(el=>{
+  stage.querySelectorAll('.id-card,.id-avatar,.id-field,.id-stamp,.bg-layer').forEach(el=>{
     let id;
     if(el.classList.contains('id-card')) id='card';
-    else if(el.classList.contains('id-verify')) id='verify';
+    else if(el.classList.contains('id-avatar')) id='avatar';
+    else if(el.classList.contains('id-stamp')) id='stamp';
+    else if(el.classList.contains('bg-layer')) id=el.dataset.bid;
     else id = el.dataset.fid;
     el.classList.toggle('sel', id===selectedId);
   });
@@ -555,11 +668,12 @@ function refreshSelection(){
 function renderTree(){
   const t = $('tree');
   t.innerHTML = '';
-  const rows = [
-    { id:'card', k:'🪪', nm:'身份证卡片' },
-    ...cfg.fields.map(f=>({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label })),
-    { id:'verify', k:'🔍', nm:'核验触发框' },
-  ];
+  const rows = [];
+  cfg.bgLayers.forEach((l,i)=> rows.push({ id:l.id, k:'🖼', nm:'背景层 '+(i+1) }));
+  rows.push({ id:'card', k:'🪪', nm:'身份证卡片' });
+  rows.push({ id:'avatar', k:'👤', nm:'头像区' });
+  cfg.fields.forEach(f=> rows.push({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label }));
+  rows.push({ id:'stamp', k:'🔍', nm:'盖章触发区' });
   rows.forEach(r=>{
     const d=document.createElement('div');
     d.className='tree-row'+(selectedId===r.id?' sel':'');
@@ -569,132 +683,287 @@ function renderTree(){
   });
 }
 
+/* ================= Tab 切换 ================= */
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('on', b.dataset.tab===tab));
+  // 各 Tab 决定属性面板默认选中项
+  if(tab==='card'){ selectedId='card'; }
+  else if(tab==='page'){ selectedId=cfg.bgLayers.length?cfg.bgLayers[cfg.bgLayers.length-1].id:null; }
+  else if(tab==='intro'){ selectedId=null; }
+  else if(tab==='login'){ selectedId=null; }
+  refreshSelection();
+  renderProps();
+}
+document.querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>switchTab(b.dataset.tab));
+
 /* ================= 属性面板 ================= */
 function renderProps(){
   const empty = $('props-empty');
   const content = $('props-content');
-  if(!selectedId){
+  const isGlobal = (activeTab==='intro' || activeTab==='login');
+  if(!selectedId && !isGlobal){
     empty.classList.remove('hidden');
     content.classList.add('hidden');
+    renderGlobalPanel(empty);
     return;
   }
   empty.classList.add('hidden');
   content.classList.remove('hidden');
 
-  if(selectedId === 'card'){
-    content.innerHTML = `
-      <h3>🪪 身份证卡片</h3>
-      <div class="prop-blk">
-        <div class="sec-title">卡片 PNG 贴图</div>
-        <div class="file-drop" id="card-drop">点击或拖入 PNG 上传</div>
-        <img class="thumb-preview" id="card-thumb">
-      </div>
-      <div class="prop-blk">
-        <div class="sec-title">透明度</div>
-        <div class="field-row"><label>不透明</label><input type="range" id="card-opacity" min="0" max="1" step="0.01" value="${cfg.card.opacity}"><span class="val" id="card-opacity-v">${Math.round(cfg.card.opacity*100)}%</span></div>
-      </div>
-      <div class="prop-blk">
-        <div class="sec-title">位置 / 大小</div>
-        <div class="field-row"><label>X</label><input type="number" id="card-x" step="0.01" value="${cfg.card.x.toFixed(3)}"></div>
-        <div class="field-row"><label>Y</label><input type="number" id="card-y" step="0.01" value="${cfg.card.y.toFixed(3)}"></div>
-        <div class="field-row"><label>宽</label><input type="number" id="card-w" step="0.01" value="${cfg.card.w.toFixed(3)}"></div>
-        <div class="field-row"><label>高</label><input type="number" id="card-h" step="0.01" value="${cfg.card.h.toFixed(3)}"></div>
-      </div>
-      <div class="btn-row"><button class="btn-mini danger" id="card-clear">🗑 移除贴图</button></div>
-    `;
-    bindCardProps();
-  } else if(selectedId === 'verify'){
-    content.innerHTML = `
-      <h3>🔍 核验触发框</h3>
-      <div class="sec-title">说明</div>
-      <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域进行身份核验。触发通过后卡片播放晃动 + 流光动画。</div>
-      <div class="prop-blk">
-        <div class="sec-title">位置 / 大小</div>
-        <div class="field-row"><label>X</label><input type="number" id="v-x" step="0.01" value="${cfg.verify.x.toFixed(3)}"></div>
-        <div class="field-row"><label>Y</label><input type="number" id="v-y" step="0.01" value="${cfg.verify.y.toFixed(3)}"></div>
-        <div class="field-row"><label>宽</label><input type="number" id="v-w" step="0.01" value="${cfg.verify.w.toFixed(3)}"></div>
-        <div class="field-row"><label>高</label><input type="number" id="v-h" step="0.01" value="${cfg.verify.h.toFixed(3)}"></div>
-      </div>
-    `;
-    ['v-x','v-y','v-w','v-h'].forEach(id=>{
-      $(id).oninput = e=>{
-        const k = id.slice(2);
-        cfg.verify[k] = parseFloat(e.target.value) || 0;
-        saveCfg(); render();
-      };
-    });
-  } else {
-    // 输入框
-    const f = cfg.fields.find(x=>x.id===selectedId);
-    if(!f){ selectedId=null; renderProps(); return; }
-    content.innerHTML = `
-      <h3>${f.type==='name'?'👤 姓名输入框':'🔐 防伪码输入框'}</h3>
-      <div class="prop-blk">
-        <div class="sec-title">字段</div>
-        <div class="field-row"><label>标签</label><input type="text" id="f-label" value="${f.label}"></div>
-        <div class="field-row"><label>字号</label><input type="range" id="f-font" min="10" max="40" step="1" value="${f.fontSize}"><span class="val" id="f-font-v">${f.fontSize}px</span></div>
-      </div>
-      <div class="prop-blk">
-        <div class="sec-title">位置 / 大小</div>
-        <div class="field-row"><label>X</label><input type="number" id="f-x" step="0.01" value="${f.x.toFixed(3)}"></div>
-        <div class="field-row"><label>Y</label><input type="number" id="f-y" step="0.01" value="${f.y.toFixed(3)}"></div>
-        <div class="field-row"><label>宽</label><input type="number" id="f-w" step="0.01" value="${f.w.toFixed(3)}"></div>
-        <div class="field-row"><label>高</label><input type="number" id="f-h" step="0.01" value="${f.h.toFixed(3)}"></div>
-      </div>
-      <div class="btn-row"><button class="btn-mini danger" id="f-del">🗑 删除此字段</button></div>
-    `;
-    $('f-label').oninput = e=>{ f.label = e.target.value; saveCfg(); render(); };
-    $('f-font').oninput = e=>{ f.fontSize = +e.target.value; $('f-font-v').textContent = f.fontSize+'px'; saveCfg(); render(); };
-    ['f-x','f-y','f-w','f-h'].forEach(id=>{
-      $(id).oninput = e=>{
-        const k = id.slice(2);
-        f[k] = parseFloat(e.target.value) || 0;
-        saveCfg(); render();
-      };
-    });
-    $('f-del').onclick = ()=>{
-      cfg.fields = cfg.fields.filter(x=>x.id!==f.id);
-      selectedId = null; saveCfg(); render();
-    };
-  }
+  if(selectedId==='card'){ renderCardProps(content); }
+  else if(selectedId==='avatar'){ renderAvatarProps(content); }
+  else if(selectedId==='stamp'){ renderStampProps(content); }
+  else if(selectedId && selectedId.startsWith('bg_')){ renderBgProps(content); }
+  else if(selectedId && selectedId.startsWith('f_')){ renderFieldProps(content); }
+  else if(activeTab==='intro'){ renderIntroProps(content); }
+  else if(activeTab==='login'){ renderLoginProps(content); }
+}
+
+/* 全局设置（未选中元素时的背景上传入口） */
+function renderGlobalPanel(empty){
+  empty.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div class="sec-title" style="margin-top:0;">🎨 登录页面全局</div>
+      <div class="props-empty" style="font-size:11px;">切到「🎨 登录页面编辑器」Tab 编辑背景多层与 BGM；「🎬 开场动画」「✨ 登录动画」Tab 配置各自素材。</div>
+    </div>
+  `;
+}
+
+/* --- 卡片属性 --- */
+function renderCardProps(c){
+  c.innerHTML = `
+    <h3>🪪 身份证卡片</h3>
+    <div class="prop-blk">
+      <div class="sec-title">卡片 PNG 贴图</div>
+      <div class="file-drop" id="card-drop">点击或拖入 PNG 上传</div>
+      <img class="thumb-preview" id="card-thumb">
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">透明度</div>
+      <div class="field-row"><label>不透明</label><input type="range" id="card-opacity" min="0" max="1" step="0.01" value="${cfg.card.opacity}"><span class="val" id="card-opacity-v">${Math.round(cfg.card.opacity*100)}%</span></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小</div>
+      <div class="field-row"><label>X</label><input type="number" id="card-x" step="0.01" value="${cfg.card.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="card-y" step="0.01" value="${cfg.card.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="card-w" step="0.01" value="${cfg.card.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="card-h" step="0.01" value="${cfg.card.h.toFixed(3)}"></div>
+    </div>
+    <div class="btn-row"><button class="btn-mini danger" id="card-clear">🗑 移除贴图</button></div>
+  `;
+  bindCardProps();
 }
 
 function bindCardProps(){
-  // 上传 PNG
   const drop = $('card-drop');
   const thumb = $('card-thumb');
   if(cfg.card.src){ thumb.src = cfg.card.src; thumb.style.display='block'; }
-  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg'; i.onchange=()=>readCardFile(i.files[0]); i.click(); };
+  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png,image/webp,image/jpeg'; i.onchange=()=>readFileTo(i.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); i.click(); };
   drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag'); };
   drop.ondragleave = ()=> drop.classList.remove('drag');
-  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files[0]) readCardFile(e.dataTransfer.files[0]); };
-  // 透明度
-  $('card-opacity').oninput = e=>{
-    cfg.card.opacity = parseFloat(e.target.value);
-    $('card-opacity-v').textContent = Math.round(cfg.card.opacity*100)+'%';
-    saveCfg(); render();
-  };
-  // 位置大小
+  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files[0]) readFileTo(e.dataTransfer.files[0], url=>{cfg.card.src=url; saveCfg(); render();}); };
+  $('card-opacity').oninput = e=>{ cfg.card.opacity = parseFloat(e.target.value); $('card-opacity-v').textContent = Math.round(cfg.card.opacity*100)+'%'; saveCfg(); render(); };
   ['card-x','card-y','card-w','card-h'].forEach(id=>{
-    $(id).oninput = e=>{
-      const k = id.slice(5);
-      cfg.card[k] = parseFloat(e.target.value) || 0;
-      saveCfg(); render();
-    };
+    $(id).oninput = e=>{ const k = id.slice(5); cfg.card[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
   });
   $('card-clear').onclick = ()=>{ cfg.card.src=''; saveCfg(); render(); };
 }
 
-function readCardFile(file){
-  const r = new FileReader();
-  r.onload = ()=>{ cfg.card.src = r.result; saveCfg(); render(); };
-  r.readAsDataURL(file);
+/* --- 头像属性 --- */
+function renderAvatarProps(c){
+  const race = cfg.avatar.races.find(r=>r.id===cfg.avatar.defaultRace) || {};
+  c.innerHTML = `
+    <h3>👤 头像区</h3>
+    <div class="prop-blk">
+      <div class="sec-title">头像框 PNG</div>
+      <div class="file-drop" id="ava-frame-drop">点击或拖入 PNG 上传</div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">默认种族</div>
+      <div class="field-row"><select id="ava-race" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px;font-size:12px;color:var(--ink);">
+        ${cfg.avatar.races.map(r=>'<option value="'+r.id+'"'+(r.id===cfg.avatar.defaultRace?' selected':'')+'>'+r.name+'</option>').join('')}
+      </select></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">种族剪影映射（占位：后续上传剪影 PNG）</div>
+      ${cfg.avatar.races.map(r=>`
+        <div class="field-row"><label>${r.name}</label><span class="val" style="flex:1;text-align:left;color:${r.silhouette?'var(--mint)':'var(--sub)'};">${r.silhouette?'已设':'未设剪影'}</span></div>
+      `).join('')}
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小</div>
+      <div class="field-row"><label>X</label><input type="number" id="ava-x" step="0.01" value="${cfg.avatar.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="ava-y" step="0.01" value="${cfg.avatar.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="ava-w" step="0.01" value="${cfg.avatar.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="ava-h" step="0.01" value="${cfg.avatar.h.toFixed(3)}"></div>
+    </div>
+  `;
+  const fd = $('ava-frame-drop');
+  fd.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png'; i.onchange=()=>readFileTo(i.files[0], url=>{cfg.avatar.frameSrc=url; saveCfg(); render();}); i.click(); };
+  fd.ondragover=e=>{e.preventDefault();fd.classList.add('drag');};
+  fd.ondragleave=()=>fd.classList.remove('drag');
+  fd.ondrop=e=>{e.preventDefault();fd.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{cfg.avatar.frameSrc=url;saveCfg();render();});};
+  $('ava-race').onchange = e=>{ cfg.avatar.defaultRace = e.target.value; saveCfg(); render(); };
+  ['ava-x','ava-y','ava-w','ava-h'].forEach(id=>{
+    $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
+  });
 }
 
-/* ================= 视频背景 ================= */
-function renderVideoProps(){
-  // 视频背景属性放在一个独立的「全局设置」面板，通过未选中时也能看到
-  // 这里在选中卡片时额外显示视频列表是多余的；改成放在 props-empty 上方的固定区
+/* --- 盖章属性 --- */
+function renderStampProps(c){
+  c.innerHTML = `
+    <h3>🔍 盖章触发区</h3>
+    <div class="sec-title">说明</div>
+    <div class="props-empty" style="font-size:11px;">玩家填完姓名 + 防伪码后，点击此区域核验。通过后卡片播放晃动 + 流光。</div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小</div>
+      <div class="field-row"><label>X</label><input type="number" id="s-x" step="0.01" value="${cfg.stamp.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="s-y" step="0.01" value="${cfg.stamp.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="s-w" step="0.01" value="${cfg.stamp.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="s-h" step="0.01" value="${cfg.stamp.h.toFixed(3)}"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">动画时长（ms）</div>
+      <div class="field-row"><label>出现</label><input type="number" id="s-appear" value="${cfg.stamp.appear.duration}"></div>
+      <div class="field-row"><label>抖动</label><input type="number" id="s-shake" value="${cfg.stamp.shake.duration}"></div>
+      <div class="field-row"><label>消失</label><input type="number" id="s-dismiss" value="${cfg.stamp.dismiss.duration}"></div>
+    </div>
+  `;
+  ['s-x','s-y','s-w','s-h'].forEach(id=>{
+    $(id).oninput=e=>{const k=id.slice(2);cfg.stamp[k]=parseFloat(e.target.value)||0;saveCfg();render();};
+  });
+  $('s-appear').onchange=e=>{cfg.stamp.appear.duration=+e.target.value||250;saveCfg();};
+  $('s-shake').onchange=e=>{cfg.stamp.shake.duration=+e.target.value||400;saveCfg();};
+  $('s-dismiss').onchange=e=>{cfg.stamp.dismiss.duration=+e.target.value||350;saveCfg();};
+}
+
+/* --- 输入框属性 --- */
+function renderFieldProps(c){
+  const f = cfg.fields.find(x=>x.id===selectedId);
+  if(!f){ selectedId=null; renderProps(); return; }
+  c.innerHTML = `
+    <h3>${f.type==='name'?'👤 姓名输入框':'🔐 防伪码输入框'}</h3>
+    <div class="prop-blk">
+      <div class="sec-title">字段</div>
+      <div class="field-row"><label>标签</label><input type="text" id="f-label" value="${f.label}"></div>
+      <div class="field-row"><label>字号</label><input type="range" id="f-font" min="10" max="40" step="1" value="${f.fontSize}"><span class="val" id="f-font-v">${f.fontSize}px</span></div>
+      <div class="chk-row"><input type="checkbox" id="f-mask" ${f.mask?'checked':''}> 防伪码掩码显示（*）</div>
+      <div class="field-row"><label>最大长度</label><input type="number" id="f-maxlen" value="${f.maxLength}"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小（相对卡片，必须可调）</div>
+      <div class="field-row"><label>X</label><input type="number" id="f-x" step="0.01" value="${f.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="f-y" step="0.01" value="${f.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="f-w" step="0.01" value="${f.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="f-h" step="0.01" value="${f.h.toFixed(3)}"></div>
+    </div>
+    <div class="btn-row"><button class="btn-mini danger" id="f-del">🗑 删除此字段</button></div>
+  `;
+  $('f-label').oninput = e=>{ f.label = e.target.value; saveCfg(); render(); };
+  $('f-font').oninput = e=>{ f.fontSize = +e.target.value; $('f-font-v').textContent = f.fontSize+'px'; saveCfg(); render(); };
+  $('f-mask').onchange = e=>{ f.mask = e.target.checked; saveCfg(); render(); };
+  $('f-maxlen').onchange = e=>{ f.maxLength = +e.target.value||16; saveCfg(); };
+  ['f-x','f-y','f-w','f-h'].forEach(id=>{
+    $(id).oninput = e=>{ const k = id.slice(2); f[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
+  });
+  $('f-del').onclick = ()=>{ cfg.fields = cfg.fields.filter(x=>x.id!==f.id); selectedId = null; saveCfg(); render(); };
+}
+
+/* --- 背景层属性 --- */
+function renderBgProps(c){
+  const l = cfg.bgLayers.find(x=>x.id===selectedId);
+  if(!l){ selectedId=null; renderProps(); return; }
+  c.innerHTML = `
+    <h3>🖼 背景层</h3>
+    <div class="prop-blk">
+      <div class="sec-title">背景 PNG / 视频</div>
+      <div class="file-drop" id="bg-drop">点击或拖入 PNG 上传</div>
+      <img class="thumb-preview" id="bg-thumb">
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">适配模式</div>
+      <div class="field-row"><select id="bg-fit" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;padding:7px;font-size:12px;color:var(--ink);">
+        <option value="cover" ${l.fit==='cover'?'selected':''}>cover 铺满裁切</option>
+        <option value="contain" ${l.fit==='contain'?'selected':''}>contain 完整显示</option>
+        <option value="stretch" ${l.fit==='stretch'?'selected':''}>stretch 拉伸</option>
+      </select></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">透明度</div>
+      <div class="field-row"><label>不透明</label><input type="range" id="bg-opacity" min="0" max="1" step="0.01" value="${l.opacity}"><span class="val" id="bg-opacity-v">${Math.round(l.opacity*100)}%</span></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小</div>
+      <div class="field-row"><label>X</label><input type="number" id="bg-x" step="0.01" value="${l.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="bg-y" step="0.01" value="${l.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="bg-w" step="0.01" value="${l.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="bg-h" step="0.01" value="${l.h.toFixed(3)}"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-mini" id="bg-visible">${l.visible?'👁 隐藏':'🙈 显示'}</button>
+      <button class="btn-mini danger" id="bg-del">🗑 删除此层</button>
+    </div>
+  `;
+  const drop=$('bg-drop'), thumb=$('bg-thumb');
+  if(l.src){ thumb.src=l.src; thumb.style.display='block'; }
+  drop.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/png,image/webp,image/jpeg';i.onchange=()=>readFileTo(i.files[0],url=>{l.src=url;saveCfg();render();});i.click();};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+  drop.ondragleave=()=>drop.classList.remove('drag');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');if(e.dataTransfer.files[0])readFileTo(e.dataTransfer.files[0],url=>{l.src=url;saveCfg();render();});};
+  $('bg-fit').onchange=e=>{l.fit=e.target.value;saveCfg();render();};
+  $('bg-opacity').oninput=e=>{l.opacity=parseFloat(e.target.value);$('bg-opacity-v').textContent=Math.round(l.opacity*100)+'%';saveCfg();render();};
+  ['bg-x','bg-y','bg-w','bg-h'].forEach(id=>{$(id).oninput=e=>{const k=id.slice(3);l[k]=parseFloat(e.target.value)||0;saveCfg();render();};});
+  $('bg-visible').onclick=()=>{l.visible=!l.visible;saveCfg();render();};
+  $('bg-del').onclick=()=>{cfg.bgLayers=cfg.bgLayers.filter(x=>x.id!==l.id);selectedId=null;saveCfg();render();};
+}
+
+/* --- 开场动画属性（Tab C） --- */
+function renderIntroProps(c){
+  c.innerHTML = `
+    <h3>🎬 开场动画</h3>
+    <div class="sec-title">说明</div>
+    <div class="props-empty" style="font-size:11px;">层级最高（z=100），压住所有东西。占位符：上传开场视频 + 音乐，配淡出时长。</div>
+    <div class="prop-blk">
+      <div class="sec-title">动画素材（占位）</div>
+      <div class="file-drop" id="intro-drop">点击或拖入 MP4 / PNG 上传</div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">参数</div>
+      <div class="chk-row"><input type="checkbox" id="intro-skip" ${cfg.intro.skippable?'checked':''}> 可点击跳过</div>
+      <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut}"><span class="val">ms</span></div>
+    </div>
+  `;
+  $('intro-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm,image/png';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.intro.src=url;saveCfg();render();});i.click();};
+  $('intro-skip').onchange=e=>{cfg.intro.skippable=e.target.checked;saveCfg();};
+  $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||800;saveCfg();};
+}
+
+/* --- 登录动画属性（Tab D） --- */
+function renderLoginProps(c){
+  c.innerHTML = `
+    <h3>✨ 登录动画</h3>
+    <div class="sec-title">说明</div>
+    <div class="props-empty" style="font-size:11px;">层级 z=10，压住背景、被卡片盖住。占位符：上传登录动画 + 音乐，配覆盖时长。</div>
+    <div class="prop-blk">
+      <div class="sec-title">动画素材（占位）</div>
+      <div class="file-drop" id="login-drop">点击或拖入 MP4 上传</div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">参数</div>
+      <div class="field-row"><label>延迟 offset</label><input type="number" id="login-delay" value="${cfg.loginFx.delay}"><span class="val">ms</span></div>
+      <div class="field-row"><label>覆盖时长</label><input type="number" id="login-cover" value="${cfg.loginFx.coverDuration}"><span class="val">ms</span></div>
+    </div>
+  `;
+  $('login-drop').onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='video/mp4,video/webm';i.onchange=()=>readFileTo(i.files[0],url=>{cfg.loginFx.src=url;saveCfg();render();});i.click();};
+  $('login-delay').onchange=e=>{cfg.loginFx.delay=+e.target.value||0;saveCfg();};
+  $('login-cover').onchange=e=>{cfg.loginFx.coverDuration=+e.target.value||1600;saveCfg();};
+}
+
+function readFileTo(file, cb){
+  const r = new FileReader();
+  r.onload = ()=> cb(r.result);
+  r.readAsDataURL(file);
 }
 
 /* ================= 核验流程 ================= */
@@ -707,7 +976,6 @@ function doVerify(){
     toastVerify('⚠️ 请先填写姓名和防伪码');
     return;
   }
-  // 账号数据与主游戏对齐：username=姓名, password=防伪码，存 localStorage 'accounts'
   const accounts = getGameAccounts();
   let isNew = false;
   if(!accounts[name]){
@@ -716,11 +984,10 @@ function doVerify(){
   }
   saveGameAccounts(accounts);
 
-  // 播放卡片晃动 + 流光
   const cardEl = $('edit-stage').querySelector('.id-card');
   if(cardEl){
     cardEl.classList.remove('verified');
-    void cardEl.offsetWidth; // 重置动画
+    void cardEl.offsetWidth;
     cardEl.classList.add('verified');
   }
 
@@ -754,8 +1021,6 @@ function showAccountModal(name, code){
   $('account-modal-mask').classList.remove('hidden');
 }
 
-/* 与主游戏对齐的账号存储：key 用主游戏的 game_accounts，
-   账号结构 username=姓名、password=防伪码，主游戏登录页能直接读到 */
 const LS_GAME_ACCOUNTS = 'game_accounts';
 function getGameAccounts(){
   try{ return JSON.parse(localStorage.getItem(LS_GAME_ACCOUNTS)) || {}; }catch(e){ return {}; }
@@ -791,17 +1056,14 @@ $('btn-preview').onclick = ()=>{
   $('btn-preview').textContent = previewMode ? '✎ 编辑模式' : '▶ 预览/编辑';
   render();
 };
-
-$('btn-add-card').onclick = ()=>{ selectedId='card'; refreshSelection(); };
-$('btn-add-field').onclick = ()=>{
-  const id = 'f_' + Date.now();
-  cfg.fields.push({ id, type:'name', label:'姓名', x:0.5, y:0.3, w:0.22, h:0.07, fontSize:18 });
+$('btn-add-bg').onclick = ()=>{
+  const id = 'bg_' + Date.now();
+  cfg.bgLayers.push({ id, src:'', fit:'cover', x:0.5, y:0.5, w:0.4, h:0.3, opacity:1, blend:'normal', visible:true, locked:false });
   selectedId = id; saveCfg(); render();
 };
-$('btn-add-verify').onclick = ()=>{ selectedId='verify'; refreshSelection(); };
+$('btn-add-avatar').onclick = ()=>{ selectedId='avatar'; refreshSelection(); };
 
 $('btn-test-verify').onclick = ()=>{
-  // 进入预览模式并填入示例数据
   previewMode = true;
   $('btn-preview').textContent = '✎ 编辑模式';
   render();
@@ -821,60 +1083,17 @@ $('btn-export').onclick = ()=>{
   toastVerify('📦 已导出登录页配置 JSON');
 };
 
-/* ================= 视频背景上传（放右侧面板顶部固定区） ================= */
-function renderGlobalVideoPanel(){
-  // 视频背景是全局配置，放在属性面板的 props-empty 里太隐蔽；
-  // 改为在 props-empty 里也展示视频上传入口
-  const empty = $('props-empty');
-  if(selectedId) return;
-  empty.innerHTML = `
-    <div style="margin-bottom:14px;">
-      <div class="sec-title" style="margin-top:0;">🎬 循环视频背景</div>
-      <div class="file-drop" id="vid-drop">点击或拖入 MP4 / WebM 上传</div>
-      <div id="vid-list" style="margin-top:10px;">${renderVidList()}</div>
-      <div class="chk-row" style="margin-top:10px;"><input type="checkbox" id="vid-loop-all" ${cfg.videos.length>1?'checked':''}> 多视频循环轮播</div>
-    </div>
-    <div class="warn">💡 上传多段视频可做「循环轮播」背景。当前实现：单视频 loop 循环，多视频按列表顺序切换。</div>
-  `;
-  const drop = $('vid-drop');
-  drop.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='video/mp4,video/webm'; i.multiple=true; i.onchange=()=>readVidFiles([...i.files]); i.click(); };
-  drop.ondragover = e=>{ e.preventDefault(); drop.classList.add('drag'); };
-  drop.ondragleave = ()=> drop.classList.remove('drag');
-  drop.ondrop = e=>{ e.preventDefault(); drop.classList.remove('drag'); if(e.dataTransfer.files.length) readVidFiles([...e.dataTransfer.files]); };
-  $('vid-loop-all').onchange = e=>{ /* 标记多视频轮播，具体逻辑在 render 里 */ };
-  // 列表删除按钮
-  document.querySelectorAll('#vid-list .x').forEach(x=>{
-    x.onclick = ()=>{ const idx=+x.dataset.idx; cfg.videos.splice(idx,1); saveCfg(); render(); };
-  });
-}
-
-function renderVidList(){
-  if(!cfg.videos.length) return '<div style="font-size:11px;color:#9cc5ce;">暂无视频</div>';
-  return cfg.videos.map((v,i)=>`<div class="vid-item"><span>🎞</span><span class="nm">${v.name||('视频'+(i+1))}</span><span class="x" data-idx="${i}">✕</span></div>`).join('');
-}
-
-function readVidFiles(files){
-  files.forEach(f=>{
-    const r = new FileReader();
-    r.onload = ()=>{ cfg.videos.push({ src:r.result, name:f.name }); saveCfg(); render(); };
-    r.readAsDataURL(f);
-  });
-  toastVerify('🎬 已添加 '+files.length+' 段视频');
-}
-
 /* ================= 窗口缩放适配 ================= */
 window.addEventListener('resize', ()=>{ layoutWorldBox(); });
 
 /* ================= 初始化 ================= */
 loadCfg();
 render();
-renderGlobalVideoPanel();
 setDevice('iphone-15pm');
 
-// 点击 stage 空白处取消选中
 $('edit-stage').addEventListener('pointerdown', e=>{
   if(e.target === $('edit-stage') || e.target.classList.contains('world-box')){
-    selectedId = null; refreshSelection(); renderGlobalVideoPanel();
+    selectedId = null; refreshSelection(); renderProps();
   }
 });
 </script>
