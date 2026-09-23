@@ -77,7 +77,10 @@ input{font-family:inherit;outline:none;}
 .hidden{display:none !important;}
 
 /* ---------- 全屏遮罩通用 ---------- */
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;}
+/* 安全区适配（2026-09-23）：safe center 在内容超出视口时自动退化为顶端对齐，
+   配合 overflow:auto 保证「下一步」等按钮永远能滚到、点得到；env() 兼容刘海屏/手势条 */
+.screen{position:fixed;inset:0;display:flex;align-items:safe center;justify-content:safe center;z-index:50;overflow:auto;overscroll-behavior:contain;padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));}
+.screen::-webkit-scrollbar{width:0;height:0;}
 
 /* ---------- 横屏提示 ---------- */
 #landscape-overlay{
@@ -115,24 +118,37 @@ input{font-family:inherit;outline:none;}
 
 /* ---------- 横屏布局（登录/昵称/五行统一横屏化） ---------- */
 /* 左右分栏容器：左品牌区 + 右表单区 */
-.split{display:flex;align-items:stretch;width:min(820px,92vw);border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(var(--shadow-rgb),.15),0 0 0 1px rgba(var(--accent-rgb),.08);background:rgba(var(--glass-rgb),.55);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(var(--accent-rgb),.15);}
+.split{display:flex;align-items:stretch;width:min(820px,100%);max-height:100%;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(var(--shadow-rgb),.15),0 0 0 1px rgba(var(--accent-rgb),.08);background:rgba(var(--glass-rgb),.55);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(var(--accent-rgb),.15);}
 .split .brand{width:40%;min-width:250px;background:linear-gradient(160deg,#332a4a 0%,#241d38 55%,#5c4a8a 160%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 26px;gap:16px;text-align:center;}
 .split .brand .logo{width:88px;height:88px;border-radius:26px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 10px 30px var(--gold-glow);}
 .split .brand h1{margin:0;font-size:25px;color:#fff;letter-spacing:2px;font-weight:700;}
 .split .brand p{font-size:13px;color:#c9bde8;margin:0;line-height:1.8;}
 .split .brand .wuxing{display:flex;gap:8px;margin-top:4px;}
 .split .brand .wx{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;}
-.split .form{flex:1;padding:36px 42px;display:flex;flex-direction:column;justify-content:center;}
+.split .form{flex:1;min-width:0;overflow-y:auto;padding:36px 42px;display:flex;flex-direction:column;justify-content:safe center;}
 .split .form h2{margin:0 0 4px;font-size:22px;text-align:left;}
 .split .form .sub{color:var(--c-sub);font-size:13px;text-align:left;margin:0 0 20px;}
 
 /* 竖屏窄屏时退化为居中卡片 */
 @media (max-width:560px){
-  .split{flex-direction:column;width:min(440px,92vw);}
+  .split{flex-direction:column;width:min(440px,100%);}
   .split .brand{width:100%;min-width:0;padding:22px 20px;gap:10px;}
   .split .brand .logo{width:64px;height:64px;font-size:32px;border-radius:20px;}
   .split .brand h1{font-size:20px;}
   .split .form{padding:26px 24px;}
+}
+
+/* 矮屏（手机横屏）适配：压缩纵向空间，保证「下一步」永远在安全区内可见可点 */
+@media (max-height:520px){
+  .split .brand{padding:16px 18px;gap:8px;}
+  .nick-avatar{width:56px;height:56px;font-size:26px;margin:0 auto 8px;}
+  .split .brand h1{font-size:19px;}
+  .split .brand p{font-size:11px;line-height:1.5;}
+  .split .form{padding:16px 24px;}
+  .split .form h2{font-size:18px;}
+  .split .form .sub{margin:0 0 10px;}
+  .avatar-grid{grid-template-columns:repeat(8,1fr);gap:8px;margin:2px 0 10px;}
+  .avatar-opt{font-size:22px;}
 }
 
 /* ---------- 昵称页 ---------- */
@@ -848,7 +864,7 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .admin-btns .go{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;}
 .admin-btns .cancel{background:rgba(120,110,140,.15);color:var(--c-sub);}
 #admin-hub-screen{background:linear-gradient(135deg,var(--c-bg),var(--c-bg2));}
-.hub-wrap{width:min(1020px,94vw);margin:0 auto;height:100%;display:flex;flex-direction:column;justify-content:center;gap:22px;padding:26px 0;}
+.hub-wrap{width:min(1020px,100%);margin:0 auto;height:100%;display:flex;flex-direction:column;justify-content:safe center;gap:22px;padding:26px 0;}
 .hub-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .hub-head h2{font-size:26px;font-weight:800;color:var(--c-ink);}
 .hub-head .sub{font-size:13px;color:var(--c-sub);margin-top:3px;}
