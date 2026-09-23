@@ -149,6 +149,28 @@
   /* 全局转场遮罩（z 90） */
   .transition-mask{position:absolute;inset:0;z-index:90;background:#000;opacity:0;pointer-events:none;}
 
+  /* =========================================================
+     安全区参考框（世界坐标 · 与关卡编辑器同源算法）
+     蓝虚线 = 全机型都看得见的裁切交集；绿实线 = 不被运行时 UI 挡住的更严交集。
+     层级 40：压卡片(20)、被转场(90)/开场(100) 压住；pointer-events:none 不挡编辑。
+     ========================================================= */
+  .safe-world-layer{position:absolute;inset:0;z-index:40;pointer-events:none;}
+  .safe-world-box{position:absolute;box-sizing:border-box;}
+  .safe-world-box>i{position:absolute;left:6px;top:6px;font-size:clamp(8px,1vw,11px);font-weight:1000;font-style:normal;padding:3px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .safe-world-box.vis{border:3px dashed #37e3ff;background:rgba(55,227,255,.07);}
+  .safe-world-box.vis>i{background:#37e3ff;color:#04262e;top:auto;bottom:6px;}
+  .safe-world-box.ui{border:3px solid #23e0a5;background:rgba(35,224,165,.09);}
+  .safe-world-box.ui>i{background:#23e0a5;color:#062f25;left:auto;right:6px;top:6px;}
+
+  /* 参照模式背景层：卡片 Tab 里背景只作底图参照 —— 半透明、不可点、无编辑件 */
+  .bg-layer.bg-dim{opacity:.45!important;cursor:default;}
+  .bg-layer.bg-dim .bg-tag,.bg-layer.bg-dim .ed-resize{display:none!important;}
+
+  /* 环节说明条（stage 底部） */
+  .phase-note{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:120;background:rgba(4,16,22,.78);border:1px solid var(--line);color:var(--sub);font-size:11px;font-weight:800;padding:5px 14px;border-radius:999px;pointer-events:none;white-space:nowrap;backdrop-filter:blur(4px);}
+  /* 树分组小标题 */
+  .tree-group{font-size:10px;font-weight:1000;color:var(--sub);letter-spacing:1px;padding:10px 10px 4px;opacity:.75;}
+
   /* 预览模式：隐藏编辑虚线框 */
   .stage.preview .id-field .field-box,
   .stage.preview .id-stamp{border-color:transparent;background:transparent;box-shadow:none;}
@@ -247,12 +269,13 @@
   <button class="top-btn primary" id="btn-export">📦 导出配置</button>
 </header>
 
-<!-- 顶部 4 Tab -->
+<!-- 顶部 5 Tab：四个环节各自独立编辑 + 总预览合成 -->
 <div class="tabs" id="tabs">
   <button class="tab-btn on" data-tab="card">🪪 卡片编辑器</button>
   <button class="tab-btn" data-tab="page">🎨 登录页面编辑器</button>
   <button class="tab-btn" data-tab="intro">🎬 开场动画</button>
   <button class="tab-btn" data-tab="login">✨ 登录动画</button>
+  <button class="tab-btn" data-tab="overview">🔍 总预览</button>
 </div>
 
 <main>
@@ -268,8 +291,11 @@
   <!-- 中：预览 -->
   <section class="panel center-panel">
     <div class="toolbar">
-      <button class="pill mint" id="btn-add-bg">🖼 加背景层</button>
-      <button class="pill gold" id="btn-add-avatar">👤 加头像</button>
+      <button class="pill gold hidden" id="btn-add-bg">🖼 加背景层</button>
+      <button class="pill mint" id="btn-add-avatar">👤 选中头像</button>
+      <button class="pill on hidden" id="btn-safe" title="显示全机型可见区 / UI 安全区参考框（与关卡编辑器同源算法）">🛡 安全区</button>
+      <button class="pill hidden" id="btn-play-intro" title="在总预览里临时播一段开场动画（含淡出）">🎬 试开场</button>
+      <button class="pill hidden" id="btn-play-loginfx" title="在总预览里临时播一段登录动画">✨ 试登录动画</button>
       <span style="width:1px;height:22px;background:var(--line);margin:0 2px;"></span>
       <select class="device-sel" id="device-sel" title="切换不同机型预览">
         <option value="none">🖥 无（16:9 全屏）</option>
@@ -386,6 +412,50 @@ function setBox(el, o){
   el.style.height = (o.h*100)+'%';
 }
 
+/* ================= 安全区（与关卡编辑器同源） =================
+   运行时真实会遇到的横屏比例 —— 算「全机型可见区 / 全机型 UI 安全区」的交集。
+   登录页的卡片 / 输入框 / 盖章区放绿框里，才能保证任何机型都不被裁、不被 UI 挡。 */
+const RUNTIME_ASPECTS = [667/375, 932/430, 844/390, 19.5/9, 915/412, 1280/720, 4/3];
+function worldVisibleBox(wa){
+  let u0=0,u1=1,v0=0,v1=1;
+  RUNTIME_ASPECTS.forEach(sa=>{
+    const f = coverFit(sa, 1, wa);
+    u0 = Math.max(u0, (0  - f.ox)/f.w); u1 = Math.min(u1, (sa - f.ox)/f.w);
+    v0 = Math.max(v0, (0  - f.oy)/f.h); v1 = Math.min(v1, (1  - f.oy)/f.h);
+  });
+  return { u0, u1, v0, v1 };
+}
+const UI_SCREEN_SAFE = { x0:0.04, y0:0.10, x1:0.96, y1:0.85 };
+function worldSafeBox(wa){
+  let x0=0,x1=1,y0=0,y1=1;
+  RUNTIME_ASPECTS.forEach(sa=>{
+    const f = coverFit(sa, 1, wa);
+    x0 = Math.max(x0, (UI_SCREEN_SAFE.x0*sa - f.ox)/f.w);
+    x1 = Math.min(x1, (UI_SCREEN_SAFE.x1*sa - f.ox)/f.w);
+    y0 = Math.max(y0, (UI_SCREEN_SAFE.y0    - f.oy)/f.h);
+    y1 = Math.min(y1, (UI_SCREEN_SAFE.y1    - f.oy)/f.h);
+  });
+  return { x0, y0, x1, y1 };
+}
+const SafeArea = { on:true };
+function buildSafeWorldLayer(){
+  const wrap = document.createElement('div');
+  wrap.className = 'safe-world-layer';
+  if(!SafeArea.on) return wrap;
+  const vis = worldVisibleBox(WA), saf = worldSafeBox(WA);
+  const mkBox = (x0,y0,x1,y1,cls,txt)=>{
+    const d = document.createElement('div');
+    d.className = 'safe-world-box ' + cls;
+    d.style.left = (x0*100)+'%'; d.style.top = (y0*100)+'%';
+    d.style.width = ((x1-x0)*100)+'%'; d.style.height = ((y1-y0)*100)+'%';
+    d.innerHTML = '<i>'+txt+'</i>';
+    return d;
+  };
+  wrap.appendChild(mkBox(vis.u0, vis.v0, vis.u1, vis.v1, 'vis', '📺 全机型可见区'));
+  wrap.appendChild(mkBox(saf.x0, saf.y0, saf.x1, saf.y1, 'ui', '🛡 全机型 UI 安全区'));
+  return wrap;
+}
+
 /* ================= 机型预览（复用关卡编辑器 RUNTIME_ASPECTS 同源） ================= */
 const DEVICE_INFO = {
   'none':'🖥 无（16:9 全屏）',
@@ -411,59 +481,73 @@ let activeTab = 'card';
 
 function worldBoxEl(){ return $('edit-stage').querySelector('.world-box'); }
 
-/* ================= 渲染 ================= */
+/* ================= Tab 环节定义 =================
+   核心原则（陛下拍板）：每个编辑 Tab 只渲染本环节内容，别的环节一律不出现；
+   要看全部合成效果去「🔍 总预览」Tab。 */
+const TAB_META = {
+  card:     { title:'🪪 卡片环节元素', hint:'只编辑卡片环节：卡片 / 头像 / 输入框 / 盖章区。背景仅作参照底图（去 🎨 Tab 编辑）。', note:'🪪 卡片编辑器 · 背景为参照底图，元素可拖动缩放' },
+  page:     { title:'🎨 背景多层', hint:'只编辑登录页背景多层：上传 PNG、适配模式、透明度、层序。', note:'🎨 登录页面编辑器 · 只含背景多层，环节内容在各自 Tab' },
+  intro:    { title:'🎬 开场环节', hint:'只配置开场动画层（z=100，压住所有）。', note:'🎬 开场动画层占位 · z=100 压住全部 · 素材在右侧配置' },
+  login:    { title:'✨ 登录动画环节', hint:'只配置登录动画层（z=10，压背景、被卡片盖住）。', note:'✨ 登录动画层占位 · z=10 压背景 / 被卡片盖住' },
+  overview: { title:'🔍 合成预览', hint:'全部环节按 z 层级合成（背景 → 登录动画 → 卡片 → 开场），可试玩完整流程。', note:'🔍 总预览 · 全环节合成 · 输入框可输入，点盖章区试核验' },
+};
+
+/* ================= 渲染（按 Tab 分发） ================= */
 function render(){
   const stage = $('edit-stage');
   stage.innerHTML = '';
   const wb = document.createElement('div');
   wb.className = 'world-box';
+  const effPreview = previewMode || activeTab === 'overview';
 
-  // 背景多层（z 0~9，索引越大越靠上）
-  cfg.bgLayers.forEach((l, i) => {
-    if(!l.visible) return;
-    const el = document.createElement('div');
-    el.className = 'bg-layer' + (selectedId===l.id ? ' sel' : '');
-    el.dataset.kind = 'bg';
-    el.dataset.bid = l.id;
-    el.style.zIndex = i;
-    el.style.opacity = l.opacity;
-    if(l.src){
-      el.style.backgroundImage = 'url(' + l.src + ')';
-      el.style.backgroundSize = l.fit === 'cover' ? 'cover' : (l.fit==='contain' ? 'contain' : '100% 100%');
-    } else {
-      // 占位：CSS 动态渐变
-      el.style.background = 'linear-gradient(135deg,#12344a,#1a5a6e 50%,#0f2230)';
-      el.style.backgroundSize = 'cover';
-    }
-    const tag = document.createElement('div'); tag.className='bg-tag'; tag.textContent = '背景层 '+(i+1);
-    el.appendChild(tag);
-    setBox(el, l);
-    bindDrag(el, ()=>l, l.id);
-    wb.appendChild(el);
-  });
+  /* --- 背景多层（page Tab 全亮度可编辑；card Tab 作参照底图（半透明不可点）；overview 全亮度只读；intro/login 不显示） --- */
+  if(activeTab==='page' || activeTab==='card' || activeTab==='overview'){
+    const refMode = activeTab === 'card';    // 参照模式：半透明、不可交互
+    const editable = activeTab === 'page';   // 仅 page Tab 可选中编辑
+    cfg.bgLayers.forEach((l, i) => {
+      if(!l.visible) return;
+      const el = document.createElement('div');
+      el.className = 'bg-layer' + (editable && selectedId===l.id ? ' sel' : '') + (refMode ? ' bg-dim' : '');
+      el.dataset.kind = 'bg';
+      el.dataset.bid = l.id;
+      el.style.zIndex = i;
+      el.style.opacity = l.opacity;
+      if(l.src){
+        el.style.backgroundImage = 'url(' + l.src + ')';
+        el.style.backgroundSize = l.fit === 'cover' ? 'cover' : (l.fit==='contain' ? 'contain' : '100% 100%');
+      } else {
+        el.style.background = 'linear-gradient(135deg,#12344a,#1a5a6e 50%,#0f2230)';
+        el.style.backgroundSize = 'cover';
+      }
+      if(editable){
+        const tag = document.createElement('div'); tag.className='bg-tag'; tag.textContent = '背景层 '+(i+1);
+        el.appendChild(tag);
+        bindDrag(el, ()=>l, l.id);
+      }
+      setBox(el, l);
+      wb.appendChild(el);
+    });
+  }
 
-  // 登录动画层（z 10，背景与卡片之间）
-  wb.appendChild(buildLoginFxEl());
+  /* --- 登录动画层（login Tab 编辑；overview 合成） --- */
+  if(activeTab==='login' || activeTab==='overview') wb.appendChild(buildLoginFxEl());
 
-  // 卡片层（z 20）
-  wb.appendChild(buildCardEl());
-  // 头像（卡片内部，z 20.1）
-  wb.appendChild(buildAvatarEl());
-  // 输入框（z 20.2 / 20.3）
-  cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
-  // 盖章热区（z 20.4）
-  wb.appendChild(buildStampEl());
+  /* --- 卡片环节（card Tab 编辑；overview 合成） --- */
+  if(activeTab==='card' || activeTab==='overview'){
+    wb.appendChild(buildCardEl());
+    wb.appendChild(buildAvatarEl());
+    cfg.fields.forEach(f => wb.appendChild(buildFieldEl(f)));
+    wb.appendChild(buildStampEl());
+  }
 
-  // 转场遮罩（z 90）
-  const mask = document.createElement('div');
-  mask.className = 'transition-mask';
-  wb.appendChild(mask);
+  /* --- 安全区参考框（编辑辅助：card / page Tab；总预览是最终效果不画参考框） --- */
+  if(SafeArea.on && (activeTab==='card' || activeTab==='page')) wb.appendChild(buildSafeWorldLayer());
 
-  // 开场动画层（z 100）
-  wb.appendChild(buildIntroEl());
+  /* --- 开场动画层（intro Tab 编辑；overview 不常驻，用「🎬 试开场」临时播放） --- */
+  if(activeTab==='intro') wb.appendChild(buildIntroEl());
 
-  // preview 模式：注入真实输入框
-  if(previewMode){
+  /* --- preview 模式：注入真实输入框 --- */
+  if(effPreview){
     stage.classList.add('preview');
     cfg.fields.forEach(f => {
       const inp = document.createElement('input');
@@ -478,6 +562,12 @@ function render(){
   } else {
     stage.classList.remove('preview');
   }
+
+  /* --- 环节说明条 --- */
+  const note = document.createElement('div');
+  note.className = 'phase-note';
+  note.textContent = (TAB_META[activeTab]||{}).note || '';
+  wb.appendChild(note);
 
   stage.appendChild(wb);
   layoutWorldBox();
@@ -501,7 +591,7 @@ function layoutWorldBox(){
 function buildLoginFxEl(){
   const el = document.createElement('div');
   el.className = 'login-fx-layer';
-  el.innerHTML = '<div class="fx-hint">✨ 登录动画层（z=10 · 压背景 / 被卡片盖住）<br><span style="font-size:10px;opacity:.7;">占位符：上传视频后在此播放</span></div>';
+  el.innerHTML = '<div class="fx-hint">✨ 登录动画层（z=10 · 压背景 / 被卡片盖住）<br><span style="font-size:10px;opacity:.7;">占位符：上传视频后在此播放 · 总预览里可用「✨ 试登录动画」播一段</span></div>';
   return el;
 }
 
@@ -509,7 +599,7 @@ function buildLoginFxEl(){
 function buildIntroEl(){
   const el = document.createElement('div');
   el.className = 'intro-layer';
-  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">占位符：上传开场视频 + 音乐 + 淡出时长</span></div>';
+  el.innerHTML = '<div class="intro-hint">🎬 开场动画层（z=100 · 压住所有）<br><span style="font-size:11px;color:var(--sub);">占位符：上传开场视频 + 音乐 + 淡出时长<br>总预览里默认不常驻，点「🎬 试开场」看效果</span></div>';
   return el;
 }
 
@@ -541,7 +631,7 @@ function buildCardEl(){
   setBox(el, cfg.card);
   bindDrag(el, ()=>({...cfg.card, id:'card'}), 'card');
   el.addEventListener('click', e=>{
-    if(previewMode && !e.target.classList.contains('ed-resize')) doVerify();
+    if((previewMode || activeTab==='overview') && !e.target.classList.contains('ed-resize')) doVerify();
   });
   return el;
 }
@@ -608,7 +698,7 @@ function buildStampEl(){
   setBox(el, cfg.stamp);
   bindDrag(el, ()=>({...cfg.stamp, id:'stamp'}), 'stamp');
   el.addEventListener('click', e=>{
-    if(previewMode && !e.target.classList.contains('ed-resize')) doVerify();
+    if((previewMode || activeTab==='overview') && !e.target.classList.contains('ed-resize')) doVerify();
   });
   return el;
 }
@@ -664,21 +754,43 @@ function refreshSelection(){
   renderProps();
 }
 
-/* ================= 元素树 ================= */
+/* ================= 元素树（按 Tab 过滤） ================= */
 function renderTree(){
+  const meta = TAB_META[activeTab] || {};
+  const head = document.querySelector('.tree-head h2');
+  const hint = document.querySelector('.tree-head .hint');
+  if(head) head.textContent = meta.title || '';
+  if(hint) hint.textContent = meta.hint || '';
   const t = $('tree');
   t.innerHTML = '';
   const rows = [];
-  cfg.bgLayers.forEach((l,i)=> rows.push({ id:l.id, k:'🖼', nm:'背景层 '+(i+1) }));
-  rows.push({ id:'card', k:'🪪', nm:'身份证卡片' });
-  rows.push({ id:'avatar', k:'👤', nm:'头像区' });
-  cfg.fields.forEach(f=> rows.push({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label }));
-  rows.push({ id:'stamp', k:'🔍', nm:'盖章触发区' });
+  if(activeTab==='page'){
+    cfg.bgLayers.forEach((l,i)=> rows.push({ id:l.id, k:'🖼', nm:'背景层 '+(i+1) }));
+  } else if(activeTab==='card'){
+    rows.push({ id:'card', k:'🪪', nm:'身份证卡片' });
+    rows.push({ id:'avatar', k:'👤', nm:'头像区' });
+    cfg.fields.forEach(f=> rows.push({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label }));
+    rows.push({ id:'stamp', k:'🔍', nm:'盖章触发区' });
+  } else if(activeTab==='intro'){
+    rows.push({ id:'__intro', k:'🎬', nm:'开场动画层（z=100）' });
+  } else if(activeTab==='login'){
+    rows.push({ id:'__loginfx', k:'✨', nm:'登录动画层（z=10）' });
+  } else if(activeTab==='overview'){
+    const saf = worldSafeBox(WA);
+    rows.push({ id:'__o1', k:'🖼', nm:'背景多层 · z 0~9' });
+    rows.push({ id:'__o2', k:'✨', nm:'登录动画层 · z 10' });
+    rows.push({ id:'__o3', k:'🪪', nm:'卡片环节 · z 20+' });
+    rows.push({ id:'__o4', k:'🛡', nm:'UI 安全区 · y '+Math.round(saf.y0*100)+'%~'+Math.round(saf.y1*100)+'%' });
+    rows.push({ id:'__o5', k:'🎬', nm:'开场动画层 · z 100（试播）' });
+  }
   rows.forEach(r=>{
     const d=document.createElement('div');
     d.className='tree-row'+(selectedId===r.id?' sel':'');
     d.innerHTML = '<span class="k">'+r.k+'</span><span class="nm">'+r.nm+'</span>';
-    d.onclick = ()=>{ selectedId=r.id; refreshSelection(); };
+    d.onclick = ()=>{
+      if(r.id.startsWith('__')) return;   // 说明行 / 合成预览行只读
+      selectedId=r.id; refreshSelection();
+    };
     t.appendChild(d);
   });
 }
@@ -690,19 +802,27 @@ function switchTab(tab){
   // 各 Tab 决定属性面板默认选中项
   if(tab==='card'){ selectedId='card'; }
   else if(tab==='page'){ selectedId=cfg.bgLayers.length?cfg.bgLayers[cfg.bgLayers.length-1].id:null; }
-  else if(tab==='intro'){ selectedId=null; }
-  else if(tab==='login'){ selectedId=null; }
-  refreshSelection();
-  renderProps();
+  else { selectedId=null; }
+  // 工具栏按钮按 Tab 显隐
+  $('btn-add-bg').classList.toggle('hidden', tab!=='page');
+  $('btn-add-avatar').classList.toggle('hidden', tab!=='card');
+  $('btn-safe').classList.toggle('hidden', !(tab==='card' || tab==='page'));
+  $('btn-play-intro').classList.toggle('hidden', tab!=='overview');
+  $('btn-play-loginfx').classList.toggle('hidden', tab!=='overview');
+  render();   // 每个 Tab 的 stage 内容不同，必须重渲染
 }
 document.querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>switchTab(b.dataset.tab));
 
-/* ================= 属性面板 ================= */
+/* ================= 属性面板（按 Tab 分发） ================= */
 function renderProps(){
   const empty = $('props-empty');
   const content = $('props-content');
-  const isGlobal = (activeTab==='intro' || activeTab==='login');
-  if(!selectedId && !isGlobal){
+  // 这些 Tab 无条件显示自己的属性面板
+  if(activeTab==='intro'){ empty.classList.add('hidden'); content.classList.remove('hidden'); return renderIntroProps(content); }
+  if(activeTab==='login'){ empty.classList.add('hidden'); content.classList.remove('hidden'); return renderLoginProps(content); }
+  if(activeTab==='overview'){ empty.classList.add('hidden'); content.classList.remove('hidden'); return renderOverviewProps(content); }
+  // card / page Tab：未选中时显示全局面板
+  if(!selectedId){
     empty.classList.remove('hidden');
     content.classList.add('hidden');
     renderGlobalPanel(empty);
@@ -716,8 +836,26 @@ function renderProps(){
   else if(selectedId==='stamp'){ renderStampProps(content); }
   else if(selectedId && selectedId.startsWith('bg_')){ renderBgProps(content); }
   else if(selectedId && selectedId.startsWith('f_')){ renderFieldProps(content); }
-  else if(activeTab==='intro'){ renderIntroProps(content); }
-  else if(activeTab==='login'){ renderLoginProps(content); }
+  else { empty.classList.remove('hidden'); content.classList.add('hidden'); renderGlobalPanel(empty); }
+}
+
+/* 总预览 Tab 属性面板：合成说明 + 演示入口 */
+function renderOverviewProps(c){
+  const saf = worldSafeBox(WA);
+  c.innerHTML = `
+    <h3>🔍 总预览</h3>
+    <div class="sec-title">合成层级（自下而上）</div>
+    <div class="props-empty" style="font-size:11px;line-height:2;">
+      🖼 背景多层 · z 0~9<br>
+      ✨ 登录动画层 · z 10（压背景）<br>
+      🪪 卡片 / 头像 / 输入框 / 盖章 · z 20+<br>
+      🛡 UI 安全区 · y ${Math.round(saf.y0*100)}%~${Math.round(saf.y1*100)}%<br>
+      🎬 开场动画层 · z 100（试播时不常驻）
+    </div>
+    <div class="sec-title">试玩</div>
+    <div class="props-empty" style="font-size:11px;">输入框可直接输入；点盖章区（或上方「🔑 测试核验」）试核验；工具栏「🎬 试开场」「✨ 试登录动画」临时播放对应环节。</div>
+    <div class="warn">开场动画 z=100 平时会压住整个画面，总预览里默认不显示，点「🎬 试开场」看效果。</div>
+  `;
 }
 
 /* 全局设置（未选中元素时的背景上传入口） */
@@ -1062,6 +1200,28 @@ $('btn-add-bg').onclick = ()=>{
   selectedId = id; saveCfg(); render();
 };
 $('btn-add-avatar').onclick = ()=>{ selectedId='avatar'; refreshSelection(); };
+$('btn-safe').onclick = ()=>{
+  SafeArea.on = !SafeArea.on;
+  $('btn-safe').classList.toggle('on', SafeArea.on);
+  render();
+};
+
+/* --- 环节试播（总预览用）：临时插入对应层，播完自动淡出移除 --- */
+function playLayerDemo(build, holdMs, fadeMs){
+  const wb = worldBoxEl(); if(!wb) return;
+  const el = build();
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .35s ease';
+  wb.appendChild(el);
+  requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+  setTimeout(()=>{
+    el.style.transition = 'opacity '+fadeMs+'ms ease';
+    el.style.opacity = '0';
+    setTimeout(()=> el.remove(), fadeMs + 60);
+  }, holdMs);
+}
+$('btn-play-intro').onclick = ()=> playLayerDemo(buildIntroEl, 1400, cfg.intro.fadeOut || 800);
+$('btn-play-loginfx').onclick = ()=> playLayerDemo(buildLoginFxEl, Math.max(800, cfg.loginFx.coverDuration || 1600), 500);
 
 $('btn-test-verify').onclick = ()=>{
   previewMode = true;
@@ -1088,7 +1248,7 @@ window.addEventListener('resize', ()=>{ layoutWorldBox(); });
 
 /* ================= 初始化 ================= */
 loadCfg();
-render();
+switchTab('card');   // 统一入口：渲染 stage + 树 + 属性 + 工具栏显隐
 setDevice('iphone-15pm');
 
 $('edit-stage').addEventListener('pointerdown', e=>{
