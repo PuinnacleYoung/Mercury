@@ -166,6 +166,17 @@
   .bg-layer.bg-dim{opacity:.45!important;cursor:default;}
   .bg-layer.bg-dim .bg-tag,.bg-layer.bg-dim .ed-resize{display:none!important;}
 
+  /* 锁定态：不可拖、不可缩，手柄消失，左上角挂锁（与地图编辑引擎一致） */
+  .id-card.locked,.id-avatar.locked,.id-field.locked,.id-stamp.locked,.bg-layer.locked{cursor:not-allowed;}
+  .id-card.locked .ed-resize,.id-avatar.locked .ed-resize,.id-field.locked .ed-resize,.id-stamp.locked .ed-resize,.bg-layer.locked .ed-resize{display:none!important;}
+  .ed-lock{position:absolute;top:-9px;left:-9px;min-width:20px;height:20px;padding:0 4px;border-radius:999px;background:#f5c542;color:#3a2c05;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:60;}
+
+  /* 吸附辅助线（世界坐标）：垂直/水平中线，与服装引擎 mid-line 同风格 */
+  .snap-guide-line{position:absolute;z-index:65;pointer-events:none;display:none;}
+  .snap-guide-line.show{display:block;}
+  .snap-guide-line[data-kind="v"]{top:0;bottom:0;left:50%;width:0;border-left:2px dashed #ff6ad5;box-shadow:0 0 12px rgba(255,106,213,.7);}
+  .snap-guide-line[data-kind="h"]{left:0;right:0;top:50%;height:0;border-top:2px dashed #37e3ff;box-shadow:0 0 12px rgba(55,227,255,.7);}
+
   /* 环节说明条（stage 底部） */
   .phase-note{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:120;background:rgba(4,16,22,.78);border:1px solid var(--line);color:var(--sub);font-size:11px;font-weight:800;padding:5px 14px;border-radius:999px;pointer-events:none;white-space:nowrap;backdrop-filter:blur(4px);}
   /* 树分组小标题 */
@@ -294,6 +305,9 @@
       <button class="pill gold hidden" id="btn-add-bg">🖼 加背景层</button>
       <button class="pill mint" id="btn-add-avatar">👤 选中头像</button>
       <button class="pill on hidden" id="btn-safe" title="显示全机型可见区 / UI 安全区参考框（与关卡编辑器同源算法）">🛡 安全区</button>
+      <button class="pill on hidden" id="btn-snap" title="拖动时吸附对齐到中线 / 边缘（0 · 0.5 · 1）">📏 吸附</button>
+      <button class="pill hidden" id="btn-lock-all" title="锁定当前环节所有元素，防止误触">🔒 全部锁定</button>
+      <button class="pill hidden" id="btn-unlock-all" title="解锁当前环节所有元素">🔓 全部解锁</button>
       <button class="pill hidden" id="btn-play-intro" title="在总预览里临时播一段开场动画（含淡出）">🎬 试开场</button>
       <button class="pill hidden" id="btn-play-loginfx" title="在总预览里临时播一段登录动画">✨ 试登录动画</button>
       <span style="width:1px;height:22px;background:var(--line);margin:0 2px;"></span>
@@ -363,10 +377,10 @@ function defaultConfig(){
       { id:'bg_main', src:'', fit:'cover', x:0.5, y:0.5, w:1.0, h:1.0, opacity:1, blend:'normal', visible:true, locked:false },
       { id:'bg_fx',   src:'', fit:'contain', x:0.82, y:0.22, w:0.3, h:0.24, opacity:0.8, blend:'screen', visible:true, locked:false },
     ],
-    card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62 },
+    card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62, locked:false },
     avatar: {
       frameSrc:'', defaultRace:'human',
-      x:0.5, y:0.28, w:0.16, h:0.20,
+      x:0.5, y:0.28, w:0.16, h:0.20, locked:false,
       races: [
         { id:'human', name:'人族', silhouette:'' },
         { id:'elf',   name:'精灵', silhouette:'' },
@@ -374,11 +388,11 @@ function defaultConfig(){
       ]
     },
     fields: [
-      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.45, w:0.26, h:0.075, fontSize:18, mask:false, maxLength:16 },
-      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.60, w:0.26, h:0.075, fontSize:16, mask:true, maxLength:32 },
+      { id:'f_name', type:'name', label:'姓名', x:0.5, y:0.45, w:0.26, h:0.075, fontSize:18, mask:false, maxLength:16, locked:false },
+      { id:'f_code', type:'code', label:'特殊防伪码', x:0.5, y:0.60, w:0.26, h:0.075, fontSize:16, mask:true, maxLength:32, locked:false },
     ],
     stamp: {
-      x:0.5, y:0.82, w:0.2, h:0.12, hitShape:'circle',
+      x:0.5, y:0.82, w:0.2, h:0.12, hitShape:'circle', locked:false,
       appear:{ duration:250, fromScale:1.6, toScale:1.0, rotation:-12 },
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
@@ -390,8 +404,17 @@ function defaultConfig(){
 
 let cfg;
 function loadCfg(){
-  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); if(cfg.version!==2) cfg = defaultConfig(); return; } }catch(e){}
+  try{ const s = localStorage.getItem(LS_KEY); if(s){ cfg = JSON.parse(s); if(cfg.version!==2) cfg = defaultConfig(); else normalizeCfg(); return; } }catch(e){}
   cfg = defaultConfig();
+}
+/* 补齐旧配置缺失的 locked 字段，避免老数据报错 */
+function normalizeCfg(){
+  const def = defaultConfig();
+  if(cfg.card && cfg.card.locked===undefined) cfg.card.locked = false;
+  if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
+  if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
+  (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
+  (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
 }
 function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
 
@@ -507,7 +530,7 @@ function render(){
     cfg.bgLayers.forEach((l, i) => {
       if(!l.visible) return;
       const el = document.createElement('div');
-      el.className = 'bg-layer' + (editable && selectedId===l.id ? ' sel' : '') + (refMode ? ' bg-dim' : '');
+      el.className = 'bg-layer' + (editable && selectedId===l.id ? ' sel' : '') + (refMode ? ' bg-dim' : '') + (l.locked ? ' locked' : '');
       el.dataset.kind = 'bg';
       el.dataset.bid = l.id;
       el.style.zIndex = i;
@@ -525,6 +548,7 @@ function render(){
         bindDrag(el, ()=>l, l.id);
       }
       setBox(el, l);
+      if(l.locked) lockBadge(el);
       wb.appendChild(el);
     });
   }
@@ -603,10 +627,13 @@ function buildIntroEl(){
   return el;
 }
 
+/* 锁徽章：与地图编辑引擎一致 */
+function lockBadge(el){ const lk=document.createElement('div'); lk.className='ed-lock'; lk.textContent='🔒'; el.appendChild(lk); }
+
 /* ================= 卡片 ================= */
 function buildCardEl(){
   const el = document.createElement('div');
-  el.className = 'id-card' + (selectedId==='card' ? ' sel' : '');
+  el.className = 'id-card' + (selectedId==='card' ? ' sel' : '') + (cfg.card.locked ? ' locked' : '');
   el.dataset.kind = 'card';
   const pic = document.createElement('div');
   pic.className = 'card-pic';
@@ -629,7 +656,8 @@ function buildCardEl(){
   flow.className = 'flow-layer';
   el.appendChild(flow);
   setBox(el, cfg.card);
-  bindDrag(el, ()=>({...cfg.card, id:'card'}), 'card');
+  bindDrag(el, ()=>cfg.card, 'card');
+  if(cfg.card.locked) lockBadge(el);
   el.addEventListener('click', e=>{
     if((previewMode || activeTab==='overview') && !e.target.classList.contains('ed-resize')) doVerify();
   });
@@ -639,7 +667,7 @@ function buildCardEl(){
 /* ================= 头像（卡片内部） ================= */
 function buildAvatarEl(){
   const el = document.createElement('div');
-  el.className = 'id-avatar' + (selectedId==='avatar' ? ' sel' : '');
+  el.className = 'id-avatar' + (selectedId==='avatar' ? ' sel' : '') + (cfg.avatar.locked ? ' locked' : '');
   el.dataset.kind = 'avatar';
   el.style.zIndex = 20;
   const race = cfg.avatar.races.find(r=>r.id===cfg.avatar.defaultRace);
@@ -661,14 +689,15 @@ function buildAvatarEl(){
   else { frame.style.border = '2px solid rgba(255,255,255,.4)'; }
   el.appendChild(frame);
   setBox(el, cfg.avatar);
-  bindDrag(el, ()=>({...cfg.avatar, id:'avatar'}), 'avatar');
+  bindDrag(el, ()=>cfg.avatar, 'avatar');
+  if(cfg.avatar.locked) lockBadge(el);
   return el;
 }
 
 /* ================= 输入框 ================= */
 function buildFieldEl(f){
   const el = document.createElement('div');
-  el.className = 'id-field' + (selectedId===f.id ? ' sel' : '');
+  el.className = 'id-field' + (selectedId===f.id ? ' sel' : '') + (f.locked ? ' locked' : '');
   el.dataset.kind = 'field';
   el.dataset.fid = f.id;
   const box = document.createElement('div');
@@ -682,13 +711,14 @@ function buildFieldEl(f){
   el.appendChild(lb);
   setBox(el, f);
   bindDrag(el, ()=>f, f.id);
+  if(f.locked) lockBadge(el);
   return el;
 }
 
 /* ================= 盖章热区 ================= */
 function buildStampEl(){
   const el = document.createElement('div');
-  el.className = 'id-stamp' + (selectedId==='stamp' ? ' sel' : '');
+  el.className = 'id-stamp' + (selectedId==='stamp' ? ' sel' : '') + (cfg.stamp.locked ? ' locked' : '');
   el.dataset.kind = 'stamp';
   el.innerHTML = '<span style="font-size:22px;">🔍</span>';
   const lb = document.createElement('div');
@@ -696,7 +726,8 @@ function buildStampEl(){
   lb.textContent = '盖章区';
   el.appendChild(lb);
   setBox(el, cfg.stamp);
-  bindDrag(el, ()=>({...cfg.stamp, id:'stamp'}), 'stamp');
+  bindDrag(el, ()=>cfg.stamp, 'stamp');
+  if(cfg.stamp.locked) lockBadge(el);
   el.addEventListener('click', e=>{
     if((previewMode || activeTab==='overview') && !e.target.classList.contains('ed-resize')) doVerify();
   });
@@ -706,25 +737,84 @@ function buildStampEl(){
 /* ================= 拖拽 / 缩放 ================= */
 function dragHost(){ return worldBoxEl() || $('edit-stage'); }
 
+/* 锁定 / 吸附 全局开关 */
+let lockEnabled = true;   // 锁定功能总开关
+let snapEnabled = true;   // 吸附对齐总开关
+const SNAP_PX = 8;        // 吸附阈值（像素）
+
+/* 是否被锁定：从真实 cfg 对象上读 locked 字段 */
+function isLocked(id){
+  const o = resolveObj(id); return o ? !!o.locked : false;
+}
+/* 解析真实对象引用（用于锁标记 / 吸附辅助线） */
+function resolveObj(id){
+  if(id==='card') return cfg.card;
+  if(id==='avatar') return cfg.avatar;
+  if(id==='stamp') return cfg.stamp;
+  if(id && id.startsWith('f_')) return cfg.fields.find(x=>x.id===id);
+  if(id && id.startsWith('bg_')) return cfg.bgLayers.find(x=>x.id===id);
+  return null;
+}
+
+/* 吸附对齐：计算世界中心坐标（归一化 0~1）的目标吸附值 */
+function snapAxis(val, size){
+  if(!snapEnabled) return { v:val, snapped:false };
+  // 吸附目标（归一化）：左缘0、中线0.5、右缘1（用中心点吸附）
+  const targets = [0, 0.5, 1];
+  // 也吸附元素中心与这些关键线对齐
+  let best = val, snapped = false, bestD = 1;
+  // 中心对齐：中心点吸附到 0 / 0.5 / 1
+  targets.forEach(t=>{
+    const d = Math.abs(val - t);
+    if(d < bestD){ bestD = d; best = t; snapped = true; }
+  });
+  // 阈值换算成像素（由 world-box 尺寸决定），小于 SNAP_PX 才吸附
+  const wb = worldBoxEl(); const rect = wb ? wb.getBoundingClientRect() : {width:1000,height:1000};
+  const px = bestD * rect.width;
+  return (px <= SNAP_PX) ? { v:best, snapped:true } : { v:val, snapped:false };
+}
+
+/* 吸附辅助线（世界坐标） */
+let snapLineEl = null;
+function showSnapLine(kind){
+  if(!snapLineEl){
+    snapLineEl = document.createElement('div');
+    snapLineEl.className = 'snap-guide-line';
+    worldBoxEl().appendChild(snapLineEl);
+  }
+  snapLineEl.dataset.kind = kind;
+  snapLineEl.classList.add('show');
+}
+function hideSnapLine(){
+  if(snapLineEl){ snapLineEl.classList.remove('show'); }
+}
+
 function bindDrag(el, getObj, id){
   el.addEventListener('pointerdown', e=>{
     if(e.target.classList.contains('ed-resize')) return;
+    if(lockEnabled && isLocked(id)){ toastVerify('🔒 已锁定 · 先解锁再拖（右侧属性面板）'); return; }
     e.preventDefault(); e.stopPropagation();
     const o = getObj(); if(!o) return;
     selectedId = id; refreshSelection();
     const rect = dragHost().getBoundingClientRect();
     const sx=e.clientX, sy=e.clientY, ox=o.x, oy=o.y;
     const move=ev=>{
-      o.x = clamp01(ox + (ev.clientX-sx)/rect.width);
-      o.y = clamp01(oy + (ev.clientY-sy)/rect.height);
+      let nx = ox + (ev.clientX-sx)/rect.width;
+      let ny = oy + (ev.clientY-sy)/rect.height;
+      const sxr = snapAxis(nx, o.w), syr = snapAxis(ny, o.h);
+      if(sxr.snapped){ nx = sxr.v; showSnapLine('v'); } else hideSnapLine();
+      if(syr.snapped){ ny = syr.v; showSnapLine('h'); }
+      o.x = clamp01(nx);
+      o.y = clamp01(ny);
       setBox(el, o);
     };
-    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); saveCfg(); };
+    const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); hideSnapLine(); saveCfg(); };
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
   });
   const h=document.createElement('div'); h.className='ed-resize'; el.appendChild(h);
   h.addEventListener('pointerdown', e=>{
     e.preventDefault(); e.stopPropagation();
+    if(lockEnabled && isLocked(id)){ toastVerify('🔒 已锁定 · 先解锁再缩放'); return; }
     const o=getObj(); if(!o) return;
     selectedId = id; refreshSelection();
     const rect=dragHost().getBoundingClientRect();
@@ -807,6 +897,9 @@ function switchTab(tab){
   $('btn-add-bg').classList.toggle('hidden', tab!=='page');
   $('btn-add-avatar').classList.toggle('hidden', tab!=='card');
   $('btn-safe').classList.toggle('hidden', !(tab==='card' || tab==='page'));
+  $('btn-snap').classList.toggle('hidden', !(tab==='card' || tab==='page'));
+  $('btn-lock-all').classList.toggle('hidden', !(tab==='card' || tab==='page'));
+  $('btn-unlock-all').classList.toggle('hidden', !(tab==='card' || tab==='page'));
   $('btn-play-intro').classList.toggle('hidden', tab!=='overview');
   $('btn-play-loginfx').classList.toggle('hidden', tab!=='overview');
   render();   // 每个 Tab 的 stage 内容不同，必须重渲染
@@ -882,11 +975,14 @@ function renderCardProps(c){
       <div class="field-row"><label>不透明</label><input type="range" id="card-opacity" min="0" max="1" step="0.01" value="${cfg.card.opacity}"><span class="val" id="card-opacity-v">${Math.round(cfg.card.opacity*100)}%</span></div>
     </div>
     <div class="prop-blk">
-      <div class="sec-title">位置 / 大小</div>
+      <div class="sec-title">位置 / 大小（可直接填数值）</div>
       <div class="field-row"><label>X</label><input type="number" id="card-x" step="0.01" value="${cfg.card.x.toFixed(3)}"></div>
       <div class="field-row"><label>Y</label><input type="number" id="card-y" step="0.01" value="${cfg.card.y.toFixed(3)}"></div>
       <div class="field-row"><label>宽</label><input type="number" id="card-w" step="0.01" value="${cfg.card.w.toFixed(3)}"></div>
       <div class="field-row"><label>高</label><input type="number" id="card-h" step="0.01" value="${cfg.card.h.toFixed(3)}"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="chk-row"><input type="checkbox" id="card-lock" ${cfg.card.locked?'checked':''}> 🔒 锁定此元素（防误触，调好后不用二次编辑）</div>
     </div>
     <div class="btn-row"><button class="btn-mini danger" id="card-clear">🗑 移除贴图</button></div>
   `;
@@ -905,6 +1001,7 @@ function bindCardProps(){
   ['card-x','card-y','card-w','card-h'].forEach(id=>{
     $(id).oninput = e=>{ const k = id.slice(5); cfg.card[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
   });
+  $('card-lock').onchange = e=>{ cfg.card.locked = e.target.checked; saveCfg(); render(); };
   $('card-clear').onclick = ()=>{ cfg.card.src=''; saveCfg(); render(); };
 }
 
@@ -936,6 +1033,9 @@ function renderAvatarProps(c){
       <div class="field-row"><label>宽</label><input type="number" id="ava-w" step="0.01" value="${cfg.avatar.w.toFixed(3)}"></div>
       <div class="field-row"><label>高</label><input type="number" id="ava-h" step="0.01" value="${cfg.avatar.h.toFixed(3)}"></div>
     </div>
+    <div class="prop-blk">
+      <div class="chk-row"><input type="checkbox" id="ava-lock" ${cfg.avatar.locked?'checked':''}> 🔒 锁定此元素</div>
+    </div>
   `;
   const fd = $('ava-frame-drop');
   fd.onclick = ()=>{ const i=document.createElement('input'); i.type='file'; i.accept='image/png'; i.onchange=()=>readFileTo(i.files[0], url=>{cfg.avatar.frameSrc=url; saveCfg(); render();}); i.click(); };
@@ -946,6 +1046,7 @@ function renderAvatarProps(c){
   ['ava-x','ava-y','ava-w','ava-h'].forEach(id=>{
     $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
   });
+  $('ava-lock').onchange = e=>{ cfg.avatar.locked = e.target.checked; saveCfg(); render(); };
 }
 
 /* --- 盖章属性 --- */
@@ -967,6 +1068,9 @@ function renderStampProps(c){
       <div class="field-row"><label>抖动</label><input type="number" id="s-shake" value="${cfg.stamp.shake.duration}"></div>
       <div class="field-row"><label>消失</label><input type="number" id="s-dismiss" value="${cfg.stamp.dismiss.duration}"></div>
     </div>
+    <div class="prop-blk">
+      <div class="chk-row"><input type="checkbox" id="s-lock" ${cfg.stamp.locked?'checked':''}> 🔒 锁定此区域</div>
+    </div>
   `;
   ['s-x','s-y','s-w','s-h'].forEach(id=>{
     $(id).oninput=e=>{const k=id.slice(2);cfg.stamp[k]=parseFloat(e.target.value)||0;saveCfg();render();};
@@ -974,6 +1078,7 @@ function renderStampProps(c){
   $('s-appear').onchange=e=>{cfg.stamp.appear.duration=+e.target.value||250;saveCfg();};
   $('s-shake').onchange=e=>{cfg.stamp.shake.duration=+e.target.value||400;saveCfg();};
   $('s-dismiss').onchange=e=>{cfg.stamp.dismiss.duration=+e.target.value||350;saveCfg();};
+  $('s-lock').onchange=e=>{ cfg.stamp.locked=e.target.checked; saveCfg(); render(); };
 }
 
 /* --- 输入框属性 --- */
@@ -996,6 +1101,9 @@ function renderFieldProps(c){
       <div class="field-row"><label>宽</label><input type="number" id="f-w" step="0.01" value="${f.w.toFixed(3)}"></div>
       <div class="field-row"><label>高</label><input type="number" id="f-h" step="0.01" value="${f.h.toFixed(3)}"></div>
     </div>
+    <div class="prop-blk">
+      <div class="chk-row"><input type="checkbox" id="f-lock" ${f.locked?'checked':''}> 🔒 锁定此字段</div>
+    </div>
     <div class="btn-row"><button class="btn-mini danger" id="f-del">🗑 删除此字段</button></div>
   `;
   $('f-label').oninput = e=>{ f.label = e.target.value; saveCfg(); render(); };
@@ -1005,6 +1113,7 @@ function renderFieldProps(c){
   ['f-x','f-y','f-w','f-h'].forEach(id=>{
     $(id).oninput = e=>{ const k = id.slice(2); f[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
   });
+  $('f-lock').onchange = e=>{ f.locked = e.target.checked; saveCfg(); render(); };
   $('f-del').onclick = ()=>{ cfg.fields = cfg.fields.filter(x=>x.id!==f.id); selectedId = null; saveCfg(); render(); };
 }
 
@@ -1042,6 +1151,9 @@ function renderBgProps(c){
       <button class="btn-mini" id="bg-visible">${l.visible?'👁 隐藏':'🙈 显示'}</button>
       <button class="btn-mini danger" id="bg-del">🗑 删除此层</button>
     </div>
+    <div class="prop-blk" style="margin-top:12px;">
+      <div class="chk-row"><input type="checkbox" id="bg-lock" ${l.locked?'checked':''}> 🔒 锁定此层</div>
+    </div>
   `;
   const drop=$('bg-drop'), thumb=$('bg-thumb');
   if(l.src){ thumb.src=l.src; thumb.style.display='block'; }
@@ -1054,6 +1166,7 @@ function renderBgProps(c){
   ['bg-x','bg-y','bg-w','bg-h'].forEach(id=>{$(id).oninput=e=>{const k=id.slice(3);l[k]=parseFloat(e.target.value)||0;saveCfg();render();};});
   $('bg-visible').onclick=()=>{l.visible=!l.visible;saveCfg();render();};
   $('bg-del').onclick=()=>{cfg.bgLayers=cfg.bgLayers.filter(x=>x.id!==l.id);selectedId=null;saveCfg();render();};
+  $('bg-lock').onchange=e=>{l.locked=e.target.checked;saveCfg();render();};
 }
 
 /* --- 开场动画属性（Tab C） --- */
@@ -1205,6 +1318,31 @@ $('btn-safe').onclick = ()=>{
   $('btn-safe').classList.toggle('on', SafeArea.on);
   render();
 };
+$('btn-snap').onclick = ()=>{
+  snapEnabled = !snapEnabled;
+  $('btn-snap').classList.toggle('on', snapEnabled);
+  toastVerify(snapEnabled ? '📏 吸附对齐 开' : '📏 吸附对齐 关');
+};
+
+/* 批量锁定/解锁：当前环节涉及的元素 */
+function collectEditableObjs(){
+  const arr = [];
+  if(activeTab==='card'){
+    arr.push(cfg.card, cfg.avatar, cfg.stamp);
+    cfg.fields.forEach(f=>arr.push(f));
+  } else if(activeTab==='page'){
+    cfg.bgLayers.forEach(l=>arr.push(l));
+  }
+  return arr.filter(o=>o && typeof o==='object');
+}
+function setAllLocks(locked){
+  const objs = collectEditableObjs();
+  objs.forEach(o=> o.locked = locked);
+  saveCfg(); render();
+  toastVerify(locked ? ('🔒 已锁定 '+objs.length+' 个元素') : ('🔓 已解锁 '+objs.length+' 个元素'));
+}
+$('btn-lock-all').onclick = ()=> setAllLocks(true);
+$('btn-unlock-all').onclick = ()=> setAllLocks(false);
 
 /* --- 环节试播（总预览用）：临时插入对应层，播完自动淡出移除 --- */
 function playLayerDemo(build, holdMs, fadeMs){
