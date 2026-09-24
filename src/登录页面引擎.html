@@ -184,16 +184,26 @@
   /* 开场动画层：夹在「卡片(20)」与「登录动画(10)」之间 —— 陛下钦定。
      这样卡片能浮在开场动画之上，播到指定时间再抖出来。 */
   .intro-layer{position:absolute;inset:0;z-index:15;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);}
-  /* 卡片「抖动放大」入场：从小弹到大，带一点点回弹和歪头，最后稳住 */
+  /* 卡片「从手里跃出来」入场（陛下钦定 4 秒）：
+     ① 沉在下方 90px 小小的 → ② 往上猛冲、冲过头顶（Y -28px、放大 1.13）
+     ③ 回落再上跳 → ④ 后 3 秒是幅度递减的上下+左右阻尼摆动，慢慢稳住。
+     和游戏端 src/index.html 的 CARD_POP_KF 保持一致（改一处记得改两处）。 */
   @keyframes cardPopIn{
-    0%   { transform:scale(.30) rotate(-7deg); opacity:0; }
-    40%  { transform:scale(1.14) rotate(4deg); opacity:1; }
-    58%  { transform:scale(.92) rotate(-3deg); }
-    72%  { transform:scale(1.07) rotate(2deg); }
-    86%  { transform:scale(.97) rotate(-1deg); }
-    100% { transform:scale(1) rotate(0deg); opacity:1; }
+    0%   { transform:translate(-12px, 90px)   scale(.40)   rotate(-8deg);   opacity:0; }
+    6%   { transform:translate(-9px, 62px)    scale(.58)   rotate(-6.5deg); opacity:1; }
+    13%  { transform:translate(4px, 18px)     scale(.92)   rotate(4deg); }
+    20%  { transform:translate(9px, -28px)    scale(1.13)  rotate(6.5deg); }
+    27%  { transform:translate(-7px, -8px)    scale(1.02)  rotate(-4.5deg); }
+    34%  { transform:translate(6px, 12px)     scale(.97)   rotate(3.6deg); }
+    41%  { transform:translate(-4.5px, -4px)  scale(1.02)  rotate(-2.8deg); }
+    50%  { transform:translate(3.2px, 6px)    scale(.988)  rotate(2deg); }
+    60%  { transform:translate(-2.2px, -3px)  scale(1.012) rotate(-1.4deg); }
+    72%  { transform:translate(1.5px, 3.5px)  scale(.993)  rotate(1deg); }
+    85%  { transform:translate(-.9px, -2px)   scale(1.006) rotate(-.6deg); }
+    100% { transform:translate(0,0) scale(1) rotate(0deg); opacity:1; }
   }
-  .intro-pop{ animation:cardPopIn .85s cubic-bezier(.2,.85,.3,1.15) both; }
+  /* linear：节奏交给关键帧自己（前密后疏），再套 ease-out 会把余韵拖得黏糊糊 */
+  .intro-pop{ animation:cardPopIn 4s linear both; }
   .intro-layer .intro-hint{font-size:13px;color:var(--gold);font-weight:900;text-align:center;line-height:1.8;}
 
   /* 全局转场遮罩（z 90） */
@@ -424,10 +434,10 @@
 </div>
 
 <!-- 大素材仓库（IndexedDB）：开场/登录动画视频不再塞 localStorage，否则 5MB 直接爆 -->
-<script src="./media-store.js?v=20260924h"></script>
+<script src="./media-store.js?v=20260924i"></script>
 <!-- 云端资产同步：改完点右下角「☁️ 提交」，陛下在后台发布后全服生效 -->
-<script src="./net-client.js?v=20260924h"></script>
-<script src="./cloud-sync.js?v=20260924h"></script>
+<script src="./net-client.js?v=20260924i"></script>
+<script src="./cloud-sync.js?v=20260924i"></script>
 <script>
 /* ============================================================
    登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
@@ -491,7 +501,8 @@ function defaultConfig(){
     cred: { x:0.5, y:0.62, w:0.30, h:0.28, locked:false },
     /* cardAt = 开场动画播到第几秒时卡片「抖动放大」出现（20 秒的片子配 18 就是第 18 秒弹出）
        skippable = false：开场动画**不允许跳过**（陛下钦定），必须完整播完 */
-    intro: { src:'', audio:'', skippable:false, fadeOut:1000, cardAt:18, volume:100 },
+    /* cardPopMs = 卡片登场动画时长（陛下钦定 4000＝4 秒）：前 1 秒完成「从下跃出」，后 3 秒是递减余韵 */
+    intro: { src:'', audio:'', skippable:false, fadeOut:1000, cardAt:18, volume:100, cardPopMs:4000 },
     loginFx: { src:'', audio:'', delay:0, coverDuration:1600 },
   };
 }
@@ -506,6 +517,7 @@ function normalizeCfg(){
   const def = defaultConfig();
   /* 陛下钦定「最后一秒才淡出」：把早先设的 3000 一并迁到 1000 */
   if(cfg.intro && (cfg.intro.fadeOut === 3000 || cfg.intro.fadeOut === 800)) cfg.intro.fadeOut = 1000;
+  if(cfg.intro && cfg.intro.cardPopMs == null) cfg.intro.cardPopMs = 4000;   /* 卡片登场 4 秒（陛下钦定） */
   if(cfg.card && cfg.card.locked===undefined) cfg.card.locked = false;
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
@@ -1776,6 +1788,7 @@ function renderIntroProps(c){
     <div class="prop-blk">
       <div class="sec-title">参数</div>
       <div class="field-row"><label>卡片出现</label><input type="number" id="intro-cardat" step="0.1" min="0" value="${cfg.intro.cardAt==null?18:cfg.intro.cardAt}"><span class="val">秒</span></div>
+      <div class="field-row"><label>登场时长</label><input type="number" id="intro-cardpop" step="100" min="600" max="8000" value="${cfg.intro.cardPopMs==null?4000:cfg.intro.cardPopMs}"><span class="val">ms</span></div>
       <div class="field-row"><label>淡出时长</label><input type="number" id="intro-fade" value="${cfg.intro.fadeOut||1000}"><span class="val">ms</span></div>
       <div class="field-row"><label>🔊 音量</label><input type="number" id="intro-vol" min="0" max="100" value="${cfg.intro.volume==null?100:cfg.intro.volume}"><span class="val">%</span></div>
       <div class="props-empty" style="font-size:10px;opacity:.8;">
@@ -1789,6 +1802,7 @@ function renderIntroProps(c){
   `;
   bindVideoUpload(cfg.intro, 'intro-drop', 'intro-src', 'intro-cloud', 'intro', 'intro-pick');
   $('intro-cardat').onchange=e=>{cfg.intro.cardAt=Math.max(0,parseFloat(e.target.value)||0);saveCfg();};
+  $('intro-cardpop').onchange=e=>{cfg.intro.cardPopMs=Math.max(600,Math.min(8000,+e.target.value||4000));saveCfg();};
   $('intro-fade').onchange=e=>{cfg.intro.fadeOut=+e.target.value||1000;saveCfg();};
   $('intro-vol').onchange=e=>{cfg.intro.volume=Math.max(0,Math.min(100,+e.target.value||0));saveCfg();};
   $('intro-trypreview').onclick=()=>{ switchTab('overview'); setTimeout(()=>playIntroPreview(), 300); };
@@ -2275,6 +2289,7 @@ function playIntroPreview(){
         el.style.transition=''; el.style.opacity=''; el.style.pointerEvents='';
         el.style.transformOrigin = (ax - el.offsetLeft) + 'px ' + (ay - el.offsetTop) + 'px';
         void el.offsetWidth;                 // 强制重排，保证动画每次都重新播
+        el.style.animationDuration = (cfg.intro && cfg.intro.cardPopMs ? Math.max(600, Math.min(8000, +cfg.intro.cardPopMs)) : 4000) + 'ms';
         el.classList.add('intro-pop');
       });
     }catch(e){

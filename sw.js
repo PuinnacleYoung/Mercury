@@ -1,5 +1,5 @@
 /* 拾光·澈屿 Service Worker（根目录版）—— 策略同 src/sw.js */
-const CACHE = 'shuguang-root-v27';
+const CACHE = 'shuguang-root-v28';
 const PRECACHE = [
   './',
   './index.html',
