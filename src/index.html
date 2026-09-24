@@ -740,7 +740,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 #auth-screen{background:#060b12;}
 .auth-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .auth-world{position:absolute;overflow:hidden;background:#000;}
-.auth-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
+/* isolation:isolate = 自建堆叠上下文：背景里的视频 z-index:30 只在背景内部比大小，
+   不会逃出去盖住卡片（z10）/输入框/盖章区 —— 卡片永远压在背景视频上面 */
+.auth-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;isolation:isolate;}
 .auth-bg.is-video{object-fit:cover;}
 /* 背景多层（登录页面引擎 🎨 Tab 的 bgLayers）：图片层按顺序叠放，z 序 = 配置顺序 */
 .auth-bg-layer{position:absolute;inset:0;pointer-events:none;background-repeat:no-repeat;background-position:center;}
