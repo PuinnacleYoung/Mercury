@@ -485,6 +485,9 @@ function handlePushChunk(c, msg){
   const i = Number(msg.i || 0);
   if(i >= 0 && i < u.total && u.chunks[i] === undefined){ u.chunks[i] = String(msg.chunk || ''); u.got++; }
   u.ts = Date.now();
+  /* 每片都回执（重复片也回）—— 客户端「发一片等一片」，收不到回执就重发，
+     不会再出现一口气灌 6MB 后中间帧悄无声息丢失（分片缺失）的悬案 */
+  send(c.sock, { t:'assetPushAck', token: msg.token, i });
 }
 /* 提交——第 3 步：拼装入库 */
 function handlePushEnd(c, msg){

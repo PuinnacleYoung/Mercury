@@ -145,6 +145,8 @@
   .stamp-mark{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
     opacity:0;transform:translate(-50%,-50%) scale(1.5);transform-origin:50% 50%;
     pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));z-index:24;}
+  /* 混合模式（正片叠底等）：生效时去掉投影 —— 不然投影会被「印」成一块黑 */
+  .id-stamp.blend-fx .stamp-idle,.id-stamp.blend-fx .stamp-mark{filter:none;}
   /* 盖章前图：平时就显示在盖章区（这块区域本身就是核验按钮） */
   .stamp-idle{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;
     transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
@@ -474,6 +476,7 @@ function normalizeCfg(){
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   if(cfg.stamp && cfg.stamp.src2===undefined) cfg.stamp.src2 = '';   // 双图：盖章后图（老配置补空）
+  if(cfg.stamp && cfg.stamp.blend===undefined) cfg.stamp.blend = 'normal';   // 混合模式（正片叠底等）
   (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
   (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
   // 旧版本种族是 human/elf/beast，迁移为五行（金木水火土）
@@ -984,6 +987,12 @@ function buildStampEl(){
   lb.className = 's-label';
   lb.textContent = '盖章区' + (cfg.stamp.src ? (has2 ? '（双图）' : '（有戳图）') : '（未上传戳图）');
   el.appendChild(lb);
+  /* 混合模式（正片叠底等）只在预览/总览生效 —— 编辑态保持正常，半透明虚影才看得清摆位 */
+  const blend = cfg.stamp.blend || 'normal';
+  if(blend !== 'normal'){
+    if(previewMode || activeTab === 'overview'){ el.classList.add('blend-fx'); el.style.mixBlendMode = blend; }
+    else { el.style.mixBlendMode = ''; }
+  }
   setBox(el, cfg.stamp);
   bindDrag(el, ()=>cfg.stamp, 'stamp');
   if(cfg.stamp.locked) lockBadge(el);
@@ -1360,6 +1369,19 @@ function renderStampProps(c){
       ${has2 ? '<button class="btn" id="stamp-clear2" style="margin-top:6px;font-size:12px;">🗑 清除盖章后图</button>' : ''}
     </div>
     <div class="prop-blk">
+      <div class="sec-title">🎨 混合模式（白底 PNG 印章救星）</div>
+      <div class="field-row"><label>模式</label>
+        <select id="s-blend" style="flex:1;">
+          <option value="normal" ${st.blend==null||st.blend==='normal'?'selected':''}>正常（原图直出）</option>
+          <option value="multiply" ${st.blend==='multiply'?'selected':''}>正片叠底（白底变透明）</option>
+          <option value="screen" ${st.blend==='screen'?'selected':''}>滤色（黑底变透明）</option>
+          <option value="overlay" ${st.blend==='overlay'?'selected':''}>叠加</option>
+          <option value="darken" ${st.blend==='darken'?'selected':''}>变暗</option>
+          <option value="lighten" ${st.blend==='lighten'?'selected':''}>变亮</option>
+        </select></div>
+      <div class="props-empty" style="font-size:11px;margin-top:6px;">印章 PNG 是<b>白底</b>？选「正片叠底」，白色自动变透明、只留章面印在卡片上（选了混合模式会自动去掉投影，不然投影会印成黑块）。</div>
+    </div>
+    <div class="prop-blk">
       <div class="sec-title">盖章动画</div>
       <div class="field-row"><label>放大倍数</label><input type="number" id="s-from" step="0.1" min="1" value="${ap.fromScale==null?1.5:ap.fromScale}"><span class="val">倍</span></div>
       <div class="field-row"><label>落定倍数</label><input type="number" id="s-to" step="0.1" value="${ap.toScale==null?1:ap.toScale}"><span class="val">倍</span></div>
@@ -1392,6 +1414,7 @@ function renderStampProps(c){
   bd('s-rot',    e=>{ ap.rotation=parseFloat(e.target.value)||0;   st.appear=ap; saveCfg(); render(); });
   bd('s-appear', e=>{ ap.duration=+e.target.value||320;            st.appear=ap; saveCfg(); });
   bd('s-dismiss',e=>{ st.dismiss=st.dismiss||{}; st.dismiss.duration=+e.target.value||350; saveCfg(); });
+  bd('s-blend',  e=>{ st.blend=e.target.value; saveCfg(); render(); });
   bd('s-keep',   e=>{ st.keep=!!e.target.checked; saveCfg(); });
   bd('s-lock',   e=>{ st.locked=!!e.target.checked; saveCfg(); render(); });
   const pickImg = (dropId, key, msg)=>{

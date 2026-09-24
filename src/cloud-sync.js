@@ -100,28 +100,92 @@
     });
     return out;
   }
-  /* 打包：ms: 素材 → dataURL，挂到 items.__media__。resolve {n, bytes, skipped} */
+
+  /* ---------- 压精度（陛下钦定：原始素材是高清的，上云前自动压） ----------
+     超过阈值的图：先用 canvas 把最长边缩到 ≤2048，再转 WebP（保透明）；
+     还压不下来就降质量再来一轮。原始素材本机原样保留，只压「要上云」的这一份。 */
+  var IMG_COMPRESS_OVER = 1.2 * 1024 * 1024;   // 超过 1.2MB 的图才压
+  var IMG_MAX_SIDE      = 2048;                // 最长边
+  var IMG_QUALITY_STEPS = [0.85, 0.7, 0.55];   // 一轮不行就降质量再来
+  var IMG_TARGET        = 3.5 * 1024 * 1024;   // 压到 3.5MB 以下就收手
+
+  function compressImageBlob(blob){
+    return new Promise(function(res){
+      try{
+        if(!blob || blob.type.indexOf('image/') !== 0 || blob.type === 'image/gif'){ res(null); return; }
+        var bitmap = null;
+        var done = function(outBlob, w, h, q){
+          try{ if(bitmap && bitmap.close) bitmap.close(); }catch(e){}
+          res(outBlob ? { blob: outBlob, w: w, h: h, q: q } : null);
+        };
+        var step = function(bm){
+          bitmap = bm;
+          var sw = bm.width, sh = bm.height;
+          var k = Math.min(1, IMG_MAX_SIDE / Math.max(sw, sh));
+          var w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          var ctx = cv.getContext('2d');
+          if(!ctx){ done(null); return; }
+          ctx.drawImage(bm, 0, 0, w, h);
+          var qi = 0;
+          var attempt = function(){
+            if(qi >= IMG_QUALITY_STEPS.length){ done(null); return; }
+            var q = IMG_QUALITY_STEPS[qi++];
+            /* 输出格式看原图：jpeg 本来就没透明 → 用 jpeg 压得最狠；
+               png/webp 可能带透明 → 一律 webp（支持透明）。
+               不能靠抽样像素猜有没有透明 —— 大图的角落往往恰好全不透明，猜错就把透明压没了。 */
+            var mime = (blob.type === 'image/jpeg') ? 'image/jpeg' : 'image/webp';
+            cv.toBlob(function(ob){
+              if(ob && ob.size < blob.size && (ob.size <= IMG_TARGET || qi >= IMG_QUALITY_STEPS.length)){
+                done(ob, w, h, q);
+              } else if(ob && ob.size < blob.size){
+                attempt();
+              } else { done(null); }
+            }, mime, q);
+          };
+          attempt();
+        };
+        if(window.createImageBitmap){
+          createImageBitmap(blob).then(step).catch(function(){ done(null); });
+        } else { done(null); }
+      }catch(e){ res(null); }
+    });
+  }
+  /* 打包：ms: 素材 → dataURL，挂到 items.__media__。resolve {n, bytes, skipped, shrunk}
+     超过阈值的图先压精度再走（原始素材只存在陛下本机，上云的这份是压过的） */
   function packMedia(items){
     return new Promise(function(res){
-      if(!window.MediaStore || typeof MediaStore.get !== 'function'){ res({ n:0, bytes:0, skipped:0 }); return; }
+      if(!window.MediaStore || typeof MediaStore.get !== 'function'){ res({ n:0, bytes:0, skipped:0, shrunk:[] }); return; }
       var ids = findMediaRefs(items);
-      if(!ids.length){ res({ n:0, bytes:0, skipped:0 }); return; }
-      var out = {}, bytes = 0, skipped = 0, i = 0;
+      if(!ids.length){ res({ n:0, bytes:0, skipped:0, shrunk:[] }); return; }
+      var out = {}, bytes = 0, skipped = 0, shrunk = [], i = 0;
       (function next(){
         if(i >= ids.length){
           if(Object.keys(out).length) items[MEDIA_KEY] = JSON.stringify(out);
-          res({ n:Object.keys(out).length, bytes:bytes, skipped:skipped });
+          res({ n:Object.keys(out).length, bytes:bytes, skipped:skipped, shrunk:shrunk });
           return;
         }
         var id = ids[i++];
         try{
           MediaStore.get(id).then(function(b){
-            if(b && b.size && b.size <= MEDIA_ONE_MAX && bytes + b.size <= MEDIA_ALL_MAX){
-              return blobToDataUrl(b).then(function(u){
+            if(!b || !b.size || b.size > MEDIA_ONE_MAX || bytes + b.size > MEDIA_ALL_MAX){ skipped++; return null; }
+            /* 图片超过阈值 → 先压精度（压不动就用原图） */
+            var p = (b.size > IMG_COMPRESS_OVER && typeof compressImageBlob === 'function')
+              ? compressImageBlob(b).then(function(z){
+                  if(z && z.blob && z.blob.size < b.size){
+                    shrunk.push((b.size/1024/1024).toFixed(1) + 'MB→' + (z.blob.size/1024).toFixed(0) + 'KB');
+                    return z.blob;
+                  }
+                  return b;
+                }).catch(function(){ return b; })
+              : Promise.resolve(b);
+            return p.then(function(use){
+              if(!use || use.size > MEDIA_ONE_MAX || bytes + use.size > MEDIA_ALL_MAX){ skipped++; return; }
+              return blobToDataUrl(use).then(function(u){
                 if(u){ out['ms:' + id] = u; bytes += u.length; } else skipped++;
               }).catch(function(){ skipped++; });
-            }
-            skipped++;
+            });
           }).catch(function(){ skipped++; }).then(next, next);
         }catch(e){ skipped++; next(); }
       })();
@@ -344,6 +408,7 @@
         var hasSrv = (JSON.stringify(items) || '').indexOf('srv:') >= 0;   // 服务器素材地址（/media/… 人人可看）
         if(!confirm('提交到云端草稿区：\n\n' + keys.join('\n') +
             (info.n ? '\n＋ 本机素材 ' + info.n + ' 个（' + fmtSize(info.bytes) + '，PNG/视频本体一起传）' : '') +
+            (info.shrunk && info.shrunk.length ? '\n\n🗜 已自动压精度 ' + info.shrunk.length + ' 张：' + info.shrunk.join('、') + '\n（原始高清素材还在陛下本机，云端这份是压过的）' : '') +
             '\n\n署名：' + (Net.author() || '（没填）') +
             '\n大小：' + fmtSize(size) +
             (info.n ? '\n\n✅ 素材会和配置一起走：别的电脑「拉取线上」后图也在，不用各自重传。' : '') +

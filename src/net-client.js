@@ -148,22 +148,47 @@
 
     /* 提交资产到草稿区（分片发送，256KB 一片，避免大消息被中途掐断）
        opts = { slot, by, items, baseRev, force, onProgress }
-       返回 Promise：成功 resolve(assetPushDone)；冲突 reject(err.conflict=true) */
+       返回 Promise：成功 resolve(assetPushDone)；冲突 reject(err.conflict=true)
+
+       ⚠️ 发送方式是「发一片 → 等服务器回执 → 再发下一片」（assetPushAck）。
+       以前是 24 片一口气灌进 WS：线上必现「分片缺失（收到 1/24）」——中间的帧
+       悄无声息地丢了，还查不出是谁吞的。现在每片都有回执，收不到就重发，
+       谁吞帧都逃不掉；发送速率也被服务器的处理能力自然背压。 */
     assetPush(opts){
       return new Promise((resolve, reject)=>{
         if(!Net.adminKey){ reject(new Error('还没有后台口令，请先设置')); return; }
         const raw = JSON.stringify(opts.items || {});
         const CHUNK = 256 * 1024;
         const total = Math.max(1, Math.ceil(raw.length / CHUNK));
-        let finished = false;
-        function cleanup(){ finished = true; un1(); un2(); un3(); un4(); }
+        let finished = false, cur = 0, ackTimer = null, retries = 0;
+        const totalTimeout = setTimeout(()=>{
+          if(finished) return; cleanup(); reject(new Error('提交超时（网络太慢或服务器没响应），请重试'));
+        }, 20000 + total * 12000);   // 每片留 12 秒余量，3M 小水管也够
+        function cleanup(){ finished = true; un1(); un2(); un3(); un4(); if(typeof un5 === 'function') un5(); if(ackTimer) clearTimeout(ackTimer); }
+        function chunkAt(i){ return { t:'assetPushChunk', token, i, chunk: raw.slice(i*CHUNK, (i+1)*CHUNK) }; }
+        function sendCur(){
+          if(finished) return;
+          try{ Net.send(chunkAt(cur)); }catch(e){ cleanup(); reject(e); return; }
+          if(opts.onProgress) opts.onProgress(cur / total);
+          if(ackTimer) clearTimeout(ackTimer);
+          ackTimer = setTimeout(()=>{
+            if(finished) return;
+            retries++;
+            if(retries > Math.max(4, total)){ cleanup(); reject(new Error('网络不稳：分片 ' + (cur+1) + '/' + total + ' 反复发不出去，请稍后重试')); return; }
+            sendCur();                     // 8 秒没等到回执 → 重发当前片
+          }, 8000);
+        }
+        let token = '';
+        var un5 = Net.on('assetPushAck', m=>{
+          if(finished || !m || m.token !== token) return;
+          if(Number(m.i) !== cur) return;                 // 重复/旧回执，忽略
+          if(ackTimer) clearTimeout(ackTimer);
+          cur++;
+          if(cur >= total){ Net.send({ t:'assetPushEnd', token }); return; }
+          sendCur();
+        });
         var un1 = Net.on('assetPushReady', m=>{
-          const token = m.token;
-          for(let i=0;i<total;i++){
-            Net.send({ t:'assetPushChunk', token, i, chunk: raw.slice(i*CHUNK, (i+1)*CHUNK) });
-            if(opts.onProgress) opts.onProgress((i+1) / total);
-          }
-          Net.send({ t:'assetPushEnd', token });
+          token = m.token; sendCur();
         });
         var un2 = Net.on('assetPushDone', m=>{ if(finished) return; cleanup(); resolve(m); });
         var un3 = Net.on('assetErr', m=>{ if(finished) return; cleanup(); reject(new Error(m.msg || '提交失败')); });
@@ -175,8 +200,6 @@
         });
         Net.send({ t:'assetPushBegin', adminKey: Net.adminKey, slot: opts.slot,
           by: opts.by || Net.author(), baseRev: opts.baseRev || 0, total, force: !!opts.force });
-        /* 30 秒没动静就算失败，免得按钮一直转圈 */
-        setTimeout(()=>{ if(!finished){ cleanup(); reject(new Error('提交超时，请检查网络后重试')); } }, 30000);
       });
     },
 
