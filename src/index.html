@@ -516,20 +516,23 @@ input{font-family:inherit;outline:none;}
 .ms-order-card .mo-go.ready:active{transform:scale(.97);}
 .ms-board{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 .ms-board-scroll{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:clamp(12px,2vh,24px);min-height:0;}
-.ms-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));gap:clamp(5px,1vh,10px);background:rgba(var(--glass-rgb),.06);border:1px solid rgba(var(--accent-rgb),.15);border-radius:16px;padding:clamp(10px,1.8vh,18px);width:100%;height:100%;max-width:calc((100vh - 96px) * 8 / 7);box-sizing:border-box;}
+.ms-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));gap:clamp(5px,1vh,10px);background:rgba(var(--glass-rgb),.06);border:1px solid rgba(var(--accent-rgb),.15);border-radius:16px;padding:clamp(10px,1.8vh,18px);width:100%;height:100%;max-width:calc((100vh - 96px) * 8 / 7);box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none;}
 .ms-cell{background:rgba(var(--glass-rgb),.10);border-radius:11px;border:1px solid rgba(var(--accent-rgb),.12);position:relative;display:flex;align-items:center;justify-content:center;transition:background .12s;aspect-ratio:1;min-width:0;min-height:0;}
 .ms-cell.gen{background:linear-gradient(135deg,#4a4168,#332e46);border-color:#6a5d95;}
 .ms-cell.hover{background:rgba(var(--glass-rgb),.22);}
 .ms-cell.ghost{background:rgba(245,166,35,.12);border:2px dashed #f5a623;}
-.ms-item{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:grab;position:relative;border:2px solid transparent;transition:transform .1s;box-sizing:border-box;min-width:0;min-height:0;}
+.ms-item{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:grab;position:relative;border:2px solid transparent;transition:transform .1s;box-sizing:border-box;min-width:0;min-height:0;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .ms-item .em{font-size:clamp(20px,4.6vh,44px);line-height:1;}
 .ms-item .tier{font-size:clamp(9px,1.5vh,13px);font-weight:800;color:#1c1a24;background:#f5a623;border-radius:5px;padding:1px 5px;position:absolute;top:-6px;right:-4px;}
 .ms-item .nm{font-size:clamp(8px,1.4vh,11px);color:#9a93ad;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;}
 .ms-item.dragging{opacity:.5;transform:scale(.9);}
+/* 手机/触屏：点一下选中（再点目标格移动或合成），拖动时有个跟手的影子 */
+.ms-item.sel{border-color:#f5a623;box-shadow:0 0 0 3px rgba(245,166,35,.35);animation:msPulse .8s ease infinite;}
+.ms-drag-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.92;transform:scale(1.12) rotate(-3deg);filter:drop-shadow(0 6px 14px rgba(0,0,0,.45));border-radius:10px;}
 .ms-item.mergeable{border-color:#f5a623;animation:msPulse .8s ease infinite;}
 @keyframes msPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.4);}50%{box-shadow:0 0 0 6px rgba(245,166,35,0);}}
 .ms-item.t1{border-color:#8a8498;}.ms-item.t2{border-color:#7db97f;}.ms-item.t3{border-color:#56ccf2;}.ms-item.t4{border-color:#9b7df0;}.ms-item.t5{border-color:#f5a623;}.ms-item.t6{border-color:#eb5757;}.ms-item.t7{border-color:#ff6bd6;}.ms-item.t8{border-color:#ffd166;}.ms-item.t9{border-color:#6fcf97;}
-.ms-gen{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:linear-gradient(160deg,#4a4168,#332e46);border:2px solid #6a5d95;box-sizing:border-box;min-width:0;min-height:0;}
+.ms-gen{width:100%;height:100%;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:linear-gradient(160deg,#4a4168,#332e46);border:2px solid #6a5d95;box-sizing:border-box;min-width:0;min-height:0;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
 .ms-gen .em{font-size:clamp(20px,4.6vh,44px);}
 .ms-gen .gn{font-size:clamp(9px,1.5vh,12px);font-weight:800;color:#ece8f4;}
 .ms-gen .gc{font-size:clamp(8px,1.3vh,10px);color:#9a93ad;}
@@ -1660,12 +1663,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20260924g"></script>
-<script src="./legacy-body-v4.js?v=20260924g"></script>
+<script src="./body-template.js?v=20260924h"></script>
+<script src="./legacy-body-v4.js?v=20260924h"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20260924g"></script>
-<script src="./media-store.js?v=20260924g"></script>
-<script src="./net-client.js?v=20260924g"></script>
+<script src="./map-placeholders.js?v=20260924h"></script>
+<script src="./media-store.js?v=20260924h"></script>
+<script src="./net-client.js?v=20260924h"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -3614,12 +3617,14 @@ function mountAuthStamp(world){
   /* 点这块区域＝核验身份（原来的「核验身份」框已按陛下御令删除） */
   el.onclick = ()=>{ try{ doAuthVerify(); }catch(e){ console.warn(e); } };
 }
+/* 返回一个 Promise：盖完才 resolve —— 登录流程要等章盖完再进世界
+   （陛下把盖章动画配到 2 秒，以前固定 700ms 切屏，章才盖到一半就看不见了） */
 function playAuthStamp(){
   const host = $('auth-stamp');
-  if(!host) return false;
+  if(!host) return Promise.resolve(false);
   const img  = host.querySelector('.stamp-mark');
   const idle = host.querySelector('.stamp-idle');
-  if(!img) return false;
+  if(!img) return Promise.resolve(false);
   const st  = (authCfg && authCfg.stamp) || {};
   /* 换上「盖章后图」再盖（没配第二张就沿用第一张） */
   const after = st.src2 || st.src || '';
@@ -3651,9 +3656,11 @@ function playAuthStamp(){
     }catch(e){}
     if(st.keep === false) setTimeout(dismissAuthStamp, 900);
   };
-  if(a && a.finished && a.finished.then) a.finished.then(settle).catch(settle);
-  else setTimeout(settle, dur);
-  return true;
+  return new Promise(function(res){
+    var fin = function(){ try{ settle(); }catch(e){} res(true); };
+    if(a && a.finished && a.finished.then) a.finished.then(fin).catch(fin);
+    else setTimeout(fin, dur);
+  });
 }
 /* 核验没过：把刚盖的章收回去，恢复显示盖章前图 */
 function dismissAuthStamp(){
@@ -3687,6 +3694,8 @@ function doAuthVerify(){
      没挑属性就不给核验（否则开出来的账号不知道是哪个属性的）。 */
   const el = pendingElement;
   if(!el){ authToast('⚠️ 先点头像挑一个属性（金木水火土），再核验'); return; }
+  if(authVerifying) return;      // 章还在盖，别急
+  authVerifying = true;
 
   const accounts = getAccounts();
   const card = $('auth-card');
@@ -3727,6 +3736,7 @@ function doAuthVerify(){
     authToast('✅ 首次核验，自动注册成功');
     try{ playAuthStamp(); }catch(e){}     // 核验通过 → 戳图从 1.5 倍盖下来
     setTimeout(()=>{
+      authVerifying = false;
       $('auth-cred-name').textContent = name;
       $('auth-cred-code').textContent = code;
       $('auth-cred-mask').classList.remove('hidden');
@@ -3736,17 +3746,27 @@ function doAuthVerify(){
     if(acc.password === code){
       const ei = elementInfo(el);
       authToast('✅ 核验通过，欢迎回来 ' + name + '（' + (ei.name || el) + '）');
-      try{ playAuthStamp(); }catch(e){}      // 核验通过 → 戳图从 1.5 倍盖下来
-      // 登录成功 → 进入世界（属性核验前就挑好了，不用再弹五选一）
-      setTimeout(()=>{
+      const enterWorld = ()=>{
+        authVerifying = false;
         setCurrent(key); currentUser = acc;
         ensureBody();
         currentUser.outfit = normalizeOutfit(currentUser.outfit);
         normalizeUser(currentUser);
         if(!currentUser.nickname) showScreen('nickname-screen');
         else enterLobby();
-      }, 700);
+      };
+      /* 🎬 登录也要完整的盖章过程：等章盖完（陛下配的动画 2 秒）→ 再停 0.5 秒让人看清 → 才进世界。
+         以前固定 700ms 就切屏，2 秒的章才盖到三分之一屏幕就跳走了，看着像"没盖章"。 */
+      let p = null;
+      try{ p = playAuthStamp(); }catch(e){}
+      let gone = false;
+      const go = ()=>{ if(gone) return; gone = true; setTimeout(enterWorld, 500); };
+      if(p && typeof p.then === 'function'){
+        p.then(go).catch(go);
+        setTimeout(()=>{ if(gone) return; gone = true; enterWorld(); }, 6000);   // 兜底：万一动画被吞也不卡死
+      } else setTimeout(enterWorld, 700);
     } else {
+      authVerifying = false;
       authToast('❌ 防伪码与已注册账号不一致');
       card && card.classList.remove('verified');
       try{ dismissAuthStamp(); }catch(e){}   // 没通过 → 把刚盖的章收回去
@@ -3799,6 +3819,7 @@ let pendingRaceUser = null;   // 正在选属性的账号名
 /* 陛下钦定的登录顺序：填姓名 → 填防伪码 → **点头像选属性** → 再核验。
    这里存「还没核验、但已经挑好的属性」，刷新页面也记得（换属性就点头像重选）。 */
 let pendingElement = null;
+let authVerifying = false;    // 防连点：盖章动画期间重复点核验，会重复进世界
 const LS_PENDING_EL = 'auth_pending_element';
 function loadPendingElement(){
   try{
@@ -6031,6 +6052,8 @@ let MS_TEXTS = ['来罐鸡肉罐头，冰的。','给我家祖宗来点硬的。
 let msBoard = [], msEnergy = 100, msMoney = 0, msExp = 0, msBoost = 1, msBoostIdx = 0;
 let msOrders = [], msNextId = 1, msGenCd = {};
 let msDragging = null, msHover = null, msTimer = null, msInited = false;
+let msGhost = null;        // 拖动时跟手的影子（手机上没这个根本看不出在拖）
+let msSelected = null;     // 点选模式：先点物品选中，再点目标格 → 移动/合成（手机上最稳）
 
 function msEl(id){ return document.getElementById(id); }
 function msToast(msg){
@@ -6113,7 +6136,7 @@ function msReset(){
   });
   msEnergy = 100; msMoney = 0; msExp = 0; msBoost = 1; msBoostIdx = 0;
   msOrders = []; for(let i=0;i<3;i++) msOrders.push(msGenOrder());
-  msGenCd = {}; msDragging = null;
+  msGenCd = {}; msDragging = null; msSelected = null; msHideGhost();
   msRender(); msRenderOrders(); msUpdateStats();
   msStop(); msStart();
 }
@@ -6141,6 +6164,9 @@ function msRender(){
         if(v.gen){ cell.classList.add('gen'); cell.appendChild(msRenderGen(v.gen)); }
         else cell.appendChild(msRenderItem(v));
       }
+      /* 点选模式下，能跟选中物合成的格子亮一下 —— 手机上一眼看清该点哪儿 */
+      if(msSelected && v && !v.gen && v.id!==msSelected.id && v.chain===msSelected.chain && v.tier===msSelected.tier) cell.classList.add('ghost');
+      cell.addEventListener('click', ()=>msCellClick(r, c));
       g.appendChild(cell);
     }
   }
@@ -6151,6 +6177,7 @@ function msRenderItem(item){
   d.className = 'ms-item ' + msTierColor(item.tier);
   d.dataset.id = item.id;
   d.innerHTML = `<span class="em">${info.em}</span><span class="tier">T${item.tier}</span><span class="nm">${info.n}</span>`;
+  if(msSelected && msSelected.id === item.id) d.classList.add('sel');
   d.addEventListener('pointerdown', e=>msItemDown(e, item));
   return d;
 }
@@ -6182,14 +6209,41 @@ function msGenDown(e, chainKey){
   msUpdateStats(); msRender(); msUpdateOrdersReady();
   if(placed>0){ const ch = MS_CHAINS[prodChain] || MS_CHAINS[chainKey]; const info = ch && ch.tiers[0]; if(info) msFloat(e.clientX, e.clientY, `+${placed} ${info.em}`); }
 }
+/* ---------- 跟手的影子：手机上看不见"东西被我拎起来了"就等于没反应 ---------- */
+function msShowGhost(el, x, y){
+  msHideGhost();
+  if(!el) return;
+  const g = el.cloneNode(true);
+  g.classList.remove('dragging');
+  g.classList.add('ms-drag-ghost');
+  g.style.width = el.offsetWidth + 'px';
+  g.style.height = el.offsetHeight + 'px';
+  document.body.appendChild(g);
+  msGhost = g; msMoveGhost(x, y);
+}
+function msMoveGhost(x, y){
+  if(!msGhost) return;
+  msGhost.style.left = (x - msGhost.offsetWidth / 2) + 'px';
+  msGhost.style.top  = (y - msGhost.offsetHeight / 2) + 'px';
+}
+function msHideGhost(){ if(msGhost && msGhost.parentNode) msGhost.parentNode.removeChild(msGhost); msGhost = null; }
+
 function msItemDown(e, item){
   e.preventDefault(); e.stopPropagation();
-  msDragging = { item, el: e.currentTarget };
-  e.currentTarget.classList.add('dragging');
+  const el = e.currentTarget;
+  msDragging = { item, el, moved:false, pid:(e.pointerId != null ? e.pointerId : null) };
+  /* 手指按住后哪怕滑出元素，事件也照样回给我们 —— 没这行，手机一拖就被系统抢走 */
+  try{ if(msDragging.pid != null && el.setPointerCapture) el.setPointerCapture(msDragging.pid); }catch(_){}
+  el.classList.add('dragging');
+  msShowGhost(el, e.clientX, e.clientY);
   document.addEventListener('pointermove', msDragMove);
   document.addEventListener('pointerup', msDragUp);
+  document.addEventListener('pointercancel', msDragCancel);
 }
 function msDragMove(e){
+  if(!msDragging) return;
+  msDragging.moved = true;                       // 真的挪过 → 抬手时不算「点选」
+  msMoveGhost(e.clientX, e.clientY);
   const cell = document.elementFromPoint(e.clientX, e.clientY);
   const c = cell && cell.closest('.ms-cell');
   document.querySelectorAll('.ms-cell.hover,.ms-cell.ghost').forEach(x=>x.classList.remove('hover','ghost'));
@@ -6199,20 +6253,47 @@ function msDragMove(e){
     else if(!target){ c.classList.add('hover'); }
   }
 }
-function msDragUp(e){
+function msEndDrag(){
   document.removeEventListener('pointermove', msDragMove);
   document.removeEventListener('pointerup', msDragUp);
+  document.removeEventListener('pointercancel', msDragCancel);
+  msHideGhost();
+  document.querySelectorAll('.ms-cell.hover,.ms-cell.ghost').forEach(x=>x.classList.remove('hover','ghost'));
+  const d = msDragging; msDragging = null;
+  if(d && d.el) d.el.classList.remove('dragging');
+  return d;
+}
+function msDragCancel(){ msEndDrag(); msRender(); }   // 被系统打断（来电话/下滑通知栏）→ 收摊重画
+function msDragUp(e){
+  const d = msEndDrag();
+  if(!d) return;
+  /* 手指没挪窝 = 只是点了一下 → 走「点选」：先选中，再点目标格搬过去/合成（手机上最省事） */
+  if(!d.moved){ msSelectItem(d.item); return; }
   const cell = document.elementFromPoint(e.clientX, e.clientY);
   const c = cell && cell.closest('.ms-cell');
-  document.querySelectorAll('.ms-cell.hover,.ms-cell.ghost').forEach(x=>x.classList.remove('hover','ghost'));
-  if(!msDragging) return;
-  const d = msDragging; msDragging = null;
-  d.el.classList.remove('dragging');
   if(!c){ msRender(); return; }
-  const r = +c.dataset.r, cc = +c.dataset.c, target = msBoard[r][cc];
-  if(target && !target.gen && target.id!==d.item.id && target.chain===d.item.chain && target.tier===d.item.tier){ msMerge(d.item, target, r, cc); }
-  else if(!target){ msMoveItem(d.item, r, cc); }
+  msDropOn(d.item, +c.dataset.r, +c.dataset.c);
+}
+/* 落子：同链同阶 → 合成；空格 → 搬过去；都不是 → 原样放回 */
+function msDropOn(item, r, c){
+  const target = msBoard[r][c];
+  msSelected = null;
+  if(target && !target.gen && target.id!==item.id && target.chain===item.chain && target.tier===item.tier){ msMerge(item, target, r, c); }
+  else if(!target){ msMoveItem(item, r, c); }
   else { msRender(); }
+}
+function msSelectItem(item){
+  if(msSelected && msSelected.id === item.id){ msSelected = null; msRender(); return; }   // 再点一次 = 取消
+  msSelected = item;
+  msRender();
+  const ch = MS_CHAINS[item.chain], info = ch && ch.tiers[item.tier-1];
+  msToast('👆 已选中 ' + ((info && info.em) || '') + ' —— 再点目标格子搬过去或合成');
+}
+function msCellClick(r, c){
+  if(!msSelected) return;                                   // 没选中就当没点，防误触
+  const target = msBoard[r][c];
+  if(target && !target.gen && target.id !== msSelected.id){ msSelectItem(target); return; }  // 点到别的物品 → 改选它
+  msDropOn(msSelected, r, c);
 }
 function msMoveItem(item, r, c){
   for(let rr=0;rr<MS_ROWS;rr++) for(let cc=0;cc<MS_COLS;cc++) if(msBoard[rr][cc] && msBoard[rr][cc].id===item.id) msBoard[rr][cc]=null;
@@ -8613,8 +8694,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20260924g" defer></script>
-<script src="./responsive.js?v=20260924g" defer></script>
-<script src="./pwa-install.js?v=20260924g" defer></script>
+<script src="./orientation-lock.js?v=20260924h" defer></script>
+<script src="./responsive.js?v=20260924h" defer></script>
+<script src="./pwa-install.js?v=20260924h" defer></script>
 </body>
 </html>
