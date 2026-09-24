@@ -146,6 +146,18 @@
   .id-field .field-label{position:absolute;top:-20px;left:0;font-size:11px;font-weight:900;color:var(--gold);white-space:nowrap;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8);}
   .id-field.sel .field-box{border-color:#fff;background:rgba(255,255,255,.16);box-shadow:0 0 0 3px var(--accent);}
   .id-field .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--gold);cursor:nwse-resize;z-index:30;}
+  /* 🪪 核验成功弹窗（首次注册成功弹出的账号凭证卡）—— 位置大小跟卡片一起编辑 */
+  .id-cred .field-box{border-color:var(--accent);background:rgba(34,184,207,.16);}
+  .id-cred .field-label{color:var(--accent);}
+  .id-cred .ed-resize{border-color:var(--accent);}
+  /* 预览态的弹窗mock（编辑态只画虚框，预览态画真实的样子） */
+  .cred-mock{position:absolute;z-index:40;border-radius:12px;background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.35);box-shadow:0 8px 26px rgba(0,0,0,.55);padding:1.2% 1.6%;display:flex;flex-direction:column;gap:2%;overflow:hidden;}
+  .cred-mock .cm-h{font-size:clamp(9px,1.1vw,14px);font-weight:900;color:#fff;white-space:nowrap;}
+  .cred-mock .cm-s{font-size:clamp(7px,.8vw,10px);color:#9cc5ce;line-height:1.35;overflow:hidden;}
+  .cred-mock .cm-card{background:rgba(0,0,0,.35);border:1px dashed rgba(120,210,255,.25);border-radius:8px;padding:2% 3%;}
+  .cred-mock .cm-row{display:flex;justify-content:space-between;align-items:center;font-size:clamp(7px,.8vw,10px);color:#9cc5ce;}
+  .cred-mock .cm-row .v{font-weight:900;color:#f5c542;}
+  .cred-mock .cm-btn{margin-top:auto;border-radius:8px;background:linear-gradient(135deg,#22b8cf,#0f7a8c);color:#fff;font-size:clamp(7px,.8vw,10px);font-weight:900;text-align:center;padding:3% 0;}
 
   /* 盖章触发热区（Tab A，z 20.4） */
   .id-stamp{position:absolute;cursor:move;touch-action:none;z-index:22;border:2px dashed var(--mint);background:rgba(55,200,176,.14);border-radius:50%;display:flex;align-items:center;justify-content:center;}
@@ -229,6 +241,7 @@
   /* 运行时输入框 */
   .rt-input{position:absolute;background:rgba(0,0,0,.55);border:2px solid rgba(34,184,207,.7);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);z-index:21;}
   .rt-input:focus{border-color:#37c8b0;box-shadow:0 0 12px rgba(55,200,176,.5);}
+  .rt-input::placeholder{color:rgba(255,255,255,var(--ph-op,.45));}
 
   /* 卡片动画：晃动 + 流光 */
   @keyframes idShake{
@@ -305,7 +318,7 @@
   .race-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
   .race-cell{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;transition:.15s;}
   .race-cell:hover{background:rgba(255,255,255,.1);border-color:var(--accent);transform:translateY(-2px);}
-  .race-cell .rc-sil{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);background-size:cover;background-position:center;border:1px dashed rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .race-cell .rc-sil{width:44px;aspect-ratio:3/4;background:center/contain no-repeat;display:flex;align-items:center;justify-content:center;font-size:20px;}
   .race-cell .rc-name{font-size:14px;font-weight:900;color:var(--ink);}
   .race-cell .rc-trait{font-size:9px;color:var(--sub);font-weight:700;}
 
@@ -324,7 +337,10 @@
   <button class="top-btn" id="btn-cloud-pull" title="从服务器取回陛下「已发布」的最新配置（换浏览器/换电脑时点它，本机的本地配置会被覆盖）">☁️ 取云端配置</button>
   <button class="top-btn" id="btn-preview" title="切换预览模式：隐藏编辑框，显示真实运行效果">▶ 预览/编辑</button>
   <button class="top-btn" id="btn-test-verify" title="模拟一次核验流程">🔑 测试核验</button>
-  <button class="top-btn primary" id="btn-export">📦 导出配置</button>
+  <button class="top-btn" id="btn-export-full" title="配置 + 所有图片素材打成一个 JSON 文件（网络传不上去时用这招：发给陛下，让他替你上传）">📦 导出完整包</button>
+  <button class="top-btn" id="btn-import" title="导入「完整包」或「裸配置」JSON：素材会写回本机素材库，配置直接生效">📥 导入包</button>
+  <button class="top-btn primary" id="btn-export" title="只导出配置文本（不含图），体积小">📄 仅配置</button>
+  <input type="file" id="file-import" accept=".json,application/json" style="display:none">
 </header>
 
 <!-- 顶部 5 Tab：四个环节各自独立编辑 + 总预览合成 -->
@@ -408,10 +424,10 @@
 </div>
 
 <!-- 大素材仓库（IndexedDB）：开场/登录动画视频不再塞 localStorage，否则 5MB 直接爆 -->
-<script src="./media-store.js?v=20260924a"></script>
+<script src="./media-store.js?v=20260924f"></script>
 <!-- 云端资产同步：改完点右下角「☁️ 提交」，陛下在后台发布后全服生效 -->
-<script src="./net-client.js?v=20260924a"></script>
-<script src="./cloud-sync.js?v=20260924a"></script>
+<script src="./net-client.js?v=20260924f"></script>
+<script src="./cloud-sync.js?v=20260924f"></script>
 <script>
 /* ============================================================
    登录页面引擎 · 拾光·澈屿（按需求文档 v1 重构）
@@ -469,6 +485,10 @@ function defaultConfig(){
       shake:{ duration:400, count:3, offset:8, rotationAmp:1.5, damping:0.6 },
       dismiss:{ duration:350, toScale:0.2, easing:'easeInCubic', fade:true, rotation:6 }
     },
+    /* 🪪 核验成功弹窗（首次注册成功后弹出的账号凭证卡）
+       —— 陛下钦定：它属于「卡片」环节，要能跟卡片一起摆位置、改大小，
+          坐标体系跟 fields / stamp 完全一致（相对世界框的 0~1 比例）。 */
+    cred: { x:0.5, y:0.62, w:0.30, h:0.28, locked:false },
     /* cardAt = 开场动画播到第几秒时卡片「抖动放大」出现（20 秒的片子配 18 就是第 18 秒弹出）
        skippable = false：开场动画**不允许跳过**（陛下钦定），必须完整播完 */
     intro: { src:'', audio:'', skippable:false, fadeOut:1000, cardAt:18, volume:100 },
@@ -497,6 +517,9 @@ function normalizeCfg(){
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   if(cfg.stamp && cfg.stamp.src2===undefined) cfg.stamp.src2 = '';   // 双图：盖章后图（老配置补空）
   if(cfg.stamp && cfg.stamp.blend===undefined) cfg.stamp.blend = 'normal';   // 混合模式（正片叠底等）
+  /* 🪪 核验成功弹窗：老配置没有这一项 → 补默认（位置在卡片下方） */
+  if(!cfg.cred) cfg.cred = { x:0.5, y:0.62, w:0.30, h:0.28, locked:false };
+  if(cfg.cred.locked===undefined) cfg.cred.locked = false;
   (cfg.fields||[]).forEach(f=>{ if(f.locked===undefined) f.locked = false; });
   (cfg.bgLayers||[]).forEach(l=>{ if(l.locked===undefined) l.locked = false; });
   // 旧版本种族是 human/elf/beast，迁移为五行（金木水火土）
@@ -682,7 +705,8 @@ function render(){
     /* buildAvatarEl 返回 [剪影容器, 相框容器] 两个（相框必须平级才能挂混合模式） */
     const els = [buildCardEl()].concat(buildAvatarEl())
       .concat(cfg.fields.map(f => buildFieldEl(f)))
-      .concat([buildStampEl()]);
+      .concat([buildStampEl()])
+      .concat(effPreview ? [buildCredMockEl()] : [buildCredEl()]);
     els.forEach(el=>{
       if(asRef) el.classList.add('card-ref');
       wb.appendChild(el);
@@ -706,9 +730,12 @@ function render(){
       inp.type = f.mask ? 'password' : 'text';
       setBox(inp, f);
       inp.style.fontSize = 'clamp(10px, '+ (f.fontSize/100*5) +'vw, '+ (f.fontSize*1.4) +'px)';
-      /* 样式跟配置走：底色 / 透明度 / 边框颜色（没配就保持默认黑底青框） */
-      if(f.bg) inp.style.background = hexA(f.bg, f.bgOpacity);
-      if(f.border) inp.style.borderColor = f.border;
+      /* 样式跟配置走：底色 / 底色透明度 / 边框颜色 / 边框透明度 / 提示文字透明度（没配就保持默认黑底青框） */
+      const opOf = v => (v==null ? 1 : v);
+      if(f.bg) inp.style.background = hexA(f.bg, opOf(f.bgOpacity));
+      if(f.border) inp.style.borderColor = hexA(f.border, opOf(f.borderOpacity));
+      /* placeholder 没法直接内联样式，只能塞 CSS 变量，交给 ::placeholder 规则吃 */
+      inp.style.setProperty('--ph-op', String(opOf(f.phOpacity==null?0.45:f.phOpacity)));
       wb.appendChild(inp);
     });
   } else {
@@ -890,6 +917,14 @@ function buildAvatarEl(){
   el._frameEl = frameHost;                    // 拖动 / 缩放时同步跟着走
   bindDrag(el, ()=>cfg.avatar, 'avatar');
   if(cfg.avatar.locked) lockBadge(el);
+  /* 预览态「点头像 = 挑属性」：陛下钦定的新登录顺序（填姓名 → 填防伪码 → 点头像选属性 → 再核验），
+     编辑态还是要能拖动摆位置，所以只绑在预览 / 总览。 */
+  el.addEventListener('click', e=>{
+    if((previewMode || activeTab === 'overview') && !e.target.classList.contains('ed-resize')){
+      e.stopPropagation();
+      showRaceModal(null);
+    }
+  });
   return [el, frameHost];                     // 两个都要 append 到 world
 }
 
@@ -940,6 +975,43 @@ function buildFieldEl(f){
   if(f.border) el.style.borderColor = f.border;
   bindDrag(el, ()=>f, f.id);
   if(f.locked) lockBadge(el);
+  return el;
+}
+
+/* ================= 🪪 核验成功弹窗 =================
+   陛下钦定：它属于「卡片」环节（首次核验注册成功后弹出的账号凭证卡），
+   要能跟卡片一起摆位置、改大小，坐标跟 fields / stamp 完全一致。
+   编辑态画虚框方便拖，预览态画真实样子的 mock（看到的就是游戏里弹的那张）。 */
+function buildCredEl(){
+  const el = document.createElement('div');
+  el.className = 'id-field id-cred' + (selectedId==='cred' ? ' sel' : '') + (cfg.cred.locked ? ' locked' : '');
+  el.dataset.kind = 'cred';
+  const box = document.createElement('div');
+  box.className = 'field-box';
+  box.textContent = '🪪';
+  box.style.fontSize = '20px';
+  el.appendChild(box);
+  const lb = document.createElement('div');
+  lb.className = 'field-label';
+  lb.textContent = '核验成功弹窗';
+  el.appendChild(lb);
+  setBox(el, cfg.cred);
+  bindDrag(el, ()=>cfg.cred, 'cred');
+  if(cfg.cred.locked) lockBadge(el);
+  return el;
+}
+function buildCredMockEl(){
+  const el = document.createElement('div');
+  el.className = 'cred-mock';
+  el.innerHTML =
+    '<div class="cm-h">🪪 注册成功！</div>' +
+    '<div class="cm-s">首次核验已自动注册，请保存账号与防伪码</div>' +
+    '<div class="cm-card">' +
+      '<div class="cm-row"><span>姓名 / 账号</span><span class="v">暮眠</span></div>' +
+      '<div class="cm-row"><span>特殊防伪码</span><span class="v">A7-9K2-5FQ</span></div>' +
+    '</div>' +
+    '<div class="cm-btn">📥 保存为图片</div>';
+  setBox(el, cfg.cred);
   return el;
 }
 
@@ -1070,6 +1142,7 @@ function resolveObj(id){
   if(id==='card') return cfg.card;
   if(id==='avatar') return cfg.avatar;
   if(id==='stamp') return cfg.stamp;
+  if(id==='cred') return cfg.cred;
   if(id && id.startsWith('f_')) return cfg.fields.find(x=>x.id===id);
   if(id && id.startsWith('bg_')) return cfg.bgLayers.find(x=>x.id===id);
   return null;
@@ -1150,17 +1223,47 @@ function bindDrag(el, getObj, id){
 
 function refreshSelection(){
   const stage = $('edit-stage');
-  stage.querySelectorAll('.id-card,.id-avatar,.id-field,.id-stamp,.bg-layer').forEach(el=>{
+  stage.querySelectorAll('.id-card,.id-avatar,.id-field,.id-cred,.id-stamp,.bg-layer').forEach(el=>{
     let id;
     if(el.classList.contains('id-card')) id='card';
     else if(el.classList.contains('id-avatar')) id='avatar';
     else if(el.classList.contains('id-stamp')) id='stamp';
+    else if(el.classList.contains('id-cred')) id='cred';
     else if(el.classList.contains('bg-layer')) id=el.dataset.bid;
     else id = el.dataset.fid;
     el.classList.toggle('sel', id===selectedId);
   });
   renderTree();
   renderProps();
+}
+
+/* 🪪 核验成功弹窗属性：位置 / 大小（游戏端登录页按同一套坐标弹出来） */
+function renderCredProps(c){
+  const cd = cfg.cred;
+  c.innerHTML = `
+    <h3>🪪 核验成功弹窗</h3>
+    <div class="prop-blk">
+      <div class="sec-title">说明</div>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:0;">
+        首次核验（新账号注册成功）时弹出的「账号凭证」卡。<br>
+        位置 / 大小在这里改，<b>游戏端登录页按同一套坐标显示</b>，跟着卡片一起走。
+      </p>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">位置 / 大小（世界坐标，和卡片同一套）</div>
+      <div class="field-row"><label>X</label><input type="number" id="cd-x" step="0.01" value="${cd.x.toFixed(3)}"></div>
+      <div class="field-row"><label>Y</label><input type="number" id="cd-y" step="0.01" value="${cd.y.toFixed(3)}"></div>
+      <div class="field-row"><label>宽</label><input type="number" id="cd-w" step="0.01" value="${cd.w.toFixed(3)}"></div>
+      <div class="field-row"><label>高</label><input type="number" id="cd-h" step="0.01" value="${cd.h.toFixed(3)}"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="chk-row"><input type="checkbox" id="cd-lock" ${cd.locked?'checked':''}> 🔒 锁定此弹窗</div>
+    </div>
+  `;
+  ['x','y','w','h'].forEach(k=>{
+    $('cd-'+k).oninput = e=>{ cd[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
+  });
+  $('cd-lock').onchange = e=>{ cd.locked = e.target.checked; saveCfg(); render(); };
 }
 
 /* ================= 元素树（按 Tab 过滤） ================= */
@@ -1180,11 +1283,13 @@ function renderTree(){
     rows.push({ id:'avatar', k:'👤', nm:'头像区' });
     cfg.fields.forEach(f=> rows.push({ id:f.id, k:f.type==='name'?'👤':'🔐', nm:f.label }));
     rows.push({ id:'stamp', k:'🔍', nm:'盖章触发区' });
+    rows.push({ id:'cred', k:'🪪', nm:'核验成功弹窗' });
   } else if(activeTab==='intro'){
     rows.push({ id:'__intro', k:'🎬', nm:'开场动画层（z=15）' });
   } else if(activeTab==='login'){
     rows.push({ id:'__loginfx', k:'✨', nm:'登录动画层（z=10）' });
   } else if(activeTab==='overview'){
+    // （overview 里的图层说明行由 renderOverviewProps 处理）
     const saf = worldSafeBox(WA);
     rows.push({ id:'__o1', k:'🖼', nm:'背景多层 · z 0~9' });
     rows.push({ id:'__o2', k:'✨', nm:'登录动画层 · z 10' });
@@ -1246,6 +1351,7 @@ function renderProps(){
   if(selectedId==='card'){ renderCardProps(content); }
   else if(selectedId==='avatar'){ renderAvatarProps(content); }
   else if(selectedId==='stamp'){ renderStampProps(content); }
+  else if(selectedId==='cred'){ renderCredProps(content); }
   else if(selectedId && selectedId.startsWith('bg_')){ renderBgProps(content); }
   else if(selectedId && selectedId.startsWith('f_')){ renderFieldProps(content); }
   else { empty.classList.remove('hidden'); content.classList.add('hidden'); renderGlobalPanel(empty); }
@@ -1568,6 +1674,8 @@ function renderFieldProps(c){
       <div class="field-row"><label>底色</label><input type="color" id="f-bg" value="${f.bg||'#1b2a3a'}" style="width:46px;height:28px;padding:0;border:none;background:none;cursor:pointer;"><span class="val">${f.bg||'默认'}</span></div>
       <div class="field-row"><label>底色透明度</label><input type="range" id="f-bgop" min="0" max="1" step="0.05" value="${f.bgOpacity==null?1:f.bgOpacity}"><span class="val" id="f-bgop-v">${Math.round((f.bgOpacity==null?1:f.bgOpacity)*100)}%</span></div>
       <div class="field-row"><label>边框颜色</label><input type="color" id="f-border" value="${f.border||'#22b8cf'}" style="width:46px;height:28px;padding:0;border:none;background:none;cursor:pointer;"><span class="val">${f.border||'默认'}</span></div>
+      <div class="field-row"><label>边框透明度</label><input type="range" id="f-bdop" min="0" max="1" step="0.05" value="${f.borderOpacity==null?1:f.borderOpacity}"><span class="val" id="f-bdop-v">${Math.round((f.borderOpacity==null?1:f.borderOpacity)*100)}%</span></div>
+      <div class="field-row"><label>文字提示透明度</label><input type="range" id="f-phop" min="0" max="1" step="0.05" value="${f.phOpacity==null?0.45:f.phOpacity}"><span class="val" id="f-phop-v">${Math.round((f.phOpacity==null?0.45:f.phOpacity)*100)}%</span></div>
       <div class="btn-row"><button class="btn-mini" id="f-style-reset">↺ 恢复默认样式</button></div>
     </div>
     <div class="prop-blk">
@@ -1590,7 +1698,9 @@ function renderFieldProps(c){
   $('f-bg').oninput = e=>{ f.bg = e.target.value; saveCfg(); render(); };
   $('f-bgop').oninput = e=>{ f.bgOpacity = parseFloat(e.target.value); $('f-bgop-v').textContent = Math.round(f.bgOpacity*100)+'%'; saveCfg(); render(); };
   $('f-border').oninput = e=>{ f.border = e.target.value; saveCfg(); render(); };
-  $('f-style-reset').onclick = ()=>{ delete f.bg; delete f.bgOpacity; delete f.border; saveCfg(); render(); };
+  $('f-bdop').oninput = e=>{ f.borderOpacity = parseFloat(e.target.value); $('f-bdop-v').textContent = Math.round(f.borderOpacity*100)+'%'; saveCfg(); render(); };
+  $('f-phop').oninput = e=>{ f.phOpacity = parseFloat(e.target.value); $('f-phop-v').textContent = Math.round(f.phOpacity*100)+'%'; saveCfg(); render(); };
+  $('f-style-reset').onclick = ()=>{ delete f.bg; delete f.bgOpacity; delete f.border; delete f.borderOpacity; delete f.phOpacity; saveCfg(); render(); };
   ['f-x','f-y','f-w','f-h'].forEach(id=>{
     $(id).oninput = e=>{ const k = id.slice(2); f[k] = parseFloat(e.target.value) || 0; saveCfg(); render(); };
   });
@@ -1877,10 +1987,26 @@ function doVerify(){
     toastVerify('⚠️ 请先填写姓名和防伪码');
     return false;
   }
+  /* 陛下钦定的新顺序：填姓名 → 填防伪码 → **点头像挑属性** → 最后才核验。
+     没挑属性不给核验；账号 = 姓名 + 属性（同名不同属性是两个账号）。 */
+  const el = runtimeElement;
+  if(!el){ toastVerify('⚠️ 先点头像挑一个属性（金木水火土），再核验'); return false; }
+
   const accounts = getGameAccounts();
+  const key = name + '#' + el;
   let isNew = false;
-  if(!accounts[name]){
-    accounts[name] = { username:name, password:code, nickname:'', element:null, outfit:null, friends:[], level:1, wealth:500, coins:100, hideWealth:false };
+  let acc = accounts[key];
+  if(!acc){
+    /* 老账号（键就是姓名）迁到「姓名#属性」键 */
+    const old = accounts[name];
+    if(old && (!old.element || old.element === el)){
+      acc = old; acc.element = el;
+      delete accounts[name]; accounts[key] = acc;
+    }
+  }
+  if(!acc){
+    acc = { username:name, password:code, nickname:'', element:el, outfit:null, friends:[], level:1, wealth:500, coins:100, hideWealth:false };
+    accounts[key] = acc;
     isNew = true;
   }
   saveGameAccounts(accounts);
@@ -1894,13 +2020,14 @@ function doVerify(){
 
   if(isNew){
     toastVerify('✅ 首次核验，自动注册成功');
-    setTimeout(()=>{ showAccountModal(name, code); showRaceModal(name); }, 500);
+    /* 属性在核验前就挑好了，不再弹五选一 */
+    setTimeout(()=>{ showAccountModal(name, code); }, 500);
     return true;                                   // 核验通过 → 章留着
   } else {
-    if(accounts[name].password === code){
+    if(acc.password === code){
       toastVerify('✅ 核验通过，欢迎回来 '+name);
-      // 已注册：头像剪影切换到该账号已选种族（局部刷新，不重建 stage 以免清掉核验动画）
-      runtimeElement = accounts[name].element || null;
+      // 已注册：头像剪影切换到该账号的属性（局部刷新，不重建 stage 以免清掉核验动画）
+      runtimeElement = acc.element || el;
       refreshAvatarSilhouette();
       return true;                                 // 核验通过 → 章留着
     } else {
@@ -2208,7 +2335,9 @@ $('btn-play-loginfx').onclick = ()=> playLayerDemo(buildLoginFxEl, Math.max(800,
 $('btn-test-verify').onclick = ()=>{
   previewMode = true;
   $('btn-preview').textContent = '✎ 编辑模式';
-  runtimeElement = null;          // 重置运行时种族，重新走完整流程
+  /* 新流程是「先挑属性再核验」，测试时给一个默认属性（默认种族），
+     否则会卡在「先点头像挑属性」那一步，演示不了完整链路 */
+  runtimeElement = cfg.avatar.defaultRace || (cfg.avatar.races[0] && cfg.avatar.races[0].id) || null;
   render();
   const n = $('rt-f_name'), c = $('rt-f_code');
   // 每次用唯一账号，保证能演示「新注册 → 选种族」完整链路
@@ -2217,14 +2346,65 @@ $('btn-test-verify').onclick = ()=>{
   setTimeout(doVerify, 200);
 };
 
-$('btn-export').onclick = ()=>{
-  const data = JSON.stringify(cfg, null, 2);
-  const blob = new Blob([data], {type:'application/json'});
+function downloadText(text, filename){
+  const blob = new Blob([text], {type:'application/json'});
   const a = document.createElement('a');
-  a.download = '登录页配置.json';
+  a.download = filename;
   a.href = URL.createObjectURL(blob);
   a.click();
-  toastVerify('📦 已导出登录页配置 JSON');
+  setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 30000);
+}
+
+/* 📄 仅配置：只有文本，几 KB，发微信秒到 —— 但**不带图**，对方导入后图是空的 */
+$('btn-export').onclick = ()=>{
+  downloadText(JSON.stringify(cfg, null, 2), '登录页配置.json');
+  toastVerify('📄 已导出配置（不含图）');
+};
+
+/* 📦 完整包：配置 + 所有图片素材（自动压精度）打进一个 JSON。
+   网络传不上去（上行太慢 / 分片超时）时走这条路：把文件发给陛下，他直接推服务器。 */
+$('btn-export-full').onclick = ()=>{
+  if(!window.CloudSync || typeof CloudSync.exportBundle !== 'function'){
+    alert('云端模块没加载（cloud-sync.js 缺失），没法打包素材。\n刷新页面重试。'); return;
+  }
+  const btn = $('btn-export-full');
+  const old = btn.textContent;
+  btn.textContent = '⏳ 打包中…'; btn.disabled = true;
+  CloudSync.exportBundle('login').then(r=>{
+    btn.textContent = old; btn.disabled = false;
+    if(!r){ alert('本机还没有配置可导出'); return; }
+    const info = r.info || {};
+    const miss = (info.why && info.why.length) ? ('\n\n⚠️ 这些素材没打进去：\n· ' + info.why.join('\n· ')) : '';
+    if(!confirm('打包完成：\n\n配置 + 素材 ' + (info.n||0) + ' 个（' + (r.size/1024/1024).toFixed(2) + 'MB）' +
+        (info.shrunk && info.shrunk.length ? '\n🗜 已自动压精度：' + info.shrunk.join('、') : '') + miss +
+        '\n\n点确定保存成文件，发给陛下即可（他不走你家的网，直接推服务器）。')) return;
+    downloadText(r.text, '登录页完整包.json');
+    toastVerify('📦 完整包已导出');
+  }).catch(e=>{
+    btn.textContent = old; btn.disabled = false;
+    alert('打包失败：' + (e && e.message ? e.message : e));
+  });
+};
+
+/* 📥 导入：完整包 or 裸配置都认。素材写回本机素材库，配置直接覆盖生效。 */
+$('btn-import').onclick = ()=> $('file-import').click();
+$('file-import').onchange = e=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onerror = ()=> alert('读文件失败');
+  fr.onload = ()=>{
+    if(!window.CloudSync || typeof CloudSync.importBundle !== 'function'){ alert('云端模块没加载，刷新页面重试'); return; }
+    CloudSync.importBundle(String(fr.result || '')).then(r=>{
+      loadCfg();                 // 重新从 localStorage 读（importBundle 已经写进去了）
+      render();
+      alert('✅ 导入成功\n\n配置项：' + (r.keys||[]).join('、') +
+            '\n素材：' + (r.media||0) + ' 个已写回本机素材库' +
+            (r.media ? '' : '\n（这个文件里没带素材，图可能是空的 —— 让对方导出「完整包」而不是「仅配置」）'));
+    }).catch(err=> alert('导入失败：' + (err && err.message ? err.message : err)));
+  };
+  fr.readAsText(file);
 };
 
 /* ================= 窗口缩放适配 ================= */

@@ -104,10 +104,12 @@
   /* ---------- 压精度（陛下钦定：原始素材是高清的，上云前自动压） ----------
      超过阈值的图：先用 canvas 把最长边缩到 ≤2048，再转 WebP（保透明）；
      还压不下来就降质量再来一轮。原始素材本机原样保留，只压「要上云」的这一份。 */
-  var IMG_COMPRESS_OVER = 1.2 * 1024 * 1024;   // 超过 1.2MB 的图才压
-  var IMG_MAX_SIDE      = 2048;                // 最长边
-  var IMG_QUALITY_STEPS = [0.85, 0.7, 0.55];   // 一轮不行就降质量再来
-  var IMG_TARGET        = 3.5 * 1024 * 1024;   // 压到 3.5MB 以下就收手
+  /* 压得更狠一点：家用宽带上行往往只有几百 KB/s，包一大就「第一片都发不出去」。 */
+  var IMG_COMPRESS_OVER = 700 * 1024;          // 超过 700KB 的图才压
+  var IMG_MAX_SIDE      = 1600;                // 最长边
+  var IMG_QUALITY_STEPS = [0.8, 0.65, 0.5];    // 一轮不行就降质量再来
+  var IMG_TARGET        = 900 * 1024;          // 压到 900KB 以下就收手
+  var SKIP_SOLO         = 5 * 1024 * 1024;     // 单个素材超过 5MB 就不塞进配置包（走服务器 /media/）
 
   function compressImageBlob(blob){
     return new Promise(function(res){
@@ -159,17 +161,24 @@
       if(!window.MediaStore || typeof MediaStore.get !== 'function'){ res({ n:0, bytes:0, skipped:0, shrunk:[] }); return; }
       var ids = findMediaRefs(items);
       if(!ids.length){ res({ n:0, bytes:0, skipped:0, shrunk:[] }); return; }
-      var out = {}, bytes = 0, skipped = 0, shrunk = [], i = 0;
+      var out = {}, bytes = 0, skipped = 0, shrunk = [], why = [], i = 0;
       (function next(){
         if(i >= ids.length){
           if(Object.keys(out).length) items[MEDIA_KEY] = JSON.stringify(out);
-          res({ n:Object.keys(out).length, bytes:bytes, skipped:skipped, shrunk:shrunk });
+          res({ n:Object.keys(out).length, bytes:bytes, skipped:skipped, shrunk:shrunk, why:why });
           return;
         }
         var id = ids[i++];
         try{
           MediaStore.get(id).then(function(b){
-            if(!b || !b.size || b.size > MEDIA_ONE_MAX || bytes + b.size > MEDIA_ALL_MAX){ skipped++; return null; }
+            if(!b || !b.size){ skipped++; why.push(id + '（读不出来）'); return null; }
+            /* 音视频一律不塞进配置包：一个 8MB 的视频转 base64 就是 11MB，
+               家用上行直接把第一片卡死。视频走「☁️ 传到服务器 /media/」，配置里只留地址。 */
+            if(b.type && (b.type.indexOf('video/') === 0 || b.type.indexOf('audio/') === 0)){
+              skipped++; why.push(id + '（音视频不随配置走，请走服务器媒体库）'); return null;
+            }
+            if(b.size > SKIP_SOLO){ skipped++; why.push(id + '（' + fmtSize(b.size) + '，太大，建议传服务器媒体库）'); return null; }
+            if(b.size > MEDIA_ONE_MAX || bytes + b.size > MEDIA_ALL_MAX){ skipped++; why.push(id + '（超出总上限）'); return null; }
             /* 图片超过阈值 → 先压精度（压不动就用原图） */
             var p = (b.size > IMG_COMPRESS_OVER && typeof compressImageBlob === 'function')
               ? compressImageBlob(b).then(function(z){
@@ -181,7 +190,8 @@
                 }).catch(function(){ return b; })
               : Promise.resolve(b);
             return p.then(function(use){
-              if(!use || use.size > MEDIA_ONE_MAX || bytes + use.size > MEDIA_ALL_MAX){ skipped++; return; }
+              if(!use){ skipped++; why.push(id + '（读取失败）'); return; }
+              if(use.size > MEDIA_ONE_MAX || bytes + use.size > MEDIA_ALL_MAX){ skipped++; why.push(id + '（超出总上限）'); return; }
               return blobToDataUrl(use).then(function(u){
                 if(u){ out['ms:' + id] = u; bytes += u.length; } else skipped++;
               }).catch(function(){ skipped++; });
@@ -382,6 +392,55 @@
       setTimeout(function(){ if(!done){ done = true; un(); CloudSync.setBusy(''); alert('拉取超时，服务器可能没开'); } }, 10000);
     },
 
+    /* ================= 离线搬运包（网络传不上去时的兜底） =================
+       家用宽带上行几百 KB/s 时，带素材的提交会把「第一片」卡死。
+       这时走这条路：本机把「配置 + 素材」整体导出成一个 JSON 文件，
+       用微信 / U 盘发给陛下（或另一台电脑），对方导入即可，全程不走云端。
+
+       exportBundle(slot) -> Promise<{text, size, info}>
+       importBundle(text) -> Promise<{keys, media}> */
+    exportBundle: function(slot, opt){
+      slot = slot || CloudSync.slot;
+      opt = opt || {};
+      var items = collect(slot);
+      if(!Object.keys(items).length) return Promise.resolve(null);
+      return packMedia(items).then(function(info){
+        var out = { __bundle__:1, app:'mercury', slot:slot, ts:Date.now(),
+                    by:(window.Net && Net.author) ? Net.author() : '',
+                    items:items };
+        var text = JSON.stringify(out);
+        return { text:text, size:text.length, info:info, slot:slot,
+                 name:'登录页完整包' };
+      });
+    },
+
+    /* text 可以是两种：
+       ① __bundle__ 完整包（items + 素材）
+       ② 裸配置（编辑器直接导出的那个 JSON，只有配置没有图）
+       裸配置会自动按槽位塞进对应 localStorage 键，素材自然是空的（图要另外给）。 */
+    importBundle: function(text){
+      var o;
+      try{ o = JSON.parse(text); }catch(e){ return Promise.reject(new Error('不是合法的 JSON 文件')); }
+      var items = null, media = 0, keys = [];
+      if(o && o.__bundle__ && o.items){ items = o.items; }
+      else if(o && typeof o === 'object' && !o.__bundle__){
+        /* 裸配置：认槽位默认键 */
+        var slot = CloudSync.slot || 'login';
+        var defKeys = (SLOT_DEF[slot] && SLOT_DEF[slot].keys) || [];
+        items = {};
+        if(defKeys.length) items[defKeys[0]] = JSON.stringify(o);
+        else return Promise.reject(new Error('不认识的配置文件，也无法判断属于哪个槽位'));
+      }
+      if(!items) return Promise.reject(new Error('文件里没有可导入的内容'));
+      return restoreMedia(items, function(n){ media = n; }).then(function(){
+        Object.keys(items).forEach(function(k){
+          if(k === MEDIA_KEY) return;
+          try{ localStorage.setItem(k, items[k]); keys.push(k); }catch(e){}
+        });
+        return { keys:keys, media:media };
+      });
+    },
+
     /* ---------- 提交本机 → 云端草稿区 ---------- */
     askKey: function(){
       var k = prompt('请输入后台口令（找陛下要一次，输完本机就记住了）：', '');
@@ -431,7 +490,10 @@
       Net.assetPush({
         slot: CloudSync.slot, by: Net.author() || '匿名', items: items,
         baseRev: baseRev, force: !!force,
-        onProgress: function(p){ CloudSync.setBusy('上传 ' + Math.round(p * 100) + '%'); },
+        onProgress: function(p, cur, total){
+          CloudSync.setBusy(total > 1 ? ('上传 ' + cur + '/' + total + ' 片（' + Math.round(p * 100) + '%）')
+                                     : '上传中');
+        },
       }).then(function(m){
         CloudSync.setBusy('');
         alert('✅ 已提交到云端草稿区（' + fmtSize(m.bytes) + '）\n\n等陛下在「后端管理引擎」点「发布」后全服生效。');

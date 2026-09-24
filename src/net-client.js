@@ -158,25 +158,27 @@
       return new Promise((resolve, reject)=>{
         if(!Net.adminKey){ reject(new Error('还没有后台口令，请先设置')); return; }
         const raw = JSON.stringify(opts.items || {});
-        const CHUNK = 256 * 1024;
+        /* 64KB 一片：家用上行常只有几百 KB/s，256KB 一片容易在弱网下「第一片就发不完」，
+           片小一点单片更容易在超时前发完；代价是片数变多，但每片都有 ACK 背压，反而稳。 */
+        const CHUNK = 64 * 1024;
         const total = Math.max(1, Math.ceil(raw.length / CHUNK));
         let finished = false, cur = 0, ackTimer = null, retries = 0;
         const totalTimeout = setTimeout(()=>{
           if(finished) return; cleanup(); reject(new Error('提交超时（网络太慢或服务器没响应），请重试'));
-        }, 20000 + total * 12000);   // 每片留 12 秒余量，3M 小水管也够
+        }, 30000 + total * 20000);   // 每片留 20 秒余量，弱网也够
         function cleanup(){ finished = true; un1(); un2(); un3(); un4(); if(typeof un5 === 'function') un5(); if(ackTimer) clearTimeout(ackTimer); }
         function chunkAt(i){ return { t:'assetPushChunk', token, i, chunk: raw.slice(i*CHUNK, (i+1)*CHUNK) }; }
         function sendCur(){
           if(finished) return;
           try{ Net.send(chunkAt(cur)); }catch(e){ cleanup(); reject(e); return; }
-          if(opts.onProgress) opts.onProgress(cur / total);
+          if(opts.onProgress) opts.onProgress(cur / total, cur, total);
           if(ackTimer) clearTimeout(ackTimer);
           ackTimer = setTimeout(()=>{
             if(finished) return;
             retries++;
-            if(retries > Math.max(4, total)){ cleanup(); reject(new Error('网络不稳：分片 ' + (cur+1) + '/' + total + ' 反复发不出去，请稍后重试')); return; }
-            sendCur();                     // 8 秒没等到回执 → 重发当前片
-          }, 8000);
+            if(retries > Math.max(8, total * 2)){ cleanup(); reject(new Error('网络不稳：分片 ' + (cur+1) + '/' + total + ' 反复发不出去，请改用「导出完整包」发给我上传')); return; }
+            sendCur();                     // 15 秒没等到回执 → 重发当前片
+          }, 15000);
         }
         let token = '';
         var un5 = Net.on('assetPushAck', m=>{

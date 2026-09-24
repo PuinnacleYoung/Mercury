@@ -745,7 +745,8 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 /* 背景多层（登录页面引擎 🎨 Tab 的 bgLayers）：图片层按顺序叠放，z 序 = 配置顺序 */
 .auth-bg-layer{position:absolute;inset:0;pointer-events:none;background-repeat:no-repeat;background-position:center;}
 /* 头像（卡片上的五行剪影 + 相框）：位置尺寸全按引擎 avatar 配置 */
-.auth-avatar{position:absolute;z-index:11;pointer-events:none;}
+/* 头像＝「选属性」按钮（陛下钦定：点头像 → 弹五选一 → 选完再核验） */
+.auth-avatar{position:absolute;z-index:11;pointer-events:auto;cursor:pointer;}
 .auth-avatar .av-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:contain;}
 /* 相框独立成兄弟容器：跟 .auth-avatar 平级，才能各自挂 mix-blend-mode 跟卡片混合
    （塞在 .auth-avatar 里面会被它的 z-index 隔离 → 混合无效） */
@@ -810,7 +811,10 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-card.verified{animation:authShake .9s ease both;}
 /* 流光 */
 .auth-card-flow{position:absolute;inset:0;border-radius:10px;pointer-events:none;overflow:hidden;opacity:0;z-index:15;}
-.auth-card.verified .auth-card-flow{opacity:1;}
+/* 核验通过后：扫一道光就收（陛下嫌那层金色渐变常驻在卡片上像块黄斑），
+   1.6s 后整层自己淡掉，不用 JS 收尾 */
+.auth-card.verified .auth-card-flow{opacity:1;animation:authFlowOff .5s linear 1.4s forwards;}
+@keyframes authFlowOff{to{opacity:0;}}
 .auth-card-flow::before{
   content:'';position:absolute;top:-50%;left:-80%;width:45%;height:200%;
   background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,.15) 40%,rgba(120,210,255,.6) 50%,rgba(255,255,255,.15) 60%,transparent 100%);
@@ -827,7 +831,7 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 /* 姓名/防伪码输入框（z=30，永远压在卡片上方可点可输） */
 .auth-field{position:absolute;background:rgba(0,0,0,.5);border:2px solid rgba(120,210,255,.55);border-radius:6px;color:#fff;font-weight:700;text-align:center;outline:none;backdrop-filter:blur(4px);z-index:30;letter-spacing:.5px;pointer-events:auto;}
 .auth-field:focus{border-color:#37c8b0;box-shadow:0 0 14px rgba(55,200,176,.55);}
-.auth-field::placeholder{color:rgba(255,255,255,.45);}
+.auth-field::placeholder{color:rgba(255,255,255,var(--ph-op,.45));}
 
 /* 盖章区：平时显示「盖章前图」，点击它＝核验身份；核验通过换成「盖章后图」从 1.5 倍盖到 1 倍 */
 .auth-stamp{position:absolute;z-index:26;cursor:pointer;}
@@ -846,17 +850,19 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-toast.show{opacity:1;}
 
 /* 账号凭证弹窗 */
-.auth-cred-mask{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
-.auth-cred-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.25);border-radius:18px;padding:22px;width:min(320px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.auth-cred-modal h3{font-size:16px;font-weight:900;margin:0 0 8px;color:#fff;}
-.auth-cred-modal .sub{font-size:12px;color:#9cc5ce;line-height:1.6;margin:0 0 14px;}
-.auth-cred-card{background:rgba(0,0,0,.35);border:1px solid rgba(120,210,255,.2);border-radius:12px;padding:14px;margin-bottom:14px;}
-.auth-cred-card .cr{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px dashed rgba(255,255,255,.1);}
+/* 核验成功弹窗：整块挪进 auth-world，坐标跟卡片同一套（引擎里可拖可改大小） */
+.auth-cred-mask{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);}
+.auth-cred-mask.hidden{display:none;}
+.auth-cred-modal{position:absolute;box-sizing:border-box;background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.25);border-radius:clamp(8px,1.4vw,18px);padding:2.6%;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden;}
+.auth-cred-modal h3{font-size:clamp(11px,1.5vw,16px);font-weight:900;margin:0 0 2%;color:#fff;white-space:nowrap;}
+.auth-cred-modal .sub{font-size:clamp(8px,1vw,12px);color:#9cc5ce;line-height:1.5;margin:0 0 3%;overflow:hidden;}
+.auth-cred-card{background:rgba(0,0,0,.35);border:1px solid rgba(120,210,255,.2);border-radius:clamp(6px,1vw,12px);padding:3%;margin-bottom:3%;}
+.auth-cred-card .cr{display:flex;justify-content:space-between;align-items:center;padding:2% 0;font-size:clamp(9px,1.1vw,13px);border-bottom:1px dashed rgba(255,255,255,.1);}
 .auth-cred-card .cr:last-child{border-bottom:none;}
-.auth-cred-card .k{color:#9cc5ce;font-size:12px;}
+.auth-cred-card .k{color:#9cc5ce;font-size:clamp(8px,1vw,12px);}
 .auth-cred-card .v{font-weight:900;color:#f5c542;letter-spacing:.5px;word-break:break-all;text-align:right;max-width:60%;}
-.auth-cred-modal .save{width:100%;padding:11px;border-radius:11px;font-size:13px;font-weight:900;background:linear-gradient(135deg,#22b8cf,#0f7a8c);color:#fff;cursor:pointer;margin-bottom:8px;border:0;}
-.auth-cred-modal .close{width:100%;padding:10px;border-radius:11px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);color:#9cc5ce;cursor:pointer;border:0;}
+.auth-cred-modal .save{width:100%;padding:2.6%;border-radius:clamp(6px,1vw,11px);font-size:clamp(9px,1.1vw,13px);font-weight:900;background:linear-gradient(135deg,#22b8cf,#0f7a8c);color:#fff;cursor:pointer;margin-bottom:2%;border:0;}
+.auth-cred-modal .close{width:100%;padding:2.4%;border-radius:clamp(6px,1vw,11px);font-size:clamp(8px,1vw,12px);font-weight:800;background:rgba(255,255,255,.06);color:#9cc5ce;cursor:pointer;border:0;}
 
 /* ---------- 五个剪影选择（种族/五行，绑定账号） ---------- */
 /* 五行选择弹窗：陛下嫌格子太小 → 整屏放大（clamp 自适应，手机横屏也撑得开） */
@@ -870,7 +876,7 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .race-cell.sel{border-color:#22b8cf;box-shadow:0 0 22px rgba(34,184,207,.45);}
 /* 剪影用了混合模式时，格子改白底承接（深色底叠底会糊成黑块，白底才能把白底 PNG 叠掉） */
 .race-cell.blend-seat{background:#fff;}
-.race-cell .rc-sil{width:clamp(56px,8.5vw,124px);height:clamp(56px,8.5vw,124px);margin:0 auto clamp(6px,1vw,14px);border-radius:16%;background:rgba(255,255,255,.1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,4vw,54px);font-weight:900;color:#9cc5ce;}
+.race-cell .rc-sil{width:clamp(64px,9vw,150px);aspect-ratio:3/4;margin:0 auto clamp(6px,1vw,14px);background:center/contain no-repeat;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,4vw,54px);font-weight:900;color:#9cc5ce;}
 .race-cell .rc-name{font-size:clamp(15px,2.1vw,27px);font-weight:900;color:#fff;}
 .race-cell .rc-trait{font-size:clamp(10px,1.3vw,15px);color:#9cc5ce;margin-top:clamp(2px,.5vw,6px);line-height:1.45;}
 .race-modal .skip{display:block;margin:clamp(10px,1.8vw,20px) auto 0;background:none;border:0;color:#7d99a5;font-size:clamp(12px,1.4vw,16px);cursor:pointer;text-decoration:underline;}
@@ -1229,23 +1235,22 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
       <input class="auth-field" id="auth-field-code" placeholder="特殊防伪码" autocomplete="off">
       <div class="auth-toast" id="auth-toast"></div>
       <div class="auth-title" id="auth-title">拾光·澈屿</div>
+      <!-- 🪪 核验成功弹窗：挂在 world 里，坐标跟卡片同一套（引擎「卡片」Tab 里可拖可改大小） -->
+      <div class="auth-cred-mask hidden" id="auth-cred-mask">
+        <div class="auth-cred-modal" id="auth-cred-modal">
+          <h3>🪪 注册成功！</h3>
+          <p class="sub">首次核验已自动注册。请保存以下账号与防伪码，下次登录需核验一致。</p>
+          <div class="auth-cred-card">
+            <div class="cr"><span class="k">姓名 / 账号</span><span class="v" id="auth-cred-name">—</span></div>
+            <div class="cr"><span class="k">特殊防伪码</span><span class="v" id="auth-cred-code">—</span></div>
+          </div>
+          <button class="save" id="auth-cred-save">📥 保存为图片</button>
+          <button class="close" id="auth-cred-close">我已保存，进入世界</button>
+        </div>
+      </div>
     </div>
   </div>
   <button class="admin-corner" id="btn-admin-corner" title="管理员登录，进入引擎中枢">⚙ 管理员登录</button>
-</div>
-
-<!-- 首次核验注册成功 → 账号凭证弹窗 -->
-<div class="auth-cred-mask hidden" id="auth-cred-mask">
-  <div class="auth-cred-modal">
-    <h3>🪪 注册成功！</h3>
-    <p class="sub">首次核验已自动注册。请保存以下账号与防伪码，下次登录需核验一致。</p>
-    <div class="auth-cred-card">
-      <div class="cr"><span class="k">姓名 / 账号</span><span class="v" id="auth-cred-name">—</span></div>
-      <div class="cr"><span class="k">特殊防伪码</span><span class="v" id="auth-cred-code">—</span></div>
-    </div>
-    <button class="save" id="auth-cred-save">📥 保存为图片</button>
-    <button class="close" id="auth-cred-close">我已保存，进入世界</button>
-  </div>
 </div>
 
 <!-- 首次核验注册成功 → 五个剪影选择（种族/五行，绑定账号） -->
@@ -1653,12 +1658,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20260924a"></script>
-<script src="./legacy-body-v4.js?v=20260924a"></script>
+<script src="./body-template.js?v=20260924f"></script>
+<script src="./legacy-body-v4.js?v=20260924f"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20260924a"></script>
-<script src="./media-store.js?v=20260924a"></script>
-<script src="./net-client.js?v=20260924a"></script>
+<script src="./map-placeholders.js?v=20260924f"></script>
+<script src="./media-store.js?v=20260924f"></script>
+<script src="./net-client.js?v=20260924f"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -2712,14 +2717,35 @@ let currentUser = null; // {username, password, nickname, element, outfit, frien
 /* ================= 存储 ================= */
 function getAccounts(){ try{return JSON.parse(localStorage.getItem(LS_ACCOUNTS)||'{}');}catch(e){return {};} }
 function saveAccounts(a){ localStorage.setItem(LS_ACCOUNTS, JSON.stringify(a)); }
+/* 陛下钦定：一个「姓名 + 防伪码 + 属性」= 一个账号。
+   同名不同属性是**两个账号**（选了水就登水的，没有水的就新开一个水的）。
+   内部键 = 姓名#属性；老账号（键就是姓名）会自动迁过来。 */
+function accountKeyOf(name, el){ return el ? (name + '#' + el) : name; }
+function findAccountByName(n){
+  if(!n) return null;
+  const a = getAccounts();
+  if(a[n]) return a[n];
+  const k = Object.keys(a).find(kk => (a[kk].username || kk) === n);
+  return k ? a[k] : null;
+}
 function setCurrent(username){ localStorage.setItem(LS_CURRENT, username||''); }
 /* 把内存里 currentUser 的最新状态写回 localStorage —— getAccounts 每次都新 parse，
    `saveAccounts(getAccounts())` 会存回过时快照，所以必须显式覆盖 accounts[username]。*/
 function persistCurrent(){
   if(!currentUser || !currentUser.username) return;
   const a = getAccounts();
-  a[currentUser.username] = currentUser;
+  /* 账号键是「姓名#属性」（同名不同属性是两个账号），写回必须用同一个键，
+     否则会另存一份到 accounts[姓名] 造成数据分裂 */
+  a[currentUser.key || currentUser.username] = currentUser;
   saveAccounts(a);
+}
+/* 按显示名找账号（好友/名片用）：先精确键，再在账号里比对 username */
+function findAccountByName(n){
+  if(!n) return null;
+  const a = getAccounts();
+  if(a[n]) return a[n];
+  const k = Object.keys(a).find(kk => (a[kk].username || kk) === n);
+  return k ? a[k] : null;
 }
 /* 旧存档迁移：补齐等级/财富/金币/隐藏财富字段 */
 function normalizeUser(u){
@@ -3265,6 +3291,21 @@ function authSetBox(el, o){
   el.style.height = (o.h*100)+'%';
 }
 
+/* 🪪 核验成功弹窗：位置 / 大小由登录页引擎「卡片」Tab 里的「核验成功弹窗」图层决定
+   （弹窗挂在 auth-world 里，坐标跟卡片同一套，引擎里拖到哪它就出现在哪） */
+function placeCredModal(){
+  const modal = $('auth-cred-modal');
+  if(!modal) return;
+  const c = (window.authCfg && authCfg.cred) ? authCfg.cred : null;
+  if(c){
+    authSetBox(modal, c);
+  } else {
+    // 老配置没这一项：退回居中尺寸
+    modal.style.left = '32%'; modal.style.top = '20%';
+    modal.style.width = '36%'; modal.style.height = '48%';
+  }
+}
+
 /* ================= 盖章戳（与登录页引擎同源） =================
    戳图平时看不见；核验通过时从「放大 1.5 倍」盖下来缩到 1 倍落定。 */
 function authImgSrc(v){
@@ -3381,9 +3422,11 @@ function initAuthEngine(){
     authSetBox(el, f);
     el.placeholder = f.label || defLabel;
     if(f.fontSize) el.style.fontSize = 'clamp(10px,' + (f.fontSize/100*5) + 'vw,' + (f.fontSize*1.4) + 'px)';
-    /* 样式跟着引擎走：底色 / 底色透明度 / 边框颜色（不配就保持游戏端默认样式） */
+    /* 样式跟着引擎走：底色 / 底色透明度 / 边框颜色 / 边框透明度 / 提示文字透明度（不配就保持游戏端默认样式） */
     if(f.bg)    el.style.background   = authHexA(f.bg, f.bgOpacity);
-    if(f.border) el.style.borderColor = f.border;
+    if(f.border) el.style.borderColor = authHexA(f.border, f.borderOpacity);
+    /* placeholder 改不了内联样式，只能塞 CSS 变量让 ::placeholder 规则吃 */
+    el.style.setProperty('--ph-op', String(f.phOpacity == null ? 0.45 : f.phOpacity));
   };
   applyField(nameEl, nameF, '姓名');
   applyField(codeEl, codeF, '特殊防伪码');
@@ -3409,6 +3452,15 @@ function initAuthEngine(){
       }
       authSetBox(host, av);
       authSetBox(fHost, av);
+      /* 点头像 = 挑属性（陛下钦定的新顺序：填完姓名/防伪码 → 点头像选属性 → 再核验） */
+      if(!host.dataset.racePicker){
+        host.dataset.racePicker = '1';
+        host.title = '点击选择属性（金木水火土）';
+        host.addEventListener('click', e=>{
+          e.stopPropagation();
+          openPreRacePicker();
+        });
+      }
       /* 🎨 混合模式（引擎「头像区」面板配的）：剪影挂 host、相框挂 fHost —— 两个都必须是
          world 的直接子层才生效，塞在一起会被 z-index 隔离掉 */
       host.style.mixBlendMode  = (av.blend && av.blend !== 'normal') ? av.blend : '';
@@ -3426,6 +3478,20 @@ function initAuthEngine(){
       const oldF = $('auth-avatar-frame'); if(oldF) oldF.remove();
     }
   }catch(e){ console.warn('avatar', e); }
+  /* 头像＝「选属性」按钮：点它弹五选一，选完头像立刻变成那个属性（陛下钦定的新登录顺序） */
+  try{
+    const host = $('auth-avatar');
+    if(host && !host.dataset.raceBound){
+      host.dataset.raceBound = '1';
+      host.title = '点击选择属性（金木水火土）';
+      host.addEventListener('click', e=>{
+        e.stopPropagation();
+        openPreRacePicker();
+      });
+    }
+  }catch(e){}
+  loadPendingElement();          // 上次挑的属性，刷新后头像还是那个
+  refreshAuthAvatar();
 
   /* 4.5) 盖章区＝核验按钮：平时显示「盖章前图」，点它核验；通过后换「盖章后图」盖章 */
   try{ mountAuthStamp(world); }catch(e){ console.warn('stamp', e); }
@@ -3584,13 +3650,30 @@ function doAuthVerify(){
   const name = $('auth-field-name').value.trim();
   const code = $('auth-field-code').value.trim();
   if(!name || !code){ authToast('⚠️ 请先填写姓名和防伪码'); return; }
+  /* 陛下钦定的新顺序：填姓名 → 填防伪码 → **点头像选属性** → 最后才核验。
+     没挑属性就不给核验（否则开出来的账号不知道是哪个属性的）。 */
+  const el = pendingElement;
+  if(!el){ authToast('⚠️ 先点头像挑一个属性（金木水火土），再核验'); return; }
 
   const accounts = getAccounts();
   const card = $('auth-card');
+  const key = accountKeyOf(name, el);
   let isNew = false;
-
-  if(!accounts[name]){
-    accounts[name] = { username:name, password:code, nickname:'', element:null, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false, avatar:PRESET_AVATARS[0].id };
+  let acc = accounts[key];
+  if(!acc){
+    /* 老账号（键就是姓名）迁到「姓名#属性」键：同名不同属性从此互不干扰 */
+    const old = accounts[name];
+    if(old && (!old.element || old.element === el)){
+      delete accounts[name];
+      old.element = el; old.key = key;
+      accounts[key] = old; acc = old;
+      saveAccounts(accounts);
+    }
+  }
+  if(!acc){
+    acc = { username:name, password:code, nickname:'', element:el, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false, avatar:PRESET_AVATARS[0].id };
+    acc.key = key;
+    accounts[key] = acc;
     saveAccounts(accounts);
     isNew = true;
   }
@@ -3609,19 +3692,20 @@ function doAuthVerify(){
       $('auth-cred-name').textContent = name;
       $('auth-cred-code').textContent = code;
       $('auth-cred-mask').classList.remove('hidden');
+      try{ placeCredModal(); }catch(e){}    // 按引擎「核验成功弹窗」图层的位置/大小显示
     }, 600);
   } else {
-    if(accounts[name].password === code){
-      authToast('✅ 核验通过，欢迎回来 ' + name);
+    if(acc.password === code){
+      const ei = elementInfo(el);
+      authToast('✅ 核验通过，欢迎回来 ' + name + '（' + (ei.name || el) + '）');
       try{ playAuthStamp(); }catch(e){}      // 核验通过 → 戳图从 1.5 倍盖下来
-      // 登录成功 → 进入世界
+      // 登录成功 → 进入世界（属性核验前就挑好了，不用再弹五选一）
       setTimeout(()=>{
-        setCurrent(name); currentUser = accounts[name];
+        setCurrent(key); currentUser = acc;
         ensureBody();
         currentUser.outfit = normalizeOutfit(currentUser.outfit);
         normalizeUser(currentUser);
         if(!currentUser.nickname) showScreen('nickname-screen');
-        else if(!currentUser.element){ showRaceModal(name); }   // 旧数据没属性 → 补选（属性绑定账号）
         else enterLobby();
       }, 700);
     } else {
@@ -3656,12 +3740,16 @@ $('auth-cred-close').onclick = ()=>{
   // 注册成功关闭后 → 弹五个剪影选择（属性绑定账号，选完再进昵称页）
   const name = $('auth-cred-name').textContent;
   const accounts = getAccounts();
-  if(accounts[name]){
-    setCurrent(name); currentUser = accounts[name];
+  const el = pendingElement || '';
+  const acc = accounts[accountKeyOf(name, el)] || findAccountByName(name);
+  if(acc){
+    setCurrent(acc.key || accountKeyOf(name, el)); currentUser = acc;
     ensureBody();
     currentUser.outfit = normalizeOutfit(currentUser.outfit);
     normalizeUser(currentUser);
-    showRaceModal(name);
+    /* 属性在核验前就挑好了，这里直接进昵称页 / 世界，不再弹五选一 */
+    if(!currentUser.nickname) showScreen('nickname-screen');
+    else enterLobby();
   }
 };
 $('auth-cred-mask').addEventListener('click', e=>{ if(e.target===$('auth-cred-mask')) $('auth-cred-mask').classList.add('hidden'); });
@@ -3670,6 +3758,47 @@ $('auth-cred-mask').addEventListener('click', e=>{ if(e.target===$('auth-cred-ma
 /* 剪影素材来源：登录页面引擎配置 login_engine_config 里的 avatar.races（金木水火土），
    每项 { id, name, silhouette }；无剪影图时用五行 glyph 兜底。 */
 let pendingRaceUser = null;   // 正在选属性的账号名
+/* 陛下钦定的登录顺序：填姓名 → 填防伪码 → **点头像选属性** → 再核验。
+   这里存「还没核验、但已经挑好的属性」，刷新页面也记得（换属性就点头像重选）。 */
+let pendingElement = null;
+const LS_PENDING_EL = 'auth_pending_element';
+function loadPendingElement(){
+  try{ const v = localStorage.getItem(LS_PENDING_EL); if(v) pendingElement = v; }catch(e){}
+}
+function savePendingElement(){
+  try{ if(pendingElement) localStorage.setItem(LS_PENDING_EL, pendingElement); else localStorage.removeItem(LS_PENDING_EL); }catch(e){}
+}
+/* 点头像 → 弹五选一（登录前版本：只挑属性，不写账号、不进世界） */
+function openPreRacePicker(){
+  showRaceModal(null, true);
+}
+/* 卡片上的头像跟着「已选属性」变（剪影 + 主色） */
+function refreshAuthAvatar(){
+  const host = $('auth-avatar');
+  if(!host) return;
+  const pic = host.querySelector('.av-pic');
+  if(!pic) return;
+  let src = '';
+  if(pendingElement){
+    const e = elementInfo(pendingElement);
+    src = (e && e.silhouette) || '';
+  }
+  if(!src){
+    try{
+      const raw = localStorage.getItem(LS_AUTH_CFG);
+      const av = raw ? (JSON.parse(raw).avatar || {}) : {};
+      src = av.defaultSilhouette || ((av.races||[]).find(r=>r.id===av.defaultRace)||{}).silhouette || '';
+    }catch(e){}
+  }
+  if(src){
+    authAssetUrl(src, u=>{ if(u) pic.style.backgroundImage = 'url(' + u + ')'; });
+  } else {
+    pic.style.backgroundImage = '';
+    const e = pendingElement ? elementInfo(pendingElement) : null;
+    pic.textContent = e ? e.glyph : '';
+    pic.style.color = e ? e.color : '';
+  }
+}
 function raceSilhouettes(){
   try{
     const s = localStorage.getItem(LS_AUTH_CFG);
@@ -3677,8 +3806,10 @@ function raceSilhouettes(){
   }catch(e){}
   return null;
 }
-function showRaceModal(name){
-  pendingRaceUser = name;
+let racePickMode = 'bind';        // 'bind' = 给已登录账号补选；'pre' = 登录前点头像挑属性
+function showRaceModal(name, pre){
+  pendingRaceUser = pre ? null : name;
+  racePickMode = pre ? 'pre' : 'bind';
   const grid = $('race-grid'); grid.innerHTML = '';
   /* 弹窗标题 / 副标题也由引擎配置（陛下说「下面的文字也要能编辑」） */
   try{
@@ -3725,9 +3856,21 @@ function showRaceModal(name){
   $('race-mask').classList.remove('hidden');
 }
 function pickRace(raceId){
+  /* 登录前挑属性（点头像触发）：只记下来 + 把卡片上的头像换成这个属性，
+     不写账号、不进世界 —— 后面点卡片核验时才真正开/登账号。 */
+  if(racePickMode === 'pre'){
+    pendingElement = raceId;
+    savePendingElement();
+    $('race-mask').classList.add('hidden');
+    refreshAuthAvatar();
+    const e0 = elementInfo(raceId);
+    authToast('✨ 已选「' + e0.name + '」属性 · 现在可以核验了');
+    return;
+  }
   if(pendingRaceUser){
     const accounts = getAccounts();
-    if(accounts[pendingRaceUser]){ accounts[pendingRaceUser].element = raceId; saveAccounts(accounts); }
+    const acc0 = findAccountByName(pendingRaceUser);
+    if(acc0){ acc0.element = raceId; accounts[acc0.key || pendingRaceUser] = acc0; saveAccounts(accounts); }
     if(currentUser && currentUser.username===pendingRaceUser) currentUser.element = raceId;
   }
   pendingRaceUser = null;
@@ -3739,9 +3882,12 @@ function pickRace(raceId){
   else enterLobby();
 }
 $('race-skip').onclick = ()=>{
+  const wasPre = (racePickMode === 'pre');
   pendingRaceUser = null;
   $('race-mask').classList.add('hidden');
-  if(!currentUser.nickname){ showScreen('nickname-screen'); setNickAvatarPreview(); }
+  /* 登录前的属性页：跳过就还是没属性，核验会被挡住（陛下钦定必须先选） */
+  if(wasPre){ authToast('⚠️ 没选属性不能核验 · 点头像再挑一个'); return; }
+  if(!currentUser || !currentUser.nickname){ showScreen('nickname-screen'); setNickAvatarPreview(); }
   else enterLobby();
 };
 
@@ -4766,8 +4912,7 @@ $('friend-add').onclick = ()=>{
     return;
   }
   // 离线兜底：查本地账号/模拟
-  const accounts = getAccounts();
-  const target = accounts[name];
+  const target = findAccountByName(name);   // 账号键是「姓名#属性」，按显示名找
   if(target){ addFriend({nickname:target.nickname||name, element:target.element||'earth'}); return; }
   const mock = MOCK_ONLINE.find(m=>m.nickname===name);
   if(mock){ addFriend({nickname:mock.nickname, element:mock.element, mock:true}); return; }
@@ -8424,8 +8569,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20260924a" defer></script>
-<script src="./responsive.js?v=20260924a" defer></script>
-<script src="./pwa-install.js?v=20260924a" defer></script>
+<script src="./orientation-lock.js?v=20260924f" defer></script>
+<script src="./responsive.js?v=20260924f" defer></script>
+<script src="./pwa-install.js?v=20260924f" defer></script>
 </body>
 </html>
