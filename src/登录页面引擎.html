@@ -128,6 +128,15 @@
      所以它必须和 .id-avatar 平级，各自挂各自的混合模式。 */
   .id-avatar-frame{position:absolute;pointer-events:none;z-index:20;border-radius:14%;}
   .id-avatar-frame .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:14%;}
+  /* 五行（金木水火土）编辑块：名字 / 剪影 / 说明 / 配色 全部可编辑，直接串到游戏里的选择弹窗 */
+  .race-edit{border:1px solid var(--line);border-radius:10px;padding:9px;margin:0 0 9px;background:rgba(255,255,255,.035);}
+  .race-edit-hd{display:flex;gap:6px;align-items:center;margin-bottom:7px;}
+  .race-edit-hd .race-name{flex:1;min-width:0;background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:7px;padding:6px 8px;color:var(--ink);font-size:13px;font-weight:800;}
+  .race-edit .race-trait{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:7px;padding:6px 8px;color:var(--sub);font-size:11px;}
+  .race-edit .race-colors{display:flex;gap:8px;align-items:center;margin-top:7px;}
+  .race-edit .race-colors label{font-size:11px;color:var(--sub);}
+  .race-edit input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer;}
+  .race-edit .race-sil-hd{flex:0 0 auto;}
   .id-avatar.sel{box-shadow:0 0 0 3px var(--accent);border-radius:14%;}
   .id-avatar .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
 
@@ -433,13 +442,15 @@ function defaultConfig(){
     card: { src:'', opacity:1, x:0.5, y:0.5, w:0.42, h:0.62, locked:false },
     avatar: {
       frameSrc:'', defaultRace:'metal', defaultSilhouette:'',
+      pickTitle:'✨ 选择你的属性', pickSub:'属性绑定你的账号，将决定角色的初始气质与代表色。',
       x:0.5, y:0.28, w:0.16, h:0.20, locked:false,
+      /* 五行：名字 / 说明 / 主题色 / 文字色 全部可编辑 —— 游戏里「选择属性」弹窗直接读这套 */
       races: [
-        { id:'metal', name:'金', silhouette:'' },
-        { id:'wood',  name:'木', silhouette:'' },
-        { id:'water', name:'水', silhouette:'' },
-        { id:'fire',  name:'火', silhouette:'' },
-        { id:'earth', name:'土', silhouette:'' },
+        { id:'metal', name:'金', silhouette:'', trait:'坚韧 · 果决', color:'#f5c542', text:'#8a6d1a' },
+        { id:'wood',  name:'木', silhouette:'', trait:'生机 · 成长', color:'#4caf50', text:'#2e7d32' },
+        { id:'water', name:'水', silhouette:'', trait:'灵动 · 包容', color:'#42a5f5', text:'#1565c0' },
+        { id:'fire',  name:'火', silhouette:'', trait:'热情 · 勇敢', color:'#ef5350', text:'#c62828' },
+        { id:'earth', name:'土', silhouette:'', trait:'稳重 · 踏实', color:'#a1887f', text:'#5d4037' },
       ]
     },
     fields: [
@@ -479,7 +490,10 @@ function normalizeCfg(){
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
   if(cfg.avatar && cfg.avatar.blend===undefined) cfg.avatar.blend = 'normal';       // 剪影混合模式
-  if(cfg.avatar && cfg.avatar.frameBlend===undefined) cfg.avatar.frameBlend = 'normal';  // 头像框混合模式
+  if(cfg.avatar && cfg.avatar.frameBlend===undefined) cfg.avatar.frameBlend = 'normal';
+  if(cfg.avatar && cfg.avatar.pickTitle===undefined) cfg.avatar.pickTitle = '✨ 选择你的属性';
+  /* 游戏里「选择属性」弹窗的标题 / 副标题（陛下要文字也能改） */
+  if(cfg.avatar && cfg.avatar.pickSub===undefined) cfg.avatar.pickSub = '属性绑定你的账号，将决定角色的初始气质与代表色。';
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   if(cfg.stamp && cfg.stamp.src2===undefined) cfg.stamp.src2 = '';   // 双图：盖章后图（老配置补空）
   if(cfg.stamp && cfg.stamp.blend===undefined) cfg.stamp.blend = 'normal';   // 混合模式（正片叠底等）
@@ -491,14 +505,22 @@ function normalizeCfg(){
     if(oldIds.indexOf('human')>=0 || oldIds.indexOf('elf')>=0 || oldIds.indexOf('beast')>=0){
       const oldMap = {};
       cfg.avatar.races.forEach(r=>{ oldMap[r.id] = r.silhouette || ''; });
-      const migrated = def.avatar.races.map(r=>({ id:r.id, name:r.name, silhouette:'' }));
+      const migrated = def.avatar.races.map(r=>({ id:r.id, name:r.name, silhouette:'', trait:r.trait, color:r.color, text:r.text }));
       cfg.avatar.races = migrated;
       // 旧默认种族 human → metal
       if(cfg.avatar.defaultRace==='human' || cfg.avatar.defaultRace==='elf' || cfg.avatar.defaultRace==='beast') cfg.avatar.defaultRace='metal';
     } else if(cfg.avatar.races.length < def.avatar.races.length){
-      // 补齐缺失的五行种族
-      def.avatar.races.forEach(r=>{ if(!cfg.avatar.races.find(x=>x.id===r.id)) cfg.avatar.races.push({id:r.id,name:r.name,silhouette:''}); });
+      // 补齐缺失的五行种族（连同说明 / 配色一起补）
+      def.avatar.races.forEach(r=>{ if(!cfg.avatar.races.find(x=>x.id===r.id)) cfg.avatar.races.push({id:r.id,name:r.name,silhouette:'',trait:r.trait,color:r.color,text:r.text}); });
     }
+    /* 老配置没有说明文字 / 配色 → 用默认值补齐（陛下随时能在面板里改） */
+    cfg.avatar.races.forEach(r=>{
+      const d = def.avatar.races.find(x=>x.id===r.id);
+      if(!d) return;
+      if(r.trait === undefined) r.trait = d.trait;
+      if(r.color === undefined) r.color = d.color;
+      if(r.text  === undefined) r.text  = d.text;
+    });
   }
 }
 function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
@@ -1338,11 +1360,27 @@ function renderAvatarProps(c){
       </select></div>
     </div>
     <div class="prop-blk">
-      <div class="sec-title">种族剪影映射（金木水火土 · 点击上传对应剪影 PNG）</div>
+      <div class="sec-title">📝 弹窗文字（游戏里「选择属性」弹窗的抬头）</div>
+      <div class="field-row"><label style="min-width:34px;">标题</label>
+        <input type="text" id="ava-pick-title" style="flex:1;" value="${(cfg.avatar.pickTitle||'').replace(/"/g,'&quot;')}" placeholder="✨ 选择你的属性"></div>
+      <div class="field-row"><label style="min-width:34px;">副标</label>
+        <input type="text" id="ava-pick-sub" style="flex:1;" value="${(cfg.avatar.pickSub||'').replace(/"/g,'&quot;')}" placeholder="属性绑定你的账号…（留空则不显示）"></div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">🈶 五行属性编辑（名字 / 剪影 / 说明 / 配色 · 直接串进游戏选择弹窗）</div>
+      <div class="props-empty" style="font-size:11px;margin-bottom:8px;">这里改成什么，游戏里「选择属性」弹窗就长什么样（含名字、说明文字、主题色、剪影图）。</div>
       ${cfg.avatar.races.map(r=>`
-        <div class="field-row"><label style="min-width:36px;">${r.name}</label>
-          <button class="btn-mini race-sil" data-race="${r.id}" style="${r.silhouette?'color:var(--mint);border-color:var(--mint);':'color:var(--sub);'}">${r.silhouette?'已设剪影 ✓':'上传剪影'}</button>
-          ${r.silhouette?'<button class="btn-mini danger race-sil-clear" data-race="'+r.id+'">✕</button>':''}
+        <div class="race-edit" data-race="${r.id}">
+          <div class="race-edit-hd">
+            <input class="race-name" type="text" data-race="${r.id}" value="${(r.name||'').replace(/"/g,'&quot;')}" placeholder="属性名">
+            <button class="btn-mini race-sil race-sil-hd" data-race="${r.id}" style="${r.silhouette?'color:var(--mint);border-color:var(--mint);':'color:var(--sub);'}">${r.silhouette?'剪影 ✓':'上传剪影'}</button>
+            ${r.silhouette?'<button class="btn-mini danger race-sil-clear" data-race="'+r.id+'">✕</button>':''}
+          </div>
+          <input class="race-trait" type="text" data-race="${r.id}" value="${(r.trait||'').replace(/"/g,'&quot;')}" placeholder="说明文字，如：坚韧 · 果决">
+          <div class="race-colors">
+            <label>主题色</label><input type="color" class="race-color" data-race="${r.id}" value="${r.color||'#ffffff'}">
+            <label>文字色</label><input type="color" class="race-text" data-race="${r.id}" value="${r.text||'#ffffff'}">
+          </div>
         </div>
       `).join('')}
     </div>
@@ -1383,6 +1421,23 @@ function renderAvatarProps(c){
   });
   document.querySelectorAll('.race-sil-clear').forEach(btn=>{
     btn.onclick = ()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r){ r.silhouette=''; saveCfg(); render(); } };
+  });
+  /* 弹窗抬头文字 */
+  const pTitle = $('ava-pick-title'), pSub = $('ava-pick-sub');
+  if(pTitle) pTitle.onchange = ()=>{ cfg.avatar.pickTitle = pTitle.value || ''; saveCfg(); };
+  if(pSub)   pSub.onchange   = ()=>{ cfg.avatar.pickSub   = pSub.value   || ''; saveCfg(); };
+  /* 五行名字 / 说明 / 配色（改完立刻存，游戏里的选择弹窗会跟着变） */
+  document.querySelectorAll('.race-name').forEach(inp=>{
+    inp.onchange = ()=>{ const r=cfg.avatar.races.find(x=>x.id===inp.dataset.race); if(r){ r.name=(inp.value||'').trim()||r.name; saveCfg(); render(); } };
+  });
+  document.querySelectorAll('.race-trait').forEach(inp=>{
+    inp.onchange = ()=>{ const r=cfg.avatar.races.find(x=>x.id===inp.dataset.race); if(r){ r.trait=inp.value||''; saveCfg(); } };
+  });
+  document.querySelectorAll('.race-color').forEach(inp=>{
+    inp.onchange = ()=>{ const r=cfg.avatar.races.find(x=>x.id===inp.dataset.race); if(r){ r.color=inp.value; saveCfg(); render(); } };
+  });
+  document.querySelectorAll('.race-text').forEach(inp=>{
+    inp.onchange = ()=>{ const r=cfg.avatar.races.find(x=>x.id===inp.dataset.race); if(r){ r.text=inp.value; saveCfg(); render(); } };
   });
 }
 

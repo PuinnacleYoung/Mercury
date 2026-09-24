@@ -859,20 +859,21 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-cred-modal .close{width:100%;padding:10px;border-radius:11px;font-size:12px;font-weight:800;background:rgba(255,255,255,.06);color:#9cc5ce;cursor:pointer;border:0;}
 
 /* ---------- 五个剪影选择（种族/五行，绑定账号） ---------- */
-.race-mask{position:fixed;inset:0;z-index:210;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
-.race-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.25);border-radius:18px;padding:22px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.6);}
-.race-modal h3{font-size:17px;font-weight:900;margin:0 0 6px;color:#fff;}
-.race-modal .sub{font-size:12px;color:#9cc5ce;line-height:1.6;margin:0 0 16px;}
-.race-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
-.race-cell{border:2px solid rgba(120,210,255,.2);border-radius:14px;padding:12px 4px;text-align:center;cursor:pointer;transition:.16s;background:rgba(0,0,0,.3);}
-.race-cell:hover{border-color:rgba(120,210,255,.5);transform:translateY(-2px);}
-.race-cell.sel{border-color:#22b8cf;box-shadow:0 0 16px rgba(34,184,207,.4);}
+/* 五行选择弹窗：陛下嫌格子太小 → 整屏放大（clamp 自适应，手机横屏也撑得开） */
+.race-mask{position:fixed;inset:0;z-index:210;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:2vh 2vw;}
+.race-modal{background:linear-gradient(160deg,#12202b,#0a1620);border:1px solid rgba(120,210,255,.25);border-radius:22px;padding:clamp(16px,2.6vw,32px);width:min(960px,96vw);max-height:96vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.65);}
+.race-modal h3{font-size:clamp(18px,2.6vw,30px);font-weight:900;margin:0 0 6px;color:#fff;}
+.race-modal .sub{font-size:clamp(12px,1.5vw,16px);color:#9cc5ce;line-height:1.6;margin:0 0 clamp(12px,2vw,22px);}
+.race-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(8px,1.4vw,18px);}
+.race-cell{border:2px solid rgba(120,210,255,.2);border-radius:18px;padding:clamp(10px,1.8vw,22px) clamp(4px,.8vw,10px);text-align:center;cursor:pointer;transition:.16s;background:rgba(0,0,0,.3);}
+.race-cell:hover{border-color:rgba(120,210,255,.5);transform:translateY(-3px);}
+.race-cell.sel{border-color:#22b8cf;box-shadow:0 0 22px rgba(34,184,207,.45);}
 /* 剪影用了混合模式时，格子改白底承接（深色底叠底会糊成黑块，白底才能把白底 PNG 叠掉） */
 .race-cell.blend-seat{background:#fff;}
-.race-cell .rc-sil{width:54px;height:54px;margin:0 auto 8px;border-radius:14%;background:rgba(255,255,255,.1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#9cc5ce;}
-.race-cell .rc-name{font-size:15px;font-weight:800;color:#fff;}
-.race-cell .rc-trait{font-size:10px;color:#9cc5ce;margin-top:3px;line-height:1.4;}
-.race-modal .skip{display:block;margin:14px auto 0;background:none;border:0;color:#6b8994;font-size:12px;cursor:pointer;text-decoration:underline;}
+.race-cell .rc-sil{width:clamp(56px,8.5vw,124px);height:clamp(56px,8.5vw,124px);margin:0 auto clamp(6px,1vw,14px);border-radius:16%;background:rgba(255,255,255,.1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,4vw,54px);font-weight:900;color:#9cc5ce;}
+.race-cell .rc-name{font-size:clamp(15px,2.1vw,27px);font-weight:900;color:#fff;}
+.race-cell .rc-trait{font-size:clamp(10px,1.3vw,15px);color:#9cc5ce;margin-top:clamp(2px,.5vw,6px);line-height:1.45;}
+.race-modal .skip{display:block;margin:clamp(10px,1.8vw,20px) auto 0;background:none;border:0;color:#7d99a5;font-size:clamp(12px,1.4vw,16px);cursor:pointer;text-decoration:underline;}
 
 /* ---------- 管理员入口 & 引擎中枢 ---------- */
 .admin-corner{position:absolute;right:20px;bottom:16px;padding:8px 15px;border-radius:999px;background:rgba(120,110,140,.13);border:1px solid rgba(120,110,140,.22);color:#9890a8;font-size:12px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px;}
@@ -1250,8 +1251,8 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 <!-- 首次核验注册成功 → 五个剪影选择（种族/五行，绑定账号） -->
 <div class="race-mask hidden" id="race-mask">
   <div class="race-modal">
-    <h3>✨ 选择你的属性</h3>
-    <p class="sub">属性绑定你的账号，将决定角色的初始气质与代表色。</p>
+    <h3 id="race-title">✨ 选择你的属性</h3>
+    <p class="sub" id="race-sub">属性绑定你的账号，将决定角色的初始气质与代表色。</p>
     <div class="race-grid" id="race-grid"></div>
     <button class="skip" id="race-skip">暂不选择，稍后再说</button>
   </div>
@@ -1741,6 +1742,7 @@ const LS_CURRENT  = 'game_current_user';
 const LS_NOREMIND = 'game_landscape_noremind';
 const LS_THEME    = 'game_ui_theme';
 
+/* 内置兜底：只有引擎没配五行时才用这五个（金木水火土） */
 const ELEMENTS = {
   metal:{name:'金', glyph:'金', color:'#f5c542', trait:'坚韧 · 果决', text:'#8a6d1a'},
   wood:{name:'木', glyph:'木', color:'#4caf50', trait:'生机 · 成长', text:'#2e7d32'},
@@ -1748,6 +1750,36 @@ const ELEMENTS = {
   fire:{name:'火', glyph:'火', color:'#ef5350', trait:'热情 · 勇敢', text:'#c62828'},
   earth:{name:'土', glyph:'土', color:'#a1887f', trait:'稳重 · 踏实', text:'#5d4037'},
 };
+
+/* ===== 五行（金木水火土）= 登录页面引擎「👤 头像区 → 🈶 五行属性编辑」说了算 =====
+   陛下在引擎里改名字 / 说明 / 配色 / 剪影，游戏里所有地方（选择弹窗、HUD 徽章、
+   好友列表、名片、个人页）立刻跟着变 —— 两端完全串联，不再各写一份硬编码。 */
+function elementRaces(){
+  try{
+    const s = localStorage.getItem(LS_AUTH_CFG);
+    if(s){
+      const c = JSON.parse(s);
+      if(c && c.avatar && Array.isArray(c.avatar.races) && c.avatar.races.length) return c.avatar.races;
+    }
+  }catch(e){}
+  return null;
+}
+function elementInfo(id){
+  const rs = elementRaces();
+  if(rs){
+    const r = rs.find(x=>x.id===id);
+    if(r) return { id:r.id, name:r.name||'', glyph:(r.name||'').slice(0,1)||'?',
+      color:r.color||'#9cc5ce', trait:r.trait||'', text:r.text||'#ffffff', silhouette:r.silhouette||'' };
+  }
+  const d = ELEMENTS[id];
+  return d ? Object.assign({id:id}, d) : {id:id, name:'?', glyph:'?', color:'#999', trait:'', text:'#fff', silhouette:''};
+}
+/* 选择弹窗要按引擎里的顺序展示（陛下可以改名，顺序仍按 races 数组） */
+function elementList(){
+  const rs = elementRaces();
+  if(rs && rs.length) return rs.map(r=>elementInfo(r.id));
+  return Object.keys(ELEMENTS).map(k=>elementInfo(k));
+}
 
 /* ================= 三货币 & 商店分区（服装引擎 v2） ================= */
 const CURRENCY = {
@@ -3648,6 +3680,18 @@ function raceSilhouettes(){
 function showRaceModal(name){
   pendingRaceUser = name;
   const grid = $('race-grid'); grid.innerHTML = '';
+  /* 弹窗标题 / 副标题也由引擎配置（陛下说「下面的文字也要能编辑」） */
+  try{
+    const raw = localStorage.getItem(LS_AUTH_CFG);
+    if(raw){
+      const av = (JSON.parse(raw) || {}).avatar || {};
+      if(av.pickTitle) $('race-title').textContent = av.pickTitle;
+      else $('race-title').textContent = '✨ 选择你的属性';
+      if(av.pickSub) $('race-sub').textContent = av.pickSub;
+      else $('race-sub').textContent = '属性绑定你的账号，将决定角色的初始气质与代表色。';
+      $('race-sub').style.display = (av.pickSub === '') ? 'none' : '';
+    }
+  }catch(e){}
   const races = raceSilhouettes();
   /* 弹窗里的剪影也跟随引擎「剪影混合模式」：mix-blend-mode 要跟背后的底色相乘，
      而格子本来是深色 —— 直接叠底会糊成黑块。所以非 normal 时把格子换成白底承接，
@@ -3655,16 +3699,17 @@ function showRaceModal(name){
   let silBlend = 'normal';
   try{ const raw = localStorage.getItem(LS_AUTH_CFG); if(raw){ silBlend = (JSON.parse(raw).avatar||{}).blend || 'normal'; } }catch(e){}
   const useBlend = (silBlend && silBlend !== 'normal');
-  Object.entries(ELEMENTS).forEach(([key,e])=>{
+  /* 五行全按引擎配置来（名字 / 说明 / 配色 / 剪影都在引擎「五行属性编辑」里改） */
+  elementList().forEach(e=>{
+    const key = e.id;
     const cell = document.createElement('div');
     cell.className = 'race-cell' + (useBlend ? ' blend-seat' : '');
     const sil = document.createElement('div');
     sil.className = 'rc-sil';
     if(useBlend) sil.style.mixBlendMode = silBlend;
-    const r = races ? races.find(x=>x.id===key) : null;
-    if(r && r.silhouette){
+    if(e.silhouette){
       /* ms:/srv: 统一解析（老写法直接 url() 会让本机素材库的剪影加载不出来） */
-      authAssetUrl(r.silhouette, u=>{
+      authAssetUrl(e.silhouette, u=>{
         if(u) sil.style.backgroundImage = 'url(' + u + ')';
         else { sil.textContent = e.glyph; sil.style.color = e.color; sil.style.background = 'rgba(255,255,255,.08)'; }
       });
@@ -3687,7 +3732,7 @@ function pickRace(raceId){
   }
   pendingRaceUser = null;
   $('race-mask').classList.add('hidden');
-  const e = ELEMENTS[raceId];
+  const e = elementInfo(raceId);
   authToast('✨ 已选择「' + e.name + '」属性');
   // 选完 → 首次注册进昵称页，否则进世界
   if(!currentUser.nickname){ showScreen('nickname-screen'); setNickAvatarPreview(); }
@@ -3868,7 +3913,7 @@ let mapRun = {
 /* 左上名字卡片 + 五行徽章：全局 HUD，大厅与关卡共用一份，进入任何场景都要先刷新 */
 function refreshHud(){
   if(!currentUser) return;
-  const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
+  const e = elementInfo(currentUser.element) || {name:'?',color:'#999'};
   const nick = currentUser.nickname || currentUser.username;   // 昵称缺失时回退账号名
   $('hud-nick').textContent = nick;
   const av = avatarById(currentUser.avatar);          // 预设头像
@@ -4660,7 +4705,7 @@ function buildFriends(){
   if(!friends.length){ list.innerHTML='<div class="empty-tip">还没有好友，去下方添加吧</div>'; }
   friends.forEach(uname=>{
     const info = friendCache(uname);
-    const e = ELEMENTS[info.element] || {color:'#999', name:'?'};
+    const e = elementInfo(info.element) || {color:'#999', name:'?'};
     const online = onlineNow.includes(uname);
     const av = avatarById(info.avatar);
     const row=document.createElement('div'); row.className='friend-row';
@@ -4689,7 +4734,7 @@ function buildFriends(){
   } else {
     // 离线：显示模拟数据（兜底）
     MOCK_ONLINE.forEach(m=>{
-      const e = ELEMENTS[m.element];
+      const e = elementInfo(m.element);
       const added = friends.includes(m.nickname);
       const row=document.createElement('div'); row.className='friend-row';
       row.innerHTML=`<div class="f-ava" style="background:${e.color}">${m.nickname.slice(0,1)}</div>
@@ -4789,7 +4834,7 @@ function renderFriendReqs(){
   $('req-batch-row').style.display = has ? '' : 'none';
   if(!has){ box.innerHTML='<div class="empty-tip">暂无好友申请</div>'; return; }
   _friendReqs.forEach(r=>{
-    const e = ELEMENTS[r.element] || {color:'#999', name:'?'};
+    const e = elementInfo(r.element) || {color:'#999', name:'?'};
     const av = avatarById(r.avatar);
     const row=document.createElement('div'); row.className='friend-row';
     row.innerHTML=`<div class="f-ava" style="background:${av.bg}">${av.em}</div>
@@ -6163,7 +6208,7 @@ function openProfile(){
 }
 function closeProfile(){ $('profile-mask').classList.add('hidden'); }
 function renderProfile(){
-  const e = ELEMENTS[currentUser.element] || {name:'?',color:'#999'};
+  const e = elementInfo(currentUser.element) || {name:'?',color:'#999'};
   $('profile-name').textContent = currentUser.nickname;
   $('profile-badge').textContent = '五行·' + e.name;
   $('profile-badge').style.background = e.color;
