@@ -1658,12 +1658,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20260924f"></script>
-<script src="./legacy-body-v4.js?v=20260924f"></script>
+<script src="./body-template.js?v=20260924g"></script>
+<script src="./legacy-body-v4.js?v=20260924g"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20260924f"></script>
-<script src="./media-store.js?v=20260924f"></script>
-<script src="./net-client.js?v=20260924f"></script>
+<script src="./map-placeholders.js?v=20260924g"></script>
+<script src="./media-store.js?v=20260924g"></script>
+<script src="./net-client.js?v=20260924g"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -3284,11 +3284,34 @@ function authCoverFit(vw, vh, wa){
   const scale = Math.max(vw/wa, vh);
   return { w: wa*scale, h: scale, ox:(vw-wa*scale)/2, oy:(vh-scale)/2, scale };
 }
-function authSetBox(el, o){
-  el.style.left = ((o.x - o.w/2)*100)+'%';
-  el.style.top  = ((o.y - o.h/2)*100)+'%';
+/* 手机/带鱼屏适配：世界固定 16:9 cover 铺屏，超出部分会被裁掉。
+   AUTH_VIS 记录世界里真正可见的范围（世界占比 0~1），authSetBox 把元素夹进来，
+   保证卡片/头像/输入框/盖章区在任何屏幕比例下都完整可见（桌面 16:9 无裁切 → 行为不变）。 */
+let AUTH_VIS = { x0:0, y0:0, x1:1, y1:1 };
+const AUTH_BOXES = [];   // 已定位过的元素登记表，resize 时整体重排
+function applyAuthBox(el, o){
+  let x = o.x, y = o.y;
+  const V = AUTH_VIS;
+  /* 先平移把整块挪进可见区；实在放不下（元素比可见区还大）就居中 */
+  const cx0 = V.x0 + o.w/2, cx1 = V.x1 - o.w/2;
+  x = (cx0 <= cx1) ? Math.min(Math.max(x, cx0), cx1) : (V.x0 + V.x1)/2;
+  const cy0 = V.y0 + o.h/2, cy1 = V.y1 - o.h/2;
+  y = (cy0 <= cy1) ? Math.min(Math.max(y, cy0), cy1) : (V.y0 + V.y1)/2;
+  el.style.left = ((x - o.w/2)*100)+'%';
+  el.style.top  = ((y - o.h/2)*100)+'%';
   el.style.width  = (o.w*100)+'%';
   el.style.height = (o.h*100)+'%';
+}
+function authSetBox(el, o){
+  const e = AUTH_BOXES.find(b=>b.el===el);
+  if(e) e.o = o; else AUTH_BOXES.push({ el, o });
+  applyAuthBox(el, o);
+}
+function relayoutAuthBoxes(){
+  for(let i = AUTH_BOXES.length-1; i >= 0; i--){
+    if(!AUTH_BOXES[i].el.isConnected){ AUTH_BOXES.splice(i,1); continue; }   // 重新登录会重建元素，清掉尸体
+    applyAuthBox(AUTH_BOXES[i].el, AUTH_BOXES[i].o);
+  }
 }
 
 /* 🪪 核验成功弹窗：位置 / 大小由登录页引擎「卡片」Tab 里的「核验成功弹窗」图层决定
@@ -3523,6 +3546,14 @@ function layoutAuthWorld(){
   world.style.top  = f.oy+'px';
   world.style.width  = f.w+'px';
   world.style.height = f.h+'px';
+  /* 算出世界里真正可见的范围（世界占比），供 authSetBox 夹取 */
+  AUTH_VIS = {
+    x0: Math.max(0, -f.ox / f.w),
+    x1: Math.min(1, (r.width  - f.ox) / f.w),
+    y0: Math.max(0, -f.oy / f.h),
+    y1: Math.min(1, (r.height - f.oy) / f.h),
+  };
+  relayoutAuthBoxes();   // 屏幕比例变了（旋转/缩放）→ 所有元素重新夹一遍
 }
 
 /* 核验提示 */
@@ -3897,6 +3928,7 @@ $('auth-field-code').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuth
 $('auth-field-name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('auth-field-code').focus(); });
 
 window.addEventListener('resize', ()=>{ if(!$('auth-screen').classList.contains('hidden')) layoutAuthWorld(); });
+window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(!$('auth-screen').classList.contains('hidden')) layoutAuthWorld(); }, 250); });
 
 /* ================= 管理员入口 & 引擎中枢 ================= */
 const ADMIN_USER = '1', ADMIN_PASS = '1';   // Q10 硬编码，正式发布前改
@@ -8569,8 +8601,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20260924f" defer></script>
-<script src="./responsive.js?v=20260924f" defer></script>
-<script src="./pwa-install.js?v=20260924f" defer></script>
+<script src="./orientation-lock.js?v=20260924g" defer></script>
+<script src="./responsive.js?v=20260924g" defer></script>
+<script src="./pwa-install.js?v=20260924g" defer></script>
 </body>
 </html>
