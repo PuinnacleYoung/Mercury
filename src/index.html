@@ -3711,6 +3711,11 @@ function doAuthVerify(){
     isNew = true;
   }
 
+  /* 属性已经被这个账号「吃掉」了：立刻清掉待选标记。
+     以前没清 → 您试过一次「金」之后，这台机器开任何新号都还顶着金的剪影；
+     现在核验完就归零，下次进来是干干净净的默认剪影（无属性）。 */
+  pendingElement = null; savePendingElement();
+
   // 播放卡片晃动 + 流光
   if(card){
     card.classList.remove('verified');
@@ -3796,7 +3801,12 @@ let pendingRaceUser = null;   // 正在选属性的账号名
 let pendingElement = null;
 const LS_PENDING_EL = 'auth_pending_element';
 function loadPendingElement(){
-  try{ const v = localStorage.getItem(LS_PENDING_EL); if(v) pendingElement = v; }catch(e){}
+  try{
+    const v = localStorage.getItem(LS_PENDING_EL);
+    /* 只认配置里**现在还存在**的属性 id：陛下改过名字/顺序后，旧残留别再冒出来变成「?」 */
+    pendingElement = (v && elementList().some(e=>e.id===v)) ? v : null;
+    if(v && !pendingElement) localStorage.removeItem(LS_PENDING_EL);
+  }catch(e){}
 }
 function savePendingElement(){
   try{ if(pendingElement) localStorage.setItem(LS_PENDING_EL, pendingElement); else localStorage.removeItem(LS_PENDING_EL); }catch(e){}
