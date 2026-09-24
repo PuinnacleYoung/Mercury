@@ -747,7 +747,10 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 /* 头像（卡片上的五行剪影 + 相框）：位置尺寸全按引擎 avatar 配置 */
 .auth-avatar{position:absolute;z-index:11;pointer-events:none;}
 .auth-avatar .av-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:contain;}
-.auth-avatar .av-frame{position:absolute;inset:-4%;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
+/* 相框独立成兄弟容器：跟 .auth-avatar 平级，才能各自挂 mix-blend-mode 跟卡片混合
+   （塞在 .auth-avatar 里面会被它的 z-index 隔离 → 混合无效） */
+.auth-avatar-frame{position:absolute;z-index:11;pointer-events:none;}
+.auth-avatar-frame .av-frame{position:absolute;inset:-4%;background-repeat:no-repeat;background-position:center;background-size:100% 100%;}
 /* 占位视频背景：CSS 动态渐变 + 漂浮粒子，模拟循环视频 */
 .auth-bg.placeholder{background:radial-gradient(120% 120% at 30% 20%,#12344a 0%,#0a1a2a 45%,#060b12 100%);}
 .auth-bg.placeholder::before{
@@ -864,6 +867,8 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .race-cell{border:2px solid rgba(120,210,255,.2);border-radius:14px;padding:12px 4px;text-align:center;cursor:pointer;transition:.16s;background:rgba(0,0,0,.3);}
 .race-cell:hover{border-color:rgba(120,210,255,.5);transform:translateY(-2px);}
 .race-cell.sel{border-color:#22b8cf;box-shadow:0 0 16px rgba(34,184,207,.4);}
+/* 剪影用了混合模式时，格子改白底承接（深色底叠底会糊成黑块，白底才能把白底 PNG 叠掉） */
+.race-cell.blend-seat{background:#fff;}
 .race-cell .rc-sil{width:54px;height:54px;margin:0 auto 8px;border-radius:14%;background:rgba(255,255,255,.1) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#9cc5ce;}
 .race-cell .rc-name{font-size:15px;font-weight:800;color:#fff;}
 .race-cell .rc-trait{font-size:10px;color:#9cc5ce;margin-top:3px;line-height:1.4;}
@@ -3360,12 +3365,24 @@ function initAuthEngine(){
       if(!host){
         host = document.createElement('div');
         host.id = 'auth-avatar'; host.className = 'auth-avatar';
-        host.innerHTML = '<div class="av-pic"></div><div class="av-frame"></div>';
+        host.innerHTML = '<div class="av-pic"></div>';
         world.appendChild(host);
       }
+      let fHost = $('auth-avatar-frame');
+      if(!fHost){
+        fHost = document.createElement('div');
+        fHost.id = 'auth-avatar-frame'; fHost.className = 'auth-avatar-frame';
+        fHost.innerHTML = '<div class="av-frame"></div>';
+        world.appendChild(fHost);
+      }
       authSetBox(host, av);
+      authSetBox(fHost, av);
+      /* 🎨 混合模式（引擎「头像区」面板配的）：剪影挂 host、相框挂 fHost —— 两个都必须是
+         world 的直接子层才生效，塞在一起会被 z-index 隔离掉 */
+      host.style.mixBlendMode  = (av.blend && av.blend !== 'normal') ? av.blend : '';
+      fHost.style.mixBlendMode = (av.frameBlend && av.frameBlend !== 'normal') ? av.frameBlend : '';
       const avPic = host.querySelector('.av-pic');
-      const avFrame = host.querySelector('.av-frame');
+      const avFrame = fHost.querySelector('.av-frame');
       avPic.style.backgroundImage = '';
       avFrame.style.backgroundImage = '';
       const silSrc = av.defaultSilhouette
@@ -3374,6 +3391,7 @@ function initAuthEngine(){
       authAssetUrl(av.frameSrc, u=>{ if(u) avFrame.style.backgroundImage = 'url(' + u + ')'; });
     } else {
       const old = $('auth-avatar'); if(old) old.remove();
+      const oldF = $('auth-avatar-frame'); if(oldF) oldF.remove();
     }
   }catch(e){ console.warn('avatar', e); }
 
@@ -3631,11 +3649,18 @@ function showRaceModal(name){
   pendingRaceUser = name;
   const grid = $('race-grid'); grid.innerHTML = '';
   const races = raceSilhouettes();
+  /* 弹窗里的剪影也跟随引擎「剪影混合模式」：mix-blend-mode 要跟背后的底色相乘，
+     而格子本来是深色 —— 直接叠底会糊成黑块。所以非 normal 时把格子换成白底承接，
+     白底区域被叠掉、只留人形，跟卡片上的效果一致。 */
+  let silBlend = 'normal';
+  try{ const raw = localStorage.getItem(LS_AUTH_CFG); if(raw){ silBlend = (JSON.parse(raw).avatar||{}).blend || 'normal'; } }catch(e){}
+  const useBlend = (silBlend && silBlend !== 'normal');
   Object.entries(ELEMENTS).forEach(([key,e])=>{
     const cell = document.createElement('div');
-    cell.className = 'race-cell';
+    cell.className = 'race-cell' + (useBlend ? ' blend-seat' : '');
     const sil = document.createElement('div');
     sil.className = 'rc-sil';
+    if(useBlend) sil.style.mixBlendMode = silBlend;
     const r = races ? races.find(x=>x.id===key) : null;
     if(r && r.silhouette){
       /* ms:/srv: 统一解析（老写法直接 url() 会让本机素材库的剪影加载不出来） */

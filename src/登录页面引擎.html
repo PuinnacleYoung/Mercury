@@ -123,7 +123,11 @@
   /* 头像区（卡片内部，Tab A） */
   .id-avatar{position:absolute;border-radius:14%;cursor:move;touch-action:none;z-index:20;}
   .id-avatar .ava-pic{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:cover;border-radius:14%;}
-  .id-avatar .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:14%;pointer-events:none;}
+  /* 相框独立成兄弟容器：mix-blend-mode 只有挂在「world 的直接子层」才会跟卡片混合，
+     塞在 .id-avatar 里面会被它的 z-index 隔离成独立堆叠上下文 → 混合无效（盖章区踩过同一个坑）。
+     所以它必须和 .id-avatar 平级，各自挂各自的混合模式。 */
+  .id-avatar-frame{position:absolute;pointer-events:none;z-index:20;border-radius:14%;}
+  .id-avatar-frame .ava-frame{position:absolute;inset:0;background-repeat:no-repeat;background-position:center;background-size:100% 100%;border-radius:14%;}
   .id-avatar.sel{box-shadow:0 0 0 3px var(--accent);border-radius:14%;}
   .id-avatar .ed-resize{position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:5px;background:#fff;border:2px solid var(--accent);cursor:nwse-resize;z-index:30;}
 
@@ -474,6 +478,8 @@ function normalizeCfg(){
   if(cfg.card && cfg.card.locked===undefined) cfg.card.locked = false;
   if(cfg.avatar && cfg.avatar.locked===undefined) cfg.avatar.locked = false;
   if(cfg.avatar && cfg.avatar.defaultSilhouette===undefined) cfg.avatar.defaultSilhouette = '';
+  if(cfg.avatar && cfg.avatar.blend===undefined) cfg.avatar.blend = 'normal';       // 剪影混合模式
+  if(cfg.avatar && cfg.avatar.frameBlend===undefined) cfg.avatar.frameBlend = 'normal';  // 头像框混合模式
   if(cfg.stamp && cfg.stamp.locked===undefined) cfg.stamp.locked = false;
   if(cfg.stamp && cfg.stamp.src2===undefined) cfg.stamp.src2 = '';   // 双图：盖章后图（老配置补空）
   if(cfg.stamp && cfg.stamp.blend===undefined) cfg.stamp.blend = 'normal';   // 混合模式（正片叠底等）
@@ -521,6 +527,8 @@ function setBox(el, o){
   el.style.width = (o.w*100)+'%';
   el.style.height = (o.h*100)+'%';
 }
+/* 拖动 / 缩放时：相框容器是头像的**兄弟节点**，必须跟着一起同步位置尺寸 */
+function syncBox(el, o){ setBox(el, o); if(el._frameEl) setBox(el._frameEl, o); }
 
 /* ================= 安全区（与关卡编辑器同源） =================
    运行时真实会遇到的横屏比例 —— 算「全机型可见区 / 全机型 UI 安全区」的交集。
@@ -649,7 +657,8 @@ function render(){
      现在 page Tab 也把卡片画出来当底稿（半透明、不抢鼠标），调背景时能对齐。 */
   if(activeTab==='card' || activeTab==='page' || activeTab==='overview'){
     const asRef = (activeTab === 'page');
-    const els = [buildCardEl(), buildAvatarEl()]
+    /* buildAvatarEl 返回 [剪影容器, 相框容器] 两个（相框必须平级才能挂混合模式） */
+    const els = [buildCardEl()].concat(buildAvatarEl())
       .concat(cfg.fields.map(f => buildFieldEl(f)))
       .concat([buildStampEl()]);
     els.forEach(el=>{
@@ -835,15 +844,31 @@ function buildAvatarEl(){
     pic.textContent = '剪影';
   }
   el.appendChild(pic);
+
+  /* 相框容器（与 .id-avatar 平级的兄弟，位置尺寸共用 avatar 配置） */
+  const frameHost = document.createElement('div');
+  frameHost.className = 'id-avatar-frame';
+  frameHost.dataset.kind = 'avatar';
   const frame = document.createElement('div');
   frame.className = 'ava-frame';
   if(cfg.avatar.frameSrc) frame.style.backgroundImage = 'url(' + cfg.avatar.frameSrc + ')';
   else { frame.style.border = '2px solid rgba(255,255,255,.4)'; }
-  el.appendChild(frame);
+  frameHost.appendChild(frame);
+
+  /* 🎨 混合模式：剪影挂 .id-avatar、相框挂 .id-avatar-frame（都是 world 直接子层才生效）。
+     编辑态（card Tab）不生效 —— 陛下要正常看图摆位置；预览 / 总预览才按配置混合。
+     （effPreview 上面已经算过了，别重复声明） */
+  if(effPreview){
+    if((cfg.avatar.blend || 'normal') !== 'normal') el.style.mixBlendMode = cfg.avatar.blend;
+    if((cfg.avatar.frameBlend || 'normal') !== 'normal') frameHost.style.mixBlendMode = cfg.avatar.frameBlend;
+  }
+
   setBox(el, cfg.avatar);
+  setBox(frameHost, cfg.avatar);
+  el._frameEl = frameHost;                    // 拖动 / 缩放时同步跟着走
   bindDrag(el, ()=>cfg.avatar, 'avatar');
   if(cfg.avatar.locked) lockBadge(el);
-  return el;
+  return [el, frameHost];                     // 两个都要 append 到 world
 }
 
 /* 局部刷新头像剪影（核验/选种族后，不重建 stage，保留输入框与核验动画） */
@@ -1078,7 +1103,7 @@ function bindDrag(el, getObj, id){
       if(syr.snapped){ ny = syr.v; showSnapLine('h'); }
       o.x = clamp01(nx);
       o.y = clamp01(ny);
-      setBox(el, o);
+      syncBox(el, o);
     };
     const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); hideSnapLine(); saveCfg(); };
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
@@ -1094,7 +1119,7 @@ function bindDrag(el, getObj, id){
     const move=ev=>{
       o.w = clamp(0.04, 0.98, ow + (ev.clientX-sx)/rect.width);
       o.h = clamp(0.03, 0.95, oh + (ev.clientY-sy)/rect.height);
-      setBox(el,o);
+      syncBox(el, o);
     };
     const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);saveCfg();};
     window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
@@ -1290,8 +1315,21 @@ function renderAvatarProps(c){
       </div>
     </div>
     <div class="prop-blk">
-      <div class="sec-title">头像框 PNG</div>
+      <div class="sec-title">🎨 剪影混合模式（白底 PNG 救星）</div>
+      <div class="field-row"><label>模式</label>
+        <select id="ava-blend" style="flex:1;">
+          ${blendOptions(cfg.avatar.blend || 'normal')}
+        </select></div>
+      <div class="props-empty" style="font-size:11px;margin-top:6px;">作用于<b>全部剪影</b>（默认剪影 + 金木水火土五行剪影）。剪影 PNG 是<b>白底</b>？选「正片叠底」，白色自动变透明、只留人形印在卡片上。<br><b>⚠️ 编辑页看不出效果</b>（要正常看图摆位置），切到「👁 总览」或点「▶ 预览」才按配置混合。</div>
+    </div>
+    <div class="prop-blk">
+      <div class="sec-title">🖼 头像框 PNG</div>
       <div class="file-drop" id="ava-frame-drop">点击或拖入 PNG 上传</div>
+      <div class="field-row" style="margin-top:8px;"><label>混合</label>
+        <select id="ava-frame-blend" style="flex:1;">
+          ${blendOptions(cfg.avatar.frameBlend || 'normal')}
+        </select></div>
+      <div class="props-empty" style="font-size:11px;margin-top:6px;">相框单独一个混合模式（跟剪影互不干扰）。同样只在总览 / 预览生效。</div>
     </div>
     <div class="prop-blk">
       <div class="sec-title">默认种族</div>
@@ -1325,6 +1363,8 @@ function renderAvatarProps(c){
   fd.ondragleave=()=>fd.classList.remove('drag');
   fd.ondrop=e=>{e.preventDefault();fd.classList.remove('drag');if(e.dataTransfer.files[0])readAsset(e.dataTransfer.files[0],url=>{cfg.avatar.frameSrc=url;saveCfg();render();});};
   $('ava-race').onchange = e=>{ cfg.avatar.defaultRace = e.target.value; saveCfg(); render(); };
+  $('ava-blend').onchange = e=>{ cfg.avatar.blend = e.target.value; saveCfg(); render(); };
+  $('ava-frame-blend').onchange = e=>{ cfg.avatar.frameBlend = e.target.value; saveCfg(); render(); };
   ['ava-x','ava-y','ava-w','ava-h'].forEach(id=>{
     $(id).oninput = e=>{ const k=id.slice(4); cfg.avatar[k]=parseFloat(e.target.value)||0; saveCfg(); render(); };
   });
@@ -1344,6 +1384,23 @@ function renderAvatarProps(c){
   document.querySelectorAll('.race-sil-clear').forEach(btn=>{
     btn.onclick = ()=>{ const r=cfg.avatar.races.find(x=>x.id===btn.dataset.race); if(r){ r.silhouette=''; saveCfg(); render(); } };
   });
+}
+
+/* 混合模式下拉（剪影 / 头像框 / 盖章区共用一份选项，改一处全生效） */
+function blendOptions(cur){
+  const opts = [
+    ['normal',      '正常（原图直出）'],
+    ['multiply',    '正片叠底（白底变透明）'],
+    ['screen',      '滤色（黑底变透明）'],
+    ['overlay',     '叠加'],
+    ['darken',      '变暗'],
+    ['lighten',     '变亮'],
+    ['soft-light',  '柔光'],
+    ['color-dodge', '颜色减淡'],
+  ];
+  return opts.map(function(o){
+    return '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+  }).join('');
 }
 
 /* --- 盖章属性 --- */
