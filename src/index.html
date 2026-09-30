@@ -1663,12 +1663,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20260924i"></script>
-<script src="./legacy-body-v4.js?v=20260924i"></script>
+<script src="./body-template.js?v=20260930a"></script>
+<script src="./legacy-body-v4.js?v=20260930a"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20260924i"></script>
-<script src="./media-store.js?v=20260924i"></script>
-<script src="./net-client.js?v=20260924i"></script>
+<script src="./map-placeholders.js?v=20260930a"></script>
+<script src="./media-store.js?v=20260930a"></script>
+<script src="./net-client.js?v=20260930a"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -2950,7 +2950,15 @@ function waitCloudAssets(cb){
     if(localStorage.getItem('cloud_applied')) wait = 1200;
     /* 本机已经存着开场动画配置 → 不用等服务器，立刻播（不然每次都白等一两秒） */
     const s = localStorage.getItem('login_engine_config');
-    if(s){ const j = JSON.parse(s); if(j && j.intro && j.intro.src) wait = 120; }
+    if(s){
+      const j = JSON.parse(s);
+      if(j && j.intro && j.intro.src) wait = 120;
+    } else {
+      /* 本机一条登录页配置都没有（新设备 / 刚清过缓存）→ 多等一会儿等云端。
+         反正拿到了会立刻走（assetData 一到就触发），等不到也只是多等一秒多。
+         不然一上来就按内置默认画，陛下看到的就是那张没素材的深蓝卡片。 */
+      wait = 3600;
+    }
   }catch(e){}
   const timer = setTimeout(go, wait);
   try{
@@ -3708,6 +3716,51 @@ function doAuthVerify(){
   if(authVerifying) return;      // 章还在盖，别急
   authVerifying = true;
 
+  /* 🌐 本机没这个号 → 先问服务器一句「别的设备上是不是已经有号了」。
+     换手机 / 换电脑登录同一个账号全靠这一步：
+       服务器有号且防伪码一致   → 直接登录那个号（isNew:false，走"欢迎回来"）
+       服务器有号但防伪码不对   → 拒绝开号，提示防伪码不一致
+       服务器也没有 / 断网      → 按老规矩本机注册（1.8 秒没回音就自己走） */
+  let localHas = false;
+  try{
+    const pre = getAccounts();
+    const key0 = accountKeyOf(name, el);
+    localHas = !!(pre[key0] || (pre[name] && (!pre[name].element || pre[name].element === el)));
+  }catch(e){}
+  if(!localHas && window.Net && Net.connected){
+    /* 还没连上（刚开页面 / 网慢）就等一小会儿，连上了再问；
+       最多等 0.8 秒，等不到就按单机老规矩走，绝不把陛下干晾着。 */
+    const t0 = Date.now();
+    const ask = ()=>{
+      let settled = false;
+      const off = Net.on('authRes', m=>{
+        if(settled) return; settled = true; clearTimeout(timer); try{ off(); }catch(e){}
+        authVerifyFlow(name, code, el, m || null);
+      });
+      const timer = setTimeout(()=>{
+        if(settled) return; settled = true; try{ off(); }catch(e){}
+        authVerifyFlow(name, code, el, null);       // 服务器没回音 → 单机注册
+      }, 1500);
+      try{ Net.auth({ username:name, code:code, element:el, nickname:'', avatar:'' }); }
+      catch(e){
+        clearTimeout(timer);
+        if(!settled){ settled = true; try{ off(); }catch(_){} authVerifyFlow(name, code, el, null); }
+      }
+    };
+    const poll = ()=>{
+      if(Net.connected()){ ask(); return; }
+      if(Date.now() - t0 > 800){ authVerifyFlow(name, code, el, null); return; }
+      setTimeout(poll, 100);
+    };
+    if(!Net.connected()){ try{ authToast('🔗 正在联网核对账号…'); }catch(e){} }
+    poll();
+    return;
+  }
+  authVerifyFlow(name, code, el, null);
+}
+
+/* 核验真正落地的地方：remote = 服务器回的 authRes（null = 单机/没回音） */
+function authVerifyFlow(name, code, el, remote){
   const accounts = getAccounts();
   const card = $('auth-card');
   const key = accountKeyOf(name, el);
@@ -3724,11 +3777,28 @@ function doAuthVerify(){
     }
   }
   if(!acc){
+    /* 服务器上已经有这个姓名、但防伪码对不上 → 不能开新号顶掉人家的号 */
+    if(remote && remote.ok === false){
+      authVerifying = false;
+      authToast('❌ ' + (remote.msg || '防伪码与已注册的账号不一致'));
+      if(card) card.classList.remove('verified');
+      try{ dismissAuthStamp(); }catch(e){}
+      return;
+    }
     acc = { username:name, password:code, nickname:'', element:el, outfit:defaultOutfit(), friends:[], level:1, wealth:500, coins:100, hideWealth:false, avatar:PRESET_AVATARS[0].id };
+    if(remote && remote.ok && remote.profile){
+      /* 别的设备上注册过的号 → 把昵称/头像/穿搭搬过来，当成老玩家回家 */
+      const p = remote.profile;
+      acc.nickname = (p.nickname && p.nickname !== name) ? p.nickname : '';
+      acc.avatar   = p.avatar || acc.avatar;
+      if(p.outfit) acc.outfit = p.outfit;
+      isNew = false;
+    } else {
+      isNew = true;                 // 服务器也没这个号（或断网）→ 本机新开
+    }
     acc.key = key;
     accounts[key] = acc;
     saveAccounts(accounts);
-    isNew = true;
   }
 
   /* 属性已经被这个账号「吃掉」了：立刻清掉待选标记。
@@ -4930,9 +5000,11 @@ function buildFriends(){
     const e = elementInfo(info.element) || {color:'#999', name:'?'};
     const online = onlineNow.includes(uname);
     const av = avatarById(info.avatar);
+    /* 名字兜底：好友名单里存的是用户名，昵称没同步过来时至少显示账号名，绝不显示 undefined */
+    const fName = info.nickname || uname || '神秘玩家';
     const row=document.createElement('div'); row.className='friend-row';
     row.innerHTML=`<div class="f-ava" style="background:${av.bg}">${av.em}</div>
-      <div style="flex:1"><div class="f-name">${info.nickname}</div><div class="f-meta">五行·${e.name}${online?' · 🟢在线':''}</div></div>
+      <div style="flex:1"><div class="f-name">${fName}</div><div class="f-meta">五行·${e.name}${online?' · 🟢在线':''}</div></div>
       <button class="done dm-go">💌 私聊</button>`;
     row.querySelector('.dm-go').onclick = ()=>{ startDmWith(uname); };
     list.appendChild(row);
@@ -4942,12 +5014,14 @@ function buildFriends(){
   const onlineListEl = (window.Net && Net.connected()) ? getOnlineList() : [];
   if(window.Net && Net.connected()){
     onlineListEl.forEach(o=>{
+      if(!o || !o.username) return;                 // 空位（没登录的连接）不渲染
       if(o.username === currentUser.username) return;
       const added = friends.includes(o.username);
       const av = avatarById(o.avatar);
+      const oName = o.nickname || o.username;       // 昵称缺失 → 用账号名，不显示 undefined
       const row=document.createElement('div'); row.className='friend-row';
       row.innerHTML=`<div class="f-ava" style="background:${av.bg}">${av.em}</div>
-        <div style="flex:1"><div class="f-name">${o.nickname}</div><div class="f-meta">🟢 在线</div></div>
+        <div style="flex:1"><div class="f-name">${oName}</div><div class="f-meta">🟢 在线</div></div>
         <button class="${added?'done':''}">${added?'已添加':'加好友'}</button>`;
       if(!added) row.querySelector('button').onclick = ()=>{ Net.friendReq(o.username); };
       online.appendChild(row);
@@ -4974,7 +5048,7 @@ function getOnlineList(){ return _onlineList; }
 function friendCache(uname){
   // 从 online 列表或 Net.self 里找公开资料，找不到就用用户名兜底
   const o = _onlineList.find(x=>x.username===uname);
-  if(o) return { nickname:o.nickname, element:o.element, avatar:o.avatar };
+  if(o) return { nickname:(o.nickname || uname), element:o.element, avatar:o.avatar };
   return { nickname:uname, element:'earth', avatar:'fox' };
 }
 $('friend-add').onclick = ()=>{
@@ -6985,6 +7059,22 @@ function applyCloudAssets(slots){
     _mapsCache = null;
     console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
     try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
+    /* 🪪 登录页配置被云端刷新了 → 立刻重读 + 重画。
+       以前只写 localStorage、不重读：新设备进来时云端还没到（先画了内置的深蓝默认卡片），
+       等云端到了也没人去刷新，陛下就一直盯着那张没素材的默认页，
+       非得去引擎中枢手动「拉取云端」才变。现在数据一到就当场换脸。 */
+    if(slots && slots.login){
+      try{
+        if(typeof authLoadCfg === 'function'){
+          authLoadCfg();
+          const as = document.getElementById('auth-screen');
+          if(as && !as.classList.contains('hidden')){
+            if(typeof initAuthEngine === 'function') initAuthEngine();
+            try{ layoutAuthWorld(); }catch(e){}
+          }
+        }
+      }catch(e){ console.warn('[cloud] 重画登录页失败', e); }
+    }
   }
 }
 /* 云端带下来的素材本体（PNG / 视频）写回本机 IndexedDB。
@@ -7014,7 +7104,13 @@ function restoreCloudMedia(items){
 function autoPullCloudAssets(){
   if(!window.Net) return;
   Net.on('assetData', m=>{ try{ applyCloudAssets(m.slots); }catch(e){ console.warn('cloud-assets', e); } });
-  Net.connect().then(()=>{ Net.assetPull(''); }).catch(()=>{});   // 连不上就静默，不打扰单机玩家
+  /* 先单点要一次「登录页」槽（就几 KB，一两百毫秒就到），再要全量。
+     以前一口气拉全量（地图 + 服装 + 素体好几 MB），新设备要等好几秒才拿到登录页配置，
+     登录页早就按内置默认画完了 —— 这就是「新设备先看到那张深蓝没素材的登录页」的根因。 */
+  Net.connect().then(()=>{
+    try{ Net.assetPull('login'); }catch(e){}
+    try{ Net.assetPull(''); }catch(e){}      // 连不上就静默，不打扰单机玩家
+  }).catch(()=>{});
 }
 
 /* ================= 地图 Schema v3 =================
@@ -8705,8 +8801,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20260924i" defer></script>
-<script src="./responsive.js?v=20260924i" defer></script>
-<script src="./pwa-install.js?v=20260924i" defer></script>
+<script src="./orientation-lock.js?v=20260930a" defer></script>
+<script src="./responsive.js?v=20260930a" defer></script>
+<script src="./pwa-install.js?v=20260930a" defer></script>
 </body>
 </html>

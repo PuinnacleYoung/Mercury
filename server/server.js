@@ -51,6 +51,7 @@ function ensureAccount(username, info){
     DB.accounts[username] = {
       username, nickname: info.nickname || username, avatar: info.avatar || 'fox',
       element: info.element || 'earth', outfit: info.outfit || {},
+      code: info.code || '',            // 特殊防伪码（登录页核验用，跨设备认账号靠它）
       friends: [],            // 好友用户名列表
       inventory: [            // 背包（默认一张改名卡，占位图标）
         { id:'rename_card', name:'改名卡', icon:'🎫', desc:'改名卡（占位）', qty:1, kind:'functional' }
@@ -101,9 +102,40 @@ function broadcast(obj, exceptSocket){
 function onlineList(){
   const list = [];
   for(const c of clients.values()){
-    list.push({ username:c.username, nickname:c.nickname, avatar:c.avatar, element:c.element });
+    /* 握手后、login 之前会先占位（clients.set(sock,{sock})），那时候没有 username。
+       以前没过滤 → 广播出去的在线名单里混着几条 {username:undefined,nickname:undefined}，
+       陛下的好友面板就把它们渲染成一片「undefined」。占位连接一律不进名单。 */
+    if(!c.username) continue;
+    list.push({ username:c.username, nickname:c.nickname || c.username, avatar:c.avatar || 'fox', element:c.element || 'earth' });
   }
   return list;
+}
+
+/* ================= 业务：账号核验（跨设备同账号） =================
+   登录页填「姓名 + 特殊防伪码」，点核验时客户端先来问服务器一句：
+     · 服务器没有这个账号        → 回 isNew:true，本地照常注册（并在这里建档）
+     · 有、防伪码一致            → 回 isNew:false + 账号资料，本地直接登录这个号
+     · 有、防伪码不一致          → 回 ok:false，本地不许注册，提示「防伪码不对」
+   这样换一台手机/电脑登录同一个号，拿到的是同一个账号，不会再开出新的空号。 */
+function handleAuth(c, msg){
+  const username = String(msg.username || '').trim();
+  const code     = String(msg.code || '').trim();
+  if(!username || !code){ send(c.sock, { t:'authRes', ok:false, msg:'缺姓名或防伪码' }); return; }
+  const existed = !!DB.accounts[username];
+  const acc = ensureAccount(username, { nickname:msg.nickname, avatar:msg.avatar, element:msg.element, code });
+  if(existed){
+    if(!acc.code){ acc.code = code; persist(); }        // 老账号建档时没存防伪码 → 这次认领
+    else if(acc.code !== code){
+      send(c.sock, { t:'authRes', ok:false, msg:'防伪码与已注册的账号不一致' });
+      return;
+    }
+    /* 每次核验顺手把公开资料刷新（改名 / 换头像 / 改属性不会永远是旧的） */
+    if(msg.nickname) acc.nickname = msg.nickname;
+    if(msg.avatar)   acc.avatar   = msg.avatar;
+    if(msg.element)  acc.element  = msg.element;
+    persist();
+  }
+  send(c.sock, { t:'authRes', ok:true, isNew:!existed, username, profile: publicAccount(acc) });
 }
 
 /* ================= 业务：频道聊天 =================
@@ -581,6 +613,7 @@ function onMessage(sock, text){
   try{ msg = JSON.parse(text); }catch(e){ return; }
   const c = clients.get(sock);
   switch(msg.t){
+    case 'auth':      handleAuth(c, msg); break;
     case 'login': {
       const username = String(msg.username||'').trim();
       if(!username) return;

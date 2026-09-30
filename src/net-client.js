@@ -94,6 +94,12 @@
 
     send(obj){ if(sock && connected){ sock.send(JSON.stringify(obj)); } },
 
+    /* 账号核验（登录页用）：问服务器「这个姓名+防伪码是不是已经有号了」。
+       回 authRes:{ok,isNew,profile} —— 跨设备登录同一个号全靠它。 */
+    auth(info){
+      Net.send({ t:'auth', username:info.username, code:info.code,
+                 nickname:info.nickname || '', avatar:info.avatar || '', element:info.element || '' });
+    },
     /* 登录：带上自己公开资料 */
     login(info){
       Net.send({ t:'login', username:info.username, nickname:info.nickname, avatar:info.avatar, element:info.element, outfit:info.outfit, mapId:info.mapId });
