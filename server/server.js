@@ -355,6 +355,7 @@ const SLOTS = {
   /* 登录页：只同步配置（含 'ms:xxx' 素材引用）——视频本体在各自电脑的 IndexedDB 里，
      不上云，否则几十 MB 的片子会把 data.json 撑爆 */
   login:  { name:'登录页/开场动画', keys:['login_engine_config'] },
+  merch:  { name:'周边小店',   keys:['merch_shop_v1'] },
 };
 const HISTORY_MAX = 10;
 const UPLOAD_TTL  = 10 * 60 * 1000;
