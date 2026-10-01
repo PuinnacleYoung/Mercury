@@ -1408,7 +1408,10 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
     <div class="wb-panel">
       <div class="wb-head">
         <h2 id="wb-title">衣橱<span class="wb-title-sub">点击格子实时上身</span></h2>
-        <button class="wb-back" id="wb-back">← 返回地图</button>
+        <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
+          <button class="wb-back" id="wb-shop-btn" style="background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 6px 16px var(--gold-glow);">🛍️ 去商店</button>
+          <button class="wb-back" id="wb-back">← 返回地图</button>
+        </div>
       </div>
       <div class="item-grid" id="item-grid"></div>
     </div>
@@ -4909,6 +4912,15 @@ $('mc-back').onclick = ()=>{
   if(mapState.currentId){ backToMap(); return; }
   enterLobby();
 };
+/* 衣橱右上角「🛍️ 去商店」：商店数据早就在（服装引擎上架 → 云端发布），
+   但地图里以前只有三档「衣橱」入口、没有购买入口，openShop 成了死代码 ——
+   陛下做了衣服却永远买不到。这里给衣橱补一个直达入口，并按衣橱档位锁定分区
+   （普通衣橱 → 普通区，高级 → 高级+特殊，贵宾 → 限时+套装）。买完自动进衣橱。 */
+$('wb-shop-btn').onclick = ()=>{
+  refreshEngineData(); refreshProfile();
+  const zones = (wbZoneFilter && wbZoneFilter.length) ? wbZoneFilter.slice() : null;
+  openShop({ name: (wbTitle || '👗 时装店'), icon:'🛍️', shopTags: zones });
+};
 
 /* =========================================================================
    【大图自动降采样】
@@ -5053,6 +5065,20 @@ function buildWardrobe(){
   // 标题：面板入口带 emoji + 名字（流萤 · 高级时装衣橱），从左侧按钮进就是朴素的「衣橱」
   const wbTitleEl = $('wb-title');
   if(wbTitleEl) wbTitleEl.innerHTML = (wbTitle || '👗 衣橱') + '<span class="wb-title-sub">点击格子实时上身</span>';
+  /* 右上角「🛍️ 去商店」按钮：把本档位能买的新品数直接标出来（买了的不再计数） */
+  const sbEl = $('wb-shop-btn');
+  if(sbEl){
+    let n = 0;
+    try{
+      const zs = (wbZoneFilter && wbZoneFilter.length) ? wbZoneFilter : SHOP_ZONES.map(z=>z.id);
+      zs.forEach(z=>{ getShopEntries(z).forEach(en=>{
+        const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
+        if(!owned) n++;
+      }); });
+    }catch(e){}
+    sbEl.textContent = n ? ('🛍️ 去商店 · ' + n + ' 件可买') : '🛍️ 去商店';
+    sbEl.style.opacity = n ? '1' : '.72';
+  }
   // 分类侧边栏（竖向一列）· 顶部固定一个「套装」tab
   const col = $('cat-col'); col.innerHTML='';
   if(engineMode){
@@ -5095,8 +5121,8 @@ function buildWardrobe(){
     const sets = ownedSetsFiltered();
     if(!sets.length){
       emptyTip(wbZoneFilter
-        ? '这个衣橱里还没有套装。<br>去「服装引擎 → 商店编辑」把套装上架到对应分区～'
-        : '还没有拥有的套装。<br>去地图里的<span style="font-weight:800">👗 时装店</span> →「套装」区买一套吧～');
+        ? '这个衣橱里还没有套装。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> 看看本区上架的套装～<br>（衣服要先买了才会出现在衣橱里）'
+        : '还没有拥有的套装。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> →「套装」区买一套吧～');
       drawPreview(); return;
     }
     sets.forEach(s=>{
@@ -5126,7 +5152,7 @@ function buildWardrobe(){
     grid.appendChild(noneItem);
     const list = ownedItemsOf(curCat);
     if(!list.length){
-      emptyTip('这个分类还没有衣服。<br>去地图里的<span style="font-weight:800">👗 时装店</span>看看～');
+      emptyTip('这个分类还没有衣服。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> 买一件 —— 买完它就出现在这个衣橱里了～');
     }
     list.forEach(item=>{
       const isEq = equipped===item.id;
@@ -7324,6 +7350,15 @@ function applyCloudAssets(slots){
   if(n){
     try{ localStorage.setItem('cloud_applied', JSON.stringify(applied)); }catch(e){}
     _mapsCache = null;
+    /* 🗺 地图被云端换了 → 就地补一次「🛍️ 商店入口」。
+       老地图里只挂了三档「衣橱」面板（衣橱＝只显示已拥有的），没有任何能买东西的地方，
+       openShop() 等于死代码：陛下上架的衣服永远买不到。云端每次覆盖地图后都要再补一遍。 */
+    if(gotSlots.indexOf('map') >= 0){
+      try{
+        const md = JSON.parse(localStorage.getItem('game_maps') || '{}');
+        if(md && md.maps){ ensureShopCounter(md); localStorage.setItem('game_maps', JSON.stringify(md)); }
+      }catch(e){ console.warn('[cloud] 补商店入口失败', e); }
+    }
     console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
     try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
     /* 🧍 素体 / 服装件 / 动画被云端换了 → **立刻重灌内存**，不用刷新页面。
@@ -7636,12 +7671,40 @@ function seedMaps(){
   Object.values(maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles;});
   return {version:MAP_SCHEMA_VERSION,rootMapId:'world-hub',entryLevelId:'classroom',root:'classroom',maps,panels:defaultPanelRegistry(),_migrationV3:{at:new Date().toISOString(),fromVersion:0,log:['SEEDED_V3']}};
 }
+/* ★ 服装商店补种：凡是挂着「三档衣橱面板」的关卡（服装店 / 商业街…），
+   再补一个 action='shop' 的「🛍️ 新品货架」地块。
+   为什么：以前地图里只有衣橱入口（衣橱＝只显示「已拥有」），商店 openShop() 写好了却没人调用，
+   结果陛下在引擎里上架的衣服永远买不到、衣橱永远是空的。买了才进衣橱，这条链现在才闭环。 */
+const WARDROBE_PANEL_ZONES = { wardrobe:['common'], wardrobePremium:['premium','special'], wardrobeVip:['limited','outfit'] };
+function ensureShopCounter(d){
+  if(!d || !d.maps) return d;
+  Object.keys(d.maps).forEach(id=>{
+    const m = d.maps[id];
+    if(!m || !isLevelNode(m)) return;
+    if(!Array.isArray(m.entities)) m.entities = Array.isArray(m.nodes) ? m.nodes : [];
+    const ents = m.entities;
+    const zones = [];
+    ents.forEach(e=>{
+      const z = WARDROBE_PANEL_ZONES[(e && (e.panelId || e.panel)) || ''];
+      if(z) z.forEach(x=>{ if(zones.indexOf(x) < 0) zones.push(x); });
+    });
+    if(!zones.length) return;                       // 不是服装店类关卡，不动
+    if(ents.some(e=> e && e.action === 'shop')) return;  // 已经有了，别重复塞
+    let x = 0.5, y = 0.74;                           // 默认摆在衣橱下方；被占就再往下
+    if(ents.some(e=> e && Math.abs((+e.x||0) - x) < 0.18 && Math.abs((+e.y||0) - y) < 0.14)) y = 0.90;
+    ents.push({ id:'shop_counter_' + id, kind:'tile', name:'新品货架', icon:'🛍️', x, y, w:0.24, h:0.16, img:null,
+      action:'shop', shopTags:zones, triggerMode:'click', tip:'上架的新衣服都在这儿 —— 买了才进衣橱' });
+    m.nodes = m.entities;
+  });
+  return d;
+}
 function ensureMaps(){
   if(_mapsCache && _mapsCache.version===MAP_SCHEMA_VERSION && _mapsCache.maps) return _mapsCache;
   let d=getMapsData();
   if(!d || !d.maps) d=seedMaps();
   const before=JSON.stringify(d);
   d=migrateMaps(d)||d;
+  d=ensureShopCounter(d)||d;
   if(JSON.stringify(d)!==before || !getMapsData()) saveMapsData(d);
   _mapsCache=d;
   return d;
@@ -7917,6 +7980,10 @@ function enterMap(id,spawnId){
 function fireTrigger(t){
   if(!t)return;const act=nodeAction(t),tid=nodeTargetId(t);
   if(act==='panel'){mapRun.lastFired=t.id;openPanelNode(t);return;}
+  /* 商店入口：以前 openShop() 写好了却没人调用（地图只挂了三档「衣橱」入口），
+     等于「衣服上架了但买不到」。现在地图实体 action='shop' 就能开这家店。 */
+  if(act==='shop'){mapRun.lastFired=t.id;openShop({name:t.name||'时装店',icon:t.icon||'🛍️',
+    shopTags:(Array.isArray(t.shopTags)&&t.shopTags.length)?t.shopTags:null});return;}
   if(act==='dialogue'){toast(t.tip||'💬 对话事件');return;}
   if(act==='gameplay'){toast(t.tip||'🎮 玩法事件');return;}
   if(act==='collect'){toast(t.tip||'✨ 收集成功');return;}
