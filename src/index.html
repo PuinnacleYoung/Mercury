@@ -655,11 +655,14 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .hud.clickable{cursor:pointer;padding:6px 12px 6px 6px;border-radius:18px;transition:all .2s;background:rgba(var(--glass-rgb),.4);backdrop-filter:blur(12px);border:1px solid rgba(var(--accent-rgb),.1);}
 .hud.clickable:hover{background:rgba(var(--glass-rgb),.78);border-color:var(--glass-border);box-shadow:0 6px 18px rgba(var(--shadow-rgb),.18);transform:translateY(-1px);}
 .hud-more{font-size:20px;color:var(--c-sub);font-weight:800;margin-left:2px;line-height:1;}
-/* 右上角：金币 + 家园 */
+/* 右上角：星坠 / 流萤 / 长庚 + 家园 */
 .top-right-ui{position:absolute;top:14px;right:16px;z-index:10;display:flex;align-items:center;gap:10px;}
 .coin-hud{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;background:rgba(var(--glass-rgb),.62);backdrop-filter:blur(14px) saturate(180%);border:1px solid var(--glass-border);box-shadow:0 6px 18px rgba(var(--shadow-rgb),.14);color:var(--c-ink);font-weight:800;font-size:15px;cursor:pointer;transition:all .2s;}
 .coin-hud:hover{background:rgba(var(--glass-rgb),.88);transform:translateY(-2px);}
 .coin-hud .coin-ico{font-size:20px;line-height:1;}
+/* 三货币图标（星坠 / 流萤 / 长庚）：统一跟着字号走，换地方不用重调尺寸 */
+img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
+  vertical-align:-.28em;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
 .coin-hud.home{color:#fff;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));border-color:transparent;box-shadow:0 6px 18px var(--gold-glow);}
 /* 名字卡片详情弹层 */
 .profile-mask{position:fixed;inset:0;z-index:120;background:rgba(30,24,46,.44);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
@@ -1488,9 +1491,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
     <div class="bank-head">
       <h2>🏦 <span class="bank-name">京市银行</span></h2>
       <div class="bank-wallet" id="bank-wallet">
-        <span class="w"><span>🪙</span><span class="v" id="bank-coin">0</span></span>
-        <span class="w"><span>💎</span><span class="v" id="bank-diamond">0</span></span>
-        <span class="w"><span>🦪</span><span class="v" id="bank-pearl">0</span></span>
+        <span class="w"><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt="星坠"><span class="v" id="bank-coin">0</span></span>
+        <span class="w"><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt="流萤"><span class="v" id="bank-diamond">0</span></span>
+        <span class="w"><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt="长庚"><span class="v" id="bank-pearl">0</span></span>
       </div>
       <button class="bank-back" id="bank-back">← 返回地图</button>
     </div>
@@ -1521,9 +1524,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
     <div class="profile-stats">
       <div class="stat"><span class="stat-label">等级</span><span class="stat-val" id="stat-level"></span></div>
       <div class="stat"><span class="stat-label">财富</span><span class="stat-val" id="stat-wealth"></span></div>
-      <div class="stat"><span class="stat-label">🪙 金币</span><span class="stat-val" id="stat-coin"></span></div>
-      <div class="stat"><span class="stat-label">💎 钻石</span><span class="stat-val" id="stat-diamond"></span></div>
-      <div class="stat"><span class="stat-label">🦪 珍珠</span><span class="stat-val" id="stat-pearl"></span></div>
+      <div class="stat"><span class="stat-label"><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt=""> 星坠</span><span class="stat-val" id="stat-coin"></span></div>
+      <div class="stat"><span class="stat-label"><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt=""> 流萤</span><span class="stat-val" id="stat-diamond"></span></div>
+      <div class="stat"><span class="stat-label"><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt=""> 长庚</span><span class="stat-val" id="stat-pearl"></span></div>
     </div>
     <div class="profile-hide">
       <span>🔒 隐藏我的财富</span>
@@ -1562,9 +1565,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
     <div class="checkin-grid" id="checkin-grid"></div>
     <div class="checkin-rewards">
       🎁 <b>奖励规则</b>：<br>
-      · 单次签到：<b>🪙 金币 +50</b><br>
-      · 连续签到 <b>每 7 天</b>额外送 <b>💎 钻石 +20</b><br>
-      · 连续签到 <b>每 30 天</b>额外送 <b>🦪 珍珠 +10</b>
+      · 单次签到：<b><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt=""> 星坠 +50</b><br>
+      · 连续签到 <b>每 7 天</b>额外送 <b><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt=""> 流萤 +20</b><br>
+      · 连续签到 <b>每 30 天</b>额外送 <b><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt=""> 长庚 +10</b>
     </div>
   </div>
 </div>
@@ -1617,9 +1620,9 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 
   <div class="top-right-ui">
     <button class="coin-hud multi" id="btn-coins" title="货币">
-      <span class="cur-item"><span class="ci">🪙</span><span id="hud-coin">0</span></span>
-      <span class="cur-item"><span class="ci">💎</span><span id="hud-diamond">0</span></span>
-      <span class="cur-item"><span class="ci">🦪</span><span id="hud-pearl">0</span></span>
+      <span class="cur-item"><span class="ci"><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt="星坠"></span><span id="hud-coin">0</span></span>
+      <span class="cur-item"><span class="ci"><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt="流萤"></span><span id="hud-diamond">0</span></span>
+      <span class="cur-item"><span class="ci"><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt="长庚"></span><span id="hud-pearl">0</span></span>
     </button>
     <button class="coin-hud home" id="btn-home" title="打开地图卡片：家园 / 学校 / 服装店"><span class="coin-ico">🏠</span><span>家园</span></button>
     <button class="coin-hud" id="btn-map" title="打开地图卡片"><span class="coin-ico">🗺</span><span>地图</span></button>
@@ -1876,12 +1879,22 @@ function elementList(){
 }
 
 /* ================= 三货币 & 商店分区（服装引擎 v2） ================= */
+/* 三货币：星坠（基础）/ 流萤（中档）/ 长庚（贵宾）
+   —— 图标是 assets/cur/ 下的 128px webp；em 只留作纯文本场景（toast、日志）的回退符号，
+      UI 上一律用 curIcon() 出图，别再直接拼 emoji。 */
 const CURRENCY = {
-  coin:    { key:'coin',    em:'🪙', nm:'金币' },
-  diamond: { key:'diamond', em:'💎', nm:'钻石' },
-  pearl:   { key:'pearl',   em:'🦪', nm:'珍珠' },
+  coin:    { key:'coin',    em:'🪙', nm:'星坠', img:'assets/cur/cur-coin.webp' },
+  diamond: { key:'diamond', em:'💎', nm:'流萤', img:'assets/cur/cur-diamond.webp' },
+  pearl:   { key:'pearl',   em:'🦪', nm:'长庚', img:'assets/cur/cur-pearl.webp' },
 };
 const CURR_KEYS = ['coin','diamond','pearl'];
+const CUR_V = '?v=20261002a';
+/* 货币图标 HTML（尺寸跟着父级字号走，见 img.cur-img） */
+function curIcon(k, alt){
+  const c = CURRENCY[k];
+  if(!c || !c.img) return (c && c.em) || '';
+  return '<img class="cur-img" src="' + c.img + CUR_V + '" alt="' + (alt || c.nm) + '">';
+}
 const SHOP_ZONES = [
   {id:'common',  name:'普通', em:'🛍️'},
   {id:'premium', name:'高级', em:'💎'},
@@ -2852,7 +2865,7 @@ function findAccountByName(n){
   const k = Object.keys(a).find(kk => (a[kk].username || kk) === n);
   return k ? a[k] : null;
 }
-/* 旧存档迁移：补齐等级/财富/金币/隐藏财富字段 */
+/* 旧存档迁移：补齐等级/财富/星坠/隐藏财富字段 */
 function normalizeUser(u){
   if(!u) return u;
   if(typeof u.level !== 'number') u.level = 1;
@@ -5018,7 +5031,7 @@ function buildWardrobe(){
   if(curCat==='set' && !engineMode) curCat = catList[0];
   if(curCat!=='set' && !catList.includes(curCat)) curCat = catList[0];
   if(!profile) refreshProfile();
-  // 标题：面板入口带 emoji + 名字（💎 高级时装衣橱），从左侧按钮进就是朴素的「衣橱」
+  // 标题：面板入口带 emoji + 名字（流萤 · 高级时装衣橱），从左侧按钮进就是朴素的「衣橱」
   const wbTitleEl = $('wb-title');
   if(wbTitleEl) wbTitleEl.innerHTML = (wbTitle || '👗 衣橱') + '<span class="wb-title-sub">点击格子实时上身</span>';
   // 分类侧边栏（竖向一列）· 顶部固定一个「套装」tab
@@ -5557,9 +5570,9 @@ function renderMail(){
   });
 }
 function attachLabel(a){
-  if(a.type==='coin') return '🪙金币 ×'+a.qty;
-  if(a.type==='diamond') return '💎钻石 ×'+a.qty;
-  if(a.type==='pearl') return '🦪珍珠 ×'+a.qty;
+  if(a.type==='coin') return '星坠 ×'+a.qty;
+  if(a.type==='diamond') return '流萤 ×'+a.qty;
+  if(a.type==='pearl') return '长庚 ×'+a.qty;
   if(a.type==='clothes') return '👗衣服('+a.itemId+')';
   if(a.type==='item') return (a.icon||'📦')+(a.name||a.itemId)+' ×'+(a.qty||1);
   return a.name||a.type;
@@ -5923,14 +5936,14 @@ function bankDefaultCfg(){
       { id:'SV2', name:'定期3天', termDays:3, rate:0.03, currency:'coin', desc:'短周期，小额高周转' },
       { id:'SV3', name:'定期7天', termDays:7, rate:0.06, currency:'coin', desc:'经典稳健档' },
       { id:'SV4', name:'定期30天', termDays:30, rate:0.18, currency:'coin', desc:'长线大额，利率可观' },
-      { id:'SV5', name:'钻石定期7天', termDays:7, rate:0.08, currency:'diamond', desc:'钻石专属理财' },
-      { id:'SV6', name:'珍珠定期30天', termDays:30, rate:0.20, currency:'pearl', desc:'珍珠专属，贵宾级' },
+      { id:'SV5', name:'流萤定期7天', termDays:7, rate:0.08, currency:'diamond', desc:'流萤专属理财' },
+      { id:'SV6', name:'长庚定期30天', termDays:30, rate:0.20, currency:'pearl', desc:'长庚专属，贵宾级' },
     ],
     loans: [
       { id:'LN1', name:'应急小额贷', termDays:7, rate:0.10, maxAmount:5000, currency:'coin', desc:'门槛低，利率高' },
       { id:'LN2', name:'经营周转贷', termDays:30, rate:0.08, maxAmount:50000, currency:'coin', desc:'额度大，利率中' },
-      { id:'LN3', name:'钻石抵押贷', termDays:30, rate:0.06, maxAmount:200, currency:'diamond', desc:'钻石抵押，利率低' },
-      { id:'LN4', name:'珍珠信用贷', termDays:30, rate:0.05, maxAmount:100, currency:'pearl', desc:'珍珠信用，VIP专属' },
+      { id:'LN3', name:'流萤抵押贷', termDays:30, rate:0.06, maxAmount:200, currency:'diamond', desc:'流萤抵押，利率低' },
+      { id:'LN4', name:'长庚信用贷', termDays:30, rate:0.05, maxAmount:100, currency:'pearl', desc:'长庚信用，VIP专属' },
     ],
     stocks: bankDefaultStocks(),
   };
@@ -6050,7 +6063,7 @@ function renderBankSaving(){
     html += `<div class="bm-grid">` + acc.savings.map((s,i)=>{
       const sv = cfg.savings.find(x=>x.id===s.id);
       const name = sv ? sv.name : '未知档位';
-      const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[s.currency] || '💰';
+      const em = curIcon(s.currency) || '💰';
       const matured = s.dueDate <= today;
       const interest = Math.floor(s.amount * s.rate);
       return `<div class="bm-item">
@@ -6068,7 +6081,7 @@ function renderBankSaving(){
   // 存款档位
   html += `<div class="bank-sec-title">🏦 存款档位</div><div class="bank-cards">`;
   cfg.savings.forEach(s=>{
-    const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[s.currency] || '💰';
+    const em = curIcon(s.currency) || '💰';
     const r = (s.rate*100).toFixed(s.rate<0.01?2:1);
     const term = s.termDays===0 ? '活期' : '定期'+s.termDays+'天';
     html += `<div class="bank-card">
@@ -6105,7 +6118,7 @@ function renderBankSaving(){
       const s = acc.savings[i];
       if(!s) return;
       const interest = Math.floor(s.amount * s.rate);
-      const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[s.currency] || '💰';
+      const em = curIcon(s.currency) || '💰';
       c[s.currency] += s.amount + interest;
       acc.savings.splice(i,1);
       bankSave(); renderBank(); renderCoins();
@@ -6127,7 +6140,7 @@ function renderBankLoan(){
     html += `<div class="bm-grid">` + acc.loans.map((l,i)=>{
       const ln = cfg.loans.find(x=>x.id===l.id);
       const name = ln ? ln.name : '未知';
-      const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[l.currency] || '💰';
+      const em = curIcon(l.currency) || '💰';
       const overdue = l.dueDate < today;
       const repay = Math.ceil(l.amount * (1 + l.rate));
       return `<div class="bm-item">
@@ -6144,7 +6157,7 @@ function renderBankLoan(){
   // 借款档位
   html += `<div class="bank-sec-title">💳 借款档位</div><div class="bank-cards">`;
   cfg.loans.forEach(l=>{
-    const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[l.currency] || '💰';
+    const em = curIcon(l.currency) || '💰';
     const r = (l.rate*100).toFixed(1);
     html += `<div class="bank-card">
       <div class="bc-head"><span class="bc-ico">${em}</span>${l.name}</div>
@@ -6179,7 +6192,7 @@ function renderBankLoan(){
       const l = acc.loans[i];
       if(!l) return;
       const repay = Math.ceil(l.amount * (1 + l.rate));
-      const em = {coin:'🪙',diamond:'💎',pearl:'🦪'}[l.currency] || '💰';
+      const em = curIcon(l.currency) || '💰';
       if(c[l.currency] < repay){ toast('余额不足，还差 '+(repay-c[l.currency])); return; }
       c[l.currency] -= repay;
       acc.loans.splice(i,1);
@@ -6255,7 +6268,7 @@ function renderBankStock(){
     </tr>`;
   });
   html += `</tbody></table>`;
-  html += `<div class="hint-line" style="margin-top:12px;color:#8fb6c4;font-size:12px;">💡 用金币买入，按现价成交。走势按预设序列每日变动（涨红跌绿）。大热股设每日限购。</div>`;
+  html += `<div class="hint-line" style="margin-top:12px;color:#8fb6c4;font-size:12px;">💡 用星坠买入，按现价成交。走势按预设序列每日变动（涨红跌绿）。大热股设每日限购。</div>`;
   $('bank-panel').innerHTML = html;
   // 买入
   $('bank-panel').querySelectorAll('[data-st-buy]').forEach(btn=>{
@@ -6270,7 +6283,7 @@ function renderBankStock(){
       const remain = st.dailyLimit>0 ? (st.dailyLimit-boughtToday) : Infinity;
       if(qty > remain){ toast('今日限购 '+(st.dailyLimit>0?st.dailyLimit:'不限')+' 股，还可买 '+(st.dailyLimit>0?remain:'∞')+' 股'); return; }
       const cost = qty * price;
-      if(c.coin < cost){ toast('金币不足'); return; }
+      if(c.coin < cost){ toast('星坠不足'); return; }
       c.coin -= cost;
       const holding = acc.stocks.find(h=>h.code===st.code);
       if(holding){ const oldCost = holding.avgCost*holding.shares; holding.shares += qty; holding.avgCost = (oldCost+cost)/holding.shares; }
@@ -6817,11 +6830,11 @@ $('profile-earn').onclick = ()=>{
   persistCurrent();
   saveProfile(profile);
   renderProfile(); renderCoins();
-  toast('💰 金币+100 / 钻石+20 / 珍珠+10');
+  toast('💰 星坠+100 / 流萤+20 / 长庚+10');
 };
 $('btn-coins').onclick = ()=>{
   const c = (profile && profile.currency) || {coin:0, diamond:0, pearl:0};
-  toast(`🪙${c.coin} · 💎${c.diamond} · 🦪${c.pearl}（名字卡片里可领取测试货币）`);
+  toast(`星坠 ${c.coin} · 流萤 ${c.diamond} · 长庚 ${c.pearl}（名字卡片里可领取测试货币）`);
 };
 /* 测试入口：轮询给各条线加经验，方便逐条验收（点一下轮转到下一条线） */
 let _jobTestIdx = 0;
@@ -6945,14 +6958,14 @@ function doCheckin(dateStr){
   profile.checkin.streak = streak;
 
   const rewards = [];
-  profile.currency.coin += 50; rewards.push('🪙+50');
+  profile.currency.coin += 50; rewards.push('星坠 +50');
   if(streak > 0 && streak % 7 === 0){
-    profile.currency.diamond += 20; rewards.push('💎+20');
+    profile.currency.diamond += 20; rewards.push('流萤 +20');
     profile.checkin.missCards = (profile.checkin.missCards||0) + 1;
     rewards.push('🎴+1 补签卡');
   }
   if(streak > 0 && streak % 30 === 0){
-    profile.currency.pearl += 10; rewards.push('🦪+10');
+    profile.currency.pearl += 10; rewards.push('长庚 +10');
     profile.checkin.missCards = (profile.checkin.missCards||0) + 3;
     rewards.push('🎴+3 补签卡');
   }
@@ -7095,7 +7108,7 @@ function renderShopGrid(){
       ? '<img src="' + en.thumb + '" alt="">'
       : '<span style="font-size:34px">' + (en.kind==='set' ? '👗' : ((ENG_CAT_MAP[en.category]||{}).em || '🎁')) + '</span>';
     const badges = CURR_KEYS.filter(k => en.price && en.price[k] > 0)
-      .map(k => '<span class="price-badge ' + k + '">' + CURRENCY[k].em + ' ' + en.price[k] + '</span>').join('');
+      .map(k => '<span class="price-badge ' + k + '">' + curIcon(k) + ' ' + en.price[k] + '</span>').join('');
     const cd = (en.limitedTo) ? '<div class="shop-countdown">⏰ ' + fmtCountdown(en.limitedTo) + '</div>' : '';
     card.innerHTML =
       cd +
@@ -7131,7 +7144,7 @@ function openTryOn(en){
   const btns = CURR_KEYS.filter(k => en.price && en.price[k] > 0).map(k=>{
     const afford = (profile.currency[k]||0) >= en.price[k];
     return '<button class="pay-btn" data-cur="' + k + '"' + (afford ? '' : ' disabled') + '>' +
-           CURRENCY[k].em + ' ' + en.price[k] + ' ' + CURRENCY[k].nm + (afford ? '' : '（余额不足）') + '</button>';
+           curIcon(k) + ' ' + en.price[k] + ' ' + CURRENCY[k].nm + (afford ? '' : '（余额不足）') + '</button>';
   }).join('');
   const c = (profile && profile.currency) || {coin:0,diamond:0,pearl:0};
   mask.innerHTML =
@@ -7143,7 +7156,7 @@ function openTryOn(en){
       '</div>' +
       '<div class="try-stage"><canvas id="try-canvas" width="300" height="300"></canvas></div>' +
       '<div class="try-pay">' + (btns || '<span class="price-badge">这件还没定价，暂时买不了</span>') + '</div>' +
-      '<div class="try-info"><div class="td">余额 🪙' + c.coin + ' · 💎' + c.diamond + ' · 🦪' + c.pearl + '</div></div>' +
+      '<div class="try-info"><div class="td">余额 ' + curIcon('coin') + c.coin + ' · ' + curIcon('diamond') + c.diamond + ' · ' + curIcon('pearl') + c.pearl + '</div></div>' +
     '</div>';
   document.body.appendChild(mask);
   $('try-close').onclick = ()=>mask.remove();
@@ -7173,8 +7186,8 @@ let mapState = { currentId:null, spawnId:null };
 /* 面板组件类型（与《地图编辑引擎》保持一致；zones = 该衣橱显示哪些商店分区） */
 const PANEL_KINDS = [
   { id:'wardrobe',        name:'👗 普通衣橱',     em:'👗', zones:['common'] },
-  { id:'wardrobePremium', name:'💎 高级时装衣橱', em:'💎', zones:['premium','special'] },
-  { id:'wardrobeVip',     name:'🦪 贵宾区衣橱',   em:'🦪', zones:['limited','outfit'] },
+  { id:'wardrobePremium', name:'流萤 · 高级时装衣橱', em:'💎', zones:['premium','special'] },
+  { id:'wardrobeVip',     name:'长庚 · 贵宾区衣橱',   em:'🦪', zones:['limited','outfit'] },
   { id:'tarot',           name:'🔮 塔罗占卜',     em:'🔮', zones:null },
   { id:'wish',            name:'⛲ 许愿池',       em:'⛲', zones:null },
   { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
@@ -8142,9 +8155,9 @@ function merchPrices(it){
 /* 价格文案：跳过 0 的币种；全 0 = 免费 */
 function merchPriceStr(it){
   const p = merchPrices(it); let s = '';
-  if(p.coin > 0)    s += '🪙' + p.coin + ' ';
-  if(p.diamond > 0) s += '💎' + p.diamond + ' ';
-  if(p.pearl > 0)   s += '🦪' + p.pearl + ' ';
+  if(p.coin > 0)    s += curIcon('coin') + p.coin + ' ';
+  if(p.diamond > 0) s += curIcon('diamond') + p.diamond + ' ';
+  if(p.pearl > 0)   s += curIcon('pearl') + p.pearl + ' ';
   return s.trim() || '🆓 免费';
 }
 
@@ -8187,7 +8200,7 @@ function mcBuy(it){
   const cur = profile.currency;
   const need = merchPrices(it);
   /* 先核对三种币够不够，缺一样都不卖（别扣一半卡住） */
-  const NAME = { coin:'🪙金币', diamond:'💎钻石', pearl:'🦪珍珠' };
+  const NAME = { coin:'星坠', diamond:'流萤', pearl:'长庚' };
   const lack = Object.keys(need).filter(k => (cur[k]||0) < need[k])
     .map(k => NAME[k] + ' 差 ' + (need[k] - (cur[k]||0)));
   if(lack.length){ toast('💸 买不起：' + lack.join('、')); return; }

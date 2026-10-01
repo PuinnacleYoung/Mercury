@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>后端管理引擎 · 拾光·澈屿</title>
 <style>
+  /* 三货币图标（星坠 / 流萤 / 长庚）：跟着字号走 */
+  img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
+    vertical-align:-.28em;pointer-events:none}
   :root{
     --c-bg:#1a1530; --c-bg2:#2a2148; --c-accent:#b49ae0; --c-accent2:#7fc4e8;
     --c-ink:#f2eefc; --c-sub:#9d94bb; --c-line:rgba(255,255,255,.12);
@@ -80,7 +83,7 @@
       <table class="player-table">
         <thead><tr>
           <th style="width:30px"><input type="checkbox" class="check" id="check-all"></th>
-          <th>玩家</th><th>五行</th><th>金币</th><th>钻石</th><th>珍珠</th><th>背包</th><th>好友</th><th>注册时间</th>
+          <th>玩家</th><th>五行</th><th>星坠</th><th>流萤</th><th>长庚</th><th>背包</th><th>好友</th><th>注册时间</th>
         </tr></thead>
         <tbody id="player-tbody"></tbody>
       </table>
@@ -216,7 +219,7 @@ function renderPlayers(){
         <span class="tag ${online?'on':''}">${online?'在线':''}</span>
         <div style="font-size:11px;color:var(--c-sub)">@${p.username}</div></td>
       <td>${elementName(p.element)}</td>
-      <td>🪙${cur.coin||0}</td><td>💎${cur.diamond||0}</td><td>🦪${cur.pearl||0}</td>
+      <td><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt=""> ${cur.coin||0}</td><td><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt=""> ${cur.diamond||0}</td><td><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt=""> ${cur.pearl||0}</td>
       <td>${(p.inventory||[]).reduce((s,i)=>s+(i.qty||1),0)}</td>
       <td>${(p.friends||[]).length}</td>
       <td style="font-size:11px;color:var(--c-sub)">${p.createdAt?new Date(p.createdAt).toLocaleDateString():'-'}</td>`;
@@ -259,7 +262,7 @@ function updateSelPreview(){
 /* ================= 资产附件 ================= */
 let attaches = [];
 const ATTACH_TYPES = [
-  {id:'coin',label:'🪙 金币'},{id:'diamond',label:'💎 钻石'},{id:'pearl',label:'🦪 珍珠'},
+  {id:'coin',label:'星坠'},{id:'diamond',label:'流萤'},{id:'pearl',label:'长庚'},
   {id:'clothes',label:'👗 衣服(按itemId)'},{id:'item',label:'📦 功能道具(进背包)'},
 ];
 function renderAttaches(){

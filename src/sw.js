@@ -1,6 +1,6 @@
 /* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
    其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v87';
+const CACHE = 'shuguang-v88';
 const PRECACHE = [
   './',
   './index.html',
@@ -27,7 +27,10 @@ const PRECACHE = [
   './安全区方案.html',
   './数据恢复工具.html',
   './cloud-defaults.json',
-  './assets/'
+  './assets/',
+  './assets/cur/cur-coin.webp',
+  './assets/cur/cur-diamond.webp',
+  './assets/cur/cur-pearl.webp'
 ];
 
 self.addEventListener('install', e => {

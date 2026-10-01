@@ -14,6 +14,9 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" data-page-node-id="EZnyGyGgNBZ73HIwFdOypN">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" data-page-node-id="mbJOOhaz8GCQJ2tLbyZAGG">
 <style>
+  /* 三货币图标（星坠 / 流萤 / 长庚）：跟着字号走 */
+  img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
+    vertical-align:-.28em;pointer-events:none}
   :root{
     --bg:#16121f; --bg2:#241b38;
     --panel:rgba(255,255,255,.055); --panel2:rgba(255,255,255,.028);
@@ -804,8 +807,8 @@ function darken(hex, amt){
 /* ================= 面板类型（与游戏侧保持一致） ================= */
 const PANEL_KINDS = [
   { id:'wardrobe',        name:'👗 普通衣橱',        em:'👗' },
-  { id:'wardrobePremium', name:'💎 高级时装衣橱',    em:'💎' },
-  { id:'wardrobeVip',     name:'🦪 贵宾区衣橱',      em:'🦪' },
+  { id:'wardrobePremium', name:'流萤 · 高级时装衣橱',    em:'💎' },
+  { id:'wardrobeVip',     name:'长庚 · 贵宾区衣橱',      em:'🦪' },
   { id:'tarot',           name:'🔮 塔罗占卜',        em:'🔮' },
   { id:'wish',            name:'⛲ 许愿池（预留）',  em:'⛲' },
   { id:'checkin',         name:'📅 签到日历',        em:'📅' },
@@ -1680,7 +1683,7 @@ function buildRuntimeUiPreview(map){
     .map((t,i)=>'<b class="'+(i===0?'hot':'')+'">'+t+'</b>').join('');
   ui.innerHTML =
       '<div class="ui-hudcard"><span class="ava">🐹</span><span>暮眠</span><span style="opacity:.7">›</span></div>'
-    + '<div class="ui-coins"><span>🪙 12,345</span><span>💎 88</span><span>🦪 5</span><span>🏠 家园</span></div>'
+    + '<div class="ui-coins"><span><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt=""> 12,345</span><span><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt=""> 88</span><span><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt=""> 5</span><span>🏠 家园</span></div>'
     + '<div class="ui-leftrail">'+rail+'</div>'
     + '<div class="ui-orientation-badge">📱 '+(isMapNode(map)?'Map 导航':'Level 运行')+' · 手机强制横屏 · 铺满裁切</div>'
     + levelUi;

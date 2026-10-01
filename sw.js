@@ -1,5 +1,5 @@
 /* 拾光·澈屿 Service Worker（根目录版）—— 策略同 src/sw.js */
-const CACHE = 'shuguang-root-v47';
+const CACHE = 'shuguang-root-v48';
 const PRECACHE = [
   './',
   './index.html',
@@ -18,7 +18,10 @@ const PRECACHE = [
   './src/icons/icon-192.png',
   './src/icons/icon-512.png',
   './src/icons/icon-512-maskable.png',
-  './src/icons/apple-touch-icon.png'
+  './src/icons/apple-touch-icon.png',
+  './src/assets/cur/cur-coin.webp',
+  './src/assets/cur/cur-diamond.webp',
+  './src/assets/cur/cur-pearl.webp'
 ];
 
 self.addEventListener('install', e => {

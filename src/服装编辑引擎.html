@@ -14,6 +14,9 @@
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 <style>
+  /* 三货币图标（星坠 / 流萤 / 长庚）：跟着字号走 */
+  img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
+    vertical-align:-.28em;pointer-events:none}
   :root{
     --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
     --line:#e6ddf4; --line2:#efeaf8;
@@ -608,9 +611,9 @@
           <span class="fl" data-page-node-id="setFl20000000000001">上架区（可多选）</span>
           <div class="tag-chk" id="setTags" data-page-node-id="setTags0000000000001"></div>
           <span class="fl" data-page-node-id="setFl30000000000001">定价（可填 1~3 种）</span>
-          <div class="price-row" data-page-node-id="setPr10000000000001"><i data-page-node-id="setPrIco100000001">🪙</i><input type="number" id="setPriceCoin" placeholder="金币" min="0" data-page-node-id="setPc000000000001"></div>
-          <div class="price-row" data-page-node-id="setPr20000000000001"><i data-page-node-id="setPrIco200000001">💎</i><input type="number" id="setPriceDiamond" placeholder="钻石" min="0" data-page-node-id="setPd000000000001"></div>
-          <div class="price-row" data-page-node-id="setPr30000000000001"><i data-page-node-id="setPrIco300000001">🦪</i><input type="number" id="setPricePearl" placeholder="珍珠" min="0" data-page-node-id="setPp000000000001"></div>
+          <div class="price-row" data-page-node-id="setPr10000000000001"><i data-page-node-id="setPrIco100000001"><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt="星坠"></i><input type="number" id="setPriceCoin" placeholder="星坠" min="0" data-page-node-id="setPc000000000001"></div>
+          <div class="price-row" data-page-node-id="setPr20000000000001"><i data-page-node-id="setPrIco200000001"><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt="流萤"></i><input type="number" id="setPriceDiamond" placeholder="流萤" min="0" data-page-node-id="setPd000000000001"></div>
+          <div class="price-row" data-page-node-id="setPr30000000000001"><i data-page-node-id="setPrIco300000001"><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt="长庚"></i><input type="number" id="setPricePearl" placeholder="长庚" min="0" data-page-node-id="setPp000000000001"></div>
           <span class="fl" data-page-node-id="setFl40000000000001">限时（选填）</span>
           <div class="limit-row" data-page-node-id="setLimRow000000001"><input type="date" id="setLimFrom" data-page-node-id="setLf000000000001"><input type="date" id="setLimTo" data-page-node-id="setLt000000000001"></div>
           <button class="btn primary" id="setSave" style="justify-content:center;margin-top:4px;" data-page-node-id="setSave0000000000001">💾 保存套装（含快照）</button>
@@ -758,7 +761,12 @@ const sessionStorage = _mkStore(window.sessionStorage);
     { id:'outfit',  name:'套装', em:'👗' },
   ];
   const ZONE_MAP={}; SHOP_ZONES.forEach(z=>ZONE_MAP[z.id]=z);
-  const CURRENCIES=[ {k:'coin',em:'🪙',nm:'金币'}, {k:'diamond',em:'💎',nm:'钻石'}, {k:'pearl',em:'🦪',nm:'珍珠'} ];
+  /* 三货币：星坠 / 流萤 / 长庚（图标 128px webp，em 只作纯文本回退） */
+  const CURRENCIES=[ {k:'coin',em:'🪙',nm:'星坠',img:'assets/cur/cur-coin.webp'},
+                     {k:'diamond',em:'💎',nm:'流萤',img:'assets/cur/cur-diamond.webp'},
+                     {k:'pearl',em:'🦪',nm:'长庚',img:'assets/cur/cur-pearl.webp'} ];
+  const CUR_V='?v=20261002a';
+  function curIcon(k){ const c=CURRENCIES.find(x=>x.k===k); return c&&c.img ? '<img class="cur-img" src="'+c.img+CUR_V+'" alt="'+c.nm+'">' : ((c&&c.em)||''); }
 
   let snapMid=true;      // 中线吸附开关
   let symLink=true;      // 左右对称联动开关
@@ -2700,7 +2708,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
   function renumberShop(list){ (list||shopEntries()).forEach((x,i)=>{ x.obj.shopOrder[shopZone]=i; }); persistShop(); }
   function priceBadges(price){
     if(!price) return '<b style="opacity:.5;">未定价</b>';
-    const s=CURRENCIES.filter(c=>price[c.k]!=null&&price[c.k]!=='').map(c=>'<b>'+c.em+price[c.k]+'</b>').join('');
+    const s=CURRENCIES.filter(c=>price[c.k]!=null&&price[c.k]!=='').map(c=>'<b>'+curIcon(c.k)+price[c.k]+'</b>').join('');
     return s||'<b style="opacity:.5;">未定价</b>';
   }
   function renderShopZones(){
@@ -2750,7 +2758,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     box.appendChild(mkLabel('定价（可填 1~3 种货币）'));
     CURRENCIES.forEach(c=>{
       const row=document.createElement('div'); row.className='price-row';
-      const ic=document.createElement('i'); ic.textContent=c.em;
+      const ic=document.createElement('i'); ic.innerHTML=curIcon(c.k);
       const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.placeholder=c.nm;
       inp.value=(o.price&&o.price[c.k]!=null)?o.price[c.k]:'';
       inp.onchange=()=>{ const v=inp.value===''?null:+inp.value; o.price[c.k]=(v==null||isNaN(v))?null:v; persistShop(); renderShopCards(); };
