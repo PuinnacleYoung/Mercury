@@ -1,0 +1,579 @@
+{
+  "_note": "塔罗素材清单。done:false = 这张还没画图，游戏自动用 emoji 占位。牌背走 back.file（内置 Mercury 牌背）。",
+  "generatedAt": "2026-10-01T10:23:53.655Z",
+  "source": "由 outputs/gen-tarot-meta.js 从 index.html 内置牌组生成",
+  "back": {
+    "name": "Mercury 牌背",
+    "file": "back-mercury-1x.webp"
+  },
+  "frames": {
+    "azure-clouds": {
+      "name": "azure-clouds",
+      "file1x": "frame-azure-clouds-1x.webp",
+      "file2x": "frame-azure-clouds-2x.webp"
+    },
+    "cloud-irises": {
+      "name": "cloud-irises",
+      "file1x": "frame-cloud-irises-1x.webp",
+      "file2x": "frame-cloud-irises-2x.webp"
+    },
+    "moon-phases": {
+      "name": "moon-phases",
+      "file1x": "frame-moon-phases-1x.webp",
+      "file2x": "frame-moon-phases-2x.webp"
+    },
+    "stellar-orbit": {
+      "name": "stellar-orbit",
+      "file1x": "frame-stellar-orbit-1x.webp",
+      "file2x": "frame-stellar-orbit-2x.webp"
+    }
+  },
+  "cards": {
+    "m0": {
+      "name": "愚者",
+      "en": "The Fool",
+      "upright": "新的开始、天真、冒险、自由、无限可能",
+      "reversed": "鲁莽、停滞、逃避责任、计划不周",
+      "done": false
+    },
+    "m1": {
+      "name": "魔术师",
+      "en": "The Magician",
+      "upright": "创造、意志、行动力、资源整合、开端",
+      "reversed": "拖延、能力受抑、空谈、操纵",
+      "done": false
+    },
+    "m2": {
+      "name": "女祭司",
+      "en": "The High Priestess",
+      "upright": "直觉、潜意识、静观、内在智慧",
+      "reversed": "忽视直觉、隐秘、情绪混乱",
+      "done": false
+    },
+    "m3": {
+      "name": "皇后",
+      "en": "The Empress",
+      "upright": "丰盛、滋养、创造、感性",
+      "reversed": "依赖、创造受阻、过度付出",
+      "done": false
+    },
+    "m4": {
+      "name": "皇帝",
+      "en": "The Emperor",
+      "upright": "权威、秩序、掌控、稳固",
+      "reversed": "专断、僵化、权力滥用",
+      "done": false
+    },
+    "m5": {
+      "name": "教皇",
+      "en": "The Hierophant",
+      "upright": "传统、指引、信仰、教导",
+      "reversed": "教条、束缚、叛逆",
+      "done": false
+    },
+    "m6": {
+      "name": "恋人",
+      "en": "The Lovers",
+      "upright": "结合、选择、和谐、价值观",
+      "reversed": "失衡、犹豫、关系裂痕",
+      "done": false
+    },
+    "m7": {
+      "name": "战车",
+      "en": "The Chariot",
+      "upright": "意志、前进、胜利、掌控方向",
+      "reversed": "失控、方向迷失、停滞",
+      "done": false
+    },
+    "m8": {
+      "name": "力量",
+      "en": "Strength",
+      "upright": "勇气、耐心、内在力量、温柔掌控",
+      "reversed": "自我怀疑、软弱、冲动",
+      "done": false
+    },
+    "m9": {
+      "name": "隐者",
+      "en": "The Hermit",
+      "upright": "内省、独处、寻求真理、智慧",
+      "reversed": "孤立、逃避、固执",
+      "done": false
+    },
+    "m10": {
+      "name": "命运之轮",
+      "en": "Wheel of Fortune",
+      "upright": "转机、宿命、循环、机遇",
+      "reversed": "厄运、抗拒改变、卡顿",
+      "done": false
+    },
+    "m11": {
+      "name": "正义",
+      "en": "Justice",
+      "upright": "公正、因果、平衡、真相",
+      "reversed": "不公、逃避责任、偏颇",
+      "done": false
+    },
+    "m12": {
+      "name": "倒吊人",
+      "en": "The Hanged Man",
+      "upright": "换位思考、牺牲、暂停、顺其自然",
+      "reversed": "无谓牺牲、拖延、僵持",
+      "done": false
+    },
+    "m13": {
+      "name": "死神",
+      "en": "Death",
+      "upright": "结束、蜕变、重生、放下",
+      "reversed": "抗拒改变、停滞、沉溺过去",
+      "done": false
+    },
+    "m14": {
+      "name": "节制",
+      "en": "Temperance",
+      "upright": "平衡、调和、耐心、节制",
+      "reversed": "失衡、过度、急躁",
+      "done": false
+    },
+    "m15": {
+      "name": "恶魔",
+      "en": "The Devil",
+      "upright": "束缚、诱惑、执念、物欲",
+      "reversed": "挣脱、觉醒、放下执念",
+      "done": false
+    },
+    "m16": {
+      "name": "高塔",
+      "en": "The Tower",
+      "upright": "突变、崩塌、真相揭露、释放",
+      "reversed": "侥幸躲过、恐惧改变、积压",
+      "done": false
+    },
+    "m17": {
+      "name": "星星",
+      "en": "The Star",
+      "upright": "希望、疗愈、灵感、宁静",
+      "reversed": "失望、信心不足、迷茫",
+      "done": false
+    },
+    "m18": {
+      "name": "月亮",
+      "en": "The Moon",
+      "upright": "不安、幻觉、潜意识、迷雾",
+      "reversed": "真相浮现、拨云见日、释怀",
+      "done": false
+    },
+    "m19": {
+      "name": "太阳",
+      "en": "The Sun",
+      "upright": "喜悦、成功、活力、坦荡",
+      "reversed": "短暂低落、自负、能量受阻",
+      "done": false
+    },
+    "m20": {
+      "name": "审判",
+      "en": "Judgement",
+      "upright": "觉醒、召唤、新生、复盘",
+      "reversed": "自我怀疑、逃避审判、停滞",
+      "done": false
+    },
+    "m21": {
+      "name": "世界",
+      "en": "The World",
+      "upright": "圆满、达成、整合、新阶段",
+      "reversed": "未竟之事、拖延收官、留白",
+      "done": false
+    },
+    "swands_ace": {
+      "name": "权杖·Ace",
+      "en": "wands Ace",
+      "upright": "新开端、纯粹能量、潜力；行动 · 事业 · 热情",
+      "reversed": "能量失衡：新开端受阻或过度",
+      "done": false
+    },
+    "swands_2": {
+      "name": "权杖·2",
+      "en": "wands 2",
+      "upright": "平衡、选择、合作；行动 · 事业 · 热情",
+      "reversed": "能量失衡：平衡受阻或过度",
+      "done": false
+    },
+    "swands_3": {
+      "name": "权杖·3",
+      "en": "wands 3",
+      "upright": "成长、扩张、初步成果；行动 · 事业 · 热情",
+      "reversed": "能量失衡：成长受阻或过度",
+      "done": false
+    },
+    "swands_4": {
+      "name": "权杖·4",
+      "en": "wands 4",
+      "upright": "稳定、巩固、休整；行动 · 事业 · 热情",
+      "reversed": "能量失衡：稳定受阻或过度",
+      "done": false
+    },
+    "swands_5": {
+      "name": "权杖·5",
+      "en": "wands 5",
+      "upright": "冲突、挑战、动荡；行动 · 事业 · 热情",
+      "reversed": "能量失衡：冲突受阻或过度",
+      "done": false
+    },
+    "swands_6": {
+      "name": "权杖·6",
+      "en": "wands 6",
+      "upright": "和谐、修复、过渡；行动 · 事业 · 热情",
+      "reversed": "能量失衡：和谐受阻或过度",
+      "done": false
+    },
+    "swands_7": {
+      "name": "权杖·7",
+      "en": "wands 7",
+      "upright": "反思、评估、坚持；行动 · 事业 · 热情",
+      "reversed": "能量失衡：反思受阻或过度",
+      "done": false
+    },
+    "swands_8": {
+      "name": "权杖·8",
+      "en": "wands 8",
+      "upright": "行动、进展、力量；行动 · 事业 · 热情",
+      "reversed": "能量失衡：行动受阻或过度",
+      "done": false
+    },
+    "swands_9": {
+      "name": "权杖·9",
+      "en": "wands 9",
+      "upright": "接近完成、收获、韧性；行动 · 事业 · 热情",
+      "reversed": "能量失衡：接近完成受阻或过度",
+      "done": false
+    },
+    "swands_10": {
+      "name": "权杖·10",
+      "en": "wands 10",
+      "upright": "圆满、完结、巅峰；行动 · 事业 · 热情",
+      "reversed": "能量失衡：圆满受阻或过度",
+      "done": false
+    },
+    "swands_page": {
+      "name": "权杖·侍从",
+      "en": "wands 侍从",
+      "upright": "学习、好奇、新消息；行动 · 事业 · 热情",
+      "reversed": "能量失衡：学习受阻或过度",
+      "done": false
+    },
+    "swands_knight": {
+      "name": "权杖·骑士",
+      "en": "wands 骑士",
+      "upright": "追求、行动、前进；行动 · 事业 · 热情",
+      "reversed": "能量失衡：追求受阻或过度",
+      "done": false
+    },
+    "swands_queen": {
+      "name": "权杖·王后",
+      "en": "wands 王后",
+      "upright": "滋养、成熟、内在掌控；行动 · 事业 · 热情",
+      "reversed": "能量失衡：滋养受阻或过度",
+      "done": false
+    },
+    "swands_king": {
+      "name": "权杖·国王",
+      "en": "wands 国王",
+      "upright": "权威、掌控、外在成就；行动 · 事业 · 热情",
+      "reversed": "能量失衡：权威受阻或过度",
+      "done": false
+    },
+    "scups_ace": {
+      "name": "圣杯·Ace",
+      "en": "cups Ace",
+      "upright": "新开端、纯粹能量、潜力；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：新开端受阻或过度",
+      "done": false
+    },
+    "scups_2": {
+      "name": "圣杯·2",
+      "en": "cups 2",
+      "upright": "平衡、选择、合作；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：平衡受阻或过度",
+      "done": false
+    },
+    "scups_3": {
+      "name": "圣杯·3",
+      "en": "cups 3",
+      "upright": "成长、扩张、初步成果；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：成长受阻或过度",
+      "done": false
+    },
+    "scups_4": {
+      "name": "圣杯·4",
+      "en": "cups 4",
+      "upright": "稳定、巩固、休整；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：稳定受阻或过度",
+      "done": false
+    },
+    "scups_5": {
+      "name": "圣杯·5",
+      "en": "cups 5",
+      "upright": "冲突、挑战、动荡；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：冲突受阻或过度",
+      "done": false
+    },
+    "scups_6": {
+      "name": "圣杯·6",
+      "en": "cups 6",
+      "upright": "和谐、修复、过渡；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：和谐受阻或过度",
+      "done": false
+    },
+    "scups_7": {
+      "name": "圣杯·7",
+      "en": "cups 7",
+      "upright": "反思、评估、坚持；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：反思受阻或过度",
+      "done": false
+    },
+    "scups_8": {
+      "name": "圣杯·8",
+      "en": "cups 8",
+      "upright": "行动、进展、力量；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：行动受阻或过度",
+      "done": false
+    },
+    "scups_9": {
+      "name": "圣杯·9",
+      "en": "cups 9",
+      "upright": "接近完成、收获、韧性；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：接近完成受阻或过度",
+      "done": false
+    },
+    "scups_10": {
+      "name": "圣杯·10",
+      "en": "cups 10",
+      "upright": "圆满、完结、巅峰；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：圆满受阻或过度",
+      "done": false
+    },
+    "scups_page": {
+      "name": "圣杯·侍从",
+      "en": "cups 侍从",
+      "upright": "学习、好奇、新消息；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：学习受阻或过度",
+      "done": false
+    },
+    "scups_knight": {
+      "name": "圣杯·骑士",
+      "en": "cups 骑士",
+      "upright": "追求、行动、前进；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：追求受阻或过度",
+      "done": false
+    },
+    "scups_queen": {
+      "name": "圣杯·王后",
+      "en": "cups 王后",
+      "upright": "滋养、成熟、内在掌控；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：滋养受阻或过度",
+      "done": false
+    },
+    "scups_king": {
+      "name": "圣杯·国王",
+      "en": "cups 国王",
+      "upright": "权威、掌控、外在成就；情感 · 关系 · 直觉",
+      "reversed": "能量失衡：权威受阻或过度",
+      "done": false
+    },
+    "sswords_ace": {
+      "name": "宝剑·Ace",
+      "en": "swords Ace",
+      "upright": "新开端、纯粹能量、潜力；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：新开端受阻或过度",
+      "done": false
+    },
+    "sswords_2": {
+      "name": "宝剑·2",
+      "en": "swords 2",
+      "upright": "平衡、选择、合作；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：平衡受阻或过度",
+      "done": false
+    },
+    "sswords_3": {
+      "name": "宝剑·3",
+      "en": "swords 3",
+      "upright": "成长、扩张、初步成果；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：成长受阻或过度",
+      "done": false
+    },
+    "sswords_4": {
+      "name": "宝剑·4",
+      "en": "swords 4",
+      "upright": "稳定、巩固、休整；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：稳定受阻或过度",
+      "done": false
+    },
+    "sswords_5": {
+      "name": "宝剑·5",
+      "en": "swords 5",
+      "upright": "冲突、挑战、动荡；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：冲突受阻或过度",
+      "done": false
+    },
+    "sswords_6": {
+      "name": "宝剑·6",
+      "en": "swords 6",
+      "upright": "和谐、修复、过渡；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：和谐受阻或过度",
+      "done": false
+    },
+    "sswords_7": {
+      "name": "宝剑·7",
+      "en": "swords 7",
+      "upright": "反思、评估、坚持；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：反思受阻或过度",
+      "done": false
+    },
+    "sswords_8": {
+      "name": "宝剑·8",
+      "en": "swords 8",
+      "upright": "行动、进展、力量；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：行动受阻或过度",
+      "done": false
+    },
+    "sswords_9": {
+      "name": "宝剑·9",
+      "en": "swords 9",
+      "upright": "接近完成、收获、韧性；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：接近完成受阻或过度",
+      "done": false
+    },
+    "sswords_10": {
+      "name": "宝剑·10",
+      "en": "swords 10",
+      "upright": "圆满、完结、巅峰；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：圆满受阻或过度",
+      "done": false
+    },
+    "sswords_page": {
+      "name": "宝剑·侍从",
+      "en": "swords 侍从",
+      "upright": "学习、好奇、新消息；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：学习受阻或过度",
+      "done": false
+    },
+    "sswords_knight": {
+      "name": "宝剑·骑士",
+      "en": "swords 骑士",
+      "upright": "追求、行动、前进；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：追求受阻或过度",
+      "done": false
+    },
+    "sswords_queen": {
+      "name": "宝剑·王后",
+      "en": "swords 王后",
+      "upright": "滋养、成熟、内在掌控；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：滋养受阻或过度",
+      "done": false
+    },
+    "sswords_king": {
+      "name": "宝剑·国王",
+      "en": "swords 国王",
+      "upright": "权威、掌控、外在成就；思维 · 沟通 · 冲突",
+      "reversed": "能量失衡：权威受阻或过度",
+      "done": false
+    },
+    "spentacles_ace": {
+      "name": "星币·Ace",
+      "en": "pentacles Ace",
+      "upright": "新开端、纯粹能量、潜力；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：新开端受阻或过度",
+      "done": false
+    },
+    "spentacles_2": {
+      "name": "星币·2",
+      "en": "pentacles 2",
+      "upright": "平衡、选择、合作；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：平衡受阻或过度",
+      "done": false
+    },
+    "spentacles_3": {
+      "name": "星币·3",
+      "en": "pentacles 3",
+      "upright": "成长、扩张、初步成果；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：成长受阻或过度",
+      "done": false
+    },
+    "spentacles_4": {
+      "name": "星币·4",
+      "en": "pentacles 4",
+      "upright": "稳定、巩固、休整；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：稳定受阻或过度",
+      "done": false
+    },
+    "spentacles_5": {
+      "name": "星币·5",
+      "en": "pentacles 5",
+      "upright": "冲突、挑战、动荡；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：冲突受阻或过度",
+      "done": false
+    },
+    "spentacles_6": {
+      "name": "星币·6",
+      "en": "pentacles 6",
+      "upright": "和谐、修复、过渡；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：和谐受阻或过度",
+      "done": false
+    },
+    "spentacles_7": {
+      "name": "星币·7",
+      "en": "pentacles 7",
+      "upright": "反思、评估、坚持；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：反思受阻或过度",
+      "done": false
+    },
+    "spentacles_8": {
+      "name": "星币·8",
+      "en": "pentacles 8",
+      "upright": "行动、进展、力量；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：行动受阻或过度",
+      "done": false
+    },
+    "spentacles_9": {
+      "name": "星币·9",
+      "en": "pentacles 9",
+      "upright": "接近完成、收获、韧性；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：接近完成受阻或过度",
+      "done": false
+    },
+    "spentacles_10": {
+      "name": "星币·10",
+      "en": "pentacles 10",
+      "upright": "圆满、完结、巅峰；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：圆满受阻或过度",
+      "done": false
+    },
+    "spentacles_page": {
+      "name": "星币·侍从",
+      "en": "pentacles 侍从",
+      "upright": "学习、好奇、新消息；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：学习受阻或过度",
+      "done": false
+    },
+    "spentacles_knight": {
+      "name": "星币·骑士",
+      "en": "pentacles 骑士",
+      "upright": "追求、行动、前进；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：追求受阻或过度",
+      "done": false
+    },
+    "spentacles_queen": {
+      "name": "星币·王后",
+      "en": "pentacles 王后",
+      "upright": "滋养、成熟、内在掌控；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：滋养受阻或过度",
+      "done": false
+    },
+    "spentacles_king": {
+      "name": "星币·国王",
+      "en": "pentacles 国王",
+      "upright": "权威、掌控、外在成就；物质 · 金钱 · 现实",
+      "reversed": "能量失衡：权威受阻或过度",
+      "done": false
+    }
+  }
+}
