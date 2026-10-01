@@ -627,6 +627,16 @@
     <div class="shop-frame" data-page-node-id="shopFrame00000000001">
       <div class="card" data-page-node-id="shopLeft0000000000001">
         <div class="card-head" data-page-node-id="shopLeftHead0000001"><h2 data-page-node-id="shopLeftH2x0000001">🏪 <span class="accent" data-page-node-id="shopLeftAcc0000001">商店编辑</span></h2><span class="sub" id="shopHint" data-page-node-id="shopHint0000000001">左侧卡片可拖拽调序</span></div>
+        <div id="shopCloudTip" data-page-node-id="shopCloudTip000000001" style="margin:0 0 8px;padding:8px 10px;border:1px solid #e8b64c;background:#fff6e0;border-radius:8px;font-size:12px;line-height:1.75;color:#6b4e12;">
+          <b style="color:#8a5a00;">⚠️ 上架只写在这台机器的浏览器里</b>　要让游戏里（和别人的手机）看到这些商品，必须走两步：
+          <b>① ☁️ 提交「服装件」槽 → ② 后台管理引擎点「发布」</b>。<br>
+          不发布的话，游戏下次启动会拉云端旧版本，<b>直接把你这次的上架/定价/改动盖掉</b>。<br>
+          <span style="color:#8a6b2a;">另：上架的商品出现在<b>商业街商店</b>里，玩家买下之后才会进<b>衣橱</b>（衣橱只显示已拥有的）。</span>
+          <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn small violet" id="shopPushCloud" data-page-node-id="shopPushCloud000001" style="padding:4px 10px;">☁️ 提交服装件到云端</button>
+            <span id="shopCloudStat" data-page-node-id="shopCloudStat000001" style="color:#8a6b2a;font-size:11px;"></span>
+          </div>
+        </div>
         <div class="shop-zones" id="shopZones" data-page-node-id="shopZones000000001"></div>
         <div class="shop-bar" data-page-node-id="shopBar0000000000001">
           <button class="btn small mint" id="shopAdd" data-page-node-id="shopAdd0000000000001">＋ 添加到本区</button>
@@ -2201,7 +2211,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     else if(name==='cloth'){ renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); }
     else if(name==='wb'){ renderWbCat(); renderWbItems(); renderWbOutfits(); stageMgrs.wb.render(); syncWbViewBtn(); }
     else if(name==='set'){ renderSetList(); renderSetSlots(); fillSetForm(); renderSetStage(); }
-    else if(name==='shop'){ renderShopZones(); renderShopCards(); renderShopEditor(); }
+    else if(name==='shop'){ renderShopZones(); renderShopCards(); renderShopEditor(); refreshShopCloudStat(); }
     updateTopMeta();
   }
   $('tabs').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) switchPage(b.dataset.page); });
@@ -2830,7 +2840,29 @@ const sessionStorage = _mkStore(window.sessionStorage);
     mask.appendChild(panel); document.body.appendChild(mask);
   }
   $('shopAdd').onclick=openShopAdd;
-  $('shopRefresh').onclick=()=>{ renderShopCards(); renderShopEditor(); toast('已刷新'); };
+  $('shopRefresh').onclick=()=>{ renderShopCards(); renderShopEditor(); refreshShopCloudStat(); toast('已刷新'); };
+
+  /* ---------- ☁️ 上架 ≠ 全服可见：必须提交云端 + 后台发布 ----------
+     上架只改本机 localStorage 里的 engine_lib_v3 / engine_sets_v1。
+     游戏端每次启动 autoPullCloudAssets() 会拉云端 outfit 槽（按 rev 对比）覆盖本机，
+     所以没发布的改动随时会被云端旧版冲掉。这里把状态和提交入口摆到商店页最显眼处。 */
+  function refreshShopCloudStat(){
+    const el=$('shopCloudStat'); if(!el) return;
+    if(!window.CloudSync){ el.textContent='（本页没挂云端同步）'; return; }
+    if(!CloudSync.st || !CloudSync.st.connected){ el.textContent='云端：未连接…'; }
+    CloudSync.refresh(ok=>{
+      if(!ok){ el.textContent='云端：连不上服务器（离线改的东西一定要记得补提交）'; return; }
+      const rv=CloudSync.st.rev||{};
+      const r=rv.live||0, d=rv.draft||0;
+      el.textContent='云端线上 v'+r+(d&&d!==r ? '　·　草稿 v'+d+' 待发布' : '');
+    });
+  }
+  if($('shopPushCloud')) $('shopPushCloud').onclick=()=>{
+    if(!window.CloudSync){ toast('本页没挂云端同步，用右下角 ☁️ 面板'); return; }
+    try{ CloudSync.switchTo('outfit'); }catch(e){}
+    CloudSync.push();
+    setTimeout(refreshShopCloudStat, 1200);
+  };
 
   /* =========================================================
      套装 / 商店 导入导出（含「依赖自动检索补全」）
