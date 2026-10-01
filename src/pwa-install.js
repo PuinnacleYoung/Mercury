@@ -18,8 +18,9 @@
     (window.navigator.standalone === true);
   const CAN_SW = ('serviceWorker' in navigator) &&
     (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
-  const DISMISS_KEY = 'mer_pwa_dismiss_v2';
+  const DISMISS_KEY = 'mer_pwa_dismiss_v3';      // v3：存时间戳，只闭嘴 7 天（v2 是 'gone' 永久，点一次就再也见不着——陛下找不着按钮的元凶）
   const INSTALLED_KEY = 'mer_pwa_installed_v1';
+  const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
 
   // ---------- 浏览器识别（顺序敏感：越靠前越优先） ----------
   const BROWSERS = [
@@ -78,6 +79,9 @@
     transition:transform .18s,box-shadow .18s;letter-spacing:.5px;
     -webkit-tap-highlight-color:transparent}
   .mer-pwa-fab:active{transform:scale(.96)}
+  /* 页面里有 #mer-pwa-slot 就坐进去（登录页左下角），不再满屏乱飘——
+     手机锁横屏会 transform body，fixed 元素会被带跑，塞进屏内 absolute 就稳了 */
+  .mer-pwa-fab.in-slot{position:relative;right:auto;bottom:auto;display:inline-flex}
   .mer-pwa-fab .x{display:inline-block;width:18px;height:18px;line-height:18px;
     text-align:center;border-radius:50%;background:rgba(255,255,255,.28);
     font-size:12px;margin-left:4px}
@@ -156,7 +160,23 @@
       e.target.textContent = ok ? '✓ 已复制' : '复制失败，长按地址栏';
       setTimeout(() => e.target.textContent = '复制网址', 1600);
     };
-    return;   // 内嵌浏览器里不再显示安装按钮
+    /* 登录页左下角的坑位也不能空着：这里塞个「装不了」的说明按钮 */
+    const bslot = document.getElementById('mer-pwa-slot');
+    if (bslot) {
+      const bf = document.createElement('button');
+      bf.className = 'mer-pwa-fab in-slot';
+      bf.style.background = 'linear-gradient(135deg,#8b8398,#b3a9c4)';
+      bf.innerHTML = '⚠️ ' + B.name + '里装不了 <span class="x">?</span>';
+      bf.onclick = async () => {
+        const ok = await copy(location.href);
+        alert('「' + B.name + '」不支持安装到桌面。\n\n' +
+          '请点右上角 ··· → 选「在浏览器中打开」（系统浏览器 / Chrome），\n' +
+          '再点「添加到桌面」即可。\n\n' +
+          (ok ? '网址已复制，可直接粘贴到浏览器 ✓' : '请长按地址栏手动复制网址'));
+      };
+      bslot.appendChild(bf);
+    }
+    return;   // 内嵌浏览器里不再显示悬浮安装按钮
   }
 
   // ---------- 情况 B：可以走安装流程 ----------
@@ -170,8 +190,11 @@
 
   const fab = document.createElement('button');
   fab.className = 'mer-pwa-fab';
-  fab.innerHTML = '📲 装到桌面 <span class="x" title="不再提醒">×</span>';
-  document.body.appendChild(fab);
+  fab.innerHTML = '📲 添加到桌面 <span class="x" title="7 天内不再提醒">×</span>';
+  /* 优先坐进页面给的坑位（登录页左下角 #mer-pwa-slot），没有就悬浮兜底 */
+  const slot = document.getElementById('mer-pwa-slot');
+  if (slot) { fab.classList.add('in-slot'); slot.appendChild(fab); }
+  else document.body.appendChild(fab);
 
   const modal = document.createElement('div');
   modal.className = 'mer-pwa-modal';
@@ -302,7 +325,10 @@
 
   fab.onclick = e => {
     if (e.target.classList.contains('x')) {
-      localStorage.setItem(DISMISS_KEY, 'gone'); fab.remove(); return;
+      localStorage.setItem(DISMISS_KEY, String(Date.now()));   // 只闭嘴 7 天，别再永久消失了
+      fab.remove();
+      if (slot) slot.remove();
+      return;
     }
     if (deferred && !IS_IOS && B.kind !== 'ios') doInstall();
     else openModal();
@@ -350,7 +376,11 @@
     $('merPwaDiagBtn').textContent = ok ? '✓ 诊断信息已复制，发给开发者看看' : '诊断信息如下，可截图发给开发者';
   };
 
-  if (localStorage.getItem(DISMISS_KEY) === 'gone') fab.remove();
+  /* 点过 × 只静默 7 天；网址带 ?pwa=1（或 ?pwa=reset）立刻复活，方便找回按钮 */
+  const forced = /[?&]pwa=(1|reset|show)/i.test(location.search);
+  const dismissAt = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+  if (forced) localStorage.removeItem(DISMISS_KEY);
+  else if (dismissAt && (Date.now() - dismissAt) < DISMISS_MS) { fab.remove(); if (slot) slot.remove(); }
 
   window.matchMedia && window.matchMedia('(display-mode: standalone)')
     .addEventListener && window.matchMedia('(display-mode: standalone)')
