@@ -2723,8 +2723,10 @@ function drawEngineCharacter(ctx, cx, cy, outfit, facing, walkPhase, scale){
 function defaultOutfit(){
   const o = {};
   if(engineAvailable()){
+    /* 必须购买才拥有（陛下钦定）：注册时一件都不自动穿。
+       以前这里会把引擎库里每类第一件塞给新玩家 —— 玩家没买却穿着，衣橱还查不到，就是 BUG② 的元凶。
+       「注册默认穿戴」以后走正式的「默认拥有」配置，不走这条暗道。 */
     ENG_CATEGORIES.forEach(c=>o[c.id]=null);
-    ['hair','top','bottom','shoes'].forEach(cat=>{ const arr=engine.lib[cat]||[]; if(arr.length) o[cat]=arr[0].id; });
   } else {
     o.hair=ITEMS.hair[0]; o.face=ITEMS.face[0]; o.headwear=ITEMS.headwear[0]; o.earring=ITEMS.earring[0];
     o.backwear=ITEMS.backwear[0]; o.top=ITEMS.top[0]; o.gloves=ITEMS.gloves[0]; o.handheld=ITEMS.handheld[0];
@@ -6721,7 +6723,23 @@ function ensureProfile(){
   return p;
 }
 let profile = null;
-function refreshProfile(){ profile = ensureProfile(); renderCoins(); return profile; }
+function refreshProfile(){ profile = ensureProfile(); renderCoins(); enforceOutfitOwnership(); return profile; }
+/* 🔐 穿着合法性校验：必须购买才拥有（陛下钦定）。
+   引擎是管理员的创作工具，管理员在引擎里试穿 ≠ 玩家拥有；
+   玩家档案里若穿着未购买的衣服（老存档 / 旧版自动穿搭残留），这里置空并写回。
+   profile 未加载时跳过（登录早期只改显示，不动数据）。 */
+function enforceOutfitOwnership(){
+  if(!currentUser || !currentUser.outfit) return false;
+  if(!profile || !profile.ownedItems) return false;      // 档案没就绪 → 不动
+  if(!engineAvailable()) return false;
+  let dirty = false;
+  ENG_CATEGORIES.forEach(c=>{
+    const iid = currentUser.outfit[c.id];
+    if(iid && findEngineItem(c.id, iid) && !owns(iid)){ currentUser.outfit[c.id] = null; dirty = true; }
+  });
+  if(dirty) persistCurrent();
+  return dirty;
+}
 function owns(itemId){ return !!(profile && profile.ownedItems.some(o=>o.itemId===itemId)); }
 function ownsSet(id){ return !!(profile && profile.ownedOutfits.some(o=>o.outfitId===id)); }
 function purchasedAtOf(itemId){
