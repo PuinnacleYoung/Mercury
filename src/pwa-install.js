@@ -13,11 +13,15 @@
   const hit = r => new RegExp(r, 'i').test(UA);
   const IS_IOS = /iPhone|iPad|iPod/i.test(UA);
   const IS_ANDROID = /Android/i.test(UA);
+  const IS_MOBILE = IS_IOS || IS_ANDROID || /Mobile|Windows Phone/i.test(UA);
+  const IS_DESKTOP = !IS_MOBILE;                              // PC 上的安装路径完全不同（地址栏 ⊕ / ··· → 应用）
+  const IS_SECURE = location.protocol === 'https:' ||
+    ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const HTTPS_URL = 'https://puinnacleyoung.github.io/Mercury/';   // 能装的 https 版（服务器裸 IP 是 http，浏览器禁止安装 PWA）
   const IS_STANDALONE =
     (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
     (window.navigator.standalone === true);
-  const CAN_SW = ('serviceWorker' in navigator) &&
-    (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const CAN_SW = ('serviceWorker' in navigator) && IS_SECURE;
   const DISMISS_KEY = 'mer_pwa_dismiss_v3';      // v3：存时间戳，只闭嘴 7 天（v2 是 'gone' 永久，点一次就再也见不着——陛下找不着按钮的元凶）
   const INSTALLED_KEY = 'mer_pwa_installed_v1';
   const DISMISS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -111,6 +115,11 @@
   .mer-pwa-modal .steps{text-align:left;background:#f6f1fb;border-radius:14px;
     padding:12px 14px;margin:12px 0;line-height:1.85;font-size:14px;color:#4a4360}
   .mer-pwa-modal .steps b{color:#7f66c4}
+  .mer-pwa-modal .warn{display:block;text-align:left;background:#fdeaea;border:1px solid #f5c2c2;
+    border-radius:12px;padding:10px 12px;margin:10px 0;font-size:13px;color:#a33;line-height:1.7}
+  .mer-pwa-modal .warn b{color:#c0392b}
+  .mer-pwa-modal .gohttps{display:block;width:100%;margin-top:8px;padding:10px;border-radius:10px;
+    border:0;background:#c0392b;color:#fff;font-weight:700;font-size:13px;cursor:pointer}
   .mer-pwa-modal .tip{text-align:left;background:#fff6e8;border-radius:12px;
     padding:10px 12px;margin:10px 0;font-size:13px;color:#8a6a3a;line-height:1.7}
   .mer-pwa-modal .primary{display:block;width:100%;padding:13px 20px;border-radius:14px;
@@ -204,6 +213,7 @@
       <div class="hero"></div>
       <h3>装到桌面 · 去掉顶部页签</h3>
       <p id="merPwaSub"></p>
+      <div class="warn" id="merPwaWarn" style="display:none"></div>
       <div class="steps" id="merPwaSteps"></div>
       <div class="tip" id="merPwaTip"></div>
       <button class="primary" id="merPwaPrimary"></button>
@@ -276,6 +286,31 @@
   };
 
   function renderSteps() {
+    /* http 裸 IP 警示：浏览器硬性禁止在非安全上下文装 PWA，先给跳转 https 的活路 */
+    const warnEl = $('merPwaWarn');
+    if (!IS_SECURE) {
+      warnEl.style.display = '';
+      warnEl.innerHTML = '⚠️ 当前网址是 <b>http</b>（裸 IP），浏览器<b>禁止安装</b>网页应用，装不了不是你的问题。' +
+        '<button class="gohttps" id="merPwaGoHttps">🌐 改用 https 版再装（GitHub Pages）→</button>';
+      warnEl.querySelector('#merPwaGoHttps').onclick = () => { location.href = HTTPS_URL; };
+    } else warnEl.style.display = 'none';
+
+    /* PC 分支：Edge/Chrome 电脑版的安装入口在地址栏和 ··· 菜单，跟手机完全两码事 */
+    if (IS_DESKTOP && !deferred) {
+      subEl.innerHTML = '电脑上（Edge / Chrome）这样装：';
+      stepsEl.innerHTML =
+        `① 看地址栏右侧（⭐ 收藏图标旁边）有没有 <b>⊕ 安装</b> 小图标，点它 → <b>安装</b><br>` +
+        `② 没有就点右上角 <b>···</b> → <b>应用</b> → <b>将此站点安装为应用</b><br>` +
+        `③ 弹窗勾选 <b>桌面快捷方式</b> → <b>安装</b>，桌面出现「拾光·澈屿」<br>` +
+        `<span style="color:#8a7fa8">双击桌面图标打开 = 独立窗口，没有地址栏页签</span>`;
+      tipEl.innerHTML = (!IS_SECURE
+        ? `上面的 ⊕ 图标<b>只在 https 页面出现</b>——先点上面的红色按钮切到 https 版再找。`
+        : `如果 ⊕ 图标一直不出现，按 <b>Ctrl+F5</b> 强刷一次再试。`);
+      tipEl.style.display = '';
+      primary.textContent = '我知道了';
+      return;
+    }
+
     if (IS_IOS || B.kind === 'ios') {
       subEl.innerHTML = 'iPhone / iPad 请按下面三步：';
       stepsEl.innerHTML =
