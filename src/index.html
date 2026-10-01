@@ -340,6 +340,28 @@ input{font-family:inherit;outline:none;}
 .wb-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .wb-head h2{margin:0;font-size:22px;letter-spacing:1px;font-weight:800;}
 .wb-head .wb-title-sub{font-size:12px;color:var(--c-sub);margin-left:10px;font-weight:400;}
+/* ===== 周边小店：左边预览、右边橱窗（骨架照衣橱，配色复用同一套变量） ===== */
+#merchshop-screen{background:linear-gradient(135deg,var(--c-bg) 0%,var(--c-bg2) 50%,var(--c-line) 100%);}
+.mc-preview{flex:1.08;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow:hidden;border-right:1px solid rgba(var(--accent-rgb),.12);background:radial-gradient(circle at 50% 42%,rgba(255,253,252,.95) 0%,rgba(233,225,245,.88) 52%,rgba(214,200,238,.78) 100%);backdrop-filter:blur(8px);}
+.mc-stage{width:min(276px,66%);aspect-ratio:3/4;border-radius:18px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.62);box-shadow:0 10px 30px rgba(var(--shadow-rgb),.18);overflow:hidden;}
+.mc-stage img{width:100%;height:100%;object-fit:contain;}
+.mc-info{margin-top:18px;text-align:center;}
+.mc-info .mc-name{font-size:19px;font-weight:800;letter-spacing:.5px;}
+.mc-info .mc-meta{font-size:12px;color:var(--c-sub);margin-top:6px;line-height:1.7;}
+.mc-grade{display:inline-block;font-size:12px;font-weight:800;padding:3px 11px;border-radius:999px;margin-top:9px;}
+.mc-grade.g-S{background:#FCEBEB;color:#A32D2D;}
+.mc-grade.g-A{background:#FAEEDA;color:#854F0B;}
+.mc-grade.g-B{background:#E6F1FB;color:#185FA5;}
+.mc-grade.g-C{background:#F1EFE8;color:#5F5E5A;}
+.mc-buy{margin-top:16px;padding:11px 32px;border-radius:999px;border:none;font-size:14px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));cursor:pointer;box-shadow:0 8px 20px var(--gold-glow);}
+.mc-buy[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.mc-subs{display:flex;flex-wrap:wrap;gap:6px;padding:0 24px 12px;}
+.mc-sub{padding:6px 13px;border-radius:999px;border:1px solid var(--glass-border);background:rgba(var(--glass-rgb),.6);font-size:12px;font-weight:700;color:var(--c-sub);cursor:pointer;transition:all .2s;}
+.mc-sub.on{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;}
+.mc-filter{display:flex;align-items:center;gap:6px;}
+.mc-chip{padding:5px 12px;border-radius:999px;border:1px solid var(--glass-border);background:transparent;font-size:12px;font-weight:800;color:var(--c-sub);cursor:pointer;}
+.mc-chip.on{background:var(--c-ink);color:var(--c-bg);border-color:transparent;}
+.mc-tag{position:absolute;top:9px;left:9px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.32);color:#fff;}
 .wb-back{padding:10px 22px;border-radius:999px;background:rgba(var(--glass-rgb),.72);backdrop-filter:blur(8px);border:1px solid var(--glass-border);color:var(--c-ink);font-size:14px;font-weight:700;transition:all .2s;letter-spacing:.5px;}
 .wb-back:hover{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 4px 14px var(--gold-glow);}
 .wb-back:active{transform:scale(.95);}
@@ -1353,6 +1375,31 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
   </div>
 </div>
 
+<!-- ===== 周边小店（风皇娱乐 · 建筑地块进入，左预览 + 右橱窗） ===== -->
+<div id="merchshop-screen" class="screen hidden">
+  <div class="wardrobe-layout">
+    <div class="mc-preview">
+      <button class="wb-back" id="mc-back" style="position:absolute;left:16px;top:16px;">← 返回地图</button>
+      <div class="mc-stage" id="mc-stage"><span style="font-size:46px">🎁</span></div>
+      <div class="mc-info" id="mc-info">
+        <div class="mc-name">还没挑中东西</div>
+        <div class="mc-meta">右边橱窗点一件，这边看大图</div>
+      </div>
+    </div>
+    <div class="wb-side">
+      <div class="cat-col" id="mc-cat-col"></div>
+    </div>
+    <div class="wb-panel">
+      <div class="wb-head">
+        <h2>🎁 周边小店<span class="wb-title-sub" id="mc-sub-title">货架还是空的</span></h2>
+        <div class="mc-filter" id="mc-filter"></div>
+      </div>
+      <div class="mc-subs" id="mc-subs"></div>
+      <div class="item-grid" id="mc-grid"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 塔罗占卜 ===== -->
 <div id="tarot-screen" class="screen hidden">
   <div class="tarot-wrap">
@@ -1663,12 +1710,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20261001c"></script>
-<script src="./legacy-body-v4.js?v=20261001c"></script>
+<script src="./body-template.js?v=20261001d"></script>
+<script src="./legacy-body-v4.js?v=20261001d"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20261001c"></script>
-<script src="./media-store.js?v=20261001c"></script>
-<script src="./net-client.js?v=20261001c"></script>
+<script src="./map-placeholders.js?v=20261001d"></script>
+<script src="./media-store.js?v=20261001d"></script>
+<script src="./net-client.js?v=20261001d"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -1733,7 +1780,7 @@ setTimeout(()=>{
     const ov = document.getElementById('landscape-overlay');
     const stuck = !!(ov && !ov.classList.contains('hidden'));
     if(stuck) ov.classList.add('hidden');
-    const ids = ['auth-screen','nickname-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen','bank-screen'];
+    const ids = ['auth-screen','nickname-screen','wardrobe-screen','merchshop-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen','bank-screen'];
     const any = ids.some(function(id){ const el=document.getElementById(id); return el && !el.classList.contains('hidden'); });
     if(any && !stuck) return;                       // 一切正常，别打扰陛下
     if(!any){
@@ -2858,7 +2905,7 @@ function uiModal(opts){
   });
 }
 function showScreen(id){
-  ['auth-screen','nickname-screen','wardrobe-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen','bank-screen'].forEach(s=>$(s).classList.add('hidden'));
+  ['auth-screen','nickname-screen','wardrobe-screen','merchshop-screen','tarot-screen','map-screen','admin-hub-screen','mergeshop-screen','bank-screen'].forEach(s=>$(s).classList.add('hidden'));
   $(id).classList.remove('hidden');
   /* 大厅与关卡共用同一份 HUD（名字卡片 / 货币 / 左侧功能栏 / 抽屉）。
      其它全屏面板（衣橱 / 塔罗 / 登录 / 中枢）一律收起，避免"UI 被吞"或"面板上糊一层按钮"。 */
@@ -4699,6 +4746,11 @@ document.querySelectorAll('.drawer-close').forEach(b=>b.onclick=()=>{
 });
 /* 衣橱「返回」：一律回到进来时的那张地图（旧大厅已下线） */
 $('wb-back').onclick = ()=>{
+  panelReturn = 'map';
+  if(mapState.currentId){ backToMap(); return; }
+  enterLobby();
+};
+$('mc-back').onclick = ()=>{
   panelReturn = 'map';
   if(mapState.currentId){ backToMap(); return; }
   enterLobby();
@@ -7006,6 +7058,7 @@ const PANEL_KINDS = [
   { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
   { id:'mergeshop',       name:'🍬 五宝的小卖部', em:'🍬', zones:null },
   { id:'bank',            name:'🏦 银行',         em:'🏦', zones:null },
+  { id:'merch',           name:'🎁 周边小店',     em:'🎁', zones:null },
 ];
 function panelInfo(id){ return PANEL_KINDS.filter(p=>p.id===id)[0] || null; }
 function panelName(id){ const p = panelInfo(id); return p ? p.name : (id||'（未设置）'); }
@@ -7353,6 +7406,20 @@ function migrateMaps(d){
       migrationLog.push('BANK_BUILDING_SEEDED:' + center.id);
     }
   }
+
+  /* ★ 周边小店补种：在「风皇娱乐」关卡里塞一个 panel 地块（panelId='merch'）。
+     风皇娱乐是既有关卡（之前 nodes 是空的），不新建关卡，只按名字匹配补一个建筑地块，
+     玩家不用重导地图——下次进游戏小店就自己长出来了。 */
+  Object.values(d.maps).forEach(m=>{
+    if(!m || !isLevelNode(m) || !/风皇/.test(m.name||'')) return;
+    if(!Array.isArray(m.nodes)) m.nodes = Array.isArray(m.entities) ? m.entities : [];
+    const hasMerch = m.nodes.some(n=>n && (n.panelId==='merch' || n.panel==='merch'));
+    if(!hasMerch){
+      m.nodes.push({ id:'merch_counter_' + m.id, kind:'tile', name:'周边小店', icon:'🎁', x:0.5, y:0.5, w:0.34, h:0.24, img:null, action:'panel', panelId:'merch', panel:'merch', triggerMode:'click', tip:'周边小店，进去挑点带得走的' });
+      m.entities = m.nodes;
+      migrationLog.push('MERCH_SHOP_SEEDED:' + m.id);
+    }
+  });
 
   Object.values(d.maps).forEach(child=>{const parent=child&&child.parent?d.maps[child.parent]:null;if(parent&&isMapNode(parent))ensureNavTile(parent,child,0.5,0.5,isMapNode(child)?'🗺️':'🎯');});
   Object.values(d.maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles||[];});
@@ -7739,11 +7806,206 @@ function openPanelNode(node){
   if(kind==='wish'){toast('⛲ 许愿池还在开发中');return;}
   if(kind==='mergeshop'){enterMergeShop();return;}
   if(kind==='bank'){enterBank();return;}
+  if(kind==='merch'){enterMerchShop();return;}
   // 三档衣橱：按商店分区自动过滤
   wbZoneFilter = (info && info.zones) ? info.zones.slice() : null;
   wbTitle = (info ? info.em + ' ' : '') + label;
   showScreen('wardrobe-screen');
   toast((info ? info.em + ' ' : '') + label);
+}
+
+/* ================= 周边小店（风皇娱乐 · 建筑地块进入） =================
+   布局照衣橱：**左边预览、右边橱窗**。
+
+   品类分两级，按「类目族」归类（不是制作优先级）：
+     小卡 → 小卡 / 小卡膜 / 小卡套 / 卡砖 / 卡册
+     亚克力 → 立牌 / 挂件 / 亚克力砖 …
+   每件商品的**定级（S/A/B/C）与价格**全在「周边制作引擎」里由陛下自己填，
+   这里只负责展示、按级别筛选、以及购买。 */
+const LS_MERCH_SHOP  = 'merch_shop_v1';       // 货架（品类树 + 商品），制作引擎写，走云端 merch 槽
+const LS_MERCH_MINE  = 'merch_inventory_v1';  // 玩家已购（个人数据，绝不上云）
+const MERCH_GRADES   = ['S','A','B','C'];
+/* 默认类目树（制作引擎一旦发布过，就以引擎那份为准） */
+const MERCH_CATS_DEFAULT = [
+  { id:'card',    name:'小卡',     em:'🃏', subs:[
+    {id:'card',name:'小卡'},{id:'card_film',name:'小卡膜'},{id:'card_sleeve',name:'小卡套'},
+    {id:'card_brick',name:'卡砖'},{id:'card_binder',name:'卡册'}] },
+  { id:'acrylic', name:'亚克力',   em:'🎐', subs:[
+    {id:'stand',name:'立牌'},{id:'keychain',name:'挂件'},{id:'acrylic_brick',name:'亚克力砖'},
+    {id:'coaster',name:'杯垫'},{id:'phone_stand',name:'手机支架'}] },
+  { id:'badge',   name:'吧唧',     em:'🏅', subs:[
+    {id:'badge',name:'吧唧'},{id:'badge_set',name:'吧唧套装'},{id:'enamel',name:'珐琅徽章'}] },
+  { id:'paper',   name:'纸制品',   em:'📄', subs:[
+    {id:'postcard',name:'明信片'},{id:'polaroid',name:'拍立得'},{id:'shikishi',name:'色纸'},
+    {id:'ticket',name:'票根'},{id:'bookmark',name:'书签'},{id:'poster',name:'海报'},
+    {id:'calendar',name:'日历'},{id:'sticker',name:'贴纸'},{id:'clear_card',name:'透卡'}] },
+  { id:'cloth',   name:'布艺软周', em:'🧸', subs:[
+    {id:'pillow',name:'抱枕'},{id:'dakimakura',name:'等身抱枕'},{id:'tshirt',name:'T恤'},
+    {id:'hoodie',name:'卫衣'},{id:'tote',name:'帆布袋'},{id:'towel',name:'毛巾'},{id:'plush',name:'毛绒玩偶'}] },
+  { id:'pack',    name:'包装收纳', em:'📦', subs:[
+    {id:'opp',name:'OPP自粘袋'},{id:'head_bag',name:'卡头卡袋'},{id:'hard_sleeve',name:'硬卡套'},
+    {id:'toploader',name:'卡砖Toploader'},{id:'giftbox',name:'礼盒'},{id:'planebox',name:'飞机盒'}] },
+];
+let mcCat = null, mcSub = null, mcGrade = 'all', mcPick = null;
+
+function merchShopData(){
+  let d = null;
+  try{ d = JSON.parse(localStorage.getItem(LS_MERCH_SHOP) || 'null'); }catch(e){}
+  if(!d || !Array.isArray(d.items)) d = { cats: MERCH_CATS_DEFAULT.slice(), items: [] };
+  if(!Array.isArray(d.cats) || !d.cats.length) d.cats = MERCH_CATS_DEFAULT.slice();
+  return d;
+}
+function merchMine(){
+  try{ const a = JSON.parse(localStorage.getItem(LS_MERCH_MINE) || '[]'); return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function merchSaveMine(a){
+  try{ localStorage.setItem(LS_MERCH_MINE, JSON.stringify(a)); }
+  catch(e){ toast('⚠️ 背包写不进去，浏览器存储可能满了'); }
+}
+
+function enterMerchShop(){
+  mcCat = null; mcSub = null; mcGrade = 'all'; mcPick = null;
+  if(!profile) refreshProfile();
+  showScreen('merchshop-screen');
+  buildMerchShop();
+}
+
+function buildMerchShop(){
+  const d = merchShopData();
+  const mine = merchMine();
+  if(!mcCat || !d.cats.some(c=>c.id===mcCat)) mcCat = (d.cats[0]||{}).id || null;
+  const cat  = d.cats.filter(c=>c.id===mcCat)[0] || null;
+  const subs = (cat && cat.subs) || [];
+  if(!mcSub || !subs.some(s=>s.id===mcSub)) mcSub = subs.length ? subs[0].id : 'all';
+
+  /* 左：一级类目竖列 */
+  const col = $('mc-cat-col'); if(col){
+    col.innerHTML = '';
+    d.cats.forEach(c=>{
+      const n = d.items.filter(it=>it.catId===c.id).length;
+      const b = document.createElement('button');
+      b.className = 'cat-btn' + (c.id===mcCat ? ' on' : '');
+      b.innerHTML = '<span class="c-ico">' + (c.em||'🎁') + '</span><span class="c-name">' + escapeHtml(c.name||'') + '</span><span class="c-count">' + n + '</span>';
+      b.onclick = ()=>{ mcCat = c.id; mcSub = null; mcPick = null; buildMerchShop(); };
+      col.appendChild(b);
+    });
+  }
+
+  /* 右：二级子类菜单（同类目下的细分，比如小卡下面的膜和套） */
+  const subBox = $('mc-subs'); if(subBox){
+    subBox.innerHTML = '';
+    subs.forEach(s=>{
+      const b = document.createElement('button');
+      b.className = 'mc-sub' + (s.id===mcSub ? ' on' : '');
+      b.textContent = s.name;
+      b.onclick = ()=>{ mcSub = s.id; mcPick = null; buildMerchShop(); };
+      subBox.appendChild(b);
+    });
+  }
+
+  /* 右：级别筛选（全部 / S / A / B / C） */
+  const fBox = $('mc-filter'); if(fBox){
+    fBox.innerHTML = '';
+    [['all','全部']].concat(MERCH_GRADES.map(g=>[g,g+' 级'])).forEach(p=>{
+      const b = document.createElement('button');
+      b.className = 'mc-chip' + (mcGrade===p[0] ? ' on' : '');
+      b.textContent = p[1];
+      b.onclick = ()=>{ mcGrade = p[0]; buildMerchShop(); };
+      fBox.appendChild(b);
+    });
+  }
+
+  /* 右：商品橱窗 */
+  const grid = $('mc-grid'); if(!grid) return;
+  grid.innerHTML = '';
+  let list = d.items.filter(it=>it.catId===mcCat);
+  if(mcSub && mcSub !== 'all') list = list.filter(it=>(it.subId || (subs[0]&&subs[0].id))===mcSub);
+  if(mcGrade !== 'all')        list = list.filter(it=>(it.grade || 'C')===mcGrade);
+
+  const subTitle = $('mc-sub-title');
+  if(subTitle) subTitle.textContent = list.length
+    ? ('共 ' + list.length + ' 件 · 背包里已有 ' + mine.length + ' 件')
+    : '这里还没有货';
+
+  if(!list.length){
+    const tip = document.createElement('div');
+    tip.style.cssText = 'grid-column:1/-1;text-align:center;padding:44px 20px;color:var(--c-sub);font-size:13px;line-height:1.8;';
+    tip.innerHTML = '货架上还空着。<br>去「🎁 周边制作引擎」做好周边，在上架区填好<b>定级</b>和<b>价格</b>再发布～';
+    grid.appendChild(tip);
+    mcShowPick(null);
+    return;
+  }
+  list.forEach(it=>{
+    const g = it.grade || 'C';
+    const cell = document.createElement('div');
+    cell.className = 'item' + (mcPick && mcPick.id===it.id ? ' equipped' : '');
+    const sw = document.createElement('div'); sw.className = 'swatch';
+    if(it.preview){
+      sw.style.backgroundImage = 'url("' + it.preview + '")';
+      sw.style.backgroundSize = 'contain'; sw.style.backgroundPosition = 'center'; sw.style.backgroundRepeat = 'no-repeat';
+    } else {
+      sw.textContent = (cat && cat.em) || '🎁';
+      sw.style.cssText += 'font-size:26px;display:flex;align-items:center;justify-content:center;';
+    }
+    const nm = document.createElement('div'); nm.className = 'iname'; nm.textContent = it.name || '未命名';
+    const tg = document.createElement('div'); tg.className = 'mc-tag g-' + g; tg.textContent = g;
+    cell.appendChild(sw); cell.appendChild(nm); cell.appendChild(tg);
+    cell.onclick = ()=>{ mcPick = it; mcShowPick(it); buildMerchShop(); };
+    grid.appendChild(cell);
+  });
+  if(!mcPick || !list.some(x=>x.id===mcPick.id)) mcShowPick(list[0]);
+  else mcShowPick(mcPick);
+}
+
+/* 左边预览：大图 + 定级 + 价格 + 买 */
+function mcShowPick(it){
+  const stage = $('mc-stage'), info = $('mc-info');
+  if(!stage || !info) return;
+  mcPick = it;
+  if(!it){
+    stage.innerHTML = '<span style="font-size:46px">🎁</span>';
+    info.innerHTML = '<div class="mc-name">还没挑中东西</div><div class="mc-meta">右边橱窗点一件，这边看大图</div>';
+    return;
+  }
+  stage.innerHTML = it.preview
+    ? '<img src="' + it.preview + '" alt="' + escapeHtml(it.name||'') + '" onerror="this.style.display=\'none\'">'
+    : '<span style="font-size:46px">🎁</span>';
+  const price = Number(it.price || 0);
+  const g     = it.grade || 'C';
+  const owned = merchMine().filter(x=>x.productId===it.id).length;
+  info.innerHTML =
+    '<div class="mc-name">' + escapeHtml(it.name || '未命名') + '</div>' +
+    '<div><span class="mc-grade g-' + g + '">' + g + ' 级</span></div>' +
+    '<div class="mc-meta">' + escapeHtml(it.desc || (it.subName || '')) +
+    '<br>单价 <b>' + price + '</b> 金币' + (owned ? ' · 已拥有 ' + owned + ' 件' : '') + '</div>';
+  const buy = document.createElement('button');
+  buy.className = 'mc-buy';
+  buy.textContent = owned ? '🛒 再买一件' : '🛒 买下';
+  buy.onclick = ()=>mcBuy(it);
+  info.appendChild(buy);
+}
+
+/* 买：扣金币 → 进背包（merch_inventory_v1，个人数据不上云） */
+function mcBuy(it){
+  if(!it) return;
+  if(!profile) refreshProfile();
+  const price = Number(it.price || 0);
+  if(!profile.currency) profile.currency = { coin:0, diamond:0, pearl:0 };
+  const cur = profile.currency;
+  if((cur.coin || 0) < price){ toast('💸 金币不够，还差 ' + (price - (cur.coin||0))); return; }
+  cur.coin -= price;
+  saveProfile(profile); renderCoins();
+  const mine = merchMine();
+  mine.push({
+    uid:'m' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    productId:it.id, name:it.name, catId:it.catId, subId:it.subId,
+    grade:it.grade||'C', preview:it.preview||'', price:price,
+    gameSlot:it.gameSlot||'', obtainedAt:Date.now()
+  });
+  merchSaveMine(mine);
+  toast('🎁 已入手「' + (it.name||'周边') + '」，进背包啦');
+  buildMerchShop();
 }
 
 /* ---- 关卡底部提示 + 地图卡片的入口目标 ----
@@ -8861,8 +9123,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20261001c" defer></script>
-<script src="./responsive.js?v=20261001c" defer></script>
-<script src="./pwa-install.js?v=20261001c" defer></script>
+<script src="./orientation-lock.js?v=20261001d" defer></script>
+<script src="./responsive.js?v=20261001d" defer></script>
+<script src="./pwa-install.js?v=20261001d" defer></script>
 </body>
 </html>
