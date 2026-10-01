@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-page-node-id="mDVl6h5iLUGMs2kIGCX8U9">
 <head data-page-node-id="ft5pobqprZdgB7UfwX7zN6">
 <meta charset="UTF-8" data-page-node-id="bzKZq9aDuQe2ovmp4AAL7K">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" data-page-node-id="7AfaqozNlFHW3yheUhutp6">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" data-page-node-id="7AfaqozNlFHW3yheUhutp6">
 <meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="s8fixsSFfll1p2TgvEEh2U">
 <title>拾光·澈屿</title>
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1081,7 +1081,10 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 }
 
 /* ---- 运行时通用 HUD（大厅 + 关卡共用一张，位置尺寸完全一致） ---- */
-#runtime-hud{position:fixed;inset:0;z-index:60;pointer-events:none;}
+/* #runtime-hud 用 --vv-* 钉在「可视视口」上：小米/部分安卓浏览器横屏切换地址栏、
+   状态栏收展后，布局视口和可视视口会错位几十像素 —— 表现就是顶部 HUD 整条被吞。
+   变量由下方「视口自愈」JS 实时维护；没有 JS 或数值正常时回落 inset:0 的行为。 */
+#runtime-hud{position:fixed;top:var(--vv-top,0px);left:var(--vv-left,0px);width:var(--vv-w,100%);height:var(--vv-h,100%);z-index:60;pointer-events:none;}
 #runtime-hud>*{pointer-events:auto;}
 
 /* ---- 主游戏界面：HUD / 货币 / 左按钮列 / 摇杆 ---- */
@@ -7851,12 +7854,13 @@ function seedMaps(){
   const world=add(map('world-hub','世界地图',null,'#d4dff7',[]));
   const home=add(map('home','家园','world-hub','#efe8d2',[]));
   const school=add(map('school','学校','home','#cfe8cf',[]));
-  /* 四家门店各占一个铺位：普通 / 高级 / 贵宾 / 限时（限时是独立门店，不并进别家） */
+  /* 默认地图只摆三家铺：普通 / 高级 / 贵宾。
+     限时（wardrobeLimited）是独立门店接口（PANEL_KINDS 保留），但陛下钦定默认地图不摆第四间；
+     想开限时店在《地图编辑引擎》里放一个 panelId=wardrobeLimited 的地块即可。 */
   add(level('shop','服装店','home','#f6e6ef',[
-    entity('普通服装店','👗',0.14,0.42,0.18,0.20,{action:'panel',panelId:'wardrobe',panel:'wardrobe',tip:'推开玻璃门，进去逛逛'}),
-    entity('高级时装店','💎',0.38,0.42,0.18,0.20,{action:'panel',panelId:'wardrobePremium',panel:'wardrobePremium',tip:'高级区，请轻声细语'}),
-    entity('贵宾区服装店','🦪',0.62,0.42,0.18,0.20,{action:'panel',panelId:'wardrobeVip',panel:'wardrobeVip',tip:'贵宾专属，欢迎光临'}),
-    entity('限时服装店','⏰',0.86,0.42,0.18,0.20,{action:'panel',panelId:'wardrobeLimited',panel:'wardrobeLimited',tip:'限时上架，过时不候'})
+    entity('普通服装店','👗',0.20,0.42,0.18,0.20,{action:'panel',panelId:'wardrobe',panel:'wardrobe',tip:'推开玻璃门，进去逛逛'}),
+    entity('高级时装店','💎',0.50,0.42,0.18,0.20,{action:'panel',panelId:'wardrobePremium',panel:'wardrobePremium',tip:'高级区，请轻声细语'}),
+    entity('贵宾区服装店','🦪',0.80,0.42,0.18,0.20,{action:'panel',panelId:'wardrobeVip',panel:'wardrobeVip',tip:'贵宾专属，欢迎光临'})
   ],{allowWorldMap:false}));
   add(level('library','图书馆','school','#e6ecf7',[entity('书架','📚',0.5,0.40,0.34,0.20)]));
   add(level('classroom','阶梯教室','school','#f2ead6',[entity('讲台','🎓',0.5,0.40,0.30,0.18)]));
@@ -9665,6 +9669,40 @@ if(window.__storageFallback){
   fatalBar('当前环境<b>禁用了本地存储</b>（隐私/无痕模式、或 file:// 直开会触发），'
     + '本局能玩，但<b>账号与进度不会保存</b>。' + protocolTip());
 }
+</script>
+<!-- 📱 视口自愈：部分安卓浏览器（小米/MIUI 内核为主）横屏切换、地址栏/状态栏收展后，
+     布局视口与可视视口会错位几十像素且不重排 —— 顶部 HUD（fixed）被整条抬出屏。
+     这里把 #runtime-hud 的 top/left/width/height 实时钉到 visualViewport 的可视矩形上，
+     没缩放却错位时顺手 scrollTo 复位。旋转画面模式（body 带 transform）下不干预。 -->
+<script>
+(function(){
+  var vv = window.visualViewport;
+  if(!vv) return;
+  var root = document.documentElement.style;
+  function heal(){
+    if(window.__MER_LS_ROT){       // 旋转画面：fixed 已挂在 body 上，清理掉钉子避免打架
+      root.removeProperty('--vv-top'); root.removeProperty('--vv-left');
+      root.removeProperty('--vv-w');   root.removeProperty('--vv-h');
+      return;
+    }
+    var ox = vv.offsetLeft || 0, oy = vv.offsetTop || 0;
+    if(oy || ox){
+      if(Math.abs((vv.scale || 1) - 1) < 0.01){ try{ window.scrollTo(0, 0); }catch(e){} } // 没缩放却错位 → 复位
+      root.setProperty('--vv-top', oy + 'px');
+      root.setProperty('--vv-left', ox + 'px');
+      root.setProperty('--vv-w', vv.width + 'px');
+      root.setProperty('--vv-h', vv.height + 'px');
+    }else{
+      root.removeProperty('--vv-top'); root.removeProperty('--vv-left');
+      root.removeProperty('--vv-w');   root.removeProperty('--vv-h');
+    }
+  }
+  vv.addEventListener('scroll', heal);
+  vv.addEventListener('resize', heal);
+  window.addEventListener('resize', heal);
+  window.addEventListener('orientationchange', function(){ setTimeout(heal, 60); setTimeout(heal, 400); });
+  heal();
+})();
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
 <script src="./orientation-lock.js?v=20261001k" defer></script>

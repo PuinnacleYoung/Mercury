@@ -209,13 +209,16 @@
       b.style.position = 'fixed';
       b.style.top = '0';
       b.style.left = '0';
-      b.style.width = '100vh';          // 逻辑宽 = 物理高
-      b.style.height = '100vw';         // 逻辑高 = 物理宽
+      /* ⚠️ 不要用 100vh/100vw：那是「地址栏收起后的最大视口」，而虚拟坐标用 clientWidth/Height
+         （可视区）。MIUI 等内核地址栏展开时两者差几十像素 → 旋转后顶部被吞一条。
+         这里统一用物理可视尺寸，resize 后 sync 会重算。 */
+      b.style.width = physH() + 'px';   // 逻辑宽 = 物理可视高
+      b.style.height = physW() + 'px';  // 逻辑高 = 物理可视宽
       b.style.margin = '0';
       b.style.boxSizing = 'border-box';
       b.style.overflow = 'auto';
       b.style.transformOrigin = 'top left';
-      b.style.transform = 'translate(100vw,0) rotate(90deg)';
+      b.style.transform = 'translate(' + physW() + 'px,0) rotate(90deg)';
       /* 刘海/圆角跟着转：竖屏顶部的安全区，转过来后落在画面左边 */
       b.style.padding = 'env(safe-area-inset-right) env(safe-area-inset-bottom) '
                       + 'env(safe-area-inset-left) env(safe-area-inset-top)';
