@@ -40,7 +40,16 @@ async function api(method, url, body){
   return j;
 }
 
-function sh(cmd, args){ return execFileSync(cmd, args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }); }
+function sh(cmd, args){
+  try{ return execFileSync(cmd, args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }); }
+  catch(e){
+    /* 某些环境里 node 派生子进程会被系统拦下（spawnSync EBUSY），git 敲不动。
+       这时可以先把结果算好喂进来：GHPUSH_LIST=ls-tree 输出文件、GHPUSH_MSG=提交信息。 */
+    if(process.env.GHPUSH_LIST && args[0] === 'ls-tree') return fs.readFileSync(process.env.GHPUSH_LIST);
+    if(process.env.GHPUSH_MSG && args[0] === 'log')      return Buffer.from(String(process.env.GHPUSH_MSG));
+    throw e;
+  }
+}
 
 (async()=>{
   // 1) 远端当前分支指向的 commit

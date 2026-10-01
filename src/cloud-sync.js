@@ -66,6 +66,23 @@
      现在提交时把配置里所有 ms: 引用读出来，转成 dataURL 一起塞进 __media__；
      拉下来时再写回各人本机的 MediaStore（id 原样保留 → 配置里的 ms:xxx 照样解析）。
      id 不变是关键：换机器也认得同一张图。 */
+  /* 素体有两种长相：引擎存档是顶层 {head,body,…}，底膜导出包多一层 {parts:{…}}。
+     编辑器 / 游戏端 / NPC 渲染都按顶层读，所以拉下来先摊平成顶层再存，
+     不然读不到任何一个部件（表现为「拉了线上素体，画面还是旧的」）。 */
+  function normalizeBody(v){
+    try{
+      var o = JSON.parse(v);
+      if(o && o.parts && !o.head){
+        var out = {};
+        Object.keys(o.parts).forEach(function(k){ out[k] = o.parts[k]; });
+        if(o.footBox) out.footBox = o.footBox;
+        if(o.animCfg) out.animCfg = o.animCfg;
+        return JSON.stringify(out);
+      }
+    }catch(e){}
+    return v;
+  }
+
   var MEDIA_KEY      = '__media__';
   var MEDIA_ONE_MAX  = 12 * 1024 * 1024;   // 单个素材上限（转 base64 之前算）
   var MEDIA_ALL_MAX  = 24 * 1024 * 1024;   // 一次提交的总上限
@@ -379,7 +396,7 @@
             '\n\n⚠️ 本机同名数据会被替换，确定继续？')) return;
         var fail = 0;
         keys.forEach(function(k){
-          try{ localStorage.setItem(k, s.items[k]); }catch(e){ fail++; }
+          try{ localStorage.setItem(k, (k === 'engine_body_v4') ? normalizeBody(s.items[k]) : s.items[k]); }catch(e){ fail++; }
         });
         if(fail){ alert('有 ' + fail + ' 项写入失败（可能是本机存储空间不够）'); return; }
         restoreMedia(s.items, function(n){
@@ -435,7 +452,7 @@
       return restoreMedia(items, function(n){ media = n; }).then(function(){
         Object.keys(items).forEach(function(k){
           if(k === MEDIA_KEY) return;
-          try{ localStorage.setItem(k, items[k]); keys.push(k); }catch(e){}
+          try{ localStorage.setItem(k, (k === 'engine_body_v4') ? normalizeBody(items[k]) : items[k]); keys.push(k); }catch(e){}
         });
         return { keys:keys, media:media };
       });

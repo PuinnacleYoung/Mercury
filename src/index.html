@@ -1663,12 +1663,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20260930a"></script>
-<script src="./legacy-body-v4.js?v=20260930a"></script>
+<script src="./body-template.js?v=20261001b"></script>
+<script src="./legacy-body-v4.js?v=20261001b"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20260930a"></script>
-<script src="./media-store.js?v=20260930a"></script>
-<script src="./net-client.js?v=20260930a"></script>
+<script src="./map-placeholders.js?v=20261001b"></script>
+<script src="./media-store.js?v=20261001b"></script>
+<script src="./net-client.js?v=20261001b"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -2347,7 +2347,14 @@ function loadEngineBody(){
   try{
     const raw = localStorage.getItem(ENG_LS.body);
     if(!raw){ engine.parts={}; engine.bodyReady=false; return; }
-    hydrateBody(JSON.parse(raw) || {});
+    let d = JSON.parse(raw);
+    /* 自救：本机这条是「导出包」格式（多一层 parts）——读不到任何部件，
+       就地摊平成引擎存档格式再存回去，省得陛下还得手动清缓存。 */
+    if(d && d.parts && !d.head){
+      d = JSON.parse(normalizeCloudBody(raw));
+      try{ localStorage.setItem(ENG_LS.body, JSON.stringify(d)); }catch(e){}
+    }
+    hydrateBody(d || {});
   }catch(e){ engine.parts={}; engine.bodyReady=false; }
 }
 /* 本地一个素体都没存过 → 直接把「内置初始素体模板」装上当主角，
@@ -7036,29 +7043,70 @@ function autoPullOnlineData(){ if(HAD_MAPS_AT_BOOT) return; pullOnlineData({ con
 /* ☁️ 云端资产库 —— 现在有真服务器了，陛下在后台「发布」的内容直接下发到每个玩家：
    进游戏时问服务器一次，哪个槽位的线上版本比本机已应用的新，就写哪个。
    记一本账 cloud_applied{槽位:版本号}，同版本不重复写，所以玩家自己的创作不会被反复冲掉。 */
+/* 🧍 素体的两种长相，必须统一成一种再存本机：
+     · 服装引擎「存档」格式（顶层）：{ head:{...}, body:{...}, …, footBox:{...} }
+     · 底膜「导出包」格式（多一层）：{ app,kind,version,parts:{...}, footBox, animCfg }
+   游戏端 / NPC 渲染 / 服装引擎全都按**顶层**去读（d[def.key]），
+   收到导出包格式就会一个部件都读不到 → bodyReady=false → 被内置素体悄悄顶掉，
+   表现就是「明明传了新底膜，拉下来还是旧的那个人」。所以落地时先摊平。 */
+function normalizeCloudBody(v){
+  try{
+    const o = JSON.parse(v);
+    if(o && o.parts && !o.head){
+      const out = {};
+      Object.keys(o.parts).forEach(k=>{ out[k] = o.parts[k]; });
+      if(o.footBox) out.footBox = o.footBox;
+      if(o.animCfg) out.animCfg = o.animCfg;
+      return JSON.stringify(out);
+    }
+  }catch(e){}
+  return v;
+}
 function applyCloudAssets(slots){
   let applied = {};
   try{ applied = JSON.parse(localStorage.getItem('cloud_applied') || '{}'); }catch(e){ applied = {}; }
-  let n = 0; const updated = [];
+  let n = 0; const updated = []; const gotSlots = [];
   for(const slot of Object.keys(slots || {})){
     const s = slots[slot];
     if(!s || !s.items) continue;
     const rev = (s.rev && s.rev.live) || 0;
     if(!rev) continue;
     if(applied[slot] === rev) continue;              // 这版已经用过，跳过
-    let wrote = 0;
+    let wrote = 0; const failed = [];
     for(const k of Object.keys(s.items)){
       if(k === '__media__') continue;                // 素材本体走 IndexedDB，不进 localStorage
-      try{ localStorage.setItem(k, s.items[k]); wrote++; }catch(e){}
+      try{ localStorage.setItem(k, (k === 'engine_body_v4') ? normalizeCloudBody(s.items[k]) : s.items[k]); wrote++; }
+      catch(e){
+        /* 以前这行是空的 —— 浏览器存储写满时（素体 651KB + 地图 932KB 很吃空间）
+           数据悄无声息丢掉，陛下只看到「还是旧的」，查都没处查。现在大声喊出来。 */
+        failed.push(k);
+        console.warn('[cloud] 写不进本机存储：' + k + '（' + (e && e.name) + '）');
+      }
     }
     try{ restoreCloudMedia(s.items); }catch(e){}      // 把 PNG/视频写回本机素材库（异步，不阻塞）
-    if(wrote){ applied[slot] = rev; n += wrote; updated.push((s.name || slot) + ' v' + rev); }
+    if(failed.length){
+      try{ toast('⚠️ 本机存储写不下：' + failed.join('、') + ' 没能拉下来（清理浏览器数据再试）'); }catch(e){}
+    }
+    if(wrote && !failed.length){ applied[slot] = rev; n += wrote; gotSlots.push(slot); updated.push((s.name || slot) + ' v' + rev); }
   }
   if(n){
     try{ localStorage.setItem('cloud_applied', JSON.stringify(applied)); }catch(e){}
     _mapsCache = null;
     console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
     try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
+    /* 🧍 素体 / 服装件 / 动画被云端换了 → **立刻重灌内存**，不用刷新页面。
+       以前只写 localStorage：数据明明已经躺在浏览器里了，可内存里 engine.parts
+       还是旧的那一份，画面一动不动 —— 表现就是「拉了云端，素体还是旧的」。 */
+    /* body=素体 / outfit=服装件 / misc=动画裁边 / npc=NPC —— 这些槽一变，内存里那份就得跟着换 */
+    const ENGINE_SLOTS = ['body','outfit','misc','npc'];
+    if(gotSlots.some(x=>ENGINE_SLOTS.indexOf(x) >= 0)){
+      try{
+        if(typeof refreshEngineData === 'function'){
+          refreshEngineData();
+          console.log('[cloud] 素体/服装已重新载入（bodyReady=' + (typeof engine !== 'undefined' && engine.bodyReady) + '）');
+        }
+      }catch(e){ console.warn('[cloud] 重灌素体失败', e); }
+    }
     /* 🪪 登录页配置被云端刷新了 → 立刻重读 + 重画。
        以前只写 localStorage、不重读：新设备进来时云端还没到（先画了内置的深蓝默认卡片），
        等云端到了也没人去刷新，陛下就一直盯着那张没素材的默认页，
@@ -7104,13 +7152,16 @@ function restoreCloudMedia(items){
 function autoPullCloudAssets(){
   if(!window.Net) return;
   Net.on('assetData', m=>{ try{ applyCloudAssets(m.slots); }catch(e){ console.warn('cloud-assets', e); } });
-  /* 先单点要一次「登录页」槽（就几 KB，一两百毫秒就到），再要全量。
-     以前一口气拉全量（地图 + 服装 + 素体好几 MB），新设备要等好几秒才拿到登录页配置，
-     登录页早就按内置默认画完了 —— 这就是「新设备先看到那张深蓝没素材的登录页」的根因。 */
+  /* **一个槽一帧、按急用程度排队**，别再一口气要全量。
+     全量那一帧有 1.6MB（素体 651KB + 地图 932KB），在服务器上行只有 3M 的线路上要传十几秒，
+     陛下等不到就以为"没传成功"。现在登录页 7KB 秒到、素体单独一帧随后就到，
+     地图那些大块排后面慢慢下，谁先到谁先生效。 */
+  const PULL_ORDER = ['login','body','outfit','npc','tarot','misc','map'];
   Net.connect().then(()=>{
-    try{ Net.assetPull('login'); }catch(e){}
-    try{ Net.assetPull(''); }catch(e){}      // 连不上就静默，不打扰单机玩家
-  }).catch(()=>{});
+    PULL_ORDER.forEach((s, i)=>{
+      setTimeout(()=>{ try{ Net.assetPull(s); }catch(e){} }, i * 250);
+    });
+  }).catch(()=>{});   // 连不上就静默，不打扰单机玩家
 }
 
 /* ================= 地图 Schema v3 =================
@@ -8801,8 +8852,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20260930a" defer></script>
-<script src="./responsive.js?v=20260930a" defer></script>
-<script src="./pwa-install.js?v=20260930a" defer></script>
+<script src="./orientation-lock.js?v=20261001b" defer></script>
+<script src="./responsive.js?v=20261001b" defer></script>
+<script src="./pwa-install.js?v=20261001b" defer></script>
 </body>
 </html>
