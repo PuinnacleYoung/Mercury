@@ -665,7 +665,7 @@
   <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0" data-page-node-id="d4vNxJkB284Da7F22UBsMC">
 
 <!-- 内置初始素体模板：第一次打开（本地没存过素体）就自动铺上，并立刻存档，游戏端才读得到 -->
-<script src="./legacy-body-v4.js"></script>
+<script src="./legacy-body-v4.js?v=20261002a"></script>
 <script src="./body-template.js"></script>
 <script data-page-node-id="LFI6IqmhKO9GbGvCxK590t">
 /* ================= 存储兜底（隐私模式 / file:// / 禁 Cookie 时 localStorage 会抛异常） ================= */
@@ -696,16 +696,23 @@ const sessionStorage = _mkStore(window.sessionStorage);
     { id:'face',     label:'妆容',   em:'💄', layers:[
       { key:'face',  name:'妆容',   z:15, anchor:'head' } ]},
     { id:'headwear', label:'头饰',   em:'👑', layers:[
-      { key:'main',  name:'头饰',   z:26, anchor:'head' } ]},
+      { key:'main',     name:'头饰·前', z:26,  anchor:'head' },
+      { key:'mainBack', name:'头饰·后', z:-26, anchor:'head' } ]},
     { id:'earring',  label:'耳饰',   em:'💎', layers:[
       { key:'L',     name:'左耳饰', z:26, anchor:'earL' },
       { key:'R',     name:'右耳饰', z:26, anchor:'earR', mirrorOf:'L' } ]},
     { id:'backwear', label:'背饰',   em:'🪽', layers:[
-      { key:'main',  name:'背饰',   z:-10, anchor:'torso' } ]},
+      { key:'main',  name:'背饰',   z:-30, anchor:'torso' } ]},
+    /* 前后片规则：后片 z = -(对应前片 z)，以素体（z 5~7）为对称轴前后镜像。
+       结果：所有后片都被身体盖住（只露出身体轮廓外的部分），
+       且后片世界里顺序反转 —— 下衣后片盖住上衣后片，跟前方「上衣盖下衣」正好对称。 */
     { id:'top',      label:'上衣',   em:'👕', layers:[
-      { key:'body',    name:'主体', z:22, anchor:'torso' },
-      { key:'sleeveL', name:'左袖', z:23, anchor:'armL' },
-      { key:'sleeveR', name:'右袖', z:23, anchor:'armR', mirrorOf:'sleeveL' } ]},
+      { key:'body',        name:'主体·前', z:22,  anchor:'torso' },
+      { key:'bodyBack',    name:'主体·后', z:-22, anchor:'torso' },
+      { key:'sleeveL',     name:'左袖·前', z:23,  anchor:'armL' },
+      { key:'sleeveLBack', name:'左袖·后', z:-23, anchor:'armL' },
+      { key:'sleeveR',     name:'右袖·前', z:23,  anchor:'armR', mirrorOf:'sleeveL' },
+      { key:'sleeveRBack', name:'右袖·后', z:-23, anchor:'armR', mirrorOf:'sleeveLBack' } ]},
     { id:'gloves',   label:'手套',   em:'🧤', layers:[
       { key:'L',     name:'左手套', z:24, anchor:'handL' },
       { key:'R',     name:'右手套', z:24, anchor:'handR', mirrorOf:'L' } ]},
@@ -713,9 +720,12 @@ const sessionStorage = _mkStore(window.sessionStorage);
       { key:'L',     name:'左手',   z:27, anchor:'handL' },
       { key:'R',     name:'右手',   z:27, anchor:'handR' } ]},
     { id:'bottom',   label:'下衣',   em:'👖', layers:[
-      { key:'body',  name:'身体层', z:21, anchor:'hip' },
-      { key:'legL',  name:'左腿',   z:20, anchor:'legL' },
-      { key:'legR',  name:'右腿',   z:20, anchor:'legR', mirrorOf:'legL' } ]},
+      { key:'body',     name:'身体层·前', z:21,  anchor:'hip' },
+      { key:'bodyBack', name:'身体层·后', z:-21, anchor:'hip' },
+      { key:'legL',     name:'左腿·前',   z:20,  anchor:'legL' },
+      { key:'legLBack', name:'左腿·后',   z:-20, anchor:'legL' },
+      { key:'legR',     name:'右腿·前',   z:20,  anchor:'legR', mirrorOf:'legL' },
+      { key:'legRBack', name:'右腿·后',   z:-20, anchor:'legR', mirrorOf:'legLBack' } ]},
     { id:'socks',    label:'袜子',   em:'🧦', layers:[
       { key:'L',     name:'左袜',   z:18, anchor:'legL' },
       { key:'R',     name:'右袜',   z:18, anchor:'legR', mirrorOf:'L' } ]},
@@ -728,20 +738,27 @@ const sessionStorage = _mkStore(window.sessionStorage);
     'hair/front':   { w:100, h:70,  ox:0, oy:-10 },
     'hair/back':    { w:110, h:90,  ox:0, oy:10  },
     'face/face':    { w:70,  h:56,  ox:0, oy:5   },
-    'headwear/main':{ w:90,  h:52,  ox:0, oy:-30 },
+    'headwear/main':    { w:90,  h:52,  ox:0, oy:-30 },
+    'headwear/mainBack':{ w:90,  h:52,  ox:0, oy:-30 },
     'earring/L':    { w:16,  h:26,  ox:0, oy:0   },
     'earring/R':    { w:16,  h:26,  ox:0, oy:0   },
     'backwear/main':{ w:130, h:120, ox:0, oy:20  },
-    'top/body':     { w:88,  h:80,  ox:0, oy:0   },
-    'top/sleeveL':  { w:34,  h:62,  ox:0, oy:10  },
-    'top/sleeveR':  { w:34,  h:62,  ox:0, oy:10  },
+    'top/body':        { w:88,  h:80,  ox:0, oy:0   },
+    'top/bodyBack':    { w:88,  h:80,  ox:0, oy:0   },
+    'top/sleeveL':     { w:34,  h:62,  ox:0, oy:10  },
+    'top/sleeveLBack': { w:34,  h:62,  ox:0, oy:10  },
+    'top/sleeveR':     { w:34,  h:62,  ox:0, oy:10  },
+    'top/sleeveRBack': { w:34,  h:62,  ox:0, oy:10  },
     'gloves/L':     { w:26,  h:28,  ox:0, oy:0   },
     'gloves/R':     { w:26,  h:28,  ox:0, oy:0   },
     'handheld/L':   { w:32,  h:48,  ox:0, oy:10  },
     'handheld/R':   { w:32,  h:48,  ox:0, oy:10  },
-    'bottom/body':  { w:72,  h:70,  ox:0, oy:0   },
-    'bottom/legL':  { w:34,  h:60,  ox:0, oy:6   },
-    'bottom/legR':  { w:34,  h:60,  ox:0, oy:6   },
+    'bottom/body':     { w:72,  h:70,  ox:0, oy:0   },
+    'bottom/bodyBack': { w:72,  h:70,  ox:0, oy:0   },
+    'bottom/legL':     { w:34,  h:60,  ox:0, oy:6   },
+    'bottom/legLBack': { w:34,  h:60,  ox:0, oy:6   },
+    'bottom/legR':     { w:34,  h:60,  ox:0, oy:6   },
+    'bottom/legRBack': { w:34,  h:60,  ox:0, oy:6   },
     'socks/L':      { w:30,  h:40,  ox:0, oy:5   },
     'socks/R':      { w:30,  h:40,  ox:0, oy:5   },
     'shoes/L':      { w:36,  h:26,  ox:0, oy:0   },
@@ -1164,6 +1181,9 @@ const sessionStorage = _mkStore(window.sessionStorage);
     const p=parts[key]; if(!p.img) return null;
     const el=document.createElement('div'); el.className='layer-el'; el.style.zIndex=BODY_Z[key];
     el.dataset.kind='body'; el.dataset.key=key;
+    /* 服装工坊 / 衣橱预览里的素体只是参考底图：让它不吃点击。
+       否则它会整片盖住排在它下面的「后片」（后片 z 为负），陛下就点不到后片素材了。 */
+    if(stage.id!=='stage-body') el.style.pointerEvents='none';
     if(opacity!=null) el.style.opacity=opacity;
     const wrap=document.createElement('div'); wrap.className='flip-wrap';
     const img=document.createElement('img'); img.src=p.img.src; img.draggable=false; wrap.appendChild(img);
@@ -2329,9 +2349,9 @@ const sessionStorage = _mkStore(window.sessionStorage);
     else p.flipH=!p.flipH;
     saveBody(); stageMgrs.body.render();
   } };
-  /* 「重置素体」= 换回陛下找回的那套真实贴图素体（legacy-body-v4.js），
+  /* 「重置素体」= 换回官方默认素体（legacy-body-v4.js = 云端 body 槽线上版），
      而不是程序生成的初始模板 —— 之前这里写死了 applyBuiltinTemplate()，
-     陛下点了「重置」反而离找回的素体更远了。 */
+     陛下点了「重置」反而离官方素体更远了。 */
   $('bResetBody').onclick=()=>{ if(!confirm('把素体换回「找回的默认素体」？\n\n会覆盖当前素体的图片与摆放（仅素体，不影响服装库 / 套装 / 商店 / 地图）。')) return;
     localStorage.removeItem(LS.body);
     if(!applyLegacyBody()){ if(!applyBuiltinTemplate()) generateDemo(); }
@@ -3374,9 +3394,9 @@ const sessionStorage = _mkStore(window.sessionStorage);
       : `⚠️ <b>玩家视角</b>：本机还没找到玩家档案 <code>${esc(profileKey())}</code>。请先在游戏里登录一次（或购买任意服装），现在按“一件都没买”预览。`;
   }
 
-  /* 本地一个素体都没存过 → 优先铺「陛下旧版真实素体」（legacy-body-v4.js，
-     从 file:// 本地存档的 engine_body_v4 还原出来的那套带真实贴图的小人），
-     而不是程序生成的内置模板。陛下要的是自己调好的那个。 */
+  /* 本地一个素体都没存过 → 优先铺「官方默认素体」（legacy-body-v4.js，
+     = 云端 body 槽线上版本，带真实贴图），而不是程序生成的内置模板。
+     换底膜后请跑 scripts/sync-default-body.js 重新生成本文件。 */
   function applyLegacyBody(){
     if(!window.LegacyBodyV4 || !LegacyBodyV4.build) return false;
     try{

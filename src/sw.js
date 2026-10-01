@@ -1,12 +1,13 @@
 /* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
    其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v90';
+const CACHE = 'shuguang-v91';
 const PRECACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './body-template.js',
-  './legacy-body-v4.js',
+  // 素体：URL 必须带和页面一样的 ?v=，否则预缓存的版本号的键对不上（请求带 query 时 match 不命中无 query 条目）
+  './legacy-body-v4.js?v=20261002a',
   './npc-render.js',
   './map-placeholders.js',
   './media-store.js',
@@ -26,7 +27,7 @@ const PRECACHE = [
   './数据备份与迁移.html',
   './安全区方案.html',
   './数据恢复工具.html',
-  './cloud-defaults.json',
+  // cloud-defaults.json 不预缓存：650KB 且只有「数据恢复工具」用（联网即可，恢复操作本来就要求在线）
   './assets/',
   './assets/cur/cur-coin.webp',
   './assets/cur/cur-diamond.webp',

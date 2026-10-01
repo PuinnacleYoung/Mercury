@@ -141,7 +141,10 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
     <div class="tip" style="margin-top:0">
       把<b>现在这台机器上的数据</b>定为新的「云端默认」：勾好上面的项目 → 下载 <code>cloud-defaults.json</code> →
       放进仓库的 <code>src/</code> 目录并提交推送 → 所有人打开本页就能恢复到你这份。<br>
-      <b>注意：</b>这一步是拿本机数据覆盖官方默认，请确认本机这份是对的再传。
+      <b>注意：</b>这一步是拿本机数据覆盖官方默认，请确认本机这份是对的再传。<br>
+      <b>换个方式：</b>素体如果在「服装引擎 → ☁️ 提交素体 → 后台发布」走到了云端 body 槽，
+      只需在仓库跑一次 <code>node scripts/sync-default-body.js</code>（会拉线上 body 槽并重写
+      <code>legacy-body-v4.js</code> + <code>cloud-defaults.json</code>），再提交推送 —— 所有人点恢复拿到的就是新底膜。
     </div>
     <div class="btns">
       <button id="btnMakeCloud">📤 生成云端快照文件（下载 JSON）</button>
@@ -181,14 +184,14 @@ code{background:var(--accent-tint);padding:1px 6px;border-radius:5px;font-size:1
   </div>
 </div>
 
-<script src="./legacy-body-v4.js"></script>
+<script src="./legacy-body-v4.js?v=20261002a"></script>
 <script src="./body-template.js"></script>
 <script src="./npc-render.js"></script>
 <script>
 (function(){
   var R = window.NPCRenderer;
   var $ = function(id){ return document.getElementById(id); };
-  var CLOUD_URL = './cloud-defaults.json';
+  var CLOUD_URL = './cloud-defaults.json?v=20261002a';
   var CLOUD = null;
   var CLOUD_ERR = '';
 
