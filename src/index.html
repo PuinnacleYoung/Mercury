@@ -886,10 +886,10 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 
 /* 🔐 忘记记住的账号：小胶囊贴在防伪码框正下方（位置由 initAuthEngine 按框算） */
 .auth-forget{position:absolute;z-index:30;pointer-events:auto;cursor:pointer;border:0;
-  background:rgba(255,255,255,.09);color:rgba(255,255,255,.6);border-radius:999px;
-  font-size:clamp(9px,.9vw,11px);font-weight:700;letter-spacing:1px;
+  background:rgba(255,255,255,.09);color:rgba(150,150,165,.72);border-radius:999px;
+  font-size:clamp(9px,.9vw,11px);font-weight:600;letter-spacing:1px;
   display:flex;align-items:center;justify-content:center;padding:0;}
-.auth-forget:hover{background:rgba(255,90,90,.28);color:#fff;}
+.auth-forget:hover{background:rgba(255,90,90,.22);color:rgba(255,120,120,.9);}
 
 /* 盖章区：平时显示「盖章前图」，点击它＝核验身份；核验通过换成「盖章后图」从 1.5 倍盖到 1 倍 */
 .auth-stamp{position:absolute;z-index:26;cursor:pointer;}
@@ -1294,7 +1294,7 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
       </div>
       <input class="auth-field" id="auth-field-name" placeholder="姓名" autocomplete="off">
       <input class="auth-field" id="auth-field-code" placeholder="特殊防伪码" autocomplete="off">
-      <button class="auth-forget hidden" id="auth-forget" type="button" title="清除本机记住的账号">🚫 忘记这台设备记住的账号</button>
+      <button class="auth-forget hidden" id="auth-forget" type="button" title="清除本机记住的账号">忘记历史账号</button>
       <div class="auth-toast" id="auth-toast"></div>
       <div class="auth-title" id="auth-title">拾光·澈屿</div>
       <!-- 🪪 核验成功弹窗：挂在 world 里，坐标跟卡片同一套（引擎「卡片」Tab 里可拖可改大小） -->
