@@ -362,6 +362,16 @@ input{font-family:inherit;outline:none;}
 .mc-chip{padding:5px 12px;border-radius:999px;border:1px solid var(--glass-border);background:transparent;font-size:12px;font-weight:800;color:var(--c-sub);cursor:pointer;}
 .mc-chip.on{background:var(--c-ink);color:var(--c-bg);border-color:transparent;}
 .mc-tag{position:absolute;top:9px;left:9px;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.32);color:#fff;}
+/* 伪 3D：圆形品类（吧唧/徽章/挂件）去白底 + 金属包边 + 落地阴影 */
+.mc-stage.round{background:transparent;box-shadow:none;border-radius:50%;aspect-ratio:1/1;position:relative;}
+.mc-stage.round img{position:relative;z-index:1;border-radius:50%;filter:drop-shadow(0 14px 22px rgba(31,24,54,.35)) saturate(1.04);}
+.mc-stage.round::before{content:'';position:absolute;left:50%;bottom:2%;width:66%;height:10%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(31,24,54,.32),transparent 68%);filter:blur(5px);z-index:0;}
+.mc-stage.round::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:2;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),inset 0 0 0 9px rgba(0,0,0,.06),inset 7px 9px 16px rgba(255,255,255,.30),inset -7px -11px 20px rgba(0,0,0,.32);}
+.item.mc-round .swatch{background:transparent !important;box-shadow:none;border-radius:50%;}
+.item.mc-round .swatch::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5),inset -2px -4px 7px rgba(0,0,0,.30),inset 2px 3px 6px rgba(255,255,255,.28),0 5px 10px rgba(31,24,54,.28);}
+.item .swatch{position:relative;}
 .wb-back{padding:10px 22px;border-radius:999px;background:rgba(var(--glass-rgb),.72);backdrop-filter:blur(8px);border:1px solid var(--glass-border);color:var(--c-ink);font-size:14px;font-weight:700;transition:all .2s;letter-spacing:.5px;}
 .wb-back:hover{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 4px 14px var(--gold-glow);}
 .wb-back:active{transform:scale(.95);}
@@ -1380,7 +1390,6 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
   <div class="wardrobe-layout">
     <div class="mc-preview">
       <button class="wb-back" id="mc-back" style="position:absolute;left:16px;top:16px;">← 返回地图</button>
-      <button class="wb-back" id="mc-engine" style="position:absolute;right:16px;top:16px;" title="打开周边制作引擎（造货 + 上架）">⚙️ 制作引擎</button>
       <div class="mc-stage" id="mc-stage"><span style="font-size:46px">🎁</span></div>
       <div class="mc-info" id="mc-info">
         <div class="mc-name">还没挑中东西</div>
@@ -1711,12 +1720,12 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 </div>
 
 <!-- 内置初始素体模板：本地没有素体时，用它当主角，不再出现火柴人 -->
-<script src="./body-template.js?v=20261001f"></script>
-<script src="./legacy-body-v4.js?v=20261001f"></script>
+<script src="./body-template.js?v=20261001h"></script>
+<script src="./legacy-body-v4.js?v=20261001h"></script>
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
-<script src="./map-placeholders.js?v=20261001f"></script>
-<script src="./media-store.js?v=20261001f"></script>
-<script src="./net-client.js?v=20261001f"></script>
+<script src="./map-placeholders.js?v=20261001h"></script>
+<script src="./media-store.js?v=20261001h"></script>
+<script src="./net-client.js?v=20261001h"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -7952,6 +7961,7 @@ function buildMerchShop(){
     const g = it.grade || 'C';
     const cell = document.createElement('div');
     cell.className = 'item' + (mcPick && mcPick.id===it.id ? ' equipped' : '');
+    if(merchIsRound(it)) cell.classList.add('mc-round');
     const sw = document.createElement('div'); sw.className = 'swatch';
     if(it.preview){
       sw.style.backgroundImage = 'url("' + it.preview + '")';
@@ -7970,11 +7980,37 @@ function buildMerchShop(){
   else mcShowPick(mcPick);
 }
 
+/* 圆形/透明品类判定：模板形状 or 透明材质（亚克力/透卡/贴纸），没模板就按子类名兜底 */
+function merchIsRound(it){
+  if(!it) return false;
+  const t = it.tpl || {};
+  if(t.shape === 'circle' || t.shape === 'round' && false) { /* round 矩形不算圆 */ }
+  if(t.shape === 'circle') return true;
+  if(t.mat === 'clear') return true;
+  return /吧唧|徽章|挂件|圆/.test((it.subName || '') + '#' + (it.name || ''));
+}
+
+/* 三币定价：旧数据（单币 price+cur）自动迁移；返回 {coin,diamond,pearl} */
+function merchPrices(it){
+  const p = (it && it.prices && typeof it.prices === 'object') ? it.prices
+          : { [((it && it.cur) || 'coin')]: Number(it && it.price) || 0 };
+  return { coin:Number(p.coin)||0, diamond:Number(p.diamond)||0, pearl:Number(p.pearl)||0 };
+}
+/* 价格文案：跳过 0 的币种；全 0 = 免费 */
+function merchPriceStr(it){
+  const p = merchPrices(it); let s = '';
+  if(p.coin > 0)    s += '🪙' + p.coin + ' ';
+  if(p.diamond > 0) s += '💎' + p.diamond + ' ';
+  if(p.pearl > 0)   s += '🦪' + p.pearl + ' ';
+  return s.trim() || '🆓 免费';
+}
+
 /* 左边预览：大图 + 定级 + 价格 + 买 */
 function mcShowPick(it){
   const stage = $('mc-stage'), info = $('mc-info');
   if(!stage || !info) return;
   mcPick = it;
+  stage.classList.toggle('round', merchIsRound(it));
   if(!it){
     stage.innerHTML = '<span style="font-size:46px">🎁</span>';
     info.innerHTML = '<div class="mc-name">还没挑中东西</div><div class="mc-meta">右边橱窗点一件，这边看大图</div>';
@@ -7990,7 +8026,7 @@ function mcShowPick(it){
     '<div class="mc-name">' + escapeHtml(it.name || '未命名') + '</div>' +
     '<div><span class="mc-grade g-' + g + '">' + g + ' 级</span></div>' +
     '<div class="mc-meta">' + escapeHtml(it.desc || (it.subName || '')) +
-    '<br>单价 <b>' + price + '</b> 金币' + (owned ? ' · 已拥有 ' + owned + ' 件' : '') + '</div>';
+    '<br>单价 <b>' + merchPriceStr(it) + '</b>' + (owned ? ' · 已拥有 ' + owned + ' 件' : '') + '</div>';
   const buy = document.createElement('button');
   buy.className = 'mc-buy';
   buy.textContent = owned ? '🛒 再买一件' : '🛒 买下';
@@ -7998,30 +8034,34 @@ function mcShowPick(it){
   info.appendChild(buy);
 }
 
-/* 买：扣金币 → 进背包（merch_inventory_v1，个人数据不上云） */
+/* 买：三币逐一核对 → 全够才扣 → 进背包（merch_inventory_v1，个人数据不上云） */
 function mcBuy(it){
   if(!it) return;
   if(!profile) refreshProfile();
-  const price = Number(it.price || 0);
   if(!profile.currency) profile.currency = { coin:0, diamond:0, pearl:0 };
   const cur = profile.currency;
-  if((cur.coin || 0) < price){ toast('💸 金币不够，还差 ' + (price - (cur.coin||0))); return; }
-  cur.coin -= price;
+  const need = merchPrices(it);
+  /* 先核对三种币够不够，缺一样都不卖（别扣一半卡住） */
+  const NAME = { coin:'🪙金币', diamond:'💎钻石', pearl:'🦪珍珠' };
+  const lack = Object.keys(need).filter(k => (cur[k]||0) < need[k])
+    .map(k => NAME[k] + ' 差 ' + (need[k] - (cur[k]||0)));
+  if(lack.length){ toast('💸 买不起：' + lack.join('、')); return; }
+  Object.keys(need).forEach(k => { cur[k] -= need[k]; });
   saveProfile(profile); renderCoins();
   const mine = merchMine();
   mine.push({
     uid:'m' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     productId:it.id, name:it.name, catId:it.catId, subId:it.subId,
-    grade:it.grade||'C', preview:it.preview||'', price:price,
+    grade:it.grade||'C', preview:it.preview||'', price:need, cur:'multi',
     gameSlot:it.gameSlot||'', obtainedAt:Date.now()
   });
   merchSaveMine(mine);
-  toast('🎁 已入手「' + (it.name||'周边') + '」，进背包啦');
+  toast('🎁 已入手「' + (it.name||'周边') + '」（' + merchPriceStr(it) + '），进背包啦');
   buildMerchShop();
 }
 
 /* 🔗 游戏 ⇄ 周边制作引擎 的来回路：
-   ① 商店右上角「⚙️ 制作引擎」直接跳去做货；
+   ① 入口统一在「引擎中枢」与导航首页（商店页不再放按钮，玩家视角干净）；
    ② 引擎里点「▶️ 回到小店」用 #merch 把玩家直接送回货架（不用再走地图找地块）。 */
 (function bindMerchEngine(){
   const tryHash = ()=>{
@@ -8032,8 +8072,6 @@ function mcBuy(it){
     try{ enterMerchShop(); }catch(e){}
   };
   const bind = ()=>{
-    const go = $('mc-engine');
-    if(go) go.onclick = ()=>{ try{ location.href = './周边制作引擎.html'; }catch(e){} };
     setTimeout(tryHash, 900);
   };
   window.addEventListener('hashchange', tryHash);
@@ -9156,8 +9194,8 @@ if(window.__storageFallback){
 }
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->
-<script src="./orientation-lock.js?v=20261001f" defer></script>
-<script src="./responsive.js?v=20261001f" defer></script>
-<script src="./pwa-install.js?v=20261001f" defer></script>
+<script src="./orientation-lock.js?v=20261001h" defer></script>
+<script src="./responsive.js?v=20261001h" defer></script>
+<script src="./pwa-install.js?v=20261001h" defer></script>
 </body>
 </html>
