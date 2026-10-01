@@ -884,6 +884,13 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
 .auth-field:focus{border-color:#37c8b0;box-shadow:0 0 14px rgba(55,200,176,.55);}
 .auth-field::placeholder{color:rgba(255,255,255,var(--ph-op,.45));}
 
+/* 🔐 忘记记住的账号：小胶囊贴在防伪码框正下方（位置由 initAuthEngine 按框算） */
+.auth-forget{position:absolute;z-index:30;pointer-events:auto;cursor:pointer;border:0;
+  background:rgba(255,255,255,.09);color:rgba(255,255,255,.6);border-radius:999px;
+  font-size:clamp(9px,.9vw,11px);font-weight:700;letter-spacing:1px;
+  display:flex;align-items:center;justify-content:center;padding:0;}
+.auth-forget:hover{background:rgba(255,90,90,.28);color:#fff;}
+
 /* 盖章区：平时显示「盖章前图」，点击它＝核验身份；核验通过换成「盖章后图」从 1.5 倍盖到 1 倍 */
 .auth-stamp{position:absolute;z-index:26;cursor:pointer;}
 .auth-stamp .stamp-idle{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35));}
@@ -1284,6 +1291,7 @@ body:has(#bank-screen:not(.hidden)) .mer-pwa-fab{display:none!important;}
       </div>
       <input class="auth-field" id="auth-field-name" placeholder="姓名" autocomplete="off">
       <input class="auth-field" id="auth-field-code" placeholder="特殊防伪码" autocomplete="off">
+      <button class="auth-forget hidden" id="auth-forget" type="button" title="清除本机记住的账号">🚫 忘记这台设备记住的账号</button>
       <div class="auth-toast" id="auth-toast"></div>
       <div class="auth-title" id="auth-title">拾光·澈屿</div>
       <!-- 🪪 核验成功弹窗：挂在 world 里，坐标跟卡片同一套（引擎「卡片」Tab 里可拖可改大小） -->
@@ -3164,7 +3172,7 @@ function startIntroVideo(src, o, onDone, opt){
     { transform:'translate(0,0) scale(1) rotate(0deg)',                opacity:1, offset:1    },
   ];
   /* 卡片的零件可能晚一步才被 initAuthEngine 建出来（盖章区、头像是动态的），所以取两次 */
-  const grabCardParts = ()=> ['auth-card','auth-field-name','auth-field-code','auth-stamp','auth-avatar']
+  const grabCardParts = ()=> ['auth-card','auth-field-name','auth-field-code','auth-stamp','auth-avatar','auth-forget']
       .map(id=> document.getElementById(id)).filter(Boolean);
   if(toLogin){
     try{ showScreen('auth-screen'); }catch(e){}
@@ -3234,6 +3242,19 @@ function startIntroVideo(src, o, onDone, opt){
     + 'background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;';
   const v = document.createElement('video');
   v.src = src;
+  /* 🛡 防「可下载资产」：把地址换成一次性 blob —— 浏览器的媒体面板 / 下载提示
+     就没有直链可给（blob 只在本页内存里有效，刷新即失效）。
+     拉流失败（跨域没开 CORS / 断网）就保持直链，绝不影响播放。 */
+  try{
+    if(!/^blob:|^data:/.test(src)){
+      fetch(src).then(r=>{ if(!r.ok) throw 0; return r.blob(); })
+        .then(b=>{
+          /* 只在还没开播（竖屏门闸 / 还在缓冲）时换源；已经在播就保持流式，绝不打断 */
+          if(!done && !v.dataset.retried && v.paused && !v.currentTime) v.src = URL.createObjectURL(b);
+        })
+        .catch(function(){});
+    }
+  }catch(e){}
   /* ⚠️ autoplay 不能开：竖屏时必须等门闸放行，开了它浏览器就会自己抢跑 */
   v.autoplay = false; v.loop = false; v.playsInline = true; v.preload = 'auto';
   v.muted = false; v.volume = vol;    /* 片子有声音就带声音播；被浏览器拦了会自动退成静音 */
@@ -3255,8 +3276,22 @@ function startIntroVideo(src, o, onDone, opt){
   hint.style.cssText = 'position:absolute;left:0;right:0;bottom:8%;text-align:center;color:rgba(255,255,255,.7);font-size:13px;font-weight:700;pointer-events:none;letter-spacing:1px;';
   layer.appendChild(hint);
 
-  /* ⛔ 不给跳过了：陛下钦定开场动画必须完整播完（要短就自己剪片子）。
-     以前全屏一点就跳过，还容易误触，干脆整个去掉。 */
+  /* ⏭ 跳过按钮（陛下后来改的主意）：右上角小胶囊，点了立刻进下一步。
+     （原「必须完整播完」的钦定作废——跳过也会先 showCard 再走 finish，卡片照样登场） */
+  const skip = document.createElement('div');
+  skip.className = 'intro-skip';
+  skip.textContent = '跳过 »';
+  skip.style.cssText = 'position:absolute;top:3.5%;right:3%;padding:8px 18px;border-radius:999px;'
+    + 'background:rgba(0,0,0,.42);color:rgba(255,255,255,.85);font-size:13px;font-weight:800;'
+    + 'cursor:pointer;pointer-events:auto;z-index:11;letter-spacing:2px;user-select:none;'
+    + 'transition:background .18s,color .18s;';
+  skip.onmouseenter = ()=>{ skip.style.background='rgba(255,255,255,.92)'; skip.style.color='#1b1630'; };
+  skip.onmouseleave = ()=>{ skip.style.background='rgba(0,0,0,.42)'; skip.style.color='rgba(255,255,255,.85)'; };
+  skip.onclick = ()=>{ try{ v.pause(); }catch(e){} finish(); };
+  layer.appendChild(skip);
+
+  /* 🛡 右键/长按菜单：视频上弹「另存为」是最直白的泄链通道，全站拦掉 */
+  layer.addEventListener('contextmenu', e=>{ if(e.target && e.target.tagName === 'VIDEO') e.preventDefault(); });
 
   /* 尾部淡出：播到最后 fade 毫秒就开始淡，淡完正好进登录页 */
   const maybeFadeOut = ()=>{
@@ -3302,6 +3337,13 @@ function startIntroVideo(src, o, onDone, opt){
     hint.textContent = '';
     setWatchdog(((v.duration || 20) - v.currentTime) * 1000 + 12000);
   });
+
+  /* 🛡 全站兜底：任何 <video> 上的右键/长按菜单都拦（登录背景、地图底图也一起管住） */
+  try{
+    document.addEventListener('contextmenu', function(e){
+      if(e.target && e.target.tagName === 'VIDEO') e.preventDefault();
+    }, true);
+  }catch(e){}
 
   try{ (stageEl || document.body).appendChild(layer); }
   catch(e){ showCard(); onDone(); return; }
@@ -3567,6 +3609,14 @@ function initAuthEngine(){
   applyField(nameEl, nameF, '姓名');
   applyField(codeEl, codeF, '特殊防伪码');
 
+  /* 🔐 「忘记记住的账号」小按钮：贴在防伪码框正下方，同 x 同宽，随引擎重排 */
+  try{
+    const fg = $('auth-forget');
+    if(fg && codeF){
+      authSetBox(fg, { x: codeF.x, y: codeF.y + codeF.h/2 + 0.03, w: codeF.w, h: 0.024 });
+    }
+  }catch(e){}
+
   /* 3.5) 头像（卡片上的五行剪影 + 相框）：引擎 avatar 配置，位置尺寸照搬。
      未配置任何剪影图就不画（不空框）。 */
   try{
@@ -3646,6 +3696,20 @@ function initAuthEngine(){
   layoutAuthWorld();
   // 初始化状态：清空输入、复位卡片动画
   nameEl.value = ''; codeEl.value = '';
+  /* 🔐 记住账号：这台设备上次核验成功的 姓名+防伪码+属性，直接填好、属性也选好，
+     进来只需点一下核验（换账号就手动改，或点下面「忘记」清掉）。
+     ⚠️ 必须放在上面清空之后 —— 清空是后手会把预填抹掉（无头测试抓过）。 */
+  try{
+    const rem = loadRemember();
+    if(rem){
+      if(!nameEl.value) nameEl.value = rem.name;
+      if(!codeEl.value) codeEl.value = rem.code;
+      if(!pendingElement && rem.element && elementList().some(e=>e.id===rem.element)){
+        pendingElement = rem.element; savePendingElement(); refreshAuthAvatar();
+      }
+      const fg = $('auth-forget'); if(fg) fg.classList.remove('hidden');
+    }
+  }catch(e){}
   card.classList.remove('verified');
 }
 
@@ -3918,6 +3982,7 @@ function authVerifyFlow(name, code, el, remote){
       authToast('✅ 核验通过，欢迎回来 ' + name + '（' + (ei.name || el) + '）');
       const enterWorld = ()=>{
         authVerifying = false;
+        saveRemember(name, code, el);        // 🔐 核验成功 → 本机记住，下次直接填
         setCurrent(key); currentUser = acc;
         ensureBody();
         currentUser.outfit = normalizeOutfit(currentUser.outfit);
@@ -3971,6 +4036,9 @@ $('auth-cred-close').onclick = ()=>{
   const el = pendingElement || '';
   const acc = accounts[accountKeyOf(name, el)] || findAccountByName(name);
   if(acc){
+    /* 🔐 新号注册完成也算核验成功 → 本机记住（防伪码用弹窗里那串，属性用账号吃掉的那个） */
+    saveRemember(name, $('auth-cred-code').textContent, acc.element || el || '');
+    const fg = $('auth-forget'); if(fg) fg.classList.remove('hidden');
     setCurrent(acc.key || accountKeyOf(name, el)); currentUser = acc;
     ensureBody();
     currentUser.outfit = normalizeOutfit(currentUser.outfit);
@@ -3991,6 +4059,20 @@ let pendingRaceUser = null;   // 正在选属性的账号名
 let pendingElement = null;
 let authVerifying = false;    // 防连点：盖章动画期间重复点核验，会重复进世界
 const LS_PENDING_EL = 'auth_pending_element';
+/* 🔐 记住账号密码：只存本机 localStorage（auth_remember_v1），绝不上云。
+   核验成功后存「姓名+防伪码+属性」→ 下次进登录页直接填好，点一下核验就进世界。 */
+const LS_REMEMBER = 'auth_remember_v1';
+function saveRemember(name, code, el){
+  try{ localStorage.setItem(LS_REMEMBER, JSON.stringify({ name:name, code:code, element:el||'' })); }catch(e){}
+}
+function loadRemember(){
+  try{
+    const v = JSON.parse(localStorage.getItem(LS_REMEMBER) || 'null');
+    return (v && v.name && v.code) ? v : null;
+  }catch(e){ return null; }
+}
+function clearRemember(){ try{ localStorage.removeItem(LS_REMEMBER); }catch(e){} }
+
 function loadPendingElement(){
   try{
     const v = localStorage.getItem(LS_PENDING_EL);
@@ -4129,6 +4211,14 @@ $('race-skip').onclick = ()=>{
 $('auth-card').onclick = doAuthVerify;
 $('auth-field-code').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuthVerify(); });
 $('auth-field-name').addEventListener('keydown', e=>{ if(e.key==='Enter') $('auth-field-code').focus(); });
+/* 🔐 忘记：清掉本机记住的账号 + 清空输入框（下次要从头填） */
+$('auth-forget').addEventListener('click', e=>{
+  e.stopPropagation();
+  clearRemember();
+  try{ $('auth-field-name').value = ''; $('auth-field-code').value = ''; }catch(_){}
+  e.currentTarget.classList.add('hidden');
+  try{ authToast('🧹 已清除本机记住的账号'); }catch(_){}
+});
 
 window.addEventListener('resize', ()=>{ if(!$('auth-screen').classList.contains('hidden')) layoutAuthWorld(); });
 window.addEventListener('orientationchange', ()=>{ setTimeout(()=>{ if(!$('auth-screen').classList.contains('hidden')) layoutAuthWorld(); }, 250); });
