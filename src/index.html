@@ -988,6 +988,44 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-close:hover{background:var(--c-accent);color:#fff;}
 .shop-wb{height:38px;padding:0 16px;border-radius:12px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border:none;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px var(--gold-glow);transition:.2s;white-space:nowrap;}
 .shop-wb:hover{filter:brightness(1.08);}
+/* ---- 服装店 v2：左试穿舞台 + 右分类类目 ---- */
+.shop-panel.shop-v2{width:min(1040px,95vw);height:min(660px,92vh);}
+.shop-v2 .shop-top .shop-tabs{display:flex;gap:6px;padding:0;flex:0 0 auto;}
+.shop-frame{flex:1;min-height:0;display:flex;gap:14px;padding:14px 22px 22px;}
+.shop-left{width:300px;flex:0 0 auto;display:flex;flex-direction:column;gap:10px;min-height:0;}
+.shop-stage{flex:1;min-height:0;border-radius:20px;border:1px solid var(--glass-border);
+  background:radial-gradient(120% 80% at 50% 20%,rgba(255,255,255,.72),rgba(255,255,255,.28));
+  box-shadow:inset 0 -20px 40px rgba(var(--shadow-rgb),.10);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.shop-stage canvas{max-width:100%;max-height:100%;}
+.shop-buy{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:18px;
+  background:rgba(255,255,255,.6);border:1px solid var(--glass-border);}
+.shop-buy .sb-tip{font-size:12.5px;color:var(--c-sub);line-height:1.7;text-align:center;}
+.shop-buy .sb-sub{font-size:11px;opacity:.75;}
+.shop-buy .sb-name{font-size:15px;font-weight:800;color:var(--c-ink);}
+.shop-buy .sb-price{display:flex;gap:6px;flex-wrap:wrap;}
+.shop-buy .sb-owned-tag{font-size:11px;font-weight:800;color:#4a8f68;background:rgba(122,200,160,.18);padding:3px 10px;border-radius:999px;}
+.shop-buy .sb-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.shop-buy .sb-buy{flex:1;min-width:120px;padding:10px 12px;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;font-size:13px;font-weight:800;
+  box-shadow:0 6px 16px var(--gold-glow);display:flex;align-items:center;justify-content:center;gap:4px;transition:.18s;}
+.shop-buy .sb-buy:hover{filter:brightness(1.07);}
+.shop-buy .sb-buy.off{background:rgba(140,130,160,.28);color:var(--c-sub);box-shadow:none;cursor:not-allowed;}
+.shop-buy .sb-nobuy{font-size:12px;color:var(--c-sub);}
+.shop-buy .sb-reset{align-self:flex-start;padding:6px 12px;border-radius:999px;border:1px solid var(--glass-border);
+  background:rgba(var(--glass-rgb),.6);color:var(--c-sub);font-size:12px;font-weight:700;cursor:pointer;}
+.shop-buy .sb-reset:hover{color:var(--c-ink);}
+.shop-right{flex:1;min-width:0;display:flex;gap:10px;}
+.shop-cat{width:92px;flex:0 0 auto;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;}
+.shop-cat-btn{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:12px;cursor:pointer;
+  border:1px solid var(--glass-border);background:rgba(255,255,255,.5);color:var(--c-sub);
+  font-size:12.5px;font-weight:700;transition:.16s;text-align:left;}
+.shop-cat-btn:hover{color:var(--c-ink);}
+.shop-cat-btn.on{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 5px 14px var(--gold-glow);}
+.shop-cat-btn .sc-ico{font-size:14px;line-height:1;}
+.shop-cat-btn .sc-name{flex:1;white-space:nowrap;}
+.shop-cat-btn .sc-num{font-size:11px;opacity:.8;}
+.shop-items{flex:1;min-width:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;align-content:start;padding-right:2px;}
+.shop-items .shop-card.on{border-color:var(--c-accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.35),0 10px 24px rgba(var(--shadow-rgb),.22);transform:translateY(-2px);}
 .shop-tabs{display:flex;gap:8px;padding:12px 22px 0;}
 .shop-tab{padding:9px 18px;border-radius:999px;border:1px solid var(--glass-border);background:rgba(var(--glass-rgb),.6);color:var(--c-sub);font-size:13px;font-weight:800;cursor:pointer;transition:.18s;}
 .shop-tab:hover{color:var(--c-ink);}
@@ -1036,7 +1074,8 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
   --ui-joy-size: calc(128px * var(--ui-scale));
   --ui-hud-size: calc(42px * var(--ui-scale));
   --ui-hud-gap:  calc(10px * var(--ui-scale));
-  --ui-pad-y:    calc(14px * var(--ui-scale));
+  /* 顶部留白至少吃掉刘海/打孔/状态栏的安全区（手机全屏时 HUD 再也不会被上边缘吞掉） */
+  --ui-pad-y:    max(calc(14px * var(--ui-scale)), env(safe-area-inset-top, 0px));
   --ui-pad-x:    calc(16px * var(--ui-scale));
   --ui-font:     calc(14px * var(--ui-scale));
 }
@@ -1159,6 +1198,14 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-close{width:calc(38px * var(--ui-scale));height:calc(38px * var(--ui-scale));font-size:calc(17px * var(--ui-scale));}
 .shop-wb{height:calc(38px * var(--ui-scale));padding:0 calc(16px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
 .shop-tabs{padding:calc(12px * var(--ui-scale)) calc(22px * var(--ui-scale)) 0;gap:calc(8px * var(--ui-scale));}
+.shop-frame{gap:calc(14px * var(--ui-scale));padding:calc(14px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(22px * var(--ui-scale));}
+.shop-left{width:calc(300px * var(--ui-scale));gap:calc(10px * var(--ui-scale));}
+.shop-buy{padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));gap:calc(8px * var(--ui-scale));border-radius:calc(18px * var(--ui-scale));}
+.shop-buy .sb-name{font-size:calc(15px * var(--ui-scale));}
+.shop-buy .sb-buy{font-size:calc(13px * var(--ui-scale));padding:calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));}
+.shop-cat{width:calc(92px * var(--ui-scale));gap:calc(6px * var(--ui-scale));}
+.shop-cat-btn{font-size:calc(12.5px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));}
+.shop-items{gap:calc(12px * var(--ui-scale));}
 .shop-tab{padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
 .shop-grid{padding:calc(16px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(22px * var(--ui-scale));gap:calc(14px * var(--ui-scale));}
 .shop-card{border-radius:calc(18px * var(--ui-scale));}
@@ -1900,12 +1947,18 @@ function curIcon(k, alt){
   if(!c || !c.img) return (c && c.em) || '';
   return '<img class="cur-img" src="' + c.img + CUR_V + '" alt="' + (alt || c.nm) + '">';
 }
+/* 商店分区（陛下钦定的四档门店 + 一个非门店分类）
+   普通 → common ／ 高级 → premium ／ 贵宾 → special ／ 限时 → limited，
+   四档各自是一家独立门店，不再两两合并。
+   ⚠️ outfit（套装）**不是门店分区**：套装是「衣橱里的一个分类」——
+     一件套装 = 多个部位的一套搭配，在衣橱里点一下整套上身。
+     它只作为商店内的「👗 套装」商品分类出现，不单独占一家店。 */
 const SHOP_ZONES = [
   {id:'common',  name:'普通', em:'🛍️'},
   {id:'premium', name:'高级', em:'💎'},
-  {id:'special', name:'特殊', em:'✨'},
+  {id:'special', name:'贵宾', em:'🦪'},
   {id:'limited', name:'限时', em:'⏰'},
-  {id:'outfit',  name:'套装', em:'👗'},
+  {id:'outfit',  name:'套装', em:'👗', wardrobeOnly:true},
 ];
 
 /* ================= 职称系统（职业等级，仅本人可见） =================
@@ -7098,15 +7151,25 @@ function getShopEntries(zone){
   return out;
 }
 
-let shopState = { bld:null, zones:[], zone:null };
+/* =========================================================================
+   服装店 v2 —— 左边试穿舞台 + 右边分类类目（跟《服装编辑引擎 · 衣橱预览》同款布局）
+   陛下钦定：
+     · 每家店只卖一档（普通 / 高级 / 贵宾 / 限时），限时是独立门店接口；
+     · 套装不占门店，是商店里的一个「👗 套装」分类、也是衣橱里的一个分类；
+     · 点商品 = 左边立刻上身预览；没买就显示总价，一键「买下并穿上」。
+   ========================================================================= */
+let shopState = { bld:null, zones:[], zone:null, cat:'all', trial:null, trialOutfit:null };
 function openShop(bld){
   refreshEngineData(); refreshProfile();
   const tags = bld.shopTags || SHOP_ZONES.map(z=>z.id);
   shopState.bld  = bld;
-  shopState.zones = SHOP_ZONES.filter(z=>tags.indexOf(z.id)>=0);
+  /* 门店只认四档；outfit（套装）是分类不是门店，不单独占一家店 */
+  shopState.zones = SHOP_ZONES.filter(z=>tags.indexOf(z.id)>=0 && !z.wardrobeOnly);
   shopState.zone  = shopState.zones.length ? shopState.zones[0].id : null;
+  shopState.trial = null; shopState.trialOutfit = null;
+  shopState.cat = 'all';
   buildShopDOM();
-  renderShopTabs(); renderShopGrid();
+  renderShopTabs(); renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage();
 }
 function closeShop(){ const m = $('shop-mask'); if(m) m.remove(); }
 function buildShopDOM(){
@@ -7114,14 +7177,23 @@ function buildShopDOM(){
   const mask = document.createElement('div');
   mask.className = 'shop-mask'; mask.id = 'shop-mask';
   mask.innerHTML =
-    '<div class="shop-panel">' +
+    '<div class="shop-panel shop-v2">' +
       '<div class="shop-top">' +
         '<h3 id="shop-title">👗 时装店</h3><span class="sp"></span>' +
+        '<div class="shop-tabs" id="shop-tabs"></div>' +
         '<button class="shop-wb" id="shop-wb-btn">👗 衣橱</button>' +
         '<button class="shop-close" id="shop-close">✕</button>' +
       '</div>' +
-      '<div class="shop-tabs" id="shop-tabs"></div>' +
-      '<div class="shop-grid" id="shop-grid"></div>' +
+      '<div class="shop-frame">' +
+        '<div class="shop-left">' +
+          '<div class="shop-stage"><canvas id="shop-canvas" width="300" height="360"></canvas></div>' +
+          '<div class="shop-buy" id="shop-buy"></div>' +
+        '</div>' +
+        '<div class="shop-right">' +
+          '<div class="shop-cat" id="shop-cat"></div>' +
+          '<div class="shop-items" id="shop-items"></div>' +
+        '</div>' +
+      '</div>' +
     '</div>';
   document.body.appendChild(mask);
   $('shop-title').textContent = (shopState.bld.icon||'👗') + ' ' + (shopState.bld.name||'时装店');
@@ -7130,6 +7202,7 @@ function buildShopDOM(){
   $('shop-wb-btn').onclick = openWardrobeFromShop;
   mask.addEventListener('click', e=>{ if(e.target === mask) closeShop(); });
 }
+/* ---- 顶部：本店分区（通常就一档） ---- */
 function renderShopTabs(){
   const box = $('shop-tabs'); if(!box) return; box.innerHTML='';
   if(!shopState.zones.length){
@@ -7140,22 +7213,62 @@ function renderShopTabs(){
     const b = document.createElement('button');
     b.className = 'shop-tab' + (z.id === shopState.zone ? ' on' : '');
     b.textContent = z.em + ' ' + z.name;
-    b.onclick = ()=>{ shopState.zone = z.id; renderShopTabs(); renderShopGrid(); };
+    b.onclick = ()=>{ shopState.zone = z.id; shopState.cat='all'; shopState.trial=null; shopState.trialOutfit=null;
+                      renderShopTabs(); renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage(); };
     box.appendChild(b);
   });
 }
-function renderShopGrid(){
-  const g = $('shop-grid'); if(!g) return; g.innerHTML='';
-  const list = shopState.zone ? getShopEntries(shopState.zone) : [];
+/* ---- 右侧分类列：全部 + 各部位 + 套装（套装是分类，不是门店） ---- */
+function shopCatList(){
+  const list = [{ id:'all', label:'全部', em:'🌀' }];
+  if(engineAvailable()){
+    ENG_CATEGORIES.forEach(c=>list.push({ id:c.id, label:c.label, em:c.em }));
+  }
+  if(shopSetEntries().length) list.push({ id:'set', label:'套装', em:'👗' });
+  return list;
+}
+/* 本店在售的套装（套装 shopTags 命中本店分区，或老数据的 outfit 标签） */
+function shopSetEntries(){
+  const zone = shopState.zone; if(!zone) return [];
+  return (engine.sets||[]).filter(s=>{
+    const tags = s.shopTags||[];
+    return (tags.indexOf(zone)>=0 || tags.indexOf('outfit')>=0) && inSaleWindow(s);
+  }).map(s=>({ kind:'set', id:s.id, name:s.name, price:s.price||{}, thumb:s.thumbnail||null,
+               order:(s.shopOrder||{})[zone]||0, limitedTo:s.limitedTo, itemIds:s.itemIds, raw:s }))
+    .sort((a,b)=>a.order-b.order);
+}
+function shopEntriesFor(cat){
+  const zone = shopState.zone; if(!zone) return [];
+  let list = (cat === 'set') ? shopSetEntries() : getShopEntries(zone);
+  if(cat && cat !== 'all' && cat !== 'set') list = list.filter(en=>en.kind==='item' && en.category===cat);
+  return list;
+}
+function renderShopCat(){
+  const box = $('shop-cat'); if(!box) return; box.innerHTML='';
+  shopCatList().forEach(c=>{
+    const n = shopEntriesFor(c.id).length;
+    if(c.id !== 'all' && c.id !== 'set' && !n){ /* 空分类也列出来，陛下能看见哪类还没货 */ }
+    const b = document.createElement('button');
+    b.className = 'shop-cat-btn' + (c.id === shopState.cat ? ' on' : '');
+    b.innerHTML = '<span class="sc-ico">' + c.em + '</span><span class="sc-name">' + c.label + '</span>' +
+                  (n ? '<span class="sc-num">' + n + '</span>' : '');
+    b.onclick = ()=>{ shopState.cat = c.id; renderShopCat(); renderShopItems(); };
+    box.appendChild(b);
+  });
+}
+function renderShopItems(){
+  const g = $('shop-items'); if(!g) return; g.innerHTML='';
+  const list = shopEntriesFor(shopState.cat);
   if(!list.length){
     const d = document.createElement('div'); d.className='shop-empty';
-    d.textContent = '这个分区还没有上架商品 —— 去「服装引擎 → 商店编辑页」把它们加进来';
+    d.textContent = '这一类还没有上架商品 —— 去「服装编辑引擎 → 商店编辑页」把它们加进来';
     g.appendChild(d); return;
   }
   list.forEach(en=>{
     const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
     const card = document.createElement('div');
-    card.className = 'shop-card r-' + (shopState.zone||'common');
+    card.className = 'shop-card r-' + (shopState.zone||'common') +
+      (shopState.trial && shopState.trial.id === en.id && shopState.trial.kind === en.kind ? ' on' : '');
     const thumbHtml = en.thumb
       ? '<img src="' + en.thumb + '" alt="">'
       : '<span style="font-size:34px">' + (en.kind==='set' ? '👗' : ((ENG_CAT_MAP[en.category]||{}).em || '🎁')) + '</span>';
@@ -7168,12 +7281,95 @@ function renderShopGrid(){
       '<div class="shop-nm">' + esc(en.name) + '</div>' +
       '<div class="shop-price">' + (badges || '<span class="price-badge">未定价</span>') + '</div>' +
       (owned ? '<div class="shop-owned">已拥有</div>' : '');
-    card.onclick = ()=>{
-      if(owned){ toast('已经拥有啦，去衣橱换上吧'); return; }
-      openTryOn(en);
-    };
+    /* 点一下 = 左边立刻试穿（不弹窗、不扣钱） */
+    card.onclick = ()=>shopPreview(en);
     g.appendChild(card);
   });
+}
+/* ---- 左边舞台：画试穿效果 ---- */
+function paintShopStage(){
+  const cv = $('shop-canvas'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const o = shopState.trialOutfit || ((currentUser && currentUser.outfit) || {});
+  const paint = ()=>{
+    ctx.clearRect(0,0,cv.width,cv.height);
+    drawCharacter(ctx, cv.width/2, cv.height-16, o, 1, 0, Math.min(cv.width/140, cv.height/130));
+  };
+  paint(); afterEngineReady(paint);
+}
+function shopTrialOutfit(en){
+  const base = Object.assign({}, (currentUser && currentUser.outfit) || {});
+  if(en.kind === 'set'){
+    const o = {};
+    ENG_CATEGORIES.forEach(c=>{ const iid = en.itemIds && en.itemIds[c.id]; if(iid) o[c.id] = iid; else o[c.id] = base[c.id]; });
+    return o;
+  }
+  const o = Object.assign({}, base);
+  o[en.category] = en.id;
+  return o;
+}
+function shopPreview(en){
+  shopState.trial = en;
+  shopState.trialOutfit = shopTrialOutfit(en);
+  renderShopItems(); renderShopBuy(); paintShopStage();
+}
+function shopResetTrial(){
+  shopState.trial = null; shopState.trialOutfit = null;
+  renderShopItems(); renderShopBuy(); paintShopStage();
+}
+/* ---- 底部：总价 + 一键买下并穿上 ---- */
+function renderShopBuy(){
+  const box = $('shop-buy'); if(!box) return;
+  const en = shopState.trial;
+  if(!en){
+    box.innerHTML = '<div class="sb-tip">点右边任意一件 → 左边立刻试穿<br><span class="sb-sub">没买的会显示总价，可一键买下并穿上</span></div>';
+    return;
+  }
+  const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
+  const prices = CURR_KEYS.filter(k => en.price && en.price[k] > 0);
+  const badges = prices.map(k=>'<span class="price-badge ' + k + '">' + curIcon(k) + ' ' + en.price[k] + '</span>').join('');
+  box.innerHTML =
+    '<div class="sb-name">' + esc(en.name) + '</div>' +
+    '<div class="sb-price">' + (owned ? '<span class="sb-owned-tag">已拥有</span>' : (badges || '<span class="price-badge">未定价</span>')) + '</div>' +
+    '<div class="sb-btns"></div>' +
+    '<button class="sb-reset" id="sb-reset">还原穿着</button>';
+  const btns = box.querySelector('.sb-btns');
+  if(owned){
+    const b = document.createElement('button');
+    b.className = 'sb-buy'; b.textContent = '👗 换上这一套';
+    b.onclick = ()=>shopConfirmTrial(null);
+    btns.appendChild(b);
+  } else if(!prices.length){
+    const s = document.createElement('span');
+    s.className = 'sb-nobuy'; s.textContent = '这件还没定价，暂时买不了';
+    btns.appendChild(s);
+  } else {
+    prices.forEach(k=>{
+      const afford = (profile.currency[k]||0) >= en.price[k];
+      const b = document.createElement('button');
+      b.className = 'sb-buy' + (afford ? '' : ' off');
+      b.innerHTML = curIcon(k) + ' ' + en.price[k] + ' 买下并穿上' + (afford ? '' : '（余额不足）');
+      if(afford) b.onclick = ()=>shopConfirmTrial(k); else b.disabled = true;
+      btns.appendChild(b);
+    });
+  }
+  $('sb-reset').onclick = shopResetTrial;
+}
+/* 付钱（cur=null 表示已经拥有，直接穿）→ 立刻上身 → 存盘 */
+function shopConfirmTrial(cur){
+  const en = shopState.trial; if(!en) return;
+  const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
+  if(!owned){
+    if(!cur) return;
+    if(!doPurchase(en, cur)) return;
+  }
+  currentUser.outfit = normalizeOutfit(Object.assign({}, shopState.trialOutfit));
+  if(profile){ profile.wornOutfit = Object.assign({}, currentUser.outfit); saveProfile(profile); }
+  persistCurrent(); refreshProfile(); renderCoins();
+  toast(owned ? ('👗 已换上「' + en.name + '」') : ('🎉 已买下并穿上「' + en.name + '」'));
+  shopState.trial = null; shopState.trialOutfit = null;
+  renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage();
+  drawLobby();
 }
 
 /* ---- 试穿弹层（Q8：不购买时复位） ---- */
@@ -7236,13 +7432,16 @@ const LS_MAPS = 'game_maps';
 let mapState = { currentId:null, spawnId:null };
 
 /* 面板组件类型（与《地图编辑引擎》保持一致）
-   ★ 三档 wardrobe* 是「服装大楼里的商店」——zones = 这家店卖哪几个分区的衣服。
+   ★ wardrobe* 是「服装大楼里的门店」——zones = 这家店卖哪一档衣服。
      陛下钦定：大楼是卖衣服的，不是衣橱。点进去＝逛店下单；买完从店里的「👗 衣橱」进去换上。
+     四家门店各卖一档，互不混卖：普通=common / 高级=premium / 贵宾=special / 限时=limited。
+     套装（outfit）不占门店——它是衣橱里的一个分类。
      （id 保持 wardrobe* 不变，线上地图数据里的 panelId 才不会失效） */
 const PANEL_KINDS = [
   { id:'wardrobe',        name:'👗 普通服装店',     em:'👗', zones:['common'] },
-  { id:'wardrobePremium', name:'流萤 · 高级时装店', em:'💎', zones:['premium','special'] },
-  { id:'wardrobeVip',     name:'长庚 · 贵宾区服装店', em:'🦪', zones:['limited','outfit'] },
+  { id:'wardrobePremium', name:'流萤 · 高级时装店', em:'💎', zones:['premium'] },
+  { id:'wardrobeVip',     name:'长庚 · 贵宾区服装店', em:'🦪', zones:['special'] },
+  { id:'wardrobeLimited', name:'⏰ 限时服装店',      em:'⏰', zones:['limited'] },
   { id:'tarot',           name:'🔮 塔罗占卜',     em:'🔮', zones:null },
   { id:'wish',            name:'⛲ 许愿池',       em:'⛲', zones:null },
   { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
@@ -7652,10 +7851,12 @@ function seedMaps(){
   const world=add(map('world-hub','世界地图',null,'#d4dff7',[]));
   const home=add(map('home','家园','world-hub','#efe8d2',[]));
   const school=add(map('school','学校','home','#cfe8cf',[]));
+  /* 四家门店各占一个铺位：普通 / 高级 / 贵宾 / 限时（限时是独立门店，不并进别家） */
   add(level('shop','服装店','home','#f6e6ef',[
-    entity('普通服装区','👗',0.20,0.42,0.20,0.20,{action:'panel',panelId:'wardrobe',panel:'wardrobe',tip:'推开玻璃门，进去逛逛'}),
-    entity('高级时装区','💎',0.50,0.42,0.20,0.20,{action:'panel',panelId:'wardrobePremium',panel:'wardrobePremium',tip:'高级区，请轻声细语'}),
-    entity('贵宾区','🦪',0.80,0.42,0.20,0.20,{action:'panel',panelId:'wardrobeVip',panel:'wardrobeVip',tip:'贵宾专属，欢迎光临'})
+    entity('普通服装店','👗',0.14,0.42,0.18,0.20,{action:'panel',panelId:'wardrobe',panel:'wardrobe',tip:'推开玻璃门，进去逛逛'}),
+    entity('高级时装店','💎',0.38,0.42,0.18,0.20,{action:'panel',panelId:'wardrobePremium',panel:'wardrobePremium',tip:'高级区，请轻声细语'}),
+    entity('贵宾区服装店','🦪',0.62,0.42,0.18,0.20,{action:'panel',panelId:'wardrobeVip',panel:'wardrobeVip',tip:'贵宾专属，欢迎光临'}),
+    entity('限时服装店','⏰',0.86,0.42,0.18,0.20,{action:'panel',panelId:'wardrobeLimited',panel:'wardrobeLimited',tip:'限时上架，过时不候'})
   ],{allowWorldMap:false}));
   add(level('library','图书馆','school','#e6ecf7',[entity('书架','📚',0.5,0.40,0.34,0.20)]));
   add(level('classroom','阶梯教室','school','#f2ead6',[entity('讲台','🎓',0.5,0.40,0.30,0.18)]));
@@ -7665,8 +7866,9 @@ function seedMaps(){
   Object.values(maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles;});
   return {version:MAP_SCHEMA_VERSION,rootMapId:'world-hub',entryLevelId:'classroom',root:'classroom',maps,panels:defaultPanelRegistry(),_migrationV3:{at:new Date().toISOString(),fromVersion:0,log:['SEEDED_V3']}};
 }
-/* ★ 三档「服装店面板」各卖哪几个分区（与 PANEL_KINDS.zones 同源，这里给运行时查表用） */
-const SHOP_PANEL_ZONES = { wardrobe:['common'], wardrobePremium:['premium','special'], wardrobeVip:['limited','outfit'] };
+/* ★ 四家门店各自卖哪一档（与 PANEL_KINDS.zones 同源，这里给运行时查表用）
+     普通=common ／ 高级=premium ／ 贵宾=special ／ 限时=limited（限时是独立门店接口） */
+const SHOP_PANEL_ZONES = { wardrobe:['common'], wardrobePremium:['premium'], wardrobeVip:['special'], wardrobeLimited:['limited'] };
 function isShopPanel(id){ return !!SHOP_PANEL_ZONES[id]; }
 /* ★ 清理：早先为了「让 openShop 有入口」而自动补种的「🛍️ 新品货架」地块。
    陛下的意思是——服装大楼本身就是商店，不该再多挂一个独立入口。

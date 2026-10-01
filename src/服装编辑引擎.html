@@ -779,11 +779,14 @@ const sessionStorage = _mkStore(window.sessionStorage);
   const CENTER_PARTS={ head:1, body:1 };  // 拖动时用于中线吸附
   const SNAP_PX=6;
   const LS={ body:'engine_body_v4', bodyOld:'engine_body_v3', lib:'engine_lib_v3', outfits:'engine_outfits_v3', sets:'engine_outfitsets_v1', trim:'engine_auto_trim', anim:'engine_anim_cfg' };
-  // 商店四区 + 套装区（Q1 四区只是稀有度分类，跟货币不绑定）
+  /* 四档门店 + 套装分类（四档只是稀有度分类，跟货币不绑定）
+     普通 / 高级 / 贵宾 / 限时 —— 每档是**一家独立门店**，互不混卖；
+     套装（outfit）不是门店，它是商店里的一个「👗 套装」分类、也是衣橱里的一个分类
+     （一件套装 = 多个部位的一套搭配，点一下整套上身）。 */
   const SHOP_ZONES=[
     { id:'common',  name:'普通', em:'🛍️' },
     { id:'premium', name:'高级', em:'💎' },
-    { id:'special', name:'特殊', em:'✨' },
+    { id:'special', name:'贵宾', em:'🦪' },
     { id:'limited', name:'限时', em:'⏰' },
     { id:'outfit',  name:'套装', em:'👗' },
   ];
