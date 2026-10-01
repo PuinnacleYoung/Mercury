@@ -329,7 +329,73 @@
       document.getElementById('cs-push').onclick = function(){ CloudSync.push(); };
       var sel = document.getElementById('cs-sel');
       if(sel) sel.onchange = function(){ CloudSync.switchTo(sel.value); };
+      CloudSync.makeDraggable();
       CloudSync.paint();
+    },
+
+    /* ---------- 整条可拖动（按住标题栏拖；位置记忆，不再挡死页面 UI） ----------
+       四件套老规矩：touch-action:none + setPointerCapture + pointercancel 兜底；
+       拖过（位移>6px）就算移动，松手那次 click 不触发折叠。 */
+    makeDraggable: function(){
+      var box = CloudSync.el, head = document.getElementById('cs-head');
+      if(!box || !head) return;
+      head.style.touchAction = 'none';
+      head.style.cursor = 'grab';
+      /* 恢复上次位置 */
+      try{
+        var saved = JSON.parse(localStorage.getItem('cs_pos') || 'null');
+        if(saved && isFinite(saved.x) && isFinite(saved.y)){
+          box.style.right = 'auto'; box.style.bottom = 'auto';
+          box.style.left = saved.x + 'px'; box.style.top = saved.y + 'px';
+        }
+      }catch(e){}
+      var sx=0, sy=0, ox=0, oy=0, moved=false;
+      function clamp(x, y, w, h){
+        return {
+          x: Math.max(8 - w + 60, Math.min(x, window.innerWidth - 60)),
+          y: Math.max(0, Math.min(y, window.innerHeight - 30))
+        };
+      }
+      function place(x, y){
+        var p = clamp(x, y, box.offsetWidth, box.offsetHeight);
+        box.style.right = 'auto'; box.style.bottom = 'auto';
+        box.style.left = p.x + 'px'; box.style.top = p.y + 'px';
+      }
+      function save(){
+        try{ localStorage.setItem('cs_pos', JSON.stringify({ x: box.offsetLeft, y: box.offsetTop })); }catch(e){}
+      }
+      head.addEventListener('pointerdown', function(e){
+        if(e.target.closest('select,button,input')) return;
+        var r = box.getBoundingClientRect();
+        sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
+        moved = false;
+        try{ head.setPointerCapture(e.pointerId); }catch(err){}
+        function mv(ev){
+          var dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if(!moved && Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+          moved = true;
+          head.style.cursor = 'grabbing';
+          place(ox + dx, oy + dy);
+        }
+        function up(){
+          head.removeEventListener('pointermove', mv);
+          head.removeEventListener('pointerup', up);
+          head.removeEventListener('pointercancel', up);
+          head.style.cursor = 'grab';
+          if(moved){ save(); setTimeout(function(){ moved = false; }, 0); }
+        }
+        head.addEventListener('pointermove', mv);
+        head.addEventListener('pointerup', up);
+        head.addEventListener('pointercancel', up);
+      });
+      /* 拖完松手那一下别触发「收起/展开」 */
+      head.addEventListener('click', function(e){
+        if(moved){ e.stopImmediatePropagation(); e.preventDefault(); }
+      }, true);
+      /* 窗口缩放后把条拉回可视区 */
+      window.addEventListener('resize', function(){
+        if(box.style.left) place(box.offsetLeft, box.offsetTop);
+      });
     },
 
     paint: function(){

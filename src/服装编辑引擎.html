@@ -173,6 +173,12 @@
   .btn.tiny{padding:3px 7px; font-size:11px; border-radius:6px;}
   .btn-row{display:flex; gap:6px; flex-wrap:wrap;}
   .studio-body{width:min(1360px,100%); margin:0 auto; display:grid; grid-template-columns:1.05fr 1fr; gap:16px; height:100%;}
+  /* 素体工坊右栏：窗口矮时右栏内部滚动，卡片绝不许被压扁（压扁=内容溢出叠到下一张卡上，缩放窗口就错位） */
+  .side-col{scrollbar-width:thin;}
+  .side-col > .card{flex-shrink:0;}
+  /* 滑杆行的最小宽度兜底：窗口再窄值也不能被切掉 */
+  .field{min-width:0;}
+  .field input[type=range]{min-width:40px;}
   .parts-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
   .part-slot{background:var(--paper2); border:2px solid transparent; border-radius:12px; padding:8px 5px; text-align:center; cursor:pointer; transition:.18s;}
   .part-slot:hover{border-color:var(--line);}
@@ -211,7 +217,8 @@
   .stage-toolbar{display:flex; gap:8px; align-items:center; padding:10px 14px; background:rgba(var(--glass-rgb),.65); backdrop-filter:blur(12px); border-radius:14px; box-shadow:var(--shadow-sm); border:1px solid var(--glass-border); flex-wrap:wrap;}
   .stage-toolbar .title{font-size:14px; font-weight:800; margin-right:auto;}
   .stage-toolbar .title .accent{background:linear-gradient(135deg,var(--pink),var(--violet)); -webkit-background-clip:text; background-clip:text; color:transparent;}
-  .edit-col{display:flex; flex-direction:column; gap:10px; overflow:hidden;}
+  .edit-col{display:flex; flex-direction:column; gap:10px; overflow-y:auto; min-height:0; scrollbar-width:thin;}
+  .edit-col > *{flex-shrink:0;}   /* 压扁会叠卡：内容一律不收缩，放不下就内部滚动 */
   .edit-empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(var(--glass-rgb),.5); backdrop-filter:blur(16px); border-radius:20px; box-shadow:var(--shadow-md); border:1px solid var(--glass-border); padding:30px 20px; text-align:center; color:var(--sub); font-size:13px; gap:10px;}
   .edit-empty .big{font-size:36px;}
   .item-name-input{width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:14px; font-weight:700; color:var(--ink);}
@@ -444,7 +451,7 @@
           <div class="stage-hint" data-page-node-id="1Vo1UwGFuektXZB9FwlgVN">拖 <b data-page-node-id="LzUTLgv2nACC1CEPc7BA2m">本体移动</b> · <b>紫点不等比缩放</b>（← → 改宽 · ↑ ↓ 改高） · <b>黄点旋转</b> · 拖 <b data-page-node-id="yQOTospyHtd2a9xcmWo8mD">红点调关节</b> · 中线 <b>吸附</b> · 左右 <b>双向镜像</b>（Shift 禁用）</div>
         </div>
       </div>
-      <div style="display:flex; flex-direction:column; gap:14px; overflow:hidden;" data-page-node-id="aXn7HC43n5hUGMs2mcZlW7">
+      <div class="side-col" style="display:flex; flex-direction:column; gap:14px; overflow-y:auto; min-height:0;" data-page-node-id="aXn7HC43n5hUGMs2mcZlW7">
         <div class="card" data-page-node-id="FDFRhGOwfH67mO20CHSo1D">
           <div class="card-head" data-page-node-id="jpwbs0MWHyl7oOKExC35MS">
             <div data-page-node-id="LHrAt9lb6GyTAbPLsRxr0c"><h2 data-page-node-id="9EGdi3tbi2C0vVMABGK3oS">零件</h2><div class="card-sub" data-page-node-id="zo8qBtmH263ugRN2fkBcx2">选中后可操作</div></div>
