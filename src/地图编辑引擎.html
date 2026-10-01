@@ -806,11 +806,13 @@ function darken(hex, amt){
   return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
 
-/* ================= 面板类型（与游戏侧保持一致） ================= */
+/* ================= 面板类型（与游戏侧保持一致）
+   ★ 三档 wardrobe* = 服装大楼里的「商店」（卖衣服、能下单），不是衣橱。
+     玩家买完从商店顶栏「👗 衣橱」进去换上。id 不变，线上数据不会失效。 */
 const PANEL_KINDS = [
-  { id:'wardrobe',        name:'👗 普通衣橱',        em:'👗' },
-  { id:'wardrobePremium', name:'流萤 · 高级时装衣橱',    em:'💎' },
-  { id:'wardrobeVip',     name:'长庚 · 贵宾区衣橱',      em:'🦪' },
+  { id:'wardrobe',        name:'👗 普通服装店',        em:'👗' },
+  { id:'wardrobePremium', name:'流萤 · 高级时装店',    em:'💎' },
+  { id:'wardrobeVip',     name:'长庚 · 贵宾区服装店',   em:'🦪' },
   { id:'tarot',           name:'🔮 塔罗占卜',        em:'🔮' },
   { id:'wish',            name:'⛲ 许愿池（预留）',  em:'⛲' },
   { id:'checkin',         name:'📅 签到日历',        em:'📅' },

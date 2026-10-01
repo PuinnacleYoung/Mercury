@@ -986,6 +986,8 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-top .sp{flex:1;}
 .shop-close{width:38px;height:38px;border-radius:12px;background:rgba(var(--glass-rgb),.7);border:1px solid var(--glass-border);color:var(--c-sub);font-size:17px;cursor:pointer;transition:.2s;}
 .shop-close:hover{background:var(--c-accent);color:#fff;}
+.shop-wb{height:38px;padding:0 16px;border-radius:12px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border:none;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px var(--gold-glow);transition:.2s;white-space:nowrap;}
+.shop-wb:hover{filter:brightness(1.08);}
 .shop-tabs{display:flex;gap:8px;padding:12px 22px 0;}
 .shop-tab{padding:9px 18px;border-radius:999px;border:1px solid var(--glass-border);background:rgba(var(--glass-rgb),.6);color:var(--c-sub);font-size:13px;font-weight:800;cursor:pointer;transition:.18s;}
 .shop-tab:hover{color:var(--c-ink);}
@@ -1155,6 +1157,7 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-top h3{font-size:calc(20px * var(--ui-scale));}
 .shop-top{padding:calc(18px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(12px * var(--ui-scale));}
 .shop-close{width:calc(38px * var(--ui-scale));height:calc(38px * var(--ui-scale));font-size:calc(17px * var(--ui-scale));}
+.shop-wb{height:calc(38px * var(--ui-scale));padding:0 calc(16px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
 .shop-tabs{padding:calc(12px * var(--ui-scale)) calc(22px * var(--ui-scale)) 0;gap:calc(8px * var(--ui-scale));}
 .shop-tab{padding:calc(9px * var(--ui-scale)) calc(18px * var(--ui-scale));font-size:calc(13px * var(--ui-scale));}
 .shop-grid{padding:calc(16px * var(--ui-scale)) calc(22px * var(--ui-scale)) calc(22px * var(--ui-scale));gap:calc(14px * var(--ui-scale));}
@@ -1409,8 +1412,7 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
       <div class="wb-head">
         <h2 id="wb-title">衣橱<span class="wb-title-sub">点击格子实时上身</span></h2>
         <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
-          <button class="wb-back" id="wb-shop-btn" style="background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 6px 16px var(--gold-glow);">🛍️ 去商店</button>
-          <button class="wb-back" id="wb-back">← 返回地图</button>
+          <button class="wb-back" id="wb-back">← 返回</button>
         </div>
       </div>
       <div class="item-grid" id="item-grid"></div>
@@ -4892,6 +4894,7 @@ document.querySelectorAll('.cs-seg-btn').forEach(b=>{
 $('btn-wardrobe').onclick = ()=>{
   wbZoneFilter = null;                          // 左侧入口 = 全部衣橱，不按商店分区过滤
   wbTitle = '';                                 // 标题回归朴素「衣橱」
+  wbFromShop = null;                            // 不是从店里进的，返回直接回地图
   panelReturn = 'map';
   showScreen('wardrobe-screen');
 };
@@ -4901,8 +4904,11 @@ document.querySelectorAll('.drawer-close').forEach(b=>b.onclick=()=>{
   if(t==='friends') closeFriends();
   if(t==='settings') closeSettings();
 });
-/* 衣橱「返回」：一律回到进来时的那张地图（旧大厅已下线） */
+/* 衣橱「返回」：从服装店进来的 → 回那家店；否则回到进来时的那张地图（旧大厅已下线） */
 $('wb-back').onclick = ()=>{
+  const shop = wbFromShop;
+  wbFromShop = null;
+  if(shop){ refreshEngineData(); refreshProfile(); openShop(shop); return; }
   panelReturn = 'map';
   if(mapState.currentId){ backToMap(); return; }
   enterLobby();
@@ -4912,15 +4918,9 @@ $('mc-back').onclick = ()=>{
   if(mapState.currentId){ backToMap(); return; }
   enterLobby();
 };
-/* 衣橱右上角「🛍️ 去商店」：商店数据早就在（服装引擎上架 → 云端发布），
-   但地图里以前只有三档「衣橱」入口、没有购买入口，openShop 成了死代码 ——
-   陛下做了衣服却永远买不到。这里给衣橱补一个直达入口，并按衣橱档位锁定分区
-   （普通衣橱 → 普通区，高级 → 高级+特殊，贵宾 → 限时+套装）。买完自动进衣橱。 */
-$('wb-shop-btn').onclick = ()=>{
-  refreshEngineData(); refreshProfile();
-  const zones = (wbZoneFilter && wbZoneFilter.length) ? wbZoneFilter.slice() : null;
-  openShop({ name: (wbTitle || '👗 时装店'), icon:'🛍️', shopTags: zones });
-};
+/* 衣橱不再挂「🛍️ 去商店」按钮 —— 陛下的规矩：服装大楼本身就是商店，
+   商店才是入口；衣橱只负责「已买到的衣服换着穿」，不额外造商店入口。
+   （想买东西：回地图 → 进服装大楼，或者从商店顶栏的「👗 衣橱」返回） */
 
 /* =========================================================================
    【大图自动降采样】
@@ -5065,20 +5065,6 @@ function buildWardrobe(){
   // 标题：面板入口带 emoji + 名字（流萤 · 高级时装衣橱），从左侧按钮进就是朴素的「衣橱」
   const wbTitleEl = $('wb-title');
   if(wbTitleEl) wbTitleEl.innerHTML = (wbTitle || '👗 衣橱') + '<span class="wb-title-sub">点击格子实时上身</span>';
-  /* 右上角「🛍️ 去商店」按钮：把本档位能买的新品数直接标出来（买了的不再计数） */
-  const sbEl = $('wb-shop-btn');
-  if(sbEl){
-    let n = 0;
-    try{
-      const zs = (wbZoneFilter && wbZoneFilter.length) ? wbZoneFilter : SHOP_ZONES.map(z=>z.id);
-      zs.forEach(z=>{ getShopEntries(z).forEach(en=>{
-        const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
-        if(!owned) n++;
-      }); });
-    }catch(e){}
-    sbEl.textContent = n ? ('🛍️ 去商店 · ' + n + ' 件可买') : '🛍️ 去商店';
-    sbEl.style.opacity = n ? '1' : '.72';
-  }
   // 分类侧边栏（竖向一列）· 顶部固定一个「套装」tab
   const col = $('cat-col'); col.innerHTML='';
   if(engineMode){
@@ -5120,9 +5106,9 @@ function buildWardrobe(){
   if(curCat === 'set'){
     const sets = ownedSetsFiltered();
     if(!sets.length){
-      emptyTip(wbZoneFilter
-        ? '这个衣橱里还没有套装。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> 看看本区上架的套装～<br>（衣服要先买了才会出现在衣橱里）'
-        : '还没有拥有的套装。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> →「套装」区买一套吧～');
+      emptyTip(wbFromShop
+        ? '这个衣橱里还没有套装。<br>点右上角 <span style="font-weight:800">← 返回</span> 回到店里逛逛～<br>（衣服要先买了才会出现在衣橱里）'
+        : '还没有拥有的套装。<br>回地图进 <span style="font-weight:800">👗 服装大楼</span> 买一套吧～<br>（衣服要先买了才会出现在衣橱里）');
       drawPreview(); return;
     }
     sets.forEach(s=>{
@@ -5152,7 +5138,9 @@ function buildWardrobe(){
     grid.appendChild(noneItem);
     const list = ownedItemsOf(curCat);
     if(!list.length){
-      emptyTip('这个分类还没有衣服。<br>点右上角 <span style="font-weight:800">🛍️ 去商店</span> 买一件 —— 买完它就出现在这个衣橱里了～');
+      emptyTip(wbFromShop
+        ? '这个分类还没有衣服。<br>点右上角 <span style="font-weight:800">← 返回</span> 回店里买一件 —— 买完它就出现在这个衣橱里了～'
+        : '这个分类还没有衣服。<br>去 <span style="font-weight:800">👗 服装大楼</span> 买一件 —— 买完它就出现在这个衣橱里了～');
     }
     list.forEach(item=>{
       const isEq = equipped===item.id;
@@ -7129,6 +7117,7 @@ function buildShopDOM(){
     '<div class="shop-panel">' +
       '<div class="shop-top">' +
         '<h3 id="shop-title">👗 时装店</h3><span class="sp"></span>' +
+        '<button class="shop-wb" id="shop-wb-btn">👗 衣橱</button>' +
         '<button class="shop-close" id="shop-close">✕</button>' +
       '</div>' +
       '<div class="shop-tabs" id="shop-tabs"></div>' +
@@ -7137,6 +7126,8 @@ function buildShopDOM(){
   document.body.appendChild(mask);
   $('shop-title').textContent = (shopState.bld.icon||'👗') + ' ' + (shopState.bld.name||'时装店');
   $('shop-close').onclick = closeShop;
+  /* 「👗 衣橱」：买了衣服就在这儿换上（只列这家店卖的分区，别的店衣服不混进来） */
+  $('shop-wb-btn').onclick = openWardrobeFromShop;
   mask.addEventListener('click', e=>{ if(e.target === mask) closeShop(); });
 }
 function renderShopTabs(){
@@ -7244,11 +7235,14 @@ function openTryOn(en){
 const LS_MAPS = 'game_maps';
 let mapState = { currentId:null, spawnId:null };
 
-/* 面板组件类型（与《地图编辑引擎》保持一致；zones = 该衣橱显示哪些商店分区） */
+/* 面板组件类型（与《地图编辑引擎》保持一致）
+   ★ 三档 wardrobe* 是「服装大楼里的商店」——zones = 这家店卖哪几个分区的衣服。
+     陛下钦定：大楼是卖衣服的，不是衣橱。点进去＝逛店下单；买完从店里的「👗 衣橱」进去换上。
+     （id 保持 wardrobe* 不变，线上地图数据里的 panelId 才不会失效） */
 const PANEL_KINDS = [
-  { id:'wardrobe',        name:'👗 普通衣橱',     em:'👗', zones:['common'] },
-  { id:'wardrobePremium', name:'流萤 · 高级时装衣橱', em:'💎', zones:['premium','special'] },
-  { id:'wardrobeVip',     name:'长庚 · 贵宾区衣橱',   em:'🦪', zones:['limited','outfit'] },
+  { id:'wardrobe',        name:'👗 普通服装店',     em:'👗', zones:['common'] },
+  { id:'wardrobePremium', name:'流萤 · 高级时装店', em:'💎', zones:['premium','special'] },
+  { id:'wardrobeVip',     name:'长庚 · 贵宾区服装店', em:'🦪', zones:['limited','outfit'] },
   { id:'tarot',           name:'🔮 塔罗占卜',     em:'🔮', zones:null },
   { id:'wish',            name:'⛲ 许愿池',       em:'⛲', zones:null },
   { id:'checkin',         name:'📅 签到日历',     em:'📅', zones:null },
@@ -7350,14 +7344,14 @@ function applyCloudAssets(slots){
   if(n){
     try{ localStorage.setItem('cloud_applied', JSON.stringify(applied)); }catch(e){}
     _mapsCache = null;
-    /* 🗺 地图被云端换了 → 就地补一次「🛍️ 商店入口」。
-       老地图里只挂了三档「衣橱」面板（衣橱＝只显示已拥有的），没有任何能买东西的地方，
-       openShop() 等于死代码：陛下上架的衣服永远买不到。云端每次覆盖地图后都要再补一遍。 */
+    /* 🗺 地图被云端换了 → 就地清一次「🛍️ 补种货架」。
+       服装大楼本身（三档 wardrobe* 面板）就是商店，不需要再挂独立入口；
+       但历史版本可能已经把自动补种的地块发布上去了，这里覆盖后统一摘掉。 */
     if(gotSlots.indexOf('map') >= 0){
       try{
         const md = JSON.parse(localStorage.getItem('game_maps') || '{}');
-        if(md && md.maps){ ensureShopCounter(md); localStorage.setItem('game_maps', JSON.stringify(md)); }
-      }catch(e){ console.warn('[cloud] 补商店入口失败', e); }
+        if(md && md.maps){ pruneShopCounter(md); localStorage.setItem('game_maps', JSON.stringify(md)); }
+      }catch(e){ console.warn('[cloud] 清理补种商店入口失败', e); }
     }
     console.log('[cloud] 同步云端资产 ' + n + ' 项：' + updated.join('、'));
     try{ toast('☁️ 已更新云端内容：' + updated.join('、')); }catch(e){}
@@ -7671,32 +7665,28 @@ function seedMaps(){
   Object.values(maps).filter(isMapNode).forEach(m=>{m.nodes=m.navTiles;});
   return {version:MAP_SCHEMA_VERSION,rootMapId:'world-hub',entryLevelId:'classroom',root:'classroom',maps,panels:defaultPanelRegistry(),_migrationV3:{at:new Date().toISOString(),fromVersion:0,log:['SEEDED_V3']}};
 }
-/* ★ 服装商店补种：凡是挂着「三档衣橱面板」的关卡（服装店 / 商业街…），
-   再补一个 action='shop' 的「🛍️ 新品货架」地块。
-   为什么：以前地图里只有衣橱入口（衣橱＝只显示「已拥有」），商店 openShop() 写好了却没人调用，
-   结果陛下在引擎里上架的衣服永远买不到、衣橱永远是空的。买了才进衣橱，这条链现在才闭环。 */
-const WARDROBE_PANEL_ZONES = { wardrobe:['common'], wardrobePremium:['premium','special'], wardrobeVip:['limited','outfit'] };
-function ensureShopCounter(d){
+/* ★ 三档「服装店面板」各卖哪几个分区（与 PANEL_KINDS.zones 同源，这里给运行时查表用） */
+const SHOP_PANEL_ZONES = { wardrobe:['common'], wardrobePremium:['premium','special'], wardrobeVip:['limited','outfit'] };
+function isShopPanel(id){ return !!SHOP_PANEL_ZONES[id]; }
+/* ★ 清理：早先为了「让 openShop 有入口」而自动补种的「🛍️ 新品货架」地块。
+   陛下的意思是——服装大楼本身就是商店，不该再多挂一个独立入口。
+   所以这里改成反向清理：把 action='shop' 的补种地块从地图里摘掉
+   （陛下自己在编辑器里手工摆的商店保留，只清 id 以 shop_counter_ 开头的自动货） */
+function pruneShopCounter(d){
   if(!d || !d.maps) return d;
+  let changed = false;
   Object.keys(d.maps).forEach(id=>{
     const m = d.maps[id];
-    if(!m || !isLevelNode(m)) return;
-    if(!Array.isArray(m.entities)) m.entities = Array.isArray(m.nodes) ? m.nodes : [];
-    const ents = m.entities;
-    const zones = [];
-    ents.forEach(e=>{
-      const z = WARDROBE_PANEL_ZONES[(e && (e.panelId || e.panel)) || ''];
-      if(z) z.forEach(x=>{ if(zones.indexOf(x) < 0) zones.push(x); });
-    });
-    if(!zones.length) return;                       // 不是服装店类关卡，不动
-    if(ents.some(e=> e && e.action === 'shop')) return;  // 已经有了，别重复塞
-    let x = 0.5, y = 0.74;                           // 默认摆在衣橱下方；被占就再往下
-    if(ents.some(e=> e && Math.abs((+e.x||0) - x) < 0.18 && Math.abs((+e.y||0) - y) < 0.14)) y = 0.90;
-    ents.push({ id:'shop_counter_' + id, kind:'tile', name:'新品货架', icon:'🛍️', x, y, w:0.24, h:0.16, img:null,
-      action:'shop', shopTags:zones, triggerMode:'click', tip:'上架的新衣服都在这儿 —— 买了才进衣橱' });
-    m.nodes = m.entities;
+    if(!m) return;
+    const ents = Array.isArray(m.entities) ? m.entities : (Array.isArray(m.nodes) ? m.nodes : null);
+    if(!ents) return;
+    const before = ents.length;
+    const kept = ents.filter(e=> !(e && e.action === 'shop' && String(e.id||'').indexOf('shop_counter_') === 0));
+    if(kept.length !== before){
+      m.entities = kept; m.nodes = kept; changed = true;
+    }
   });
-  return d;
+  return changed ? d : d;
 }
 function ensureMaps(){
   if(_mapsCache && _mapsCache.version===MAP_SCHEMA_VERSION && _mapsCache.maps) return _mapsCache;
@@ -7704,7 +7694,7 @@ function ensureMaps(){
   if(!d || !d.maps) d=seedMaps();
   const before=JSON.stringify(d);
   d=migrateMaps(d)||d;
-  d=ensureShopCounter(d)||d;
+  d=pruneShopCounter(d)||d;
   if(JSON.stringify(d)!==before || !getMapsData()) saveMapsData(d);
   _mapsCache=d;
   return d;
@@ -7980,8 +7970,8 @@ function enterMap(id,spawnId){
 function fireTrigger(t){
   if(!t)return;const act=nodeAction(t),tid=nodeTargetId(t);
   if(act==='panel'){mapRun.lastFired=t.id;openPanelNode(t);return;}
-  /* 商店入口：以前 openShop() 写好了却没人调用（地图只挂了三档「衣橱」入口），
-     等于「衣服上架了但买不到」。现在地图实体 action='shop' 就能开这家店。 */
+  /* 独立商店地块（action='shop'）：陛下想在哪儿单开一家店就摆一个。
+     ★ 服装大楼不用这个 —— 它挂的是三档 wardrobe* 面板，点进去就是商店。 */
   if(act==='shop'){mapRun.lastFired=t.id;openShop({name:t.name||'时装店',icon:t.icon||'🛍️',
     shopTags:(Array.isArray(t.shopTags)&&t.shopTags.length)?t.shopTags:null});return;}
   if(act==='dialogue'){toast(t.tip||'💬 对话事件');return;}
@@ -8054,11 +8044,31 @@ function openPanelNode(node){
   if(kind==='mergeshop'){enterMergeShop();return;}
   if(kind==='bank'){enterBank();return;}
   if(kind==='merch'){enterMerchShop();return;}
-  // 三档衣橱：按商店分区自动过滤
+  /* ★ 三档服装店面板：服装大楼是「卖衣服的」，点进去＝逛这家店（能下单），
+     不是直接进衣橱。买完后从店里的「👗 衣橱」进去换上（衣橱只显示已拥有的）。 */
+  if(isShopPanel(kind)){
+    openShop({ name: label || '时装店', icon: (info ? info.em : '👗'),
+               shopTags: (SHOP_PANEL_ZONES[kind] || (info && info.zones) || []).slice() });
+    return;
+  }
+  // 其它面板（旧数据里可能还有自定义面板）：兜底按衣橱打开
   wbZoneFilter = (info && info.zones) ? info.zones.slice() : null;
   wbTitle = (info ? info.em + ' ' : '') + label;
   showScreen('wardrobe-screen');
   toast((info ? info.em + ' ' : '') + label);
+}
+/* 从服装店进衣橱：只显示这家店卖的那几个分区，返回按钮回店里 */
+let wbFromShop = null;
+function openWardrobeFromShop(){
+  const bld = shopState && shopState.bld;
+  const tags = (shopState && shopState.zones && shopState.zones.length)
+    ? shopState.zones.map(z=>z.id)
+    : (bld && bld.shopTags) || null;
+  wbZoneFilter = (tags && tags.length) ? tags.slice() : null;
+  wbTitle = ((bld && bld.icon) ? bld.icon + ' ' : '👗 ') + ((bld && bld.name) ? bld.name + ' · 衣橱' : '衣橱');
+  wbFromShop = bld ? { name:bld.name, icon:bld.icon, shopTags:(bld.shopTags||tags||[]).slice() } : null;
+  closeShop();
+  showScreen('wardrobe-screen');
 }
 
 /* ================= 周边小店（风皇娱乐 · 建筑地块进入） =================
