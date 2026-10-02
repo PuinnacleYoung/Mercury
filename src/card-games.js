@@ -261,6 +261,26 @@
       /* 观战头像 */
       '.cg-spec{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;background:rgba(255,255,255,.08);' +
       'border-radius:99px;padding:3px 8px;margin:2px 3px 2px 0;}' +
+      /* 玩法说明抽屉（陛下钦定：规矩要写得人看得懂） */
+      '#cg-help{position:absolute;top:0;right:0;bottom:0;width:min(380px,94%);z-index:24;display:none;flex-direction:column;' +
+      'background:rgba(14,8,30,.98);border-left:1px solid rgba(255,255,255,.2);box-shadow:-8px 0 26px rgba(0,0,0,.55);}' +
+      '#cg-help.open{display:flex;}' +
+      '.cg-htabs{display:flex;gap:5px;padding:8px;flex-wrap:wrap;flex:0 0 auto;}' +
+      '.cg-htab{flex:1 1 auto;text-align:center;font-size:11px;font-weight:800;padding:6px 4px;border-radius:9px;cursor:pointer;' +
+      'background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);white-space:nowrap;}' +
+      '.cg-htab.on{background:linear-gradient(135deg,#8b6fd6,#b49ae0);border-color:transparent;}' +
+      '#cg-helpbody{flex:1;min-height:0;overflow-y:auto;padding:2px 12px 16px;font-size:11.5px;line-height:1.75;}' +
+      '.cg-h1{font-size:15px;font-weight:900;margin:12px 0 3px;color:#ffd166;}' +
+      '.cg-h2{font-size:12px;font-weight:800;margin:10px 0 3px;color:#c9b6f5;border-left:3px solid #8b6fd6;padding-left:7px;}' +
+      '.cg-hp{margin:3px 0;opacity:.93;}' +
+      '.cg-hp b{color:#ffd166;}' +
+      '.cg-htb{width:100%;border-collapse:collapse;font-size:11px;margin:4px 0 8px;}' +
+      '.cg-htb td{padding:2px 6px 2px 0;vertical-align:top;border-bottom:1px dashed rgba(255,255,255,.09);}' +
+      '.cg-htb td:first-child{color:#ffd166;font-weight:800;white-space:nowrap;width:78px;}' +
+      '.cg-hk{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 10px;margin:5px 0;}' +
+      '.cg-hk .t{font-weight:900;color:#ffd166;font-size:12px;}' +
+      '.cg-hwarn{background:rgba(229,72,77,.16);border:1px solid rgba(229,72,77,.45);border-radius:10px;padding:7px 10px;margin:6px 0;}' +
+      '.cg-hwarn .t{font-weight:900;color:#ff9aa0;font-size:12px;}' +
       /* 聊天抽屉 */
       '#cg-chat{position:absolute;top:0;right:0;bottom:0;width:min(300px,86%);z-index:20;display:none;flex-direction:column;' +
       'background:rgba(16,9,34,.96);border-left:1px solid rgba(255,255,255,.18);box-shadow:-8px 0 24px rgba(0,0,0,.4);}' +
@@ -295,6 +315,7 @@
       '  <button class="cg-tbtn wide" id="cg-cbtn" title="聊天频道">💬 聊天</button>' +
       '  <div><div class="tt" id="cg-tt">棋牌</div><div class="st" id="cg-st"></div></div>' +
       '  <div id="cg-hud"></div>' +
+      '  <button class="cg-tbtn wide" id="cg-hbtn" title="玩法说明" style="border-color:rgba(201,182,245,.55);color:#c9b6f5;background:rgba(139,111,214,.14);">❓ 玩法</button>' +
       '  <button class="cg-tbtn" id="cg-lbtn" title="押注区">💰</button>' +
       '  <button class="cg-tbtn" id="cg-rbtn" title="观战席/战报">👥</button>' +
       '  <button class="cg-tbtn" id="cg-x" title="退出">✕</button>' +
@@ -318,6 +339,10 @@
       '    <div id="cg-chatlog"></div>' +
       '    <div id="cg-chin"><input class="cg-in" id="cg-chinput" placeholder="说点什么…（观战=递纸条）" style="flex:1;width:auto;letter-spacing:0;">' +
       '    <button class="cg-btn pri" id="cg-chsend">发送</button></div>' +
+      '  </div>' +
+      '  <div id="cg-help">' +
+      '    <div class="cg-htabs" id="cg-htabs"></div>' +
+      '    <div id="cg-helpbody"></div>' +
       '  </div>' +
       '</div>';
     document.body.appendChild(el);
@@ -353,6 +378,7 @@
     };
     syncRailBtns();
     $('cg-cbtn').onclick = function () { toggleChat(); };
+    $('cg-hbtn').onclick = function () { openHelp(hall.game || (G && G.game) || 'uno'); };
     $('cg-quit').onclick = closeHall;
     Array.prototype.forEach.call(document.querySelectorAll('.cg-chtab'), function (t) {
       t.onclick = function () { cgCh = t.dataset.ch; Array.prototype.forEach.call(document.querySelectorAll('.cg-chtab'), function (x) { x.classList.toggle('on', x === t); }); renderChat(); };
@@ -367,6 +393,195 @@
     var c = $('cg-chat');
     c.classList.toggle('open');
     if (c.classList.contains('open')) { renderChat(); setTimeout(function () { try { $('cg-chinput').focus(); } catch (e) { } }, 60); }
+  }
+
+  /* ================= 玩法说明（陛下钦定：规矩要让人看得懂） ================= */
+  /* 每个玩法：goal 一句话胜负 / terms 黑话对照 / secs 分段正文（warn 单独高亮块） */
+  var CG_HELP = {
+    uno: {
+      title: '🟥 锋线速演（UNO）',
+      goal: '谁先把手里通告单全部出完，谁就「杀青」赢下这局。',
+      terms: [
+        ['通告单', '就是你的手牌。分红 / 黄 / 绿 / 蓝 四门 + 黑牌'],
+        ['通告池', '摸牌堆。抽牌从这儿来，抽空了会把打过的牌洗回去继续抽'],
+        ['官宣', '手里只剩 1 张时大喊一声（系统自动喊）。不喊被抓到要罚抽 2 张'],
+        ['杀青', '手牌出完 = 获胜']
+      ],
+      secs: [
+        {
+          h: '怎么出牌',
+          p: ['轮到你时，打出一张跟桌上<b>同门颜色</b>、或<b>同一个数字 / 符号</b>的牌。',
+            '出不了的牌点了会提示「这张出不了」——那就看下面一条。']
+        },
+        {
+          h: '功能牌都干嘛的',
+          p: ['<b>⊘ 封杀</b>：下家停一轮，不能出牌。',
+            '<b>⇄ 舆论反转</b>：出牌方向掉头（顺时针↔逆时针）。',
+            '<b>+2 轧戏</b>：下家罚抽 2 张，并且停一轮。']
+        },
+        {
+          h: '⚫ 黑牌到底是什么？（重点）',
+          p: ['黑牌<b>不属于红黄蓝绿任何一门</b>，所以它是「万能牌」——<b>不管桌上现在是什么颜色，任何时候都能出</b>。',
+            '但黑牌自己没有颜色，所以出完以后要<b>由你来指定</b>下一家得跟哪一门：点下方四个「◯色」按钮选一门即可。',
+            '一共两种黑牌：',
+            '<b>W 换赛道</b>：只改颜色，不罚牌。',
+            '<b>+4 黑天鹅</b>：改颜色，<b>外加下家罚抽 4 张</b>并停一轮。这是全场最凶的一张，留着救急或补刀。']
+        },
+        {
+          h: '⏭ 「过」到底是什么？（重点）',
+          warn: '正统 UNO 里<b>没有「过」这个动作</b>——手里一张都出不了时，<b>必须抽一张</b>，不存在白嫖一轮直接跳过。',
+          p: ['正确流程是这样的：',
+            '① 轮到你，手里有能出的牌 → 直接点手牌打出去；',
+            '② 一张都出不了 → 点「🂠 抽一张」（<b>这一步没法跳过</b>）；',
+            '③ 抽到的这张<b>如果正好能出</b> → 点「✋ 打出刚抽的」立刻打出去；',
+            '④ 抽到的<b>还是出不了</b> → 这时才点「⏭ 过」交给下家。',
+            '所以「过」按钮平时是<b>灰的</b>，只在你抽完牌之后才亮起来。要是你发现它按不动，说明你还没抽牌——先抽！']
+        }
+      ]
+    },
+    mahjong: {
+      title: '🀄 防线长议（川麻）',
+      goal: '凑齐 4 组面子 + 1 对将（或七对），先「结案」的人赢。',
+      terms: [
+        ['接令', '从牌墙摸一张牌'],
+        ['传令', '打出一张牌到牌河'],
+        ['结案', '胡牌，赢'],
+        ['定缺', '开局先选一门（万 / 条 / 筒）不要，这门不打光不许胡'],
+        ['牌河', '所有人打出去的牌，摆在自己面前，全场可见'],
+        ['自摸', '自己摸到那张胡牌'],
+        ['接炮', '别人打出的牌正好让你胡']
+      ],
+      secs: [
+        {
+          h: '① 定缺（开局必做）',
+          p: ['开局先点「✂️ 定缺 万 / 条 / 筒」选一门<b>不要</b>的。',
+            '<b>这门牌没打光之前，你不能胡牌</b>——这是川麻的灵魂规矩，也是为什么叫「血战到底」的底子。',
+            'AI 会自动定缺，你只需要选自己的那门。']
+        },
+        {
+          h: '② 摸打',
+          p: ['庄家先打，然后逆时针一家一家来：接令一张 → 传令一张。',
+            '胡牌型 = <b>4 组面子 + 1 对将</b>。面子可以是顺子（一万二万三万）或刻子（三张一样）。',
+            '另外还能凑<b>连环计（七对）</b>：七个对子也能结案。']
+        },
+        {
+          h: '③ 碰 / 杠 / 胡（别人打牌时弹出来）',
+          p: ['别人打出一张牌，如果你能用得上，底部会冒出按钮：',
+            '<b>碰</b>：你手里有<b>两张一样的</b> → 碰过来凑成刻子，亮在面前，然后<b>你必须再打一张</b>（不能摸牌）。',
+            '<b>杠</b>：你手里有<b>三张一样的</b> → 杠过来凑四张，然后<b>从墙尾补摸一张</b>再打。',
+            '<b>胡</b>：这张牌正好让你凑齐胡牌型 → 直接结案！',
+            '用不上就点「🙅 过」放弃这一张。']
+        },
+        {
+          h: '④ 杠的三种',
+          p: ['<b>明杠</b>：别人打的牌，你手里有三张一样的 → 杠。',
+            '<b>暗杠</b>：自己摸到第四张 → 可以不亮，直接扣下。',
+            '<b>补杠</b>：已经碰过的刻子，又摸到第四张 → 补上去。',
+            '三种杠完都要从墙尾补摸一张。']
+        }
+      ]
+    },
+    flight: {
+      title: '✈️ 永恒王座 · 番位之战（飞行棋）',
+      goal: '把自家四架艺人全部送上 ♛ 永恒王座，先到齐的社赢。',
+      terms: [
+        ['机巢', '出发区。艺人停在里面时是待命状态'],
+        ['出道', '掷出 6 才能把一架艺人从机巢送上起飞点'],
+        ['归航臂 ↵', '绕完一圈后拐进自己颜色那条 5 格通道'],
+        ['永恒王座 ♛', '自家机库终点，要掷出<b>精确点数</b>才能登顶']
+      ],
+      secs: [
+        {
+          h: '怎么操作（重点）',
+          p: ['先掷骰，然后<b>直接点棋盘上的棋子</b>：',
+            '• 棋子还在<b>机巢</b>里 → 点机巢里那个闪金圈的圈，它就出道；',
+            '• 棋子已经<b>在路上</b> → 点棋盘格上那架艺人，它就往前走。',
+            '能动的棋子会带<b>呼吸金环 + ▼ 箭头</b>高亮，点它就行，不用去底下找按钮。']
+        },
+        {
+          h: '走位规则',
+          p: ['<b>掷出 6 才能出道</b>，出道后还能再掷一次。',
+            '沿外环 52 格顺时针绕行，绕满一圈从 ↵ 归航臂进机库。',
+            '<b>必须掷出精确点数</b>才能登上 ♛ —— 点多了要原地等下一轮。']
+        },
+        {
+          h: '特殊格',
+          p: ['<b>★ 事件格</b>：翻一张事件卡（32 张），好事坏事都有。',
+            '<b>✈ 航线</b>：落到自己颜色的航线口，<b>直飞 +12 格</b>；落到同色格还能<b>连跳 +4</b>。',
+            '<b>命运区</b>：20 张命运卡，翻出来会全场广播。']
+        }
+      ]
+    },
+    doudizhu: {
+      title: '🃏 坐庄（斗地主）',
+      goal: '庄家一人对两家散户，谁先出完手里的牌谁那方赢。',
+      terms: [
+        ['抢筹', '开局抢庄，抢到的人当庄家'],
+        ['暗料', '3 张底牌，庄家独吞'],
+        ['散户', '另外两家，联手对抗庄家'],
+        ['炸弹', '四张一样，能压过任何普通牌型'],
+        ['王炸', '双王（大小王），全场最大']
+      ],
+      secs: [
+        {
+          h: '① 坐庄',
+          p: ['开局抢筹，谁抢到谁当<b>庄家</b>，拿走 3 张<b>暗料</b>（底牌）。',
+            '庄家 20 张，两家散户各 17 张。庄家先出牌。']
+        },
+        {
+          h: '② 出牌与压牌',
+          p: ['轮到你，要么打一手<b>比上家大</b>的<b>同牌型</b>，要么点「过」不要。',
+            '牌型：单张 / 对子 / 三张 / 三带一 / 顺子（5 连起）/ 连对 / 飞机 / 炸弹 / 王炸。',
+            '两家都「过」的话，出牌权回到你手里，可以重新起一手。']
+        },
+        {
+          h: '⚠️ 这里的「过」是合法的！',
+          warn: '<b>斗地主有「过」，UNO 没有。</b>两家玩法别混——斗地主里你不想压、或压不起，直接点「过」是完全合规的，不用抽牌。',
+          p: ['区别在于：斗地主是「<b>要不要压</b>」，UNO 是「<b>有没有牌出</b>」。',
+            '斗地主的过 = 战略性放弃这一手，留着大牌后面用。']
+        },
+        {
+          h: '③ 胜负',
+          p: ['庄家先出完 → <b>庄家赢</b>，两家散户都输。',
+            '任意一家散户先出完 → <b>散户方赢</b>，庄家输。']
+        }
+      ]
+    }
+  };
+  var _helpGame = 'uno';
+  function openHelp(gameId) {
+    ensureEl();
+    if (CG_HELP[gameId]) _helpGame = gameId;
+    var box = $('cg-help');
+    box.classList.add('open');
+    $('cg-chat').classList.remove('open');   /* 两个抽屉不同时开，免得叠一起 */
+    renderHelp();
+  }
+  function renderHelp() {
+    var tabs = $('cg-htabs'), body = $('cg-helpbody');
+    if (!tabs || !body) return;
+    tabs.innerHTML = '';
+    Object.keys(CG_HELP).forEach(function (k) {
+      var d = document.createElement('div');
+      d.className = 'cg-htab' + (k === _helpGame ? ' on' : '');
+      d.textContent = GAMES[k] ? (GAMES[k].em + GAMES[k].name) : k;
+      d.onclick = function () { _helpGame = k; renderHelp(); };
+      tabs.appendChild(d);
+    });
+    var H = CG_HELP[_helpGame] || CG_HELP.uno;
+    var h = '<div class="cg-h1">' + H.title + '</div>';
+    h += '<div class="cg-hk"><span class="t">🎯 胜负</span><div class="cg-hp">' + H.goal + '</div></div>';
+    h += '<div class="cg-h2">黑话对照</div><table class="cg-htb">';
+    H.terms.forEach(function (t) { h += '<tr><td>' + t[0] + '</td><td>' + t[1] + '</td></tr>'; });
+    h += '</table>';
+    H.secs.forEach(function (s) {
+      h += '<div class="cg-h2">' + s.h + '</div>';
+      if (s.warn) h += '<div class="cg-hwarn"><span class="t">⚠️ 注意</span><div class="cg-hp">' + s.warn + '</div></div>';
+      s.p.forEach(function (x) { h += '<div class="cg-hp">· ' + x + '</div>'; });
+    });
+    h += '<div class="cg-hp" style="margin-top:14px;opacity:.55;text-align:center;">— 看完点右上角 ❓ 收起 —</div>';
+    body.innerHTML = h;
+    body.scrollTop = 0;
   }
 
   /* ================= 战报 / HUD / 侧栏 ================= */
@@ -654,6 +869,7 @@
     if (el) {
       el.classList.remove('on');
       var q = $('cg-quit'); if (q) q.style.display = 'none';
+      var hp = $('cg-help'); if (hp) hp.classList.remove('open');
     }
   }
 
@@ -664,6 +880,17 @@
       ' · 在线 ' + hall.players.length + '/' + hall.seats;
     var b = $('cg-body');
     b.innerHTML = '';
+    /* 玩法说明入口（陛下钦定：规矩要查得到）——开局前就能翻 */
+    var hbar = document.createElement('div');
+    hbar.style.cssText = 'flex:1 1 100%;display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+    hbar.innerHTML = '<span style="font-size:12px;opacity:.75;">第一次玩？</span>';
+    var hBtn = document.createElement('button');
+    hBtn.className = 'cg-btn pri';
+    hBtn.style.cssText = 'padding:8px 18px;font-size:13px;';
+    hBtn.textContent = '📖 看 ' + g.em + g.name + ' 怎么玩';
+    hBtn.onclick = function () { openHelp(hall.game); };
+    hbar.appendChild(hBtn);
+    b.appendChild(hbar);
     /* 陛下钦定：横着一排竖模块（人数 / 座位 / 开房加入），不再一条条摞。
        ⚠️ 棋牌引擎是管理员系统（要密码），游戏侧绝不放直跳入口 —— 换素材请走管理员中枢。 */
     var cols = document.createElement('div'); cols.className = 'cg-cols';
@@ -1027,6 +1254,7 @@
     var spectate = !!(opts && opts.spectate);
     G = { setup: setup, game: setup.game, seats: setup.seats, turn: 0, over: null, msg: '', sel: [], phase: 'play', log: [], spectate: spectate, round: 0, t0: Date.now() };
     G.bubbles = []; G._avBox = {};        /* 聊天气泡 + 头像框位置（气泡错位用） */
+    G.unoDrew = false; G.unoDrewIdx = -1; /* UNO：本回合是否已抽过牌（没抽不许「过」） */
     startBubbleTimer();
     G.lastPlay = []; for (var lp = 0; lp < setup.seats; lp++) G.lastPlay.push(null);
     G.passed = []; for (var pp = 0; pp < setup.seats; pp++) G.passed.push(false);
@@ -1188,7 +1416,8 @@
   }
   /* 回合倒计时：20 秒想不完就替你出（自动摸/自动传/自动压/自动掷） */
   var TURN_MS = 20000;
-  function touchTurn() { if (G) G.turnAt = Date.now(); }
+  /* 换人就清：UNO 的「抽过牌」标记每回合只能有一次（标准规则：没得出→抽一张→还出不了才过） */
+  function touchTurn() { if (G) { G.turnAt = Date.now(); G.unoDrew = false; G.unoDrewIdx = -1; } }
   function turnLeftSec() { return Math.max(0, Math.ceil((TURN_MS - (Date.now() - (G.turnAt || Date.now()))) / 1000)); }
   function drawTurnBar(c, W, H) {
     var myTurn = G.turn === 0;
@@ -1246,7 +1475,11 @@
     flMove(0, opts[0], G.dice);
   }
   function tipText() {
-    if (G.game === 'uno') return '锋线速演：点通告单出牌（同色/同数字/功能牌），没有就「抽一张」。剩 1 张记得官宣！';
+    if (G.game === 'uno') {
+      if (G.pendingWild) return '⚫ 黑牌！由你指定下一家要跟的颜色——点下面四个「◯色」按钮选一门。';
+      if (G.unoDrew) return '🂠 抽完一张了：抽到的能出就点「✋ 打出刚抽的」，出不了就点「⏭ 过」交给下家。';
+      return '锋线速演：点通告单出牌（同色/同数字/功能牌）；一张都出不了就「🂠 抽一张」——UNO 没有"过"，必须抽！剩 1 张记得官宣！';
+    }
     if (G.game === 'mahjong') return '防线长议：接令一张传令一张，凑 4 组面子 + 1 对将就能结案，也能凑连环计（七对）。';
     if (G.game === 'flight') return '永恒王座：掷 6 才能出道，绕外环一圈从 ↵ 归航、精确点数登上 ♛。落 ★ 翻事件卡，落 ✈ 冲航线翻命运卡。';
     return '坐庄：先抢筹坐庄（吃 3 张暗料），再轮流出牌压上家（顺子/连对/黑天鹅…），庄家 vs 两家散户，谁先出完谁赢。';
@@ -1278,8 +1511,21 @@
     }
     if (G.spectate) return out;   /* 观战席：只看不摸 */
     if (G.game === 'uno') {
-      out.push({ label: '🂠 抽一张', fn: unoDraw });
-      out.push({ label: '⏭ 过', fn: function () { markPass(0); G.msg = seatTitle(0) + ' 过'; advance(1); drawGame(); scheduleAI(); } });
+      /* ⚠️ UNO 没有「过」这个动作——手里出不了就必须抽一张。
+         只有抽完牌之后「过」才合法（抽到的也出不了，才交给下家）。 */
+      if (!G.unoDrew) {
+        out.push({ label: '🂠 抽一张（没得出就抽）', pri: true, fn: unoDraw });
+        out.push({
+          label: '⏭ 过（要先抽牌）', disabled: true,
+          fn: function () { toast('🚫 UNO 里没牌出是「必须抽一张」，不是「过」——先抽！'); }
+        });
+      } else {
+        var dc = G.hands[0][G.unoDrewIdx];
+        if (dc && unoPlayable(dc)) {
+          out.push({ label: '✋ 打出刚抽的「' + unoCardName(dc) + '」', pri: true, fn: function () { unoPlay(G.unoDrewIdx); } });
+        }
+        out.push({ label: '⏭ 过（抽完也出不了，交给下家）', fn: unoPass });
+      }
       if (G.pendingWild) {
         ['r', 'y', 'g', 'b'].forEach(function (col) {
           out.push({ label: FL_SOC[col] + '色', pri: true, fn: function () { unoPickColor(col); } });
@@ -1689,6 +1935,7 @@
     var card = G.hands[0][i];
     if (!card || !unoPlayable(card)) { toast('🚫 这张出不了（要同色 / 同数字 / 换赛道）'); return; }
     G.hands[0].splice(i, 1); G.pile.push(card); G.cur = card.color; G.lastPlay[0] = [card]; clearPass();
+    G.unoDrew = false; G.unoDrewIdx = -1;   /* 出掉就不再是「抽完待决」状态 */
     if (card.shape === 'skip') cgLog('📸 ' + G.names[0] + ' 打出「封杀」——狗仔闪光灯糊脸！');
     if (card.shape === 'wild4') cgLog('🦢 ' + G.names[0] + ' 甩出「黑天鹅」！全场暗场 0.5 秒');
     if (G.hands[0].length === 0) { G.winSeat = 0; G.over = G.names[0] + ' 杀青！本局通告全部播完 🎉'; settleBets(); drawGame(); return; }
@@ -1718,13 +1965,37 @@
     G.msg = G.names[s] + ' 被' + (n >= 4 ? '黑天鹅砸中' : '轧戏') + '，罚抽 ' + n + ' 张';
     cgLog(G.msg);
   }
+  /* UNO 标准规则：手里没牌能出 → **必须抽一张**（没有"过"这个选项）。
+     抽到的这张如果能出，可以立刻打出去；还是出不了，才轮到下家（这时才点「过」）。 */
   function unoDraw() {
     if (G.turn !== 0 || G.over || G.spectate) return;
+    if (G.unoDrew) { toast('🚫 这回合已经抽过一张了——打出它，或者点「过」交给下家'); return; }
     if (!G.stock.length) G.stock = shuffle(G.pile.splice(0, G.pile.length - 1));
     var cd = G.stock.pop(); if (cd) G.hands[0].push(cd);
-    G.msg = '抽了一张新通告';
-    if (cd && !unoPlayable(cd)) { advance(1); scheduleAI(); }
+    G.unoDrew = true; G.unoDrewIdx = G.hands[0].length - 1;
+    G.msg = cd
+      ? (unoPlayable(cd) ? ('抽到「' + unoCardName(cd) + '」——正好能出！点手牌打出去，或点「过」交给下家')
+        : ('抽到「' + unoCardName(cd) + '」，还是出不了 —— 点「过」交给下家'))
+      : '通告池空了';
+    cgLog('🂠 ' + seatTitle(0) + ' 抽了一张新通告');
     drawGame();
+  }
+  /* 抽完牌之后才有的「过」：这回合我确实出不了，交给下家 */
+  function unoPass() {
+    if (G.turn !== 0 || G.over || G.spectate) return;
+    markPass(0);
+    G.msg = seatTitle(0) + ' 抽完还是出不了，过';
+    cgLog('⏭ ' + G.msg);
+    G.unoDrew = false; G.unoDrewIdx = -1;
+    advance(1); drawGame(); scheduleAI();
+  }
+  /* 牌面叫法（给陛下看得懂的中文名，黑牌单独标出来） */
+  function unoCardName(card) {
+    if (!card) return '？';
+    var CN = { r: '红', y: '黄', g: '绿', b: '蓝', k: '黑' };
+    var SN = { skip: '封杀 ⊘', rev: '舆论反转 ⇄', d2: '轧戏 +2', wild: '换赛道 W（黑牌）', wild4: '黑天鹅 +4（黑牌）' };
+    if (SN[card.shape]) return (card.shape === 'wild' || card.shape === 'wild4') ? SN[card.shape] : (CN[card.color] + SN[card.shape]);
+    return (CN[card.color] || '') + (String(card.shape).replace(/^s/, '') || '');
   }
   function nextTurn() {
     if (G.game === 'uno') G.turn = (G.turn + G.dir + G.seats) % G.seats;
@@ -1768,7 +2039,11 @@
       if (card.shape === 'wild4') cgLog('🦢 ' + G.names[t] + ' 甩出黑天鹅！');
       if (h.length === 0) { G.winSeat = t; G.over = G.names[t] + ' 杀青！'; settleBets(); drawGame(); return; }
       if (h.length === 1) cgLog('📣 ' + G.names[t] + ' 官宣！');
-      if (card.shape === 'wild' || card.shape === 'wild4') { G.cur = ['r', 'y', 'g', 'b'][rnd(4)]; }
+      if (card.shape === 'wild' || card.shape === 'wild4') {
+        G.cur = ['r', 'y', 'g', 'b'][rnd(4)];
+        /* 黑牌要喊出换成了哪门，不然看不懂桌上为啥突然换色 */
+        cgLog('⚫ ' + G.names[t] + ' 把赛道换成「' + FL_SOC[G.cur] + '色」');
+      }
       G.msg = G.names[t] + ' 打出一张';
       applyUno(card);
       return;
@@ -3222,6 +3497,11 @@
     _mjOpts: function (p, tile) { return mjClaimOpts(p, tile); },
     _mjClaim: function (p, kind, tile, from) { mjDoClaim(p, kind, tile, from); },
     _mjDiscard: function (i) { mjDiscard(i); },
+    _help: function (g) { openHelp(g || 'uno'); },
+    _helpOpen: function () { var b = $('cg-help'); return !!(b && b.classList.contains('open')); },
+    _helpText: function () { var b = $('cg-helpbody'); return b ? b.textContent : ''; },
+    _helpTab: function () { return _helpGame; },
+    _unoDrew: function () { return G ? !!G.unoDrew : null; },
     _mjDraw: function () { mjDraw(); },
     _mjKey: function (t) { return mjKey(t); },
     _mjHand: function (p) { return (G && G.hands[p]) ? G.hands[p].slice() : []; },
