@@ -5008,6 +5008,10 @@ function buildChatSettings(){
 }
 $('chat-set-autopop').addEventListener('change', e=>{
   localStorage.setItem(LS_CHAT_AUTOPOP, e.target.checked ? '1' : '0');
+  /* 即时反馈：之前有「开了像没开」的错觉 —— 多半是上一条 toast 还挂着 / 频道选的是世界而消息发在关卡 */
+  toast(e.target.checked
+    ? '💬 左下角自动显示：开（记得看下面「显示哪个频道」）'
+    : '💬 左下角自动显示：关（消息只进聊天面板，不再弹左下角）');
 });
 document.querySelectorAll('.cs-seg-btn').forEach(b=>{
   b.onclick = ()=>{
@@ -5726,7 +5730,9 @@ function showChatBubble(from, text){
     const r = mc.getBoundingClientRect();
     const cs = charScaleOf(mapRun.h || 0);
     const x = r.left + (mapRun.ox||0) + nx * mapRun.w;                       // 角色中心（脚底）
-    const y = r.top  + (mapRun.oy||0) + ny * mapRun.h - (ENG_BASE_H*cs*1.14) - 30;  // 名牌上方
+    /* 名牌画在 charTop ~ charTop-名牌高 这一段，气泡底边要抬到名牌上沿再留空隙，
+       不然 5 秒里气泡一直压着头顶名字（十三更踩坑）。 */
+    const y = r.top + (mapRun.oy||0) + ny * mapRun.h - (ENG_BASE_H*cs*1.14) - (b.offsetHeight || 34) - 34;
     const half = 110;                                                        // 气泡居中（translateX(-50%)）
     b.style.left = Math.max(half + 6, Math.min(window.innerWidth - half - 6, x)) + 'px';
     b.style.top  = Math.max(6, y) + 'px';
