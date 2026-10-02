@@ -985,14 +985,14 @@ const sessionStorage = _mkStore(window.sessionStorage);
   /* 图层指纹：任一图层的合成结果变了，预览就得重画 */
   function itemThumbSig(it){
     const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return '';
-    return cat.layers.map(L=>{
+    return 'v2|' + cat.layers.map(L=>{                    // v2 = 正方形居中取景（v1 是紧贴裁边，老图一律作废重画）
       const s=it.layers[L.key]; if(!s) return '0';
       if(s.composed) return 'c'+Math.round(s.composed.w||0)+'x'+Math.round(s.composed.h||0)
         +'x'+Math.round(s.composed.cx||0)+'x'+Math.round(s.composed.cy||0)+'x'+(s.composed.dataUrl?s.composed.dataUrl.length:0);
       return 'p'+((s.pieces||[]).length)+(s.mirrorEnabled?'m':'');
     }).join('|');
   }
-  /* 全图层叠加 → 一张紧凑预览图（不含素体，按像素裁边，只留衣服本身） */
+  /* 全图层叠加 → 一张**正方形**预览图：以内容最长边为边长取景、内容居中、四周补透明，不拉伸、不素养体 */
   async function captureItemThumb(it){
     const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return null;
     const anchors=getAnchors();
@@ -1011,34 +1011,26 @@ const sessionStorage = _mkStore(window.sessionStorage);
     let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
     layers.forEach(L=>{ x0=Math.min(x0,L.x); y0=Math.min(y0,L.y); x1=Math.max(x1,L.x+L.w); y1=Math.max(y1,L.y+L.h); });
     if(!isFinite(x0)) return null;
-    const PAD=8, bw=(x1-x0)+PAD*2, bh=(y1-y0)+PAD*2;
-    const MAX=420;                                        // 预览图最长边（列表缩略图够用又不撑爆 localStorage）
-    const k=Math.min(1, MAX/Math.max(bw,bh));
-    const cw=Math.max(2,Math.round(bw*k)), ch=Math.max(2,Math.round(bh*k));
-    const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+    /* 正方形取景：边长 = 内容最长边（+留白），内容**居中**，边的方向补透明。
+       绝不拉伸 —— 各图层仍按舞台上的原始宽高画（跟身上穿着的比例一模一样），
+       只是取景框从「紧贴内容的长方形」换成「以最长边为边长的正方形」。
+       为什么：列表/商店卡片都是方格子，长方形图塞进去四周留白忽大忽小、看着东倒西歪。 */
+    const PAD=10, bw=(x1-x0), bh=(y1-y0);
+    const side=Math.max(bw,bh)+PAD*2;
+    const cx=(x0+x1)/2, cy=(y0+y1)/2;
+    const sx=cx-side/2, sy=cy-side/2;                     // 正方形左上角（内容居中）
+    const MAX=420;                                        // 预览图边长（列表缩略图够用又不撑爆 localStorage）
+    const k=Math.min(1, MAX/side);
+    const size=Math.max(2,Math.round(side*k));
+    const c=document.createElement('canvas'); c.width=size; c.height=size;
     const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high';
-    ctx.scale(k,k); ctx.translate(-(x0-PAD), -(y0-PAD));
+    ctx.scale(k,k); ctx.translate(-sx, -sy);
     for(const L of layers){
       const im=await loadImgAsync(L.src); if(!im) continue;
       ctx.save();
       if(L.mirror){ ctx.translate(L.x+L.w, 0); ctx.scale(-1,1); ctx.drawImage(im, 0, L.y, L.w, L.h); }
-      else ctx.drawImage(im, L.x, L.y, L.w, L.h);
+      else ctx.drawImage(im, L.x, L.y, L.w, L.h);         // 原比例画，不拉伸
       ctx.restore();
-    }
-    // 像素级裁边：把叠加后的整块透明去掉，缩略图才不会缩成一小点
-    let data;
-    try{ data=ctx.getImageData(0,0,cw,ch).data; }catch(e){ data=null; }
-    if(data){
-      let mX=cw,mY=ch,MX=-1,MY=-1;
-      for(let y=0;y<ch;y++){ const row=y*cw*4;
-        for(let x=0;x<cw;x++){ if(data[row+x*4+3]>8){ if(x<mX)mX=x; if(x>MX)MX=x; if(y<mY)mY=y; if(y>MY)MY=y; } } }
-      if(MX>=0){
-        const p=3, tX=Math.max(0,mX-p), tY=Math.max(0,mY-p), tW=Math.min(cw-tX,MX-mX+1+p*2), tH=Math.min(ch-tY,MY-mY+1+p*2);
-        const o=document.createElement('canvas'); o.width=tW; o.height=tH;
-        o.getContext('2d').drawImage(c, tX, tY, tW, tH, 0, 0, tW, tH);
-        try{ const u=o.toDataURL('image/webp',0.82); if(u && u.indexOf('data:image/webp')===0) return u; }catch(e){}
-        return o.toDataURL('image/png');
-      }
     }
     try{ const u=c.toDataURL('image/webp',0.82); if(u && u.indexOf('data:image/webp')===0) return u; }catch(e){}
     return c.toDataURL('image/png');
