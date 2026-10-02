@@ -1051,6 +1051,57 @@ const sessionStorage = _mkStore(window.sessionStorage);
   }
   /* 批量补：谁还没全图层预览就排队补一张（空闲串行，不卡 UI） */
   let thumbQueueOn=false;
+  /* ====== 老数据合成层转码：无损 PNG → WebP q0.92 ======
+     2026-10-02 陛下旨意：合成层是无损 PNG，占库大头（每件 2~6 层）。改成 WebP 后新做的自动是 WebP，
+     但**老衣服的 composed 不会自己变**——这里开机后台逐张转码：只读原图→画回同尺寸画布→换编码，
+     w/h/cx/cy 几何信息一字不动（不重新合成），所以绝不会把老衣服画歪。转完自动存盘。 */
+  let reencQueueOn=false;
+  function reencodeOnePng(sub){
+    return new Promise(res=>{
+      if(!sub || !sub.composed || !sub.composed.dataUrl) return res(false);
+      if(sub.composed.dataUrl.indexOf('data:image/png')!==0) return res(false);   // 已是 webp/gif，跳过
+      const im=new Image();
+      im.onload=()=>{
+        try{
+          const c=document.createElement('canvas');
+          c.width=im.naturalWidth||1; c.height=im.naturalHeight||1;
+          c.getContext('2d').drawImage(im,0,0);
+          const u=c.toDataURL('image/webp', COMPOSE_QUALITY);
+          if(u && u.indexOf('data:image/webp')===0){ sub.composed.dataUrl=u; res(true); return; }
+        }catch(e){}
+        res(false);
+      };
+      im.onerror=()=>res(false);
+      im.src=sub.composed.dataUrl;
+    });
+  }
+  function ensureComposedWebp(){
+    if(reencQueueOn) return; reencQueueOn=true;
+    const todo=[];
+    CATEGORIES.forEach(cat=>{
+      (library[cat.id]||[]).forEach(it=>{
+        if(!it || !it.layers) return;
+        Object.keys(it.layers).forEach(k=>{
+          const sub=it.layers[k];
+          if(sub && sub.composed && sub.composed.dataUrl && sub.composed.dataUrl.indexOf('data:image/png')===0) todo.push(sub);
+        });
+      });
+    });
+    let dirty=false, n=0;
+    const step=async ()=>{
+      const sub=todo.shift();
+      if(!sub){
+        reencQueueOn=false;
+        if(dirty){ saveLib(); console.log('[服装引擎] 合成层已转 WebP，共 ' + n + ' 张'); }
+        return;
+      }
+      let ok=false;
+      try{ ok=await reencodeOnePng(sub); }catch(e){}
+      if(ok){ dirty=true; n++; saveLib(); }
+      setTimeout(step, 25);
+    };
+    setTimeout(step, 80);
+  }
   function ensureThumbs(){
     if(thumbQueueOn) return; thumbQueueOn=true;
     const todo=[];
@@ -1295,6 +1346,13 @@ const sessionStorage = _mkStore(window.sessionStorage);
      现在：① 按旋转后的几何包围盒开画布 ② 画 ③ 像素级精修裁掉透明边
      返回 w/h（舞台像素真实尺寸）+ cx/cy（内容中心相对 box 中心的偏移）。 */
   const COMPOSE_MAX_DIM=900;   // 只防 localStorage 爆炸，不是「不许超过」的限制
+  const COMPOSE_QUALITY=0.92;  // 合成层编码质量（与上传素材一致）：WebP 有损但保留 alpha
+  /* 统一编码出口：优先 WebP（体积约为无损 PNG 的 1/3~1/5，肉眼无损，支持透明通道），
+     老浏览器 toDataURL 拿不到 webp 时自动回退 PNG，不会丢图。 */
+  function encodeCanvas(cvs, q){
+    try{ const u=cvs.toDataURL('image/webp', (q==null?COMPOSE_QUALITY:q)); if(u && u.indexOf('data:image/webp')===0) return u; }catch(e){}
+    return cvs.toDataURL('image/png');
+  }
   function composeSubLayer(pieces, box){
     if(!pieces || pieces.length===0) return null;
     const PAD=6;
@@ -1331,7 +1389,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     // 2) 像素级精修裁边
     let data;
     try{ data=ctx.getImageData(0,0,cw,ch).data; }
-    catch(e){ return { dataUrl:cvs.toDataURL('image/png'), w:bw, h:bh, cx:(x0+bw/2), cy:(y0+bh/2), boxW:box.w, boxH:box.h }; }
+    catch(e){ return { dataUrl:encodeCanvas(cvs), w:bw, h:bh, cx:(x0+bw/2), cy:(y0+bh/2), boxW:box.w, boxH:box.h }; }
     let minX=cw, minY=ch, maxX=-1, maxY=-1;
     for(let y=0;y<ch;y++){ const row=y*cw*4;
       for(let x=0;x<cw;x++){
@@ -1344,7 +1402,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     const out=document.createElement('canvas'); out.width=tW; out.height=tH;
     out.getContext('2d').drawImage(cvs, tX, tY, tW, tH, 0, 0, tW, tH);
     return {
-      dataUrl: out.toDataURL('image/png'),
+      dataUrl: encodeCanvas(out),       // WebP q0.92（老浏览器自动回退 PNG）
       w: tW/k, h: tH/k,                                  // 舞台像素真实尺寸（不再被 box 卡死）
       cx: x0 + (tX + tW/2)/k, cy: y0 + (tY + tH/2)/k,    // 内容中心相对 box 中心的偏移
       boxW: box.w, boxH: box.h
@@ -3544,6 +3602,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
   CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
   stageMgrs.body.render(); refreshPartsGrid();
   updateTopMeta();
+  ensureComposedWebp();                               // 老数据的合成层（无损 PNG）后台转 WebP，省 60~80% 体积
   ensureThumbs();                                     // 老数据补「全图层预览」
 })();
 </script>
