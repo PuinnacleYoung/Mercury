@@ -53,6 +53,9 @@
 
   let sock = null;
   let connected = false;
+  let _connPromise = null;   // ★ 并发 connect 时共用同一条连接（2026-10-02 修：
+                             //   以前两次 connect 会开出两条 WebSocket，第二条没走登录 →
+                             //   服务端认不出人（username=undefined），房间/好友会出现幽灵连接）
   let self = null;          // 服务器返回的公开资料
   let remotePlayers = {};   // username -> {x,y,facing,walk,nick,avatar,element,outfit, lastSeen}
   let onMsgHandlers = {};   // t -> [fn]
@@ -71,14 +74,15 @@
     emit(t, data){ (onMsgHandlers[t]||[]).forEach(fn=>{ try{ fn(data); }catch(e){} }); },
 
     connect(){
-      return new Promise((resolve, reject)=>{
-        if(sock && connected){ resolve(); return; }
+      if(sock && connected) return Promise.resolve();
+      if(_connPromise) return _connPromise;            // 正在连 → 复用，别再开一条
+      _connPromise = new Promise((resolve, reject)=>{
         const url = resolveUrl();
         try{ sock = new WebSocket(url); }
-        catch(e){ reject(e); return; }
+        catch(e){ _connPromise = null; reject(e); return; }
         sock.onopen = ()=>{ connected = true; resolve(); };
-        sock.onerror = (e)=>{ connected = false; /* 静默，重连交给调用方 */ };
-        sock.onclose = ()=>{ connected = false; sock = null; Net.emit('disconnect', {}); };
+        sock.onerror = (e)=>{ connected = false; _connPromise = null; /* 静默，重连交给调用方 */ };
+        sock.onclose = ()=>{ connected = false; sock = null; _connPromise = null; Net.emit('disconnect', {}); };
         sock.onmessage = (ev)=>{
           let msg; try{ msg = JSON.parse(ev.data); }catch(e){ return; }
           if(msg.t === 'welcome') self = msg.self;
@@ -97,6 +101,7 @@
           Net.emit(msg.t, msg);
         };
       });
+      return _connPromise;
     },
 
     send(obj){ if(sock && connected){ sock.send(JSON.stringify(obj)); } },

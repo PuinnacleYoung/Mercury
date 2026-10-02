@@ -1856,7 +1856,9 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 <!-- 地图内置占位素材：地块就是一张 PNG，不再画色块 -->
 <script src="./map-placeholders.js?v=20261001k"></script>
 <script src="./media-store.js?v=20261001k"></script>
-<script src="./net-client.js?v=20261001k"></script>
+<script src="./net-client.js?v=20261002b"></script>
+<script src="./card-skin.js?v=20261002a"></script>
+<script src="./card-games.js?v=20261002a"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -4403,6 +4405,7 @@ const ENGINES = [
   { ico:'🛍', nm:'二合游戏引擎',    ds:'合成链 · 生成器 · 客户 NPC · 订单模板 · 页面全局背景', file:'二合游戏引擎.html' },
   { ico:'🏦', nm:'银行引擎',        ds:'储蓄档位 · 借贷档位 · 19支股票走向与限购', file:'银行引擎.html' },
   { ico:'🎁', nm:'周边制作引擎',    ds:'制作区（模板/工艺/出血） · 上架区（定级价格/类目树管理） · 与小店实时同步', file:'周边制作引擎.html' },
+  { ico:'🎴', nm:'棋牌引擎',        ds:'四套玩法四个页签（UNO / 川麻 / 飞行棋 / 斗地主）· 牌背 · 底纹 · 边框 · 通用符号（花色、一万…）各自独立换素材', file:'棋牌引擎.html' },
 ];
 function buildAdminHub(){
   const g = $('hub-grid'); if(!g) return;
@@ -7801,6 +7804,11 @@ const PANEL_KINDS = [
   { id:'mergeshop',       name:'🍬 五宝的小卖部', em:'🍬', zones:null },
   { id:'bank',            name:'🏦 银行',         em:'🏦', zones:null },
   { id:'merch',           name:'🎁 周边小店',     em:'🎁', zones:null },
+  /* 四套棋牌（2026-10-02 新地块）：面板 id → 棋牌玩法 */
+  { id:'uno',             name:'🟥 锋线速演（UNO）',       em:'🟥', zones:null },
+  { id:'mahjong',         name:'🀄 防线长议（川麻）',       em:'🀄', zones:null },
+  { id:'flight',          name:'🎲 经纪人办公室（飞行棋）', em:'🎲', zones:null },
+  { id:'casino',          name:'🃏 地下赌场（斗地主）',     em:'🃏', zones:null },
 ];
 function panelInfo(id){ return PANEL_KINDS.filter(p=>p.id===id)[0] || null; }
 function panelName(id){ const p = panelInfo(id); return p ? p.name : (id||'（未设置）'); }
@@ -8529,8 +8537,15 @@ function fireTrigger(t){
   if(act==='panel'){mapRun.lastFired=t.id;openPanelNode(t);return;}
   /* 独立商店地块（action='shop'）：陛下想在哪儿单开一家店就摆一个。
      ★ 服装大楼不用这个 —— 它挂的是三档 wardrobe* 面板，点进去就是商店。 */
-  if(act==='shop'){mapRun.lastFired=t.id;openShop({name:t.name||'时装店',icon:t.icon||'🛍️',
-    shopTags:(Array.isArray(t.shopTags)&&t.shopTags.length)?t.shopTags:null});return;}
+  if(act==='shop'){
+    /* ★ 商铺页面接口（2026-10-02）：地块可以指定「卖什么」——
+       shopKind='merch'（或 shopTags 里有 'merch'）＝开**周边小店购买页**，
+       其它/留空才是服装店。之前风皇娱乐的地块只能开成服装店，就是缺这个口子。 */
+    const isMerch = (t.shopKind==='merch') || (Array.isArray(t.shopTags) && t.shopTags.indexOf('merch')>=0);
+    mapRun.lastFired=t.id;
+    if(isMerch){ enterMerchShop(); return; }
+    openShop({name:t.name||'时装店',icon:t.icon||'🛍️',
+      shopTags:(Array.isArray(t.shopTags)&&t.shopTags.length)?t.shopTags:null});return;}
   if(act==='dialogue'){toast(t.tip||'💬 对话事件');return;}
   if(act==='gameplay'){toast(t.tip||'🎮 玩法事件');return;}
   if(act==='collect'){toast(t.tip||'✨ 收集成功');return;}
@@ -8601,6 +8616,11 @@ function openPanelNode(node){
   if(kind==='mergeshop'){enterMergeShop();return;}
   if(kind==='bank'){enterBank();return;}
   if(kind==='merch'){enterMerchShop();return;}
+  /* ★ 四套棋牌：点地块 → 先进「等待位面」（选人数 / 开房 / 邀请 / 加房），人齐再开局 */
+  if(kind==='uno'){if(window.CardGames)CardGames.open('uno');return;}
+  if(kind==='mahjong'){if(window.CardGames)CardGames.open('mahjong');return;}
+  if(kind==='flight'){if(window.CardGames)CardGames.open('flight');return;}
+  if(kind==='casino'){if(window.CardGames)CardGames.open('doudizhu');return;}
   /* ★ 三档服装店面板：服装大楼是「卖衣服的」，点进去＝逛这家店（能下单），
      不是直接进衣橱。买完后从店里的「👗 衣橱」进去换上（衣橱只显示已拥有的）。 */
   if(isShopPanel(kind)){

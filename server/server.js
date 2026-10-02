@@ -312,6 +312,89 @@ function handleRename(c, msg){
   send(c.sock, { t:'sys', msg:'改名成功：' + newName });
 }
 
+/* ================= 棋牌房间（2026-10-02） =================
+   极简房间：房号是 4 位大写字母数字，房主开房 → 好友输房号入座 →
+   房主点开始时把**整副牌的分配结果**打包广播（所有人用同一份数据开局，真同步）。
+   房间只活在内存里，不落盘；人走光就删。 */
+const ROOMS = {};                       // code -> room
+const ROOM_GAMES = { uno:1, mahjong:1, flight:1, doudizhu:1 };
+function newRoomCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for(let i=0;i<200;i++){
+    let s = ''; for(let k=0;k<4;k++) s += chars[Math.floor(Math.random()*chars.length)];
+    if(!ROOMS[s]) return s;
+  }
+  return 'RM' + (Date.now()%100);
+}
+function roomPublic(r){
+  return { code:r.code, game:r.game, seats:r.seats, host:r.host, started:!!r.started,
+           players:r.players.filter(p=>!!p.u).map(p=>({ u:p.u, n:p.n || p.u, me:false })) };
+}
+function sockOfUser(u){
+  for(const [sock, o] of clients){ if(o && o.username === u) return sock; }
+  return null;
+}
+function roomSend(code, obj, exceptSock){
+  const r = ROOMS[code]; if(!r) return;
+  r.players.forEach(p=>{
+    const s = sockOfUser(p.u);
+    if(s && s !== exceptSock) send(s, obj);
+  });
+}
+function roomOfUser(u){
+  const codes = Object.keys(ROOMS);
+  for(const code of codes){ if(ROOMS[code].players.some(p=>p.u===u)) return ROOMS[code]; }
+  return null;
+}
+function handleRoomCreate(c, msg){
+  if(!c || !c.username){ send(c && c.sock, { t:'roomErr', msg:'连接还没认上号，稍等两秒再试' }); return; }
+  const game = ROOM_GAMES[msg.game] ? msg.game : 'uno';
+  const seats = Math.max(2, Math.min(4, parseInt(msg.seats,10) || 3));
+  const old = roomOfUser(c.username); if(old) handleRoomLeave(c, {});
+  const code = newRoomCode();
+  ROOMS[code] = { code, game, seats, host:c.username, started:false, setup:null,
+                  players:[{ u:c.username, n:c.nickname || c.username }] };
+  send(c.sock, { t:'roomInfo', room: roomPublic(ROOMS[code]) });
+  console.log('[room] 开房', code, game, seats, 'by', c.username);
+}
+function handleRoomJoin(c, msg){
+  /* 没登录成功的连接（并发 connect 开出的第二条）不许占座，否则桌上会出现 undefined 幽灵 */
+  if(!c || !c.username){ send(c && c.sock, { t:'roomErr', msg:'连接还没认上号，稍等两秒再试' }); return; }
+  const code = String(msg.code||'').trim().toUpperCase();
+  const r = ROOMS[code];
+  if(!r){ send(c.sock, { t:'roomErr', msg:'房号 ' + code + ' 不存在（房主可能已经关了）' }); return; }
+  if(r.players.some(p=>p.u===c.username)){ send(c.sock, { t:'roomInfo', room: roomPublic(r) }); return; }
+  if(r.players.length >= r.seats){ send(c.sock, { t:'roomErr', msg:'这桌已经坐满了（' + r.seats + ' 人）' }); return; }
+  const old = roomOfUser(c.username); if(old && old.code !== code) handleRoomLeave(c, {});
+  r.players.push({ u:c.username, n:c.nickname || c.username });
+  roomSend(code, { t:'roomInfo', room: roomPublic(r) });
+  console.log('[room] 加入', code, c.username, '→', r.players.length + '/' + r.seats);
+}
+function handleRoomLeave(c, msg){
+  const code = (msg && msg.code) ? String(msg.code).toUpperCase() : null;
+  const r = code ? ROOMS[code] : roomOfUser(c.username);
+  if(!r) return;
+  r.players = r.players.filter(p=>p.u !== c.username);
+  if(!r.players.length){ delete ROOMS[r.code]; return; }
+  if(r.host === c.username){ r.host = r.players[0].u; }
+  roomSend(r.code, { t:'roomInfo', room: roomPublic(r) });
+}
+function handleRoomSeats(c, msg){
+  const r = roomOfUser(c.username); if(!r || r.host !== c.username) return;
+  r.seats = Math.max(2, Math.min(4, parseInt(msg.seats,10) || r.seats));
+  if(r.players.length > r.seats) r.players = r.players.slice(0, r.seats);
+  roomSend(r.code, { t:'roomInfo', room: roomPublic(r) });
+}
+function handleRoomStart(c, msg){
+  const r = roomOfUser(c.username);
+  if(!r){ send(c.sock, { t:'roomErr', msg:'你不在任何房间里' }); return; }
+  if(r.host !== c.username){ send(c.sock, { t:'roomErr', msg:'只有房主能开局' }); return; }
+  r.started = true; r.setup = msg.setup || null;
+  /* 广播同一副牌：所有人开局数据一致 */
+  roomSend(r.code, { t:'roomStart', game:r.game, code:r.code, setup:r.setup });
+  console.log('[room] 开局', r.code, r.game, r.players.length, '人');
+}
+
 /* 公开资料（不含密码/敏感信息） */
 function publicAccount(acc){
   if(!acc) return null;
@@ -374,7 +457,7 @@ const SLOTS = {
   map:    { name:'地图/关卡', keys:['game_maps'] },
   npc:    { name:'NPC',       keys:['engine_npcs_v1'] },
   tarot:  { name:'塔罗',      keys:['tarot_editor_v1'], prefixes:['tarot_assets_'] },
-  misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim'] },
+  misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim','card_skin_v1','card_rules_v1'] },
   /* 登录页：只同步配置（含 'ms:xxx' 素材引用）——视频本体在各自电脑的 IndexedDB 里，
      不上云，否则几十 MB 的片子会把 data.json 撑爆 */
   login:  { name:'登录页/开场动画', keys:['login_engine_config'] },
@@ -666,6 +749,12 @@ function onMessage(sock, text){
     case 'mailList': handleMailList(c); break;
     case 'mailClaim': handleMailClaim(c, msg); break;
     case 'rename': handleRename(c, msg); break;
+    /* 棋牌房间（2026-10-02）：开房拿房号 → 邀请好友 → 输入房号入座 → 房主发同一副牌开局 */
+    case 'roomCreate': handleRoomCreate(c, msg); break;
+    case 'roomJoin':   handleRoomJoin(c, msg); break;
+    case 'roomLeave':  handleRoomLeave(c, msg); break;
+    case 'roomSeats':  handleRoomSeats(c, msg); break;
+    case 'roomStart':  handleRoomStart(c, msg); break;
     case 'adminList': handleAdminList(c, msg); break;
     case 'adminMail': handleAdminMail(c, msg); break;
     /* 云端资产库 */

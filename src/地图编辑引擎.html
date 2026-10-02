@@ -818,6 +818,13 @@ const PANEL_KINDS = [
   { id:'wish',            name:'⛲ 许愿池（预留）',  em:'⛲' },
   { id:'checkin',         name:'📅 签到日历',        em:'📅' },
   { id:'mergeshop',       name:'🍬 五宝的小卖部',    em:'🍬' },
+  { id:'bank',            name:'🏦 银行',           em:'🏦' },
+  { id:'merch',           name:'🎁 周边小店',       em:'🎁' },
+  /* 四套棋牌（2026-10-02）：选了面板，游戏端点地块就进「等待位面」 */
+  { id:'uno',             name:'🟥 锋线速演（UNO）',       em:'🟥' },
+  { id:'mahjong',         name:'🀄 防线长议（川麻）',       em:'🀄' },
+  { id:'flight',          name:'🎲 经纪人办公室（飞行棋）', em:'🎲' },
+  { id:'casino',          name:'🃏 地下赌场（斗地主）',     em:'🃏' },
 ];
 function panelName(id){ const p=PANEL_KINDS.find(x=>x.id===id); return p?p.name:id||'（未设置）'; }
 function panelEm(id){ const p=PANEL_KINDS.find(x=>x.id===id); return p?p.em:'🧩'; }

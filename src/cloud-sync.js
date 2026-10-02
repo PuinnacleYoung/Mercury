@@ -22,7 +22,7 @@
     map:    { name:'地图/关卡', keys:['game_maps'] },
     npc:    { name:'NPC',       keys:['engine_npcs_v1'] },
     tarot:  { name:'塔罗',      keys:['tarot_editor_v1'], prefixes:['tarot_assets_'] },
-    misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim'] },
+    misc:   { name:'动画/裁边', keys:['engine_anim_cfg','engine_auto_trim','card_skin_v1','card_rules_v1'] },
     login:  { name:'登录页/开场动画', keys:['login_engine_config'] },
     /* 周边小店：货架（品类树 + 商品）上云；merch_inventory_v1（玩家买了什么）绝不上云 */
     merch:  { name:'周边小店',   keys:['merch_shop_v1'] },

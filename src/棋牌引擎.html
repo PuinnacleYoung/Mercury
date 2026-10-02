@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>棋牌引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#a78cd9">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<style>
+  :root{
+    --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+    --line:#e6ddf4; --line2:#efeaf8;
+    --paper:#fbf9ff; --paper2:#f5f1fc; --paper3:#efe9fa;
+    --bg1:#f3eef9; --bg2:#eae2f6;
+    --accent:#8b6fd6; --accent2:#b49ae0; --accent-tint:#efe7fb;
+    --gold:#b8860b; --danger:#c75050; --ok:#4f9a72;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink); background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    display:flex; flex-direction:column; overflow:hidden;}
+  header{flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:9px 14px;
+    background:rgba(255,255,255,.86); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:9px;}
+  .logo{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:17px;font-weight:800;}
+  .brand h1{font-size:15px;margin:0;font-weight:800;letter-spacing:.3px;}
+  .brand .sub{font-size:11px;color:var(--sub);margin-top:1px;}
+  .tabs{display:flex;gap:6px;margin-left:8px;flex-wrap:wrap;}
+  .tabs button{border:1px solid var(--line);background:var(--paper2);color:var(--sub);
+    padding:7px 13px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+    display:flex;align-items:center;gap:5px;transition:.15s;}
+  .tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;
+    box-shadow:0 4px 12px rgba(139,111,214,.3);}
+  .hbtns{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
+  .hbtn{border:1px solid var(--line);background:var(--paper2);color:var(--ink);
+    padding:7px 11px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .hbtn:hover{border-color:var(--accent);color:var(--accent);}
+  .hbtn.pri{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;}
+
+  .wrap{flex:1;min-height:0;position:relative;}
+  .page{position:absolute;inset:0;display:none;overflow:hidden;}
+  .page.on{display:flex;}
+
+  /* 左预览 / 右素材 */
+  .left{flex:0 0 40%;display:flex;flex-direction:column;gap:10px;padding:12px;overflow-y:auto;
+    border-right:1px solid var(--line);background:rgba(255,255,255,.5);}
+  .right{flex:1;min-width:0;padding:12px;overflow-y:auto;}
+  .cardbox{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px;}
+  .cardbox .ttl{font-size:12px;font-weight:800;color:var(--sub);margin-bottom:7px;}
+  #pv-canvas{width:100%;height:auto;display:block;border-radius:10px;background:linear-gradient(135deg,#efe7fb,#e3d8f6);}
+  .hint{font-size:11px;color:var(--hint);line-height:1.6;margin-top:6px;}
+  .rules{display:flex;flex-direction:column;gap:8px;}
+  .rr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--ink);
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:7px 10px;}
+  .rr input[type=number],.rr input[type=text]{width:64px;border:1px solid var(--line);border-radius:7px;
+    padding:4px 6px;font-family:inherit;font-size:12px;color:var(--ink);background:#fff;}
+  .rr .rs{color:var(--sub);font-weight:600;font-size:11px;}
+
+  /* 素材面板（card-skin.js 的 buildEditorPanel 用这些类） */
+  .cs-row{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;}
+  .cs-lab{font-size:12px;font-weight:800;color:var(--ink);display:flex;flex-direction:column;gap:2px;}
+  .cs-sub{font-size:10px;font-weight:600;color:var(--hint);}
+  .cs-act{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap;}
+  .cs-btn{border:1px solid var(--line);background:var(--paper2);color:var(--ink);border-radius:8px;
+    padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .cs-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .cs-btn.ghost{color:var(--sub);}
+  .cs-btn.tiny{padding:3px 7px;font-size:11px;}
+  .cs-btn.wide{width:100%;margin-top:8px;padding:8px;}
+  .cs-pre{width:44px;height:44px;border-radius:8px;object-fit:contain;border:1px solid var(--line);background:#fff;}
+  .cs-in{border:1px solid var(--line);border-radius:7px;padding:4px 6px;font-family:inherit;font-size:12px;background:#fff;color:var(--ink);}
+  .cs-color{width:38px;height:30px;padding:1px;}
+  .cs-chk{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--sub);font-weight:700;}
+  .cs-groups{display:flex;flex-direction:column;gap:10px;margin-bottom:6px;}
+  .cs-grp-head{font-size:12px;font-weight:800;color:var(--accent);margin:2px 0 6px;}
+  .cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;}
+  .cs-cell{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;
+    flex-direction:column;align-items:center;gap:4px;}
+  .cs-nm{font-size:11px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;}
+  .cs-cv{width:96px;height:96px;border-radius:10px;}
+  .cs-bar{display:flex;gap:4px;}
+  .toastbox{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:rgba(40,30,60,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;
+    transition:.22s;pointer-events:none;z-index:99;}
+  .toastbox.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">🎴</div>
+    <div>
+      <h1>棋牌引擎</h1>
+      <div class="sub">四套玩法 · 素材各自独立</div>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="hbtns">
+    <button class="hbtn" id="btn-export">📤 导出皮肤</button>
+    <button class="hbtn" id="btn-import">📥 导入皮肤</button>
+    <button class="hbtn" id="btn-reset">↩️ 全部默认</button>
+    <button class="hbtn pri" id="btn-play">▶️ 回游戏试玩</button>
+  </div>
+</header>
+<div class="wrap">
+  <div class="page on" id="page">
+    <div class="left">
+      <div class="cardbox">
+        <div class="ttl">预览 · 牌背 + 牌面</div>
+        <canvas id="pv-canvas" width="640" height="360"></canvas>
+        <div class="hint">① 牌背 ② 底纹 ③ 边框 ④ 通用符号 —— 四层各自可换图，没图就是干净的矢量占位。换完下面四个玩法同时生效。</div>
+      </div>
+      <div class="cardbox">
+        <div class="ttl">规则（占位配置 · 后面接玩法）</div>
+        <div class="rules" id="rules"></div>
+        <div class="hint">规则现在只是占位配置，游戏端读同一份数据；真玩法逻辑在「游戏端棋牌大厅」里跑。</div>
+      </div>
+    </div>
+    <div class="right" id="skin-panel"></div>
+  </div>
+</div>
+<input type="file" id="file-import" accept="application/json,.json" style="display:none">
+<div class="toastbox" id="toastbox"></div>
+
+<script src="./card-skin.js?v=20261002a"></script>
+<script>
+/* ============================================================
+   棋牌引擎（一套引擎 · 四个页签，陛下钦定 2026-10-02）
+   🟥 锋线速演 = UNO    🀄 防线长议 = 川麻
+   🎲 经纪人办公室 = 飞行棋   🃏 地下赌场 = 斗地主
+   每个页签的**素材与分类都是独立的**：换 UNO 的牌背不会动川麻。
+   ============================================================= */
+const LS_RULES = 'card_rules_v1';
+const GAMES = [
+  { id:'uno',       deck:'uno',      tab:'🟥 锋线速演',   place:'血旗部队',  seats:[2,3,4], def:3 },
+  { id:'mahjong',   deck:'mahjong',  tab:'🀄 防线长议',   place:'血旗部队',  seats:[3,4],   def:4 },
+  { id:'flight',    deck:'flight',   tab:'🎲 经纪人办公室', place:'风皇娱乐', seats:[2,3,4], def:4 },
+  { id:'doudizhu',  deck:'doudizhu', tab:'🃏 地下赌场',   place:'地下帝国',  seats:[3],     def:3 },
+];
+/* 规则占位配置（游戏端读同一份） */
+const RULES_DEF = {
+  uno: [
+    { k:'hand',   n:'初始手牌',     v:7,  t:'number', s:'张' },
+    { k:'stack',  n:'+2/+4 可叠加', v:true, t:'bool', s:'连着罚下去' },
+    { k:'jumpIn', n:'同牌抢出',     v:false, t:'bool', s:'手里有一样的可以先出' },
+    { k:'drawTo', n:'摸不到就摸几张', v:1, t:'number', s:'张' },
+  ],
+  mahjong: [
+    { k:'hand',   n:'初始手牌',     v:13, t:'number', s:'张' },
+    { k:'que',    n:'定缺（缺一门）', v:true, t:'bool', s:'川麻规矩' },
+    { k:'blood',  n:'血战到底',     v:true, t:'bool', s:'胡了也不散场' },
+    { k:'fanCap', n:'番数上限',     v:8,  t:'number', s:'番' },
+  ],
+  flight: [
+    { k:'planes', n:'每家飞机数',   v:4, t:'number', s:'架' },
+    { k:'cells',  n:'一圈格子数',   v:52, t:'number', s:'格' },
+    { k:'takeoff',n:'起飞点数',     v:6, t:'number', s:'掷出这个点才能起飞' },
+    { k:'again',  n:'掷 6 再来一次', v:true, t:'bool', s:'连掷' },
+  ],
+  doudizhu: [
+    { k:'bid',    n:'叫地主',       v:true, t:'bool', s:'抢地主流程' },
+    { k:'multi',  n:'炸弹翻倍',     v:true, t:'bool', s:'每炸一次 ×2' },
+    { k:'rocket', n:'王炸当最大',   v:true, t:'bool', s:'双王' },
+    { k:'base',   n:'底分',         v:1, t:'number', s:'分' },
+  ],
+};
+
+let cur = 'uno';
+let rules = null;
+
+function rulesData(){
+  if(rules) return rules;
+  try{ rules = JSON.parse(localStorage.getItem(LS_RULES) || 'null'); }catch(e){ rules = null; }
+  if(!rules) rules = {};
+  Object.keys(RULES_DEF).forEach(g=>{
+    if(!rules[g]) rules[g] = {};
+    RULES_DEF[g].forEach(r=>{ if(rules[g][r.k] === undefined) rules[g][r.k] = r.v; });
+  });
+  return rules;
+}
+function saveRules(){
+  try{ localStorage.setItem(LS_RULES, JSON.stringify(rules)); }catch(e){ toast('⚠️ 规则写不进去'); }
+}
+
+/* ---------- 小提示 ---------- */
+let _tt = null;
+function toast(msg){
+  const el = document.getElementById('toastbox');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+/* ---------- 页签 ---------- */
+function buildTabs(){
+  const box = document.getElementById('tabs'); box.innerHTML='';
+  GAMES.forEach(g=>{
+    const b = document.createElement('button');
+    b.textContent = g.tab;
+    b.className = (g.id === cur) ? 'on' : '';
+    b.onclick = ()=>{ cur = g.id; buildTabs(); buildPage(); };
+    box.appendChild(b);
+  });
+}
+
+/* ---------- 预览：牌背 + 该牌组的样例牌 ---------- */
+function samples(deck){
+  if(deck === 'uno'){
+    return [{color:'r',shape:'s7'},{color:'y',shape:'skip'},{color:'g',shape:'d2'},{color:'b',shape:'rev'},{color:'k',shape:'wild4'}];
+  }
+  if(deck === 'mahjong'){
+    return [{kind:'suit',suit:'wan',rank:1},{kind:'suit',suit:'tiao',rank:5},{kind:'suit',suit:'tong',rank:9},
+            {kind:'honor',suit:'feng',rank:'e'},{kind:'honor',suit:'jian',rank:'zh'}];
+  }
+  if(deck === 'doudizhu'){
+    return [{suit:'spade',rank:'A'},{suit:'heart',rank:'K'},{suit:'club',rank:'10'},{suit:'diamond',rank:'3'},{rank:'JOKER',joker:'jk_b'}];
+  }
+  return [{kind:'plane',color:'r'},{kind:'plane',color:'b'},{kind:'cell',color:'g'},{kind:'dice',n:6},{kind:'star',color:'y'}];
+}
+function drawPreview(){
+  const cv = document.getElementById('pv-canvas'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const g = GAMES.find(x=>x.id===cur); const deck = g.deck;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  /* 牌背 */
+  CardSkin.drawBack(ctx, deck, 24, 40, 120, 172);
+  ctx.fillStyle = '#8b83a8'; ctx.font = '12px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('牌背', 84, 232);
+  /* 样例牌面 */
+  const list = samples(deck);
+  const w = 104, h = 150;
+  list.forEach((c,i)=>{
+    const x = 170 + i*(w+12), y = 48;
+    CardSkin.drawCard(ctx, deck, c, x, y, w, h, {});
+  });
+  ctx.fillStyle = '#8b83a8'; ctx.font = '12px sans-serif';
+  ctx.fillText('牌面（底纹 + 边框 + 通用符号）', 170 + (list.length*(w+12))/2 - 12, 232);
+  /* 提示：素材分类 */
+  const grps = CardSkin.glyphGroups(deck).map(x=>x.name).join(' / ');
+  ctx.fillStyle = '#b9b2d0'; ctx.font = '11px sans-serif';
+  ctx.fillText('素材分类：' + grps + '（各牌组独立）', 320, 260);
+  /* 图没加载完时补画一遍 */
+  requestAnimationFrame(()=>{ let pend = false; samples(deck).forEach(()=>{}); if(pend) drawPreview(); });
+}
+
+/* ---------- 规则占位 ---------- */
+function buildRules(){
+  const box = document.getElementById('rules'); box.innerHTML='';
+  const r = rulesData()[cur] || {};
+  RULES_DEF[cur].forEach(def=>{
+    const row = document.createElement('label'); row.className = 'rr';
+    const nm = document.createElement('span'); nm.textContent = def.n; nm.style.minWidth='92px';
+    let inp;
+    if(def.t === 'bool'){ inp = document.createElement('input'); inp.type='checkbox'; inp.checked = !!r[def.k];
+      inp.onchange = ()=>{ r[def.k] = inp.checked; saveRules(); }; }
+    else { inp = document.createElement('input'); inp.type='number'; inp.value = r[def.k];
+      inp.oninput = ()=>{ r[def.k] = Number(inp.value)||0; saveRules(); }; }
+    const s = document.createElement('span'); s.className='rs'; s.textContent = def.s || '';
+    row.appendChild(nm); row.appendChild(inp); row.appendChild(s);
+    box.appendChild(row);
+  });
+  const g = GAMES.find(x=>x.id===cur);
+  const info = document.createElement('div'); info.className='rr';
+  info.innerHTML = '<span style="min-width:92px">开局人数</span><span class="rs">' + g.seats.join(' / ') +
+                   ' 人（默认 ' + g.def + ' 人） · 入口：' + g.place + '</span>';
+  box.appendChild(info);
+}
+
+/* ---------- 页面 ---------- */
+function buildPage(){
+  const g = GAMES.find(x=>x.id===cur);
+  buildRules();
+  CardSkin.buildEditorPanel(document.getElementById('skin-panel'), g.deck, drawPreview);
+  drawPreview();
+  /* 图片异步加载完补画 */
+  setTimeout(drawPreview, 200); setTimeout(drawPreview, 800);
+}
+
+/* ---------- 导入导出 ---------- */
+function doExport(){
+  const blob = new Blob([CardSkin.exportJSON()], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '卡牌皮肤_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('📤 皮肤已导出');
+}
+function doImport(file){
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    if(CardSkin.importJSON(String(fr.result))){ toast('📥 皮肤已导入'); buildPage(); }
+    else toast('❌ 这个文件不是卡牌皮肤');
+  };
+  fr.readAsText(file);
+}
+
+document.getElementById('btn-export').onclick = doExport;
+document.getElementById('btn-import').onclick = ()=>document.getElementById('file-import').click();
+document.getElementById('file-import').onchange = e=>{
+  const f = e.target.files && e.target.files[0]; if(f) doImport(f); e.target.value='';
+};
+document.getElementById('btn-reset').onclick = ()=>{
+  CardSkin.DECKS.forEach(d=>CardSkin.resetDeck(d));
+  toast('↩️ 四套牌都恢复成默认占位素材'); buildPage();
+};
+document.getElementById('btn-play').onclick = ()=>{
+  location.href = './index.html#cards-' + cur;
+};
+
+/* ---------- 启动：#uno / #mahjong 直达对应页签 ---------- */
+(function init(){
+  const h = String(location.hash||'').replace('#','').trim();
+  const hit = GAMES.find(g=>g.id===h || ('cards-'+g.id)===h);
+  if(hit) cur = hit.id;
+  buildTabs(); buildPage();
+})();
+</script>
+</body>
+</html>

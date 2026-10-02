@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>周边制作引擎 · 拾光·澈屿</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./responsive.css">
+<meta name="theme-color" content="#a78cd9">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<style>
+  /* 三货币图标（星坠 / 流萤 / 长庚）：跟着字号走 */
+  img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
+    vertical-align:-.28em;pointer-events:none}
+  :root{
+    --ink:#3a3350; --sub:#8b83a8; --hint:#b9b2d0;
+    --line:#e6ddf4; --line2:#efeaf8;
+    --paper:#fbf9ff; --paper2:#f5f1fc; --paper3:#efe9fa;
+    --bg1:#f3eef9; --bg2:#eae2f6;
+    --accent:#8b6fd6; --accent2:#b49ae0; --accent-tint:#efe7fb;
+    --gold:#b8860b; --danger:#c75050; --ok:#4f9a72;
+    --gS:#c0392b; --gA:#b8860b; --gB:#4a7fb5; --gC:#7a7a8c;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--ink); background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:9px 14px;
+    background:rgba(255,255,255,.86); border-bottom:1px solid var(--line);
+    backdrop-filter:blur(10px); flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:9px;}
+  .logo{width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; font-size:17px; font-weight:800;}
+  .brand h1{font-size:15px; margin:0; font-weight:800; letter-spacing:.3px;}
+  .brand .sub{font-size:11px; color:var(--sub); margin-top:1px;}
+  .tabs{display:flex; gap:6px; margin-left:8px;}
+  .tabs button{
+    border:1px solid var(--line); background:var(--paper2); color:var(--sub);
+    padding:7px 13px; border-radius:20px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; gap:5px; transition:.15s;
+  }
+  .tabs button.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;
+    box-shadow:0 4px 12px rgba(139,111,214,.3);}
+  .hbtns{margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;}
+  .hbtn{border:1px solid var(--line); background:var(--paper2); color:var(--ink);
+    padding:7px 11px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap;}
+  .hbtn:hover{border-color:var(--accent); color:var(--accent);}
+  .hbtn.pri{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;}
+
+  .wrap{flex:1; min-height:0; position:relative;}
+  .page{position:absolute; inset:0; display:none; overflow:hidden;}
+  .page.on{display:flex;}
+
+  /* ============ 制作区 ============ */
+  .mk{flex:1; min-width:0; display:flex; gap:12px; padding:12px; overflow:hidden;}
+  .mk-left{flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; overflow:hidden;}
+  .mk-top{display:flex; align-items:center; gap:7px; padding:8px 12px; background:var(--paper);
+    border:1px solid var(--line); border-radius:12px; font-size:12px; color:var(--sub); font-weight:700; flex-wrap:wrap;}
+  .mk-top select{padding:6px 9px; border:1px solid var(--line); border-radius:9px; font-size:13px;
+    font-family:inherit; background:var(--paper2); color:var(--ink); font-weight:600;}
+  .mk-stage{
+    flex:1; min-height:0; background:
+      linear-gradient(45deg,#efe9fa 25%,transparent 25%,transparent 75%,#efe9fa 75%),
+      linear-gradient(45deg,#efe9fa 25%,#fbf9ff 25%,#fbf9ff 75%,#efe9fa 75%);
+    background-size:18px 18px; background-position:0 0,9px 9px;
+    border:1px solid var(--line); border-radius:16px; display:flex; align-items:center; justify-content:center;
+    padding:14px; overflow:hidden; position:relative;
+  }
+  .mk-stage canvas{max-width:100%; max-height:100%; filter:drop-shadow(0 10px 24px rgba(58,51,80,.22));}
+  .mk-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--sub);}
+  .mk-bar b{color:var(--ink);}
+  .mk-side{
+    width:330px; flex:0 0 330px; overflow-y:auto; background:var(--paper);
+    border:1px solid var(--line); border-radius:16px; padding:12px;
+  }
+  .grp{margin-bottom:14px; padding-bottom:12px; border-bottom:1px dashed var(--line2);}
+  .grp:last-child{border-bottom:0; margin-bottom:0;}
+  .grp h3{font-size:12px; margin:0 0 8px; color:var(--accent); font-weight:800; letter-spacing:.5px;}
+  .row{display:flex; align-items:center; gap:7px; margin-bottom:7px;}
+  .row label{width:62px; flex:0 0 62px; font-size:12px; color:var(--sub); font-weight:600;}
+  .row input[type=text], .row input[type=number], .row select, .row textarea{
+    flex:1; min-width:0; padding:6px 9px; border:1px solid var(--line); border-radius:8px;
+    font-size:13px; font-family:inherit; background:var(--paper2); color:var(--ink);
+  }
+  .row textarea{min-height:52px; resize:vertical; line-height:1.5;}
+  .row input[type=range]{flex:1; min-width:0; accent-color:var(--accent);}
+  .row .val{width:44px; flex:0 0 44px; text-align:right; font-size:11px; color:var(--sub);}
+  .two{display:flex; gap:7px;}
+  .two > *{flex:1; min-width:0;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{border:1px solid var(--line); background:var(--paper2); border-radius:16px; padding:5px 10px;
+    font-size:12px; cursor:pointer; font-family:inherit; color:var(--sub); font-weight:600;}
+  .chip.on{background:var(--accent-tint); border-color:var(--accent); color:var(--accent);}
+  .btnrow{display:flex; gap:7px; margin-top:8px; flex-wrap:wrap;}
+  .btnrow .hbtn{flex:1; text-align:center;}
+
+  /* ============ 上架区 ============ */
+  .sh{flex:1; min-width:0; display:flex; gap:12px; padding:12px; overflow:hidden;}
+  .sh-left{width:290px; flex:0 0 290px; display:flex; flex-direction:column; gap:10px; overflow-y:auto;
+    background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:12px;}
+  .sh-prev{aspect-ratio:3/4; border-radius:12px; background:var(--paper3); display:flex;
+    align-items:center; justify-content:center; overflow:hidden; font-size:44px;}
+  .sh-prev img{max-width:100%; max-height:100%; object-fit:contain;}
+  .sh-right{flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; overflow:hidden;}
+  .sh-tools{display:flex; gap:7px; align-items:center; flex-wrap:wrap;}
+  .sh-tools input[type=text]{padding:6px 10px; border:1px solid var(--line); border-radius:9px;
+    font-size:13px; font-family:inherit; background:var(--paper2); min-width:150px;}
+  .sh-tools select{padding:6px 9px; border:1px solid var(--line); border-radius:9px;
+    font-size:12px; font-family:inherit; background:var(--paper2); color:var(--ink);}
+  .sh-list{flex:1; min-height:0; overflow-y:auto; background:var(--paper);
+    border:1px solid var(--line); border-radius:16px; padding:8px;}
+  .sh-cat{margin-bottom:8px;}
+  .sh-cat-h{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:800;
+    padding:7px 8px; background:var(--paper3); border-radius:10px; cursor:pointer;}
+  .sh-cat-h .n{font-size:11px; color:var(--sub); font-weight:600;}
+  .item-row{display:flex; align-items:center; gap:8px; padding:7px 8px; border-bottom:1px solid var(--line2);}
+  .item-row:last-child{border-bottom:0;}
+  .item-row .th{width:42px; height:52px; flex:0 0 42px; border-radius:7px; background:var(--paper3);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:18px;}
+  .item-row .th img{max-width:100%; max-height:100%; object-fit:contain;}
+  .item-row .nm{flex:1; min-width:0; font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .item-row .sub2{font-size:11px; color:var(--sub); font-weight:500;}
+  .item-row select, .item-row input[type=number]{padding:4px 6px; border:1px solid var(--line);
+    border-radius:7px; font-size:12px; font-family:inherit; background:var(--paper2); color:var(--ink);}
+  .item-row input[type=number]{width:74px;}
+  .gsel{width:60px;}
+  .grade{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+    border-radius:7px; color:#fff; font-size:12px; font-weight:800;}
+  .g-S{background:var(--gS);} .g-A{background:var(--gA);} .g-B{background:var(--gB);} .g-C{background:var(--gC);}
+  .mini{border:1px solid var(--line); background:var(--paper2); border-radius:7px; padding:4px 8px;
+    font-size:11px; cursor:pointer; font-family:inherit; color:var(--sub); font-weight:700; white-space:nowrap;}
+  .mini:hover{border-color:var(--accent); color:var(--accent);}
+  .mini.del:hover{border-color:var(--danger); color:var(--danger);}
+  .empty{text-align:center; padding:40px 16px; color:var(--sub); font-size:13px; line-height:1.9;}
+  /* 工艺强度行 */
+  .ck-row{display:flex; align-items:center; gap:7px; margin-bottom:5px; font-size:12px; color:var(--sub); font-weight:600;}
+  .ck-row label{width:86px; flex:0 0 86px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ck-row input[type=range]{flex:1; min-width:0; accent-color:var(--accent);}
+  .ck-row .val{width:40px; flex:0 0 40px; text-align:right; font-size:11px;}
+  .cus-item{display:inline-flex; align-items:center; gap:4px; background:var(--paper3); border-radius:14px; padding:3px 5px 3px 9px; font-size:11px; font-weight:700;}
+  /* ============ 商店预览页 ============ */
+  .pv{flex:1; min-width:0; display:flex; gap:12px; padding:12px; overflow:hidden;}
+  .pv-preview{width:300px; flex:0 0 300px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    background:radial-gradient(circle at 50% 42%,rgba(255,253,252,.95) 0%,rgba(233,225,245,.88) 52%,rgba(214,200,238,.78) 100%);
+    border:1px solid var(--line); border-radius:16px; padding:18px; overflow-y:auto;}
+  .pv-stage{width:100%; aspect-ratio:3/4; border-radius:16px; background:rgba(255,255,255,.62);
+    box-shadow:0 10px 30px rgba(58,51,80,.18); display:flex; align-items:center; justify-content:center;
+    font-size:46px; overflow:hidden; position:relative; flex:0 0 auto;}
+  .pv-stage img{width:100%; height:100%; object-fit:contain; position:relative; z-index:1;}
+  .pv-stage.round{background:transparent; box-shadow:none; border-radius:50%; aspect-ratio:1/1;}
+  .pv-stage.round img{border-radius:50%; filter:drop-shadow(0 14px 22px rgba(31,24,54,.35)) saturate(1.04);}
+  .pv-stage.round::after{content:''; position:absolute; inset:var(--mc-py,0%) var(--mc-px,0%); border-radius:50%; pointer-events:none;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.55), inset 0 0 0 9px rgba(0,0,0,.06), inset 7px 9px 16px rgba(255,255,255,.30), inset -7px -11px 20px rgba(0,0,0,.32);}
+  .pv-right{flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; overflow:hidden;}
+  .pv-head{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:800; padding:10px 12px;
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;}
+  .pv-body{flex:1; min-height:0; display:flex; gap:8px; overflow:hidden;}
+  .pv-cats{width:150px; flex:0 0 150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;}
+  .pv-cat{display:flex; align-items:center; gap:7px; padding:10px 12px; border-radius:12px; border:1px solid var(--line);
+    background:var(--paper); font-size:13px; font-weight:700; color:var(--sub); cursor:pointer; text-align:left; font-family:inherit;}
+  .pv-cat.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;
+    box-shadow:0 4px 12px rgba(139,111,214,.3);}
+  .pv-cat .n{margin-left:auto; font-size:11px; opacity:.75; font-weight:600;}
+  .pv-main{flex:1; min-width:0; overflow-y:auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:10px;}
+  .pv-subs{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
+  .pv-sub{padding:5px 12px; border-radius:999px; border:1px solid var(--line); background:var(--paper2);
+    font-size:12px; font-weight:700; color:var(--sub); cursor:pointer; font-family:inherit;}
+  .pv-sub.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;}
+  .pv-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:10px;}
+  .pv-item{position:relative; border-radius:14px; background:var(--paper2); border:1px solid var(--line2);
+    padding:10px 8px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:.15s;}
+  .pv-item:hover{border-color:var(--accent); transform:translateY(-2px);}
+  .pv-item.on{border-color:var(--accent); background:var(--accent-tint);}
+  .pv-thumb{width:64px; height:64px; border-radius:12px; background:#fff; box-shadow:0 3px 8px rgba(0,0,0,.10);
+    background-size:contain; background-position:center; background-repeat:no-repeat; position:relative;}
+  .pv-item.rnd .pv-thumb{background:transparent; box-shadow:none; border-radius:50%;}
+  .pv-item.rnd .pv-thumb::after{content:''; position:absolute; inset:var(--mc-py,0%) var(--mc-px,0%); border-radius:50%;
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5), inset -2px -4px 7px rgba(0,0,0,.30), inset 2px 3px 6px rgba(255,255,255,.28), 0 5px 10px rgba(31,24,54,.28);}
+  .pv-nm{font-size:11px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pv-pr{font-size:11px; color:var(--sub); font-weight:600;}
+  /* ── 样机特效按钮 + 图层（流光 / 环绕光，纯预览层，跟着内容 alpha 走） ── */
+  .pv-fxrow{display:flex; gap:6px; justify-content:center;}
+  .pv-fxchip{padding:5px 12px; border-radius:999px; border:1px solid var(--line); background:var(--paper);
+    font-size:12px; font-weight:700; color:var(--sub); cursor:pointer; font-family:inherit;}
+  .pv-fxchip.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;
+    box-shadow:0 3px 10px rgba(139,111,214,.3);}
+  .fx-halo,.fx-shine{position:absolute; inset:0; pointer-events:none; border-radius:inherit;}
+  .fx-halo{z-index:0; opacity:.85;
+    background-image:var(--fx-img); background-repeat:no-repeat; background-position:center; background-size:contain;
+    filter:blur(7px) brightness(0) invert(1);}
+  .fx-shine{z-index:3; mix-blend-mode:screen;
+    background-image:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.55) 44%, rgba(200,230,255,.95) 50%, rgba(255,255,255,.55) 56%, transparent 68%);
+    background-size:300% 100%; background-position:200% 0;
+    -webkit-mask-image:var(--fx-img); mask-image:var(--fx-img);
+    -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+    -webkit-mask-position:center; mask-position:center;
+    -webkit-mask-size:contain; mask-size:contain;
+    animation:fxSweep 2.6s linear infinite;}
+  @keyframes fxSweep{0%{background-position:200% 0;}100%{background-position:-100% 0;}}
+  .catmgr{margin-top:8px; padding-top:10px; border-top:1px dashed var(--line2);}
+  .catmgr .crow{display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
+  .catmgr input[type=text]{flex:1; min-width:90px; padding:5px 8px; border:1px solid var(--line);
+    border-radius:7px; font-size:12px; font-family:inherit; background:var(--paper2);}
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:rgba(58,51,80,.94); color:#fff; padding:10px 18px; border-radius:22px;
+    font-size:13px; font-weight:700; opacity:0; pointer-events:none; transition:.25s; z-index:99999;
+  }
+  .toast.on{opacity:1; transform:translateX(-50%) translateY(0);}
+  @media (max-width:880px){
+    .mk, .sh, .pv{flex-direction:column; overflow-y:auto; padding:9px;}
+    .mk-side, .sh-left, .pv-preview{width:auto; flex:0 0 auto; max-height:none;}
+    .mk-stage{min-height:300px; flex:0 0 auto;}
+    .sh-list{max-height:none; overflow:visible;}
+    .pv-cats{width:auto; flex:0 0 auto; flex-direction:row; flex-wrap:wrap;}
+    .pv-body{flex-direction:column; overflow:visible;}
+    .pv-main{overflow:visible;}
+    .tabs button{padding:6px 10px; font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">🎁</div>
+    <div><h1>周边制作引擎</h1><div class="sub">造货 → 上架 → 游戏里直接卖</div></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-page="make" class="on">🎨 制作区</button>
+    <button data-page="shop">🏪 上架区</button>
+    <button data-page="prev">🛒 商店预览</button>
+  </div>
+  <div class="hbtns">
+    <button class="hbtn pri" id="go-game">▶️ 回到小店</button>
+    <button class="hbtn" id="btn-export">💾 导出 JSON</button>
+    <button class="hbtn" id="btn-import">📥 导入 JSON</button>
+    <button class="hbtn" id="go-home">🏠 导航</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- ========= 制作区 ========= -->
+  <section id="page-make" class="page on">
+    <div class="mk">
+      <div class="mk-left">
+        <div class="mk-top">
+          <span>一级</span><select id="f-cat" style="max-width:130px"></select>
+          <span>二级</span><select id="f-sub" style="max-width:130px"></select>
+          <span style="margin-left:auto" id="mk-top-tip"></span>
+        </div>
+        <div class="mk-stage"><canvas id="cv"></canvas></div>
+        <div class="mk-bar">
+          <span id="size-tip">—</span>
+          <span style="margin-left:auto" id="craft-tip"></span>
+        </div>
+      </div>
+      <aside class="mk-side">
+        <div class="grp">
+          <h3>① 这是什么货</h3>
+          <div class="row"><label>名称</label><input type="text" id="f-name" placeholder="比如「澈屿·春日小卡」"></div>
+          <div class="row"><label>简介</label><textarea id="f-desc" placeholder="给玩家看的一句话"></textarea></div>
+        </div>
+
+        <div class="grp">
+          <h3>② 定级与价格（陛下说了算）</h3>
+          <div class="row"><label>定级</label>
+            <div class="chips" id="f-grade"></div>
+          </div>
+          <div class="row"><label><img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt=""> 星坠</label><input type="number" id="f-p-coin" min="0" step="1" placeholder="0 = 不收星坠" title="星坠，填 0 = 不收星坠"></div>
+          <div class="row"><label><img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt=""> 流萤</label><input type="number" id="f-p-diamond" min="0" step="1" placeholder="0 = 不收流萤" title="流萤，填 0 = 不收流萤"></div>
+          <div class="row"><label><img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt=""> 长庚</label><input type="number" id="f-p-pearl" min="0" step="1" placeholder="0 = 不收长庚" title="长庚，填 0 = 不收长庚"></div>
+          <div class="row"><label></label><span style="font-size:11px;opacity:.65">三种币可混搭，填 0 的不收；全 0 玩家就能白拿</span></div>
+        </div>
+
+        <div class="grp">
+          <h3>③ 规格（换子类自动套模板）</h3>
+          <div class="row"><label>宽 mm</label><input type="number" id="f-w" min="10" step="1"><label style="width:auto;flex:0 0 auto">高 mm</label><input type="number" id="f-h" min="10" step="1"></div>
+          <div class="row"><label>形状</label>
+            <select id="f-shape">
+              <option value="round">圆角矩形</option>
+              <option value="rect">直角矩形</option>
+              <option value="circle">圆形 / 异形切</option>
+            </select>
+          </div>
+          <div class="row"><label>圆角</label><input type="range" id="f-r" min="0" max="24" step="1"><span class="val" id="v-r"></span></div>
+          <div class="row"><label>底色</label><input type="text" id="f-bg" placeholder="#ffffff 或 transparent" style="flex:1"><input type="color" id="f-bgpick" style="width:34px;flex:0 0 34px;padding:0;border:1px solid var(--line);border-radius:7px;height:28px"><button class="mini" id="f-bgtrans" title="底色改成透明（亚克力/透卡用）">🫧 透明</button></div>
+          <div class="row"><label>底图</label><button class="mini" id="f-bgimg" style="flex:1">上传底图</button><button class="mini del" id="f-bgclear">清除</button></div>
+          <div class="row"><label>材质</label>
+            <select id="f-mat">
+              <option value="solid">不透明（纸面/金属）</option>
+              <option value="clear">透明（亚克力/透卡/贴纸）</option>
+            </select>
+          </div>
+          <div class="row"><label>伪 3D</label>
+            <label style="width:auto;flex:0 0 auto;display:flex;align-items:center;gap:4px"><input type="checkbox" id="f-p3d" style="width:auto">开</label>
+            <span style="flex:0 0 auto;font-size:11px;color:var(--sub)">厚度</span>
+            <input type="range" id="f-edge" min="0" max="20" step="1">
+            <span class="val" id="v-edge"></span>
+          </div>
+          <div class="row"><label>投影</label><input type="range" id="f-shadow" min="0" max="60" step="1"><span class="val" id="v-shadow"></span></div>
+          <div class="row"><label>扩边</label><input type="range" id="f-expand" min="0" max="8" step="0.5"><span class="val" id="v-expand"></span></div>
+          <div style="font-size:11px;color:var(--sub);margin:-2px 0 4px 52px">扩边：透明材质按<b>内容轮廓</b>向外扩多少 mm（PS 样机式裁形），实心材质无效</div>
+        </div>
+
+        <div class="grp">
+          <h3>④ 主图</h3>
+          <div class="row"><label>图片</label><button class="mini" id="f-img" style="flex:1">📁 上传主图</button><button class="mini del" id="f-imgclear">清除</button></div>
+          <div class="row"><label>缩放</label><input type="range" id="f-scale" min="20" max="220" step="1"><span class="val" id="v-scale"></span></div>
+          <div class="row"><label>左右</label><input type="range" id="f-dx" min="-50" max="50" step="1"><span class="val" id="v-dx"></span></div>
+          <div class="row"><label>上下</label><input type="range" id="f-dy" min="-50" max="50" step="1"><span class="val" id="v-dy"></span></div>
+          <div class="row"><label>旋转</label><input type="range" id="f-rot" min="-180" max="180" step="1"><span class="val" id="v-rot"></span></div>
+          <div class="row"><label>排版</label>
+            <select id="f-fit"><option value="contain">完整（留白）</option><option value="cover">铺满（裁切）</option></select>
+            <button class="mini" id="f-flip">⇋ 左右翻转</button>
+          </div>
+        </div>
+
+        <div class="grp">
+          <h3>⑤ 工艺（视觉模拟，可多选）</h3>
+          <div class="chips" id="f-crafts"></div>
+          <div id="f-craft-ks" style="margin-top:8px"></div>
+          <div class="row" style="margin-top:8px"><label>自制工艺</label>
+            <input type="text" id="f-cusname" placeholder="工艺名，如「全息膜」">
+            <select id="f-cusblend" style="flex:0 0 92px">
+              <option value="screen">荧屏</option><option value="overlay">叠加</option>
+              <option value="multiply">正片叠底</option><option value="source-over">正常</option>
+            </select>
+            <button class="mini" id="f-cusadd">＋传图造工艺</button>
+          </div>
+          <div id="cus-list" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
+          <div class="row" style="margin-top:8px">
+            <label style="width:auto;flex:0 0 auto">显示出血线</label>
+            <input type="checkbox" id="f-bleed" style="width:auto">
+          </div>
+        </div>
+
+        <div class="grp">
+          <h3>⑥ 入库</h3>
+          <div class="row"><label>穿戴位</label><input type="text" id="f-slot" placeholder="预留：挂件/吧唧/抱枕…"></div>
+          <div class="btnrow">
+            <button class="hbtn pri" id="btn-save">💾 保存到货架</button>
+            <button class="hbtn" id="btn-savenew">🆕 另存为新商品</button>
+          </div>
+          <div class="btnrow">
+            <button class="hbtn" id="btn-png">📤 导出图片</button>
+            <button class="hbtn" id="btn-reset">🧹 重开一张</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ========= 上架区 ========= -->
+  <section id="page-shop" class="page">
+    <div class="sh">
+      <div class="sh-left">
+        <div class="sh-prev" id="sp-prev">🎁</div>
+        <div id="sp-info" style="font-size:12px;color:var(--sub);line-height:1.7"></div>
+        <div class="catmgr">
+          <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:6px">类目树（两级）</div>
+          <div id="cat-edit"></div>
+          <div class="btnrow">
+            <button class="hbtn" id="btn-addcat">＋ 一级类目</button>
+          </div>
+        </div>
+      </div>
+      <div class="sh-right">
+        <div class="sh-tools">
+          <input type="text" id="q" placeholder="🔍 搜名字">
+          <select id="q-cat"><option value="">全部类目</option></select>
+          <select id="q-grade"><option value="">全部定级</option><option>S</option><option>A</option><option>B</option><option>C</option></select>
+          <label style="font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px">
+            <input type="checkbox" id="q-on" style="width:auto">只看未上架
+          </label>
+          <span style="font-size:12px;color:var(--sub);margin-left:auto" id="sh-stat"></span>
+        </div>
+        <div class="sh-list" id="sh-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========= 商店预览（复刻游戏端小店：左预览 + 右橱窗） ========= -->
+  <section id="page-prev" class="page">
+    <div class="pv">
+      <div class="pv-preview">
+        <div class="pv-stage" id="pv-stage">🎁</div>
+        <div class="pv-fxrow" id="pv-fxrow" style="display:none">
+          <button class="pv-fxchip" id="fx-shine" title="银葱/镭射类工艺的流光扫过效果（仅预览层，游戏端小店同步）">✨ 流光</button>
+          <button class="pv-fxchip" id="fx-halo" title="亚克力轮廓外一圈白色柔光，模拟灯下高光立体（游戏端小店同步）">💡 环绕光</button>
+        </div>
+        <div id="pv-info" style="text-align:center;font-size:12px;color:var(--sub);line-height:1.8;padding:0 12px 6px"></div>
+      </div>
+      <div class="pv-right">
+        <div class="pv-head">🛒 商店预览 <span style="font-size:11px;color:var(--sub);font-weight:500">玩家看到的就长这样（只显示已上架）</span><span id="pv-stat" style="margin-left:auto;font-size:11px;color:var(--sub)"></span></div>
+        <div class="pv-body">
+          <div class="pv-cats" id="pv-cats"></div>
+          <div class="pv-main">
+            <div class="pv-subs" id="pv-subs"></div>
+            <div class="pv-subs" id="pv-grades"></div>
+            <div class="pv-grid" id="pv-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="filepick" accept="image/*" style="display:none">
+
+<script src="./net-client.js"></script>
+<script src="./cloud-sync.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ==========================================================
+   周边制作引擎 · 数据契约
+   localStorage: merch_shop_v1 = { cats:[{id,name,em,subs:[{id,name}]}], items:[…] }
+   item = { id,name,catId,subId,subName,grade,price,cur,desc,
+            preview(dataURL), tpl:{…}, on, gameSlot, updatedAt }
+   ⚠️ 玩家买了什么（merch_inventory_v1）属于个人数据，绝不上云。
+   ========================================================== */
+var LS = 'merch_shop_v1';
+var GRADES = ['S','A','B','C'];
+var CATS_DEFAULT = [
+  { id:'card',    name:'小卡',     em:'🃏', subs:[
+    {id:'card',name:'小卡'},{id:'card_film',name:'小卡膜'},{id:'card_sleeve',name:'小卡套'},
+    {id:'card_brick',name:'卡砖'},{id:'card_binder',name:'卡册'}] },
+  { id:'acrylic', name:'亚克力',   em:'🎐', subs:[
+    {id:'stand',name:'立牌'},{id:'keychain',name:'挂件'},{id:'acrylic_brick',name:'亚克力砖'},
+    {id:'coaster',name:'杯垫'},{id:'phone_stand',name:'手机支架'}] },
+  { id:'badge',   name:'吧唧',     em:'🏅', subs:[
+    {id:'badge',name:'吧唧'},{id:'badge_set',name:'吧唧套装'},{id:'enamel',name:'珐琅徽章'}] },
+  { id:'paper',   name:'纸制品',   em:'📄', subs:[
+    {id:'postcard',name:'明信片'},{id:'polaroid',name:'拍立得'},{id:'shikishi',name:'色纸'},
+    {id:'ticket',name:'票根'},{id:'bookmark',name:'书签'},{id:'poster',name:'海报'},
+    {id:'calendar',name:'日历'},{id:'sticker',name:'贴纸'},{id:'clear_card',name:'透卡'}] },
+  { id:'cloth',   name:'布艺软周', em:'🧸', subs:[
+    {id:'pillow',name:'抱枕'},{id:'dakimakura',name:'等身抱枕'},{id:'tshirt',name:'T恤'},
+    {id:'hoodie',name:'卫衣'},{id:'tote',name:'帆布袋'},{id:'towel',name:'毛巾'},{id:'plush',name:'毛绒玩偶'}] },
+  { id:'pack',    name:'包装收纳', em:'📦', subs:[
+    {id:'opp',name:'OPP自粘袋'},{id:'head_bag',name:'卡头卡袋'},{id:'hard_sleeve',name:'硬卡套'},
+    {id:'toploader',name:'卡砖Toploader'},{id:'giftbox',name:'礼盒'},{id:'planebox',name:'飞机盒'}] },
+];
+
+/* 每个二级子类的出厂模板（mm）：换子类自动套，陛下还能手改 */
+var TPL = {
+  card:[55,85], card_film:[60,90], card_sleeve:[62,92], card_brick:[70,100], card_binder:[150,210],
+  stand:[80,130], keychain:[60,60], acrylic_brick:[60,80], coaster:[95,95], phone_stand:[60,110],
+  badge:[58,58], badge_set:[150,200], enamel:[40,40],
+  postcard:[100,148], polaroid:[88,107], shikishi:[120,150], ticket:[60,150], bookmark:[50,150],
+  poster:[297,420], calendar:[210,297], sticker:[80,80], clear_card:[55,85],
+  pillow:[400,400], dakimakura:[500,1600], tshirt:[500,700], hoodie:[550,750],
+  tote:[350,400], towel:[340,850], plush:[200,300],
+  opp:[65,95], head_bag:[80,130], hard_sleeve:[66,96], toploader:[73,103], giftbox:[200,200], planebox:[300,200]
+};
+var CIRCLE = { badge:1, enamel:1, coaster:1, sticker:1 };
+var CAT_FALLBACK = { card:[55,85], acrylic:[80,130], badge:[58,58], paper:[100,148], cloth:[400,400], pack:[100,140] };
+
+var CRAFTS = [
+  {id:'laser',  name:'镭射',  em:'🌈'},
+  {id:'gold',   name:'烫金',  em:'✨'},
+  {id:'silver', name:'银葱',  em:'❄️'},
+  {id:'uv',     name:'局部UV',em:'💧'},
+  {id:'glitter',name:'闪粉',  em:'🌟'},
+  {id:'emboss', name:'压纹',  em:'🪵'},
+  {id:'glow',   name:'夜光',  em:'🟢'},
+  {id:'matte',  name:'哑膜',  em:'🌫️'},
+];
+
+/* ---------- 小工具 ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function uid(){ return 'mk' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+var _tt = null;
+function toast(m){
+  var t = $('toast'); if(!t) return;
+  t.textContent = m; t.classList.add('on');
+  clearTimeout(_tt); _tt = setTimeout(function(){ t.classList.remove('on'); }, 2200);
+}
+function tplFor(catId, subId){
+  var wh = TPL[subId] || CAT_FALLBACK[catId] || [80,120];
+  return { wmm:wh[0], hmm:wh[1], shape:(CIRCLE[subId] ? 'circle' : 'round'),
+           radius:3, bg:'#ffffff', bgImg:'',
+           mat:'solid', p3d:{ on:true, edge:8, shadow:22, expand:2.5 },
+           fx:{ shimmer:false, halo:false },
+           img:{ src:'', scale:100, dx:0, dy:0, rot:0, flip:false, fit:'contain' },
+           crafts:[], bleed:false };
+}
+/* 工艺条目统一成 {id,k}（k = 强度 0~100）；旧数据纯字符串自动补 k=70 */
+function craftObjs(t){
+  return (t.crafts || []).map(function(c){
+    return (typeof c === 'string') ? { id:c, k:70 } : (c && c.id ? c : null);
+  }).filter(Boolean);
+}
+function craftDef(id){
+  for(var i=0;i<CRAFTS.length;i++) if(CRAFTS[i].id === id) return CRAFTS[i];
+  if(Array.isArray(DB.crafts)) for(var j=0;j<DB.crafts.length;j++) if(DB.crafts[j].id === id) return DB.crafts[j];
+  return null;
+}
+
+/* ---------- 数据读写 ---------- */
+function loadShop(){
+  var d = null;
+  try{ d = JSON.parse(localStorage.getItem(LS) || 'null'); }catch(e){}
+  if(!d || typeof d !== 'object') d = {};
+  if(!Array.isArray(d.cats) || !d.cats.length) d.cats = JSON.parse(JSON.stringify(CATS_DEFAULT));
+  if(!Array.isArray(d.items)) d.items = [];
+  if(!Array.isArray(d.crafts)) d.crafts = [];   // 陛下自制的工艺
+  /* 旧数据迁移：单币价格 → 三币；纯字符串工艺 → {id,k} */
+  d.items.forEach(function(it){
+    if(!it.prices || typeof it.prices !== 'object'){
+      it.prices = { coin:0, diamond:0, pearl:0 };
+      it.prices[it.cur || 'coin'] = Number(it.price) || 0;
+    }
+    if(it.tpl){
+      if(it.tpl.mat !== 'clear') it.tpl.mat = 'solid';
+      if(!it.tpl.p3d || typeof it.tpl.p3d !== 'object') it.tpl.p3d = { on:true, edge:8, shadow:22, expand:2.5 };
+      if(typeof it.tpl.p3d.expand !== 'number') it.tpl.p3d.expand = 2.5;
+      if(!it.tpl.fx || typeof it.tpl.fx !== 'object') it.tpl.fx = { shimmer:false, halo:false };
+      it.tpl.crafts = craftObjs(it.tpl);
+    }
+  });
+  return d;
+}
+/* 三币显示：跳过 0 的币种，全 0 = 免费（图标 128px webp，见 img.cur-img） */
+const CUR_ICON = {
+  coin:'<img class="cur-img" src="assets/cur/cur-coin.webp?v=20261002a" alt="星坠">',
+  diamond:'<img class="cur-img" src="assets/cur/cur-diamond.webp?v=20261002a" alt="流萤">',
+  pearl:'<img class="cur-img" src="assets/cur/cur-pearl.webp?v=20261002a" alt="长庚">'
+};
+function priceText(pr){
+  pr = pr || {};
+  var s = '';
+  if((pr.coin||0) > 0)    s += CUR_ICON.coin + pr.coin + ' ';
+  if((pr.diamond||0) > 0) s += CUR_ICON.diamond + pr.diamond + ' ';
+  if((pr.pearl||0) > 0)   s += CUR_ICON.pearl + pr.pearl + ' ';
+  return s.trim() || '🆓 免费';
+}
+function saveShop(d){
+  try{ localStorage.setItem(LS, JSON.stringify(d)); return true; }
+  catch(e){ alert('⚠️ 写不进本机存储（浏览器空间可能满了）：' + (e && e.name)); return false; }
+}
+var DB = loadShop();
+
+/* ---------- 当前编辑的商品 ---------- */
+var cur = null, editingId = null, shopPick = null;
+function blankItem(){
+  var c = DB.cats[0] || CATS_DEFAULT[0];
+  var s = (c.subs && c.subs[0]) || { id:c.id, name:c.name };
+  return { id:uid(), name:'', catId:c.id, subId:s.id, subName:s.name,
+           grade:'C', prices:{coin:50,diamond:0,pearl:0}, desc:'', preview:'',
+           tpl:tplFor(c.id, s.id), on:true, gameSlot:'', updatedAt:Date.now() };
+}
+function catOf(id){ for(var i=0;i<DB.cats.length;i++) if(DB.cats[i].id===id) return DB.cats[i]; return null; }
+function subNameOf(catId, subId){
+  var c = catOf(catId); if(!c || !c.subs) return '';
+  for(var i=0;i<c.subs.length;i++) if(c.subs[i].id===subId) return c.subs[i].name;
+  return '';
+}
+
+/* ---------- 图片缓存 ---------- */
+/* 预览图四周有 12% 画布留白（见 draw()），金属圈等贴边装饰按此比例内缩才能对齐内容圆。
+   ⚠️ 与 src/index.html 的 merchPadPct() 成对改 */
+function merchPadPct(it){
+  var t = (it && it.tpl) || {};
+  var w = Number(t.wmm) || 55, h = Number(t.hmm) || 85;
+  var m = Math.max(w, h) * 0.12;
+  return { x: m / (w + 2*m) * 100, y: m / (h + 2*m) * 100 };
+}
+var IMG = {};
+function getImg(src, cb){
+  if(!src){ cb(null); return; }
+  if(IMG[src]){ cb(IMG[src].complete ? IMG[src] : null); return; }
+  var im = new Image();
+  im.onload = function(){ IMG[src] = im; cb(im); };
+  im.onerror = function(){ cb(null); };
+  im.src = src; cb(null);
+}
+
+/* ---------- 画：模板 + 主图 + 工艺 ---------- */
+var cv = $('cv'), ctx = cv.getContext('2d');
+function draw(){
+  if(!cur) return;
+  var t = cur.tpl;
+  var base = 8, maxSide = 680;
+  var W = t.wmm * base, H = t.hmm * base;
+  var k = Math.min(1, maxSide / Math.max(W, H));
+  W = Math.max(40, Math.round(W * k)); H = Math.max(40, Math.round(H * k));
+  /* 画布四周留白（形状最长边的 12%）：伪3D投影要伸出形状外面，
+     不留白就会被画布边界切成一条笔直的线。
+     ⚠️ 留白比例与 src/index.html 的 merchPadPct() 成对改，游戏端靠它对齐金属圈 */
+  var pad = Math.ceil(Math.max(W, H) * 0.12);
+  cv.width = W + pad * 2; cv.height = H + pad * 2;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.translate(pad, pad);
+
+  var p3d = t.p3d || {};
+  var p3on = p3d.on !== false, edge = Math.max(0, Number(p3d.edge) || 0), shdw = (Number(p3d.shadow) || 0) / 100;
+  /* 轮廓扩边（mm）：透明材质按内容 alpha 轮廓向外扩，PS 样机式裁形 */
+  var expMm = (p3d.expand == null) ? 2.5 : Math.max(0, Number(p3d.expand) || 0);
+  var isClear = (t.bg === 'transparent') || t.mat === 'clear';
+  var expPx = isClear ? Math.round(expMm * 8 * k) : 0;
+
+  function shapePath(inset){
+    inset = inset || 0;
+    ctx.beginPath();
+    if(t.shape === 'circle'){
+      ctx.arc(W/2, H/2, Math.max(2, Math.min(W,H)/2 - inset), 0, Math.PI*2);
+    } else {
+      var r = (t.shape === 'round') ? Math.min(t.radius * k, Math.min(W,H)/2) : 0;
+      var x = inset, y = inset, w = W - inset*2, h = H - inset*2;
+      ctx.moveTo(x+r, y);
+      ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+      ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+      ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+      ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+    }
+    ctx.closePath();
+  }
+
+  ctx.save();
+  shapePath(0); ctx.clip();
+  /* 底：transparent = 不涂底色，露出透明（亚克力/透卡/贴纸全靠它） */
+  if((t.bg || '') !== 'transparent'){
+    ctx.fillStyle = t.bg || '#ffffff';
+    ctx.fillRect(0,0,W,H);
+  }
+  function mkCv(w, h){
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, w); c.height = Math.max(1, h);
+    return c;
+  }
+
+  getImg(t.bgImg, function(bim){
+    getImg(t.img.src, function(mim){
+      /* ========== 内容层 art：底色/底图/主图/工艺 一站画好，两条管线共用 ========== */
+      var art = mkCv(W, H), a = art.getContext('2d');
+      if((t.bg || '') !== 'transparent'){ a.fillStyle = t.bg || '#ffffff'; a.fillRect(0,0,W,H); }
+      if(bim){ var fit = Math.max(W/bim.width, H/bim.height);
+        a.drawImage(bim, (W-bim.width*fit)/2, (H-bim.height*fit)/2, bim.width*fit, bim.height*fit); }
+      if(mim){
+        var area = { x:W*0.08, y:H*0.08, w:W*0.84, h:H*0.84 };
+        var s = (t.img.scale || 100) / 100;
+        var sc, dw, dh;
+        if(t.img.fit === 'cover'){ sc = Math.max(area.w/mim.width, area.h/mim.height); }
+        else { sc = Math.min(area.w/mim.width, area.h/mim.height); }
+        sc *= s;
+        dw = mim.width * sc; dh = mim.height * sc;
+        var cx = area.x + area.w/2 + (t.img.dx||0)/100 * area.w;
+        var cy = area.y + area.h/2 + (t.img.dy||0)/100 * area.h;
+        a.save();
+        a.translate(cx, cy);
+        a.rotate((t.img.rot||0) * Math.PI/180);
+        if(t.img.flip) a.scale(-1, 1);
+        a.drawImage(mim, -dw/2, -dh/2, dw, dh);
+        a.restore();
+      }
+      applyCrafts(t, W, H, a);
+
+      /* ========== 剪影（内容 alpha 的白色实心）：投影与样机轮廓全靠它 ========== */
+      var sil = mkCv(W, H), s2 = sil.getContext('2d');
+      s2.drawImage(art, 0, 0);
+      s2.globalCompositeOperation = 'source-in';
+      s2.fillStyle = '#ffffff'; s2.fillRect(0, 0, W, H);
+
+      /* 落地投影：黑剪影 + 虚化 + 下坠（偏移/虚化夹在留白内绝不出界） */
+      if(p3on && shdw > 0){
+        ctx.save();
+        try{ ctx.filter = 'blur(' + Math.min(Math.max(2, edge), pad * 0.3) + 'px) brightness(0)'; }catch(e){}
+        ctx.globalAlpha = shdw;
+        ctx.drawImage(sil, 0, Math.min(edge * 1.4 + 3, pad * 0.55));
+        ctx.restore();
+      }
+
+      if(isClear){
+        /* ======== PS 样机管线（亚克力/透卡/贴纸）：轮廓 = 内容 alpha 向外扩 expPx ======== */
+        var dw2 = W + expPx * 2, dh2 = H + expPx * 2;
+        /* ① 剪影向外扩 expPx：16 方向盖戳 + 微模糊去锯齿 = 亚克力底板轮廓 */
+        var dil = mkCv(dw2, dh2), d2 = dil.getContext('2d');
+        if(expPx > 0){
+          try{ d2.filter = 'blur(0.6px)'; }catch(e){}
+          for(var i = 0; i < 16; i++){
+            var ang = i / 16 * Math.PI * 2;
+            d2.drawImage(sil, expPx + Math.cos(ang) * expPx, expPx + Math.sin(ang) * expPx);
+          }
+          try{ d2.filter = 'none'; }catch(e){}
+        }
+        d2.drawImage(sil, expPx, expPx);
+        /* ② 亚克力底板：扩出去的整块填玻璃渐变（上亮下微沉） */
+        var bcv = mkCv(dw2, dh2), b2 = bcv.getContext('2d');
+        b2.drawImage(dil, 0, 0);
+        b2.globalCompositeOperation = 'source-in';
+        var gg = b2.createLinearGradient(0, 0, 0, dh2);
+        gg.addColorStop(0, 'rgba(255,255,255,.85)');
+        gg.addColorStop(.5, 'rgba(246,244,252,.50)');
+        gg.addColorStop(1, 'rgba(228,224,240,.62)');
+        b2.fillStyle = gg; b2.fillRect(0, 0, dw2, dh2);
+        ctx.drawImage(bcv, -expPx, -expPx);
+        /* ③ 内容层 */
+        ctx.drawImage(art, 0, 0);
+        /* ④ 厚度环 = 扩出去的那一圈（dil − sil），下暗上亮 */
+        if(p3on && edge > 0){
+          var ring = mkCv(dw2, dh2), r2 = ring.getContext('2d');
+          r2.drawImage(dil, 0, 0);
+          r2.globalCompositeOperation = 'destination-out';
+          r2.drawImage(sil, expPx, expPx);
+          var mkTint = function(color){
+            var c3 = mkCv(dw2, dh2), c3x = c3.getContext('2d');
+            c3x.drawImage(ring, 0, 0);
+            c3x.globalCompositeOperation = 'source-in';
+            c3x.fillStyle = color; c3x.fillRect(0, 0, dw2, dh2);
+            return c3;
+          };
+          ctx.save();
+          try{ ctx.filter = 'blur(1px)'; }catch(e){}
+          ctx.globalAlpha = .32;
+          ctx.drawImage(mkTint('rgb(28,18,54)'), -expPx, -expPx + edge * 0.45);
+          ctx.globalAlpha = .42;
+          ctx.drawImage(mkTint('#ffffff'), -expPx, -expPx - edge * 0.5);
+          ctx.restore();
+        }
+        if(t.bleed){ /* 出血参考线仍绕模板形状（透明材质裁形以轮廓为准，仅供对位） */
+          ctx.save(); ctx.setLineDash([5,4]); shapePath(0);
+          ctx.strokeStyle = 'rgba(200,60,60,.55)'; ctx.stroke();
+          ctx.setLineDash([]); ctx.restore();
+        }
+      } else {
+        /* ======== 实心管线（小卡/明信片…）：模板形状裁切 ======== */
+        ctx.save();
+        shapePath(0); ctx.clip();
+        ctx.drawImage(art, 0, 0);
+        /* 伪 3D · 厚度包边（下暗上亮，贴着形状边缘） */
+        if(p3on && edge > 0){
+          ctx.save();
+          ctx.translate(0, edge * 0.45); shapePath(0);
+          ctx.lineWidth = edge * 2.2; ctx.strokeStyle = 'rgba(28,18,54,.30)'; ctx.stroke();
+          ctx.restore();
+          ctx.save();
+          ctx.translate(0, -edge * 0.5); shapePath(0);
+          ctx.lineWidth = edge * 1.6; ctx.strokeStyle = 'rgba(255,255,255,.40)'; ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+        /* 描边 + 出血 */
+        ctx.save();
+        shapePath(0);
+        if(!(p3on && edge > 0)){
+          ctx.strokeStyle = 'rgba(58,51,80,.18)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        if(t.bleed){
+          ctx.setLineDash([5,4]);
+          shapePath(Math.max(3, Math.round(3)));
+          ctx.strokeStyle = 'rgba(200,60,60,.55)'; ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+      }
+
+      $('size-tip').textContent = t.wmm + '×' + t.hmm + 'mm · 成品 ' + W + '×' + H + 'px（画布含 12% 影子留白）' +
+        (isClear ? ' · 轮廓扩边 ' + expMm + 'mm' : '');
+      var cobjs = craftObjs(t);
+      $('craft-tip').textContent = cobjs.length
+        ? ('工艺：' + cobjs.map(function(c){
+            var d = craftDef(c.id);
+            return (d ? (d.em + d.name) : c.id) + '(' + (c.k == null ? 70 : c.k) + '%)';
+          }).join('、'))
+        : '无工艺';
+    });
+  });
+}
+function applyCrafts(t, W, H, c2){
+  /* 每条工艺带强度 k(0~100)，内置效果按 k 等比缩放；自制工艺 = 贴图 + 混合模式 + 强度
+     c2 = 目标画布 context（缺省画主画布；PS 样机管线传离屏内容层） */
+  c2 = c2 || ctx;
+  craftObjs(t).forEach(function(ob){
+    var d = craftDef(ob.id);
+    if(!d) return;
+    var k = Math.max(0, Math.min(100, (ob.k == null ? 70 : ob.k))) / 100;
+
+    if(d.img){   /* ── 自制工艺：上传图当效果层 ── */
+      var im = IMG[d.img];
+      if(im && im.complete){
+        c2.save();
+        c2.globalCompositeOperation = d.blend || 'screen';
+        c2.globalAlpha = Math.max(.05, Math.min(1, k));
+        var fit = Math.max(W/im.width, H/im.height);
+        c2.drawImage(im, (W-im.width*fit)/2, (H-im.height*fit)/2, im.width*fit, im.height*fit);
+        c2.restore();
+      }
+      return;
+    }
+    /* ── 内置八件套 ── */
+    if(ob.id === 'laser'){
+      var g = c2.createLinearGradient(0,0,W,H);
+      ['#ff5f6d','#ffc371','#7bed9f','#70a1ff','#c56cf0','#ff5f6d'].forEach(function(c,i,a){
+        g.addColorStop(i/(a.length-1), c); });
+      c2.globalCompositeOperation = 'screen'; c2.globalAlpha = .38 * k;
+      c2.fillStyle = g; c2.fillRect(0,0,W,H);
+      c2.globalCompositeOperation = 'source-over'; c2.globalAlpha = 1;
+    }
+    else if(ob.id === 'gold'){
+      var g2 = c2.createLinearGradient(0,H,W,0);
+      g2.addColorStop(0,'rgba(255,215,120,0)'); g2.addColorStop(.45,'rgba(255,225,150,.75)');
+      g2.addColorStop(.55,'rgba(255,240,190,.9)'); g2.addColorStop(1,'rgba(255,215,120,0)');
+      c2.globalCompositeOperation = 'overlay'; c2.globalAlpha = k;
+      c2.fillStyle = g2; c2.fillRect(0,0,W,H);
+      c2.globalCompositeOperation = 'source-over'; c2.globalAlpha = 1;
+    }
+    else if(ob.id === 'silver'){
+      c2.globalAlpha = .5 * k; c2.fillStyle = '#ffffff';
+      for(var i=0;i<420;i++){
+        var x = (i*97 % W), y = (i*53 % H);
+        c2.fillRect(x, y, 1.2, 1.2);
+      }
+      c2.globalAlpha = 1;
+    }
+    else if(ob.id === 'uv'){
+      c2.globalCompositeOperation = 'screen';
+      var g3 = c2.createLinearGradient(0,H, W,0);
+      g3.addColorStop(0,'rgba(255,255,255,0)'); g3.addColorStop(.5,'rgba(255,255,255,' + (.28*k) + ')');
+      g3.addColorStop(1,'rgba(255,255,255,0)');
+      c2.fillStyle = g3; c2.fillRect(0,0,W,H);
+      c2.globalCompositeOperation = 'source-over';
+    }
+    else if(ob.id === 'glitter'){
+      var seed = 20261001;
+      function rnd(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+      c2.globalCompositeOperation = 'screen';
+      var n = Math.round(150 * Math.max(.15, k));
+      for(var j=0;j<n;j++){
+        var px = rnd()*W, py = rnd()*H, rr = rnd()*1.8 + .6;
+        c2.fillStyle = 'rgba(255,255,255,' + ((.35 + rnd()*.5) * k) + ')';
+        c2.beginPath(); c2.arc(px, py, rr, 0, Math.PI*2); c2.fill();
+      }
+      c2.globalCompositeOperation = 'source-over';
+    }
+    else if(ob.id === 'emboss'){
+      var g4 = c2.createRadialGradient(W*.35,H*.3,Math.min(W,H)*.05, W/2,H/2, Math.max(W,H)*.75);
+      g4.addColorStop(0,'rgba(255,255,255,' + (.22*k) + ')'); g4.addColorStop(1,'rgba(0,0,0,' + (.28*k) + ')');
+      c2.globalCompositeOperation = 'overlay'; c2.fillStyle = g4; c2.fillRect(0,0,W,H);
+      c2.globalCompositeOperation = 'source-over';
+    }
+    else if(ob.id === 'glow'){
+      c2.globalCompositeOperation = 'screen'; c2.globalAlpha = .3 * k;
+      c2.fillStyle = '#9fffe0'; c2.fillRect(0,0,W,H);
+      c2.globalCompositeOperation = 'source-over'; c2.globalAlpha = 1;
+    }
+    else if(ob.id === 'matte'){
+      c2.globalAlpha = .1 * k; c2.fillStyle = '#ffffff'; c2.fillRect(0,0,W,H); c2.globalAlpha = 1;
+    }
+  });
+}
+
+/* ---------- 表单 ⇄ cur ---------- */
+function fillCats(){
+  var c = $('f-cat');
+  c.innerHTML = DB.cats.map(function(x){ return '<option value="'+esc(x.id)+'">'+esc((x.em||'🎁')+' '+(x.name||''))+'</option>'; }).join('');
+  c.value = cur.catId;
+  fillSubs();
+  var qc = $('q-cat');
+  if(qc) qc.innerHTML = '<option value="">全部类目</option>' +
+    DB.cats.map(function(x){ return '<option value="'+esc(x.id)+'">'+esc((x.em||'')+' '+(x.name||''))+'</option>'; }).join('');
+}
+function fillSubs(){
+  var c = catOf(cur.catId) || DB.cats[0];
+  var s = $('f-sub');
+  s.innerHTML = (c && c.subs ? c.subs : []).map(function(x){ return '<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>'; }).join('');
+  if(!(c && c.subs && c.subs.some(function(x){ return x.id === cur.subId; })))
+    cur.subId = (c && c.subs && c.subs[0]) ? c.subs[0].id : cur.catId;
+  s.value = cur.subId;
+  cur.subName = subNameOf(cur.catId, cur.subId);
+  var tip = $('mk-top-tip');
+  if(tip){
+    var c2 = catOf(cur.catId);
+    tip.textContent = (c2 ? (c2.em || '') + ' ' + (c2.name || '') : '') + ' / ' + (cur.subName || '');
+  }
+}
+function syncForm(){
+  $('f-name').value  = cur.name || '';
+  $('f-desc').value  = cur.desc || '';
+  cur.prices = cur.prices || { coin:Number(cur.price)||0, diamond:0, pearl:0 };
+  $('f-p-coin').value    = cur.prices.coin || 0;
+  $('f-p-diamond').value = cur.prices.diamond || 0;
+  $('f-p-pearl').value   = cur.prices.pearl || 0;
+  $('f-slot').value  = cur.gameSlot || '';
+  $('f-w').value = cur.tpl.wmm; $('f-h').value = cur.tpl.hmm;
+  $('f-shape').value = cur.tpl.shape;
+  $('f-r').value = cur.tpl.radius; $('v-r').textContent = cur.tpl.radius;
+  $('f-bg').value = cur.tpl.bg || '#ffffff';
+  try{ $('f-bgpick').value = /^#[0-9a-f]{6}$/i.test(cur.tpl.bg) ? cur.tpl.bg : '#ffffff'; }catch(e){}
+  $('f-scale').value = cur.tpl.img.scale; $('v-scale').textContent = cur.tpl.img.scale + '%';
+  $('f-dx').value = cur.tpl.img.dx; $('v-dx').textContent = cur.tpl.img.dx;
+  $('f-dy').value = cur.tpl.img.dy; $('v-dy').textContent = cur.tpl.img.dy;
+  $('f-rot').value = cur.tpl.img.rot; $('v-rot').textContent = cur.tpl.img.rot + '°';
+  $('f-fit').value = cur.tpl.img.fit || 'contain';
+  $('f-bleed').checked = !!cur.tpl.bleed;
+  /* 材质 & 伪 3D */
+  cur.tpl.p3d = cur.tpl.p3d || { on:true, edge:8, shadow:22 };
+  $('f-mat').value = cur.tpl.mat || (cur.tpl.bg === 'transparent' ? 'clear' : 'solid');
+  $('f-p3d').checked = cur.tpl.p3d.on !== false;
+  $('f-edge').value = cur.tpl.p3d.edge; $('v-edge').textContent = cur.tpl.p3d.edge + 'px';
+  $('f-shadow').value = cur.tpl.p3d.shadow; $('v-shadow').textContent = cur.tpl.p3d.shadow + '%';
+  var expV = (cur.tpl.p3d.expand == null) ? 2.5 : cur.tpl.p3d.expand;
+  $('f-expand').value = expV; $('v-expand').textContent = expV + 'mm';
+  fillCats();
+  $('f-grade').innerHTML = GRADES.map(function(g){
+    return '<button class="chip' + (cur.grade===g?' on':'') + '" data-g="'+g+'">' +
+           '<span class="grade g-'+g+'" style="display:inline-flex;margin-right:4px">'+g+'</span>'+g+' 级</button>'; }).join('');
+  Array.prototype.forEach.call($('f-grade').children, function(b){
+    b.onclick = function(){ cur.grade = b.getAttribute('data-g'); syncForm(); draw(); };
+  });
+  /* 工艺 chips：内置八件套 + 陛下自制的 */
+  var allCrafts = CRAFTS.concat((DB.crafts || []).map(function(c){ return { id:c.id, name:c.name, em:'🧪' }; }));
+  $('f-crafts').innerHTML = allCrafts.map(function(c){
+    var on = craftObjs(cur.tpl).some(function(o){ return o.id === c.id; });
+    return '<button class="chip' + (on?' on':'') + '" data-c="'+c.id+'">'+c.em+' '+c.name+'</button>'; }).join('');
+  Array.prototype.forEach.call($('f-crafts').children, function(b){
+    b.onclick = function(){
+      var id = b.getAttribute('data-c');
+      cur.tpl.crafts = craftObjs(cur.tpl);
+      var o = cur.tpl.crafts.find(function(x){ return x.id === id; });
+      if(o) cur.tpl.crafts = cur.tpl.crafts.filter(function(x){ return x.id !== id; });
+      else cur.tpl.crafts.push({ id:id, k:70 });
+      syncForm(); draw();
+    };
+  });
+  /* 每个已选工艺一行强度滑杆 */
+  $('f-craft-ks').innerHTML = craftObjs(cur.tpl).map(function(o){
+    var d = craftDef(o.id); if(!d) return '';
+    return '<div class="ck-row"><label>' + d.em + ' ' + esc(d.name) + ' 强度</label>' +
+      '<input type="range" data-k="' + o.id + '" min="0" max="100" step="1" value="' + (o.k == null ? 70 : o.k) + '">' +
+      '<span class="val">' + (o.k == null ? 70 : o.k) + '%</span></div>';
+  }).join('');
+  Array.prototype.forEach.call($('f-craft-ks').querySelectorAll('input[data-k]'), function(r){
+    r.oninput = function(){
+      var id = r.getAttribute('data-k'), v = parseInt(r.value, 10) || 0;
+      r.parentElement.querySelector('.val').textContent = v + '%';
+      cur.tpl.crafts = craftObjs(cur.tpl);
+      var o = cur.tpl.crafts.find(function(x){ return x.id === id; });
+      if(o){ o.k = v; draw(); $('craft-tip').textContent = ''; }
+    };
+  });
+  renderCusList();
+}
+function readNum(id, def){ var v = parseFloat($(id).value); return isFinite(v) ? v : def; }
+
+/* 自制工艺清单（可删） */
+function renderCusList(){
+  var box = $('cus-list'); if(!box) return;
+  box.innerHTML = (DB.crafts || []).map(function(c){
+    return '<span class="cus-item">🧪 ' + esc(c.name) +
+      '<button class="mini del" data-del="' + c.id + '" style="padding:1px 5px">×</button></span>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function(b){
+    b.onclick = function(){
+      var id = b.getAttribute('data-del'), c = DB.crafts.find(function(x){ return x.id === id; });
+      if(!c) return;
+      if(!confirm('删掉自制工艺「' + c.name + '」？用了它的商品会失去这层效果。')) return;
+      DB.crafts = DB.crafts.filter(function(x){ return x.id !== id; });
+      cur.tpl.crafts = craftObjs(cur.tpl).filter(function(o){ return o.id !== id; });
+      saveShop(DB); syncForm(); draw();
+    };
+  });
+}
+
+/* ---------- 事件绑定（制作区） ---------- */
+function bindMake(){
+  $('f-name').oninput = function(){ cur.name = this.value; };
+  $('f-desc').oninput = function(){ cur.desc = this.value; };
+  $('f-slot').oninput = function(){ cur.gameSlot = this.value; };
+  $('f-p-coin').oninput    = function(){ cur.prices.coin = readNum('f-p-coin', 0); };
+  $('f-p-diamond').oninput = function(){ cur.prices.diamond = readNum('f-p-diamond', 0); };
+  $('f-p-pearl').oninput   = function(){ cur.prices.pearl = readNum('f-p-pearl', 0); };
+  $('f-cat').onchange  = function(){
+    cur.catId = this.value;
+    var c = catOf(cur.catId); cur.subId = (c && c.subs && c.subs[0]) ? c.subs[0].id : cur.catId;
+    var t = tplFor(cur.catId, cur.subId);
+    cur.tpl.wmm = t.wmm; cur.tpl.hmm = t.hmm; cur.tpl.shape = t.shape;
+    cur.subName = subNameOf(cur.catId, cur.subId);
+    syncForm(); draw();
+  };
+  $('f-sub').onchange  = function(){
+    cur.subId = this.value; cur.subName = subNameOf(cur.catId, cur.subId);
+    var t = tplFor(cur.catId, cur.subId);
+    cur.tpl.wmm = t.wmm; cur.tpl.hmm = t.hmm; cur.tpl.shape = t.shape;
+    syncForm(); draw();
+  };
+  $('f-w').oninput = function(){ cur.tpl.wmm = readNum('f-w', 55); draw(); };
+  $('f-h').oninput = function(){ cur.tpl.hmm = readNum('f-h', 85); draw(); };
+  $('f-shape').onchange = function(){ cur.tpl.shape = this.value; draw(); };
+  $('f-r').oninput = function(){ cur.tpl.radius = readNum('f-r', 3); $('v-r').textContent = cur.tpl.radius; draw(); };
+  $('f-bg').oninput = function(){ cur.tpl.bg = this.value; draw(); };
+  $('f-bgpick').oninput = function(){ cur.tpl.bg = this.value; $('f-bg').value = this.value; draw(); };
+  $('f-bgtrans').onclick = function(){ cur.tpl.bg = 'transparent'; cur.tpl.mat = 'clear'; syncForm(); draw(); };
+  $('f-mat').onchange = function(){
+    cur.tpl.mat = this.value;
+    if(this.value === 'clear' && (cur.tpl.bg || '#ffffff') === '#ffffff') cur.tpl.bg = 'transparent';
+    if(this.value === 'solid' && cur.tpl.bg === 'transparent') cur.tpl.bg = '#ffffff';
+    syncForm(); draw();
+  };
+  $('f-p3d').onchange = function(){ cur.tpl.p3d.on = this.checked; draw(); };
+  $('f-edge').oninput = function(){ cur.tpl.p3d.edge = parseInt(this.value,10) || 0; $('v-edge').textContent = cur.tpl.p3d.edge + 'px'; draw(); };
+  $('f-shadow').oninput = function(){ cur.tpl.p3d.shadow = parseInt(this.value,10) || 0; $('v-shadow').textContent = cur.tpl.p3d.shadow + '%'; draw(); };
+  $('f-expand').oninput = function(){ cur.tpl.p3d.expand = parseFloat(this.value) || 0; $('v-expand').textContent = cur.tpl.p3d.expand + 'mm'; draw(); };
+  $('f-cusadd').onclick = function(){
+    var nm = ($('f-cusname').value || '').trim();
+    if(!nm){ toast('先给工艺起个名'); return; }
+    pickFile(function(data){
+      DB.crafts.push({ id:'cus' + Date.now().toString(36), name:nm, img:data, blend:$('f-cusblend').value || 'screen' });
+      saveShop(DB);
+      cur.tpl.crafts = craftObjs(cur.tpl);
+      cur.tpl.crafts.push({ id:DB.crafts[DB.crafts.length-1].id, k:70 });
+      $('f-cusname').value = '';
+      syncForm(); draw();
+      toast('🧪 自制工艺「' + nm + '」已造好并挂上（可拖强度）');
+    });
+  };
+  $('f-scale').oninput = function(){ cur.tpl.img.scale = readNum('f-scale', 100); $('v-scale').textContent = cur.tpl.img.scale + '%'; draw(); };
+  $('f-dx').oninput = function(){ cur.tpl.img.dx = readNum('f-dx', 0); $('v-dx').textContent = cur.tpl.img.dx; draw(); };
+  $('f-dy').oninput = function(){ cur.tpl.img.dy = readNum('f-dy', 0); $('v-dy').textContent = cur.tpl.img.dy; draw(); };
+  $('f-rot').oninput = function(){ cur.tpl.img.rot = readNum('f-rot', 0); $('v-rot').textContent = cur.tpl.img.rot + '°'; draw(); };
+  $('f-fit').onchange = function(){ cur.tpl.img.fit = this.value; draw(); };
+  $('f-flip').onclick = function(){ cur.tpl.img.flip = !cur.tpl.img.flip; draw(); };
+  $('f-bleed').onchange = function(){ cur.tpl.bleed = this.checked; draw(); };
+  $('f-img').onclick = function(){ pickFile(function(d){ cur.tpl.img.src = d; IMG[d] = null; draw(); }); };
+  $('f-imgclear').onclick = function(){ cur.tpl.img.src = ''; draw(); };
+  $('f-bgimg').onclick = function(){ pickFile(function(d){ cur.tpl.bgImg = d; IMG[d] = null; draw(); }); };
+  $('f-bgclear').onclick = function(){ cur.tpl.bgImg = ''; draw(); };
+  $('btn-reset').onclick = function(){
+    if(!confirm('重开一张？当前没保存的改动会丢。')) return;
+    cur = blankItem(); editingId = null; syncForm(); draw();
+  };
+  $('btn-save').onclick = function(){ saveItem(false); };
+  $('btn-savenew').onclick = function(){ saveItem(true); };
+  $('btn-png').onclick = function(){
+    var a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = (cur.name || '周边') + '.png';
+    a.click();
+  };
+}
+
+/* ---------- 选图 ---------- */
+var _pickCb = null;
+function pickFile(cb){
+  _pickCb = cb; var f = $('filepick'); f.value = ''; f.click();
+}
+$('filepick').addEventListener('change', function(){
+  var f = this.files && this.files[0]; if(!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      var max = 1400, k = Math.min(1, max / Math.max(im.width, im.height));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      var out;
+      try{ out = c.toDataURL('image/webp', 0.9); }catch(e){ out = c.toDataURL('image/png'); }
+      if(out.indexOf('data:image') !== 0) out = fr.result;
+      if(_pickCb) _pickCb(out);
+    };
+    im.onerror = function(){ if(_pickCb) _pickCb(fr.result); };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+});
+
+/* ---------- 出图（商店展示用，压一压） ---------- */
+function exportPreview(){
+  try{
+    var max = 560, k = Math.min(1, max / Math.max(cv.width, cv.height));
+    if(k >= 1) return cv.toDataURL('image/webp', 0.82);
+    var c = document.createElement('canvas');
+    c.width = Math.round(cv.width * k); c.height = Math.round(cv.height * k);
+    c.getContext('2d').drawImage(cv, 0, 0, c.width, c.height);
+    return c.toDataURL('image/webp', 0.82);
+  }catch(e){ try{ return cv.toDataURL('image/png'); }catch(e2){ return ''; } }
+}
+
+/* ---------- 保存 ---------- */
+function saveItem(asNew){
+  if(!cur.name){ cur.name = (subNameOf(cur.catId, cur.subId) || '周边') + ' · ' + new Date().toLocaleDateString(); }
+  cur.preview = exportPreview();
+  cur.updatedAt = Date.now();
+  if(asNew || !editingId){ cur.id = uid(); editingId = cur.id; DB.items.push(cur); }
+  else{
+    for(var i=0;i<DB.items.length;i++) if(DB.items[i].id === editingId){ DB.items[i] = cur; break; }
+  }
+  if(saveShop(DB)){
+    toast('✅ 已上架「' + cur.name + '」（' + cur.grade + ' 级 · ' + priceText(cur.prices) + '）');
+    renderShop();
+  }
+}
+
+/* ============ 上架区 ============ */
+function renderShop(){
+  var q = ($('q').value || '').trim().toLowerCase();
+  var qc = $('q-cat').value, qg = $('q-grade').value, qOff = $('q-on').checked;
+  var list = DB.items.filter(function(it){
+    if(q && String(it.name||'').toLowerCase().indexOf(q) < 0) return false;
+    if(qc && it.catId !== qc) return false;
+    if(qg && (it.grade||'C') !== qg) return false;
+    if(qOff && it.on) return false;
+    return true;
+  });
+  $('sh-stat').textContent = '共 ' + DB.items.length + ' 件 · 已上架 ' +
+    DB.items.filter(function(x){ return x.on; }).length + ' 件 · 当前显示 ' + list.length;
+  var box = $('sh-list');
+  if(!list.length){
+    box.innerHTML = '<div class="empty">货架上还没有货。<br>去「🎨 制作区」造一件，点<b>保存到货架</b>就过来了。</div>';
+    return;
+  }
+  var html = '';
+  DB.cats.forEach(function(c){
+    var arr = list.filter(function(it){ return it.catId === c.id; });
+    if(!arr.length) return;
+    html += '<div class="sh-cat"><div class="sh-cat-h">' + esc(c.em||'🎁') + ' ' + esc(c.name) +
+            '<span class="n">' + arr.length + ' 件</span></div>';
+    arr.forEach(function(it){
+      var sub = subNameOf(it.catId, it.subId) || '—';
+      var g = it.grade || 'C';
+      html += '<div class="item-row" data-id="' + esc(it.id) + '">' +
+        '<div class="th">' + (it.preview ? '<img src="' + it.preview + '">' : '🎁') + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="nm">' + esc(it.name || '未命名') + '</div>' +
+          '<div class="sub2">' + esc(sub) + (it.on ? ' · ✅ 已上架' : ' · ⏸ 未上架') + '</div>' +
+        '</div>' +
+        '<span class="grade g-' + g + '">' + g + '</span>' +
+        '<select class="gsel" data-act="grade">' +
+          GRADES.map(function(x){ return '<option value="'+x+'"' + (x===g?' selected':'') + '>'+x+'</option>'; }).join('') +
+        '</select>' +
+        '<input type="number" data-act="p-coin" value="' + (it.prices.coin||0) + '" min="0" step="1" title="星坠" style="width:56px">' +
+        '<input type="number" data-act="p-diamond" value="' + (it.prices.diamond||0) + '" min="0" step="1" title="流萤" style="width:56px">' +
+        '<input type="number" data-act="p-pearl" value="' + (it.prices.pearl||0) + '" min="0" step="1" title="长庚" style="width:56px">' +
+        '<button class="mini" data-act="on">' + (it.on ? '下架' : '上架') + '</button>' +
+        '<button class="mini" data-act="edit">编辑</button>' +
+        '<button class="mini del" data-act="del">删</button>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  box.innerHTML = html;
+  Array.prototype.forEach.call(box.querySelectorAll('.item-row'), function(row){
+    var id = row.getAttribute('data-id');
+    var it = null;
+    for(var i=0;i<DB.items.length;i++) if(DB.items[i].id === id) it = DB.items[i];
+    if(!it) return;
+    row.onclick = function(e){ if(e.target.getAttribute('data-act')) return; shopPick = it; renderPrev(it); };
+    row.querySelector('[data-act=grade]').onchange = function(){
+      it.grade = this.value; it.updatedAt = Date.now(); saveShop(DB); renderShop(); renderPrev(it);
+    };
+    [['p-coin','coin'],['p-diamond','diamond'],['p-pearl','pearl']].forEach(function(pair){
+      row.querySelector('[data-act=' + pair[0] + ']').onchange = function(){
+        it.prices = it.prices || { coin:0, diamond:0, pearl:0 };
+        it.prices[pair[1]] = parseFloat(this.value) || 0;
+        it.updatedAt = Date.now(); saveShop(DB); renderPrev(it);
+      };
+    });
+    row.querySelector('[data-act=on]').onclick = function(){
+      it.on = !it.on; saveShop(DB); renderShop(); toast(it.on ? '✅ 已上架' : '⏸ 已下架');
+    };
+    row.querySelector('[data-act=edit]').onclick = function(){
+      editingId = it.id; cur = JSON.parse(JSON.stringify(it));
+      if(!cur.tpl) cur.tpl = tplFor(cur.catId, cur.subId);
+      if(!cur.tpl.img) cur.tpl.img = { src:'', scale:100, dx:0, dy:0, rot:0, flip:false, fit:'contain' };
+      syncForm(); draw(); switchPage('make');
+      toast('✏️ 正在编辑「' + (it.name||'') + '」');
+    };
+    row.querySelector('[data-act=del]').onclick = function(){
+      if(!confirm('删除「' + (it.name||'未命名') + '」？删了就找不回来了。')) return;
+      DB.items = DB.items.filter(function(x){ return x.id !== id; });
+      saveShop(DB); renderShop(); toast('🗑 已删除');
+    };
+  });
+  if(shopPick && !list.some(function(x){ return x.id === shopPick.id; })) shopPick = null;
+  renderPrev(shopPick || list[0]);
+}
+function renderPrev(it){
+  shopPick = it;
+  if(!it){
+    $('sp-prev').innerHTML = '🎁';
+    $('sp-info').textContent = '左边列表点一件，这里看大图。';
+    return;
+  }
+  $('sp-prev').innerHTML = it.preview ? '<img src="' + it.preview + '">' : '🎁';
+  var c = catOf(it.catId);
+  $('sp-info').innerHTML =
+    '<div style="font-size:14px;font-weight:800;color:var(--ink)">' + esc(it.name||'未命名') + '</div>' +
+    '<div>' + esc((c?c.name:'') + ' · ' + (subNameOf(it.catId,it.subId)||'')) + '</div>' +
+    '<div>定级 <span class="grade g-' + (it.grade||'C') + '">' + (it.grade||'C') + '</span> · 价格 ' +
+      priceText(it.prices || { coin:it.price, diamond:0, pearl:0 }) + '</div>' +
+    '<div>规格 ' + ((it.tpl && it.tpl.wmm) || '?') + '×' + ((it.tpl && it.tpl.hmm) || '?') + 'mm</div>' +
+    '<div style="opacity:.7">' + esc(it.desc || '') + '</div>';
+}
+
+/* ---------- 类目树管理 ---------- */
+function renderCatEdit(){
+  var box = $('cat-edit');
+  box.innerHTML = DB.cats.map(function(c, ci){
+    return '<div class="crow" data-ci="' + ci + '">' +
+      '<input type="text" data-act="cname" value="' + esc(c.name||'') + '" style="max-width:96px">' +
+      '<input type="text" data-act="cem" value="' + esc(c.em||'') + '" style="max-width:38px;text-align:center">' +
+      '<button class="mini" data-act="addsub">＋子类</button>' +
+      '<button class="mini del" data-act="delcat">删</button>' +
+      '<div style="flex:1 0 100%;display:flex;flex-wrap:wrap;gap:5px">' +
+        (c.subs||[]).map(function(s, si){
+          return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--paper3);border-radius:14px;padding:3px 5px 3px 9px">' +
+            '<input type="text" data-act="sname" data-si="' + si + '" value="' + esc(s.name||'') + '" style="width:74px;padding:2px 5px;font-size:11px">' +
+            '<button class="mini del" data-act="delsub" data-si="' + si + '" style="padding:1px 5px">×</button></span>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('.crow'), function(row){
+    var ci = parseInt(row.getAttribute('data-ci'), 10), c = DB.cats[ci];
+    row.querySelector('[data-act=cname]').onchange = function(){
+      c.name = this.value.trim() || c.name; saveShop(DB); renderShop(); fillCats(); renderCatEdit();
+    };
+    row.querySelector('[data-act=cem]').onchange = function(){ c.em = this.value.trim() || '🎁'; saveShop(DB); renderShop(); renderCatEdit(); };
+    row.querySelector('[data-act=addsub]').onclick = function(){
+      var n = prompt('新子类名字（比如「小卡膜」）：'); if(!n) return;
+      var id = 'sub' + Date.now().toString(36);
+      (c.subs || (c.subs = [])).push({ id:id, name:n.trim() });
+      saveShop(DB); fillCats(); renderShop(); renderCatEdit();
+    };
+    row.querySelector('[data-act=delcat]').onclick = function(){
+      var used = DB.items.filter(function(x){ return x.catId === c.id; }).length;
+      if(used && !confirm('这个类目下还有 ' + used + ' 件货，删了它们会变成「无类目」。确定删？')) return;
+      DB.cats.splice(ci,1); saveShop(DB); fillCats(); renderShop(); renderCatEdit();
+    };
+    Array.prototype.forEach.call(row.querySelectorAll('[data-act=sname]'), function(inp){
+      inp.onchange = function(){
+        var si = parseInt(inp.getAttribute('data-si'), 10);
+        if(c.subs[si]){ c.subs[si].name = inp.value.trim() || c.subs[si].name; saveShop(DB); renderShop(); fillCats(); }
+      };
+    });
+    Array.prototype.forEach.call(row.querySelectorAll('[data-act=delsub]'), function(b){
+      b.onclick = function(){
+        var si = parseInt(b.getAttribute('data-si'), 10);
+        if(!c.subs[si]) return;
+        var used = DB.items.filter(function(x){ return x.subId === c.subs[si].id; }).length;
+        if(used && !confirm('有 ' + used + ' 件货用着这个子类，确定删？')) return;
+        c.subs.splice(si,1); saveShop(DB); fillCats(); renderShop(); renderCatEdit();
+      };
+    });
+  });
+}
+$('btn-addcat').onclick = function(){
+  var n = prompt('新一级类目名字（比如「亚克力」）：'); if(!n) return;
+  var em = prompt('给它配个 emoji：', '🎁') || '🎁';
+  DB.cats.push({ id:'cat' + Date.now().toString(36), name:n.trim(), em:em.trim(),
+                 subs:[{ id:'sub' + Date.now().toString(36), name:'通用' }] });
+  saveShop(DB); fillCats(); renderShop(); renderCatEdit();
+};
+
+/* ============ 商店预览（复刻游戏端小店） ============ */
+var pvCat = null, pvSub = null, pvGrade = 'all';
+var pvSel = null;   /* 预览页当前选中的商品（特效按钮操作它） */
+
+/* 样机特效层：流光（✨）/ 环绕光（💡）——CSS 覆盖层，蒙版跟内容 alpha 走。
+   ⚠️ 与 src/index.html 的 merchApplyFx 成对改（游戏端小店同一套 CSS） */
+function merchApplyFx(stage, it){
+  if(!stage) return;
+  Array.prototype.forEach.call(stage.querySelectorAll('.fx-halo,.fx-shine'), function(n){ n.remove(); });
+  stage.style.removeProperty('--fx-img');
+  var fx = (it && it.tpl && it.tpl.fx) || {};
+  if(!it || !it.preview) return;
+  stage.style.setProperty('--fx-img', 'url("' + it.preview + '")');
+  if(fx.halo){
+    var h = document.createElement('div'); h.className = 'fx-halo'; stage.appendChild(h);
+  }
+  if(fx.shimmer){
+    var sh = document.createElement('div'); sh.className = 'fx-shine'; stage.appendChild(sh);
+  }
+}
+function merchSyncFxButtons(it){
+  var fx = (it && it.tpl && it.tpl.fx) || {};
+  var row = $('pv-fxrow');
+  if(row) row.style.display = it ? 'flex' : 'none';
+  var bs = $('fx-shine'), bh = $('fx-halo');
+  if(bs) bs.classList.toggle('on', !!fx.shimmer);
+  if(bh) bh.classList.toggle('on', !!fx.halo);
+}
+function merchToggleFx(key){
+  if(!pvSel) return;
+  pvSel.tpl = pvSel.tpl || {};
+  pvSel.tpl.fx = pvSel.tpl.fx || { shimmer:false, halo:false };
+  pvSel.tpl.fx[key] = !pvSel.tpl.fx[key];
+  pvSel.updatedAt = Date.now();
+  saveShop(DB);
+  merchSyncFxButtons(pvSel);
+  merchApplyFx($('pv-stage'), pvSel);
+  toast((key === 'shimmer' ? '✨ 流光' : '💡 环绕光') + (pvSel.tpl.fx[key] ? ' 开（记得「提交云端」才会到玩家手里）' : ' 关'));
+}
+function renderPv(){
+  var catsBox = $('pv-cats'), subsBox = $('pv-subs'), gBox = $('pv-grades'), grid = $('pv-grid');
+  if(!catsBox) return;
+  var onItems = DB.items.filter(function(x){ return x.on; });
+  if(!pvCat || !catOf(pvCat)) pvCat = (DB.cats[0] || {}).id || null;
+
+  catsBox.innerHTML = DB.cats.map(function(c){
+    var n = onItems.filter(function(x){ return x.catId === c.id; }).length;
+    return '<button class="pv-cat' + (c.id === pvCat ? ' on' : '') + '" data-c="' + c.id + '">' +
+      (c.em || '🎁') + ' ' + esc(c.name || '') + '<span class="n">' + n + '</span></button>';
+  }).join('');
+  Array.prototype.forEach.call(catsBox.children, function(b){
+    b.onclick = function(){ pvCat = b.getAttribute('data-c'); pvSub = null; renderPv(); };
+  });
+
+  var c = catOf(pvCat) || { subs:[] };
+  var subs = c.subs || [];
+  subsBox.innerHTML = '<button class="pv-sub' + (!pvSub ? ' on' : '') + '" data-s="">全部</button>' +
+    subs.map(function(s){
+      var n = onItems.filter(function(x){ return x.catId === pvCat && (x.subId || (subs[0] && subs[0].id)) === s.id; }).length;
+      return '<button class="pv-sub' + (pvSub === s.id ? ' on' : '') + '" data-s="' + s.id + '">' + esc(s.name) + ' ' + n + '</button>';
+    }).join('');
+  Array.prototype.forEach.call(subsBox.children, function(b){
+    b.onclick = function(){ pvSub = b.getAttribute('data-s') || null; renderPv(); };
+  });
+
+  gBox.innerHTML = ['all','S','A','B','C'].map(function(g){
+    return '<button class="pv-sub' + (pvGrade === g ? ' on' : '') + '" data-g="' + g + '">' + (g === 'all' ? '全部定级' : g + ' 级') + '</button>';
+  }).join('');
+  Array.prototype.forEach.call(gBox.children, function(b){
+    b.onclick = function(){ pvGrade = b.getAttribute('data-g'); renderPv(); };
+  });
+
+  var list = onItems.filter(function(it){
+    if(it.catId !== pvCat) return false;
+    if(pvSub && (it.subId || (subs[0] && subs[0].id)) !== pvSub) return false;
+    if(pvGrade !== 'all' && (it.grade || 'C') !== pvGrade) return false;
+    return true;
+  });
+  $('pv-stat').textContent = '已上架 ' + onItems.length + ' 件 · 当前显示 ' + list.length + ' 件';
+  grid.innerHTML = '';
+  if(!list.length){
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">这个架子还空着～去「🎨 制作区」造货、填好定级价格再上架。</div>';
+  }
+  list.forEach(function(it){
+    /* 圆形品类才套圆圈金属环；矩形透明立牌绝不能套（会被椭圆裁掉），样机轮廓由剪影画 */
+    var rnd = it.tpl && (it.tpl.shape === 'circle' ||
+      /吧唧|徽章|挂件|圆/.test((it.subName || '') + '#' + (it.name || '')));
+    var d = document.createElement('div');
+    d.className = 'pv-item' + (rnd ? ' rnd' : '');
+    if(rnd){
+      var pp0 = merchPadPct(it);
+      d.style.setProperty('--mc-px', pp0.x.toFixed(2) + '%');
+      d.style.setProperty('--mc-py', pp0.y.toFixed(2) + '%');
+    }
+    d.innerHTML = '<div class="pv-thumb"' + (it.preview ? ' style="background-image:url(\'' + it.preview + '\')"' : '') + '></div>' +
+      '<div class="pv-nm">' + esc(it.name || '未命名') + '</div>' +
+      '<div class="pv-pr"><span class="grade g-' + (it.grade || 'C') + '">' + (it.grade || 'C') + '</span> ' + priceText(it.prices) + '</div>';
+    d.onclick = function(){
+      Array.prototype.forEach.call(grid.children, function(x){ x.classList.remove('on'); });
+      d.classList.add('on');
+      pvSel = it;
+      var st = $('pv-stage');
+      st.classList.toggle('round', !!rnd);
+      var pp = merchPadPct(it);
+      st.style.setProperty('--mc-px', pp.x.toFixed(2) + '%');
+      st.style.setProperty('--mc-py', pp.y.toFixed(2) + '%');
+      st.innerHTML = it.preview ? '<img src="' + it.preview + '">' : '🎁';
+      merchApplyFx(st, it);
+      merchSyncFxButtons(it);
+      var cc = catOf(it.catId);
+      $('pv-info').innerHTML =
+        '<div style="font-size:15px;font-weight:800;color:var(--ink)">' + esc(it.name || '未命名') + '</div>' +
+        '<div>' + esc((cc ? cc.name : '') + ' · ' + (it.subName || subNameOf(it.catId, it.subId) || '')) + '</div>' +
+        '<div>定级 <span class="grade g-' + (it.grade || 'C') + '">' + (it.grade || 'C') + '</span> 级 · ' + priceText(it.prices) + '</div>' +
+        '<div style="opacity:.75">' + esc(it.desc || '') + '</div>' +
+        '<button class="hbtn pri" style="margin-top:8px" onclick="alert(\'预览页不卖货，真正的购买在游戏里～\')">🛒 买下</button>';
+    };
+    grid.appendChild(d);
+  });
+  if(list.length) grid.children[0].click();
+  else {
+    pvSel = null;
+    $('pv-stage').classList.remove('round');
+    $('pv-stage').innerHTML = '🎁';
+    merchApplyFx($('pv-stage'), null);
+    merchSyncFxButtons(null);
+    $('pv-info').innerHTML = '没有符合条件的商品';
+  }
+}
+
+/* 特效开关 */
+$('fx-shine').onclick = function(){ merchToggleFx('shimmer'); };
+$('fx-halo').onclick  = function(){ merchToggleFx('halo'); };
+
+/* ---------- 导入导出 ---------- */
+$('btn-export').onclick = function(){
+  var blob = new Blob([JSON.stringify(DB, null, 1)], { type:'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '周边货架_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
+};
+$('btn-import').onclick = function(){
+  var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = function(){
+    var f = inp.files && inp.files[0]; if(!f) return;
+    var fr = new FileReader();
+    fr.onload = function(){
+      try{
+        var j = JSON.parse(fr.result);
+        if(!j || !Array.isArray(j.items)) throw new Error('不是货架文件');
+        if(!confirm('导入 ' + j.items.length + ' 件货，覆盖当前的 ' + DB.items.length + ' 件？')) return;
+        DB = j;
+        if(!Array.isArray(DB.cats) || !DB.cats.length) DB.cats = JSON.parse(JSON.stringify(CATS_DEFAULT));
+        saveShop(DB); fillCats(); renderShop(); renderCatEdit();
+        toast('📥 已导入 ' + DB.items.length + ' 件');
+      }catch(e){ alert('导入失败：' + (e && e.message)); }
+    };
+    fr.readAsText(f);
+  };
+  inp.click();
+};
+
+/* ---------- 页面切换 / 顶部按钮 ---------- */
+function switchPage(p){
+  Array.prototype.forEach.call(document.querySelectorAll('.page'), function(s){
+    s.classList.toggle('on', s.id === 'page-' + p);
+  });
+  Array.prototype.forEach.call($('tabs').children, function(b){
+    b.classList.toggle('on', b.getAttribute('data-page') === p);
+  });
+  if(p === 'shop'){ renderShop(); renderCatEdit(); }
+  if(p === 'prev'){ renderPv(); }
+}
+Array.prototype.forEach.call($('tabs').children, function(b){
+  b.onclick = function(){ switchPage(b.getAttribute('data-page')); };
+});
+$('go-game').onclick  = function(){ location.href = './index.html#merch'; };
+$('go-home').onclick  = function(){ location.href = '../index.html'; };
+$('q').oninput = renderShop;
+$('q-cat').onchange = renderShop;
+$('q-grade').onchange = renderShop;
+$('q-on').onchange = renderShop;
+
+/* ---------- 启动 ---------- */
+cur = blankItem();
+bindMake();
+fillCats();
+syncForm();
+draw();
+renderShop();
+renderCatEdit();
+
+/* 别的标签页改了货架（比如游戏里买东西）→ 这边跟着更新 */
+window.addEventListener('storage', function(e){
+  if(e.key === LS){ DB = loadShop(); fillCats(); renderShop(); renderCatEdit(); renderPv(); }
+});
+
+window.MerchEngine = { reload:function(){ DB = loadShop(); renderShop(); } };
+})();
+</script>
+<script>(function(){ if(window.CloudSync) CloudSync.mount(['merch']); })();</script>
+</body>
+</html>
