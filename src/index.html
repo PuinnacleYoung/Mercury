@@ -290,6 +290,15 @@ input{font-family:inherit;outline:none;}
 .bag-tip .bt-meta{color:var(--c-sub);font-size:calc(11px * var(--ui-scale));margin-bottom:5px;}
 .bag-tip .bt-desc{white-space:pre-wrap;word-break:break-all;}
 .bag-tip .bt-use{margin-top:8px;width:100%;padding:calc(7px * var(--ui-scale)) 0;border:0;border-radius:999px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;font-weight:800;font-size:calc(13px * var(--ui-scale));cursor:pointer;}
+/* 背包两级页签（2026-10-02：主分类 = 常规 / 周边收藏；二级 = 该分类下的细分） */
+.bag-tabs,.bag-subtabs{display:flex;flex-wrap:wrap;gap:calc(6px * var(--ui-scale));padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale)) 0;}
+.bag-subtabs{padding-top:calc(6px * var(--ui-scale));}
+.bag-tab{display:inline-flex;align-items:center;gap:4px;padding:calc(6px * var(--ui-scale)) calc(13px * var(--ui-scale));border-radius:999px;border:1px solid rgba(var(--accent-rgb),.22);background:rgba(var(--glass-rgb),.5);color:var(--c-sub);font-size:calc(12px * var(--ui-scale));font-weight:800;cursor:pointer;white-space:nowrap;transition:background .12s ease,color .12s ease,border-color .12s ease;}
+.bag-tab:hover{border-color:rgba(var(--accent-rgb),.5);color:var(--c-ink);}
+.bag-tab.on{background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(var(--accent-rgb),.25);}
+.bag-tab .bt-n{font-weight:700;opacity:.72;font-size:calc(11px * var(--ui-scale));}
+.bag-subtabs .bag-tab{font-size:calc(11px * var(--ui-scale));padding:calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale));}
+.bag-tabs.hide,.bag-subtabs.hide{display:none;}
 
 /* 设置抽屉 / 主题切换 */
 .set-section{margin-bottom:22px;}
@@ -1776,6 +1785,8 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
       <h3>🎒 背包</h3>
       <button class="drawer-close" data-close="bag">✕</button>
     </div>
+    <div class="bag-tabs" id="bag-tabs"></div>
+    <div class="bag-subtabs hidden" id="bag-subtabs"></div>
     <div class="drawer-body" id="bag-list"></div>
   </div>
 
@@ -5760,6 +5771,89 @@ function attachLabel(a){
 function openBag(){ $('bag-drawer').classList.add('open'); renderBag(); }
 function closeBag(){ $('bag-drawer').classList.remove('open'); hideBagTip(); }
 let _bagCache = [];
+/* 背包两级分类（2026-10-02 陛下钦定）
+   一级主分类：🎒 常规（服务器背包：改名卡、邮件发的道具）/ 🛍 周边收藏（本地 merch_inventory_v1）
+   二级页签：常规按 kind 细分，周边收藏按一级品类细分，点一下就切。 */
+let bagMain = 'normal';   // 'normal' | 'merch'
+let bagSub  = 'all';      // 二级页签 key
+const BAG_KIND_NAME = { functional:'功能道具', clothes:'服装', material:'材料', food:'食物', gift:'礼盒', chest:'宝箱', quest:'任务', other:'其他' };
+
+function bagNormalItems(){
+  const inv = (window.Net && Net.self() && Net.self().inventory) || _bagCache || [];
+  return (Array.isArray(inv) ? inv : []).map(it=>Object.assign({}, it, { __bag:'normal' }));
+}
+/* 周边收藏：同一件买多件会落多条记录 → 按「商品 + 品级」合并成一格，角标显示 ×N */
+function bagMerchItems(){
+  let raw = [];
+  try{ raw = (typeof merchMine === 'function') ? merchMine() : []; }catch(e){ raw = []; }
+  if(!Array.isArray(raw)) raw = [];
+  const map = new Map();
+  raw.forEach(m=>{
+    const key = (m.productId || m.name || '?') + '|' + (m.grade || '');
+    let e = map.get(key);
+    if(!e){ e = Object.assign({}, m, { __bag:'merch', qty:0 }); map.set(key, e); }
+    e.qty = (e.qty || 0) + 1;
+    if(m.obtainedAt && (!e.obtainedAt || m.obtainedAt > e.obtainedAt)) e.obtainedAt = m.obtainedAt;
+  });
+  return Array.from(map.values()).sort((a,b)=>(b.obtainedAt||0)-(a.obtainedAt||0));
+}
+function bagCount(list){ return (list||[]).reduce((s,i)=>s + (i.qty || 1), 0); }
+function bagMainTabs(){
+  return [
+    { key:'normal', name:'常规',     em:'🎒', n:bagCount(bagNormalItems()) },
+    { key:'merch',  name:'周边收藏', em:'🛍', n:bagCount(bagMerchItems())  }
+  ];
+}
+/* 周边：一级品类 · 二级子类 拼成「小卡 · 卡砖」这种可读路径 */
+function merchPathName(catId, subId){
+  let d = null;
+  try{ d = (typeof merchShopData === 'function') ? merchShopData() : null; }catch(e){}
+  const c = ((d && d.cats) || []).find(x=>x.id === catId);
+  if(!c) return catId ? String(catId) : '';
+  const s = (c.subs || []).find(x=>x.id === subId);
+  return s ? (c.name + ' · ' + s.name) : c.name;
+}
+function bagSubTabs(main){
+  const list = [{ key:'all', name:'全部' }];
+  if(main === 'merch'){
+    let d = null;
+    try{ d = (typeof merchShopData === 'function') ? merchShopData() : null; }catch(e){}
+    const cats = (d && d.cats) || [];
+    const items = bagMerchItems();
+    const seen = new Set(items.map(i=>i.catId || '__none__'));
+    cats.forEach(c=>{ if(seen.has(c.id)) list.push({ key:c.id, name:(c.em ? c.em + ' ' : '') + c.name }); });
+    if(seen.has('__none__')) list.push({ key:'__none__', name:'未分类' });
+  }else{
+    const items = bagNormalItems();
+    Array.from(new Set(items.map(i=>i.kind || 'other'))).forEach(k=>{
+      list.push({ key:k, name:BAG_KIND_NAME[k] || k });
+    });
+  }
+  return list;
+}
+function bagFiltered(){
+  const items = (bagMain === 'merch') ? bagMerchItems() : bagNormalItems();
+  if(bagSub === 'all') return items;
+  return items.filter(it => (bagMain === 'merch')
+    ? ((it.catId || '__none__') === bagSub)
+    : ((it.kind || 'other') === bagSub));
+}
+/* 页签行：只有一个选项就整行藏起来，别白占地方 */
+function renderBagTabsRow(el, list, curKey, onPick){
+  if(!el) return;
+  el.innerHTML = '';
+  if(!list || list.length < 2){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  list.forEach(t=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bag-tab' + (t.key === curKey ? ' on' : '');
+    b.innerHTML = esc(t.name) + (t.n != null ? '<span class="bt-n">' + t.n + '</span>' : '');
+    b.onclick = ()=>{ hideBagTip(); onPick(t.key); };
+    el.appendChild(b);
+  });
+}
+
 function bagItemIcon(item){
   if(item.preview || item.img || item.iconUrl) return '<img class="bc-img" src="' + (item.preview || item.img || item.iconUrl) + '" alt="">';
   return '<span>' + (item.icon || '📦') + '</span>';
@@ -5768,8 +5862,19 @@ function bagItemMeta(item){
   const bits = [];
   if(item.qty > 1) bits.push('数量 ×' + item.qty);
   if(item.grade)   bits.push('品级 ' + item.grade);
-  if(item.catId)   bits.push(String(item.catId));
-  if(item.type)    bits.push(String(item.type));
+  if(item.__bag === 'merch'){
+    const p = merchPathName(item.catId, item.subId);
+    if(p) bits.push(p);
+    if(item.price && typeof item.price === 'object'){
+      const NAME = { coin:'星坠', diamond:'流萤', pearl:'长庚' };
+      const ps = Object.keys(item.price).filter(k=>(item.price[k]||0) > 0)
+        .map(k => (NAME[k] || k) + ' ' + item.price[k]);
+      if(ps.length) bits.push('入手价 ' + ps.join(' / '));
+    }
+  }else{
+    if(item.catId) bits.push(String(item.catId));
+    if(item.type)  bits.push(String(item.type));
+  }
   if(item.obtainedAt) bits.push(new Date(item.obtainedAt).toLocaleDateString());
   return bits.join(' · ');
 }
@@ -5830,8 +5935,20 @@ document.addEventListener('pointerdown', e=>{
 function renderBag(){
   const box = $('bag-list'); box.innerHTML='';
   hideBagTip();
-  const inv = (window.Net && Net.self() && Net.self().inventory) || _bagCache || [];
-  if(!inv.length){ box.innerHTML='<div class="empty-tip">背包空空的</div>'; return; }
+  /* 一级主分类行 */
+  const mains = bagMainTabs();
+  if(!mains.some(t=>t.key === bagMain)) bagMain = 'normal';
+  renderBagTabsRow($('bag-tabs'), mains, bagMain, k=>{ bagMain = k; bagSub = 'all'; renderBag(); });
+  /* 二级页签行（切主分类时归位到「全部」） */
+  const subs = bagSubTabs(bagMain);
+  if(!subs.some(t=>t.key === bagSub)) bagSub = 'all';
+  renderBagTabsRow($('bag-subtabs'), subs, bagSub, k=>{ bagSub = k; renderBag(); });
+
+  const inv = bagFiltered();
+  if(!inv.length){
+    box.innerHTML = '<div class="empty-tip">' + (bagMain === 'merch' ? '还没有收藏的周边，去风皇娱乐逛逛吧 🛍' : '这一格空空的') + '</div>';
+    return;
+  }
   const g = document.createElement('div'); g.className = 'bag-grid';
   inv.forEach(item=>{
     const qty = item.qty || 1;
@@ -8762,6 +8879,9 @@ function mcBuy(it){
   merchSaveMine(mine);
   toast('🎁 已入手「' + (it.name||'周边') + '」（' + merchPriceStr(it) + '），进背包啦');
   buildMerchShop();
+  /* 背包开着的话（「周边收藏」页签）当场刷新，别让玩家关掉再开才看见 */
+  const bd = $('bag-drawer');
+  if(bd && bd.classList.contains('open') && typeof renderBag === 'function') renderBag();
 }
 
 /* 🔗 游戏 ⇄ 周边制作引擎 的来回路：
