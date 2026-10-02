@@ -237,9 +237,12 @@ input{font-family:inherit;outline:none;}
 .chat-input-row button:disabled{background:var(--c-line);color:var(--c-sub);cursor:not-allowed;}
 
 /* 关卡聊天：头顶气泡（挂在说话玩家头顶，几秒淡出） */
-.chat-bubble{position:absolute;z-index:59;max-width:min(200px,40vw);padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.94);color:#333;font-size:12px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none;word-break:break-all;animation:cb-fade 5s ease forwards;}
+.chat-bubble{position:absolute;z-index:59;max-width:min(200px,40vw);padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.94);color:#333;font-size:12px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.2);pointer-events:none;word-break:break-all;animation:cb-fade 5s ease forwards;transform:translateX(-50%);}
 .chat-bubble::after{content:'';position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:rgba(255,255,255,.94);}
-@keyframes cb-fade{0%{opacity:0;transform:translateY(6px);}8%{opacity:1;transform:translateY(0);}70%{opacity:1;}100%{opacity:0;transform:translateY(-8px);}}
+/* 自己说的话：淡紫底 + 描边，跟别人的白气泡一眼分得开 */
+.chat-bubble.mine{background:linear-gradient(135deg,#fff,#f4e9ff);border:1px solid rgba(var(--accent-rgb),.35);color:#4a3a63;font-weight:600;}
+.chat-bubble.mine::after{border-top-color:#f2e6ff;}
+@keyframes cb-fade{0%{opacity:0;transform:translate(-50%,6px);}8%{opacity:1;transform:translate(-50%,0);}70%{opacity:1;transform:translate(-50%,0);}100%{opacity:0;transform:translate(-50%,-8px);}}
 
 /* 设置里：聊天显示开关 */
 .chat-set-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(var(--glass-rgb),.55);border:1px solid rgba(var(--accent-rgb),.1);margin-bottom:10px;}
@@ -273,6 +276,20 @@ input{font-family:inherit;outline:none;}
 .bag-item .b-desc{font-size:12px;color:var(--c-sub);}
 .bag-item .b-qty{margin-left:auto;font-weight:800;color:var(--c-accent);font-size:14px;}
 .bag-item .b-use{padding:6px 14px;border-radius:999px;border:0;background:var(--c-accent);color:#fff;font-weight:700;font-size:13px;cursor:pointer;}
+/* 🎒 背包：九宫格小格子（2026-10-02 陛下钦定）+ 悬浮/点击详情气泡 */
+.bag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(68px * var(--ui-scale)),1fr));gap:calc(10px * var(--ui-scale));}
+.bag-cell{position:relative;aspect-ratio:1/1;border-radius:calc(14px * var(--ui-scale));background:rgba(var(--glass-rgb),.55);border:1px solid rgba(var(--accent-rgb),.14);display:flex;align-items:center;justify-content:center;font-size:calc(30px * var(--ui-scale));cursor:pointer;overflow:hidden;transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease;}
+.bag-cell:hover,.bag-cell.on{transform:translateY(-2px);border-color:rgba(var(--accent-rgb),.6);box-shadow:0 8px 20px rgba(var(--accent-rgb),.22);background:rgba(var(--glass-rgb),.8);}
+.bag-cell .bc-img{width:100%;height:100%;object-fit:contain;pointer-events:none;}
+.bag-cell .bc-qty{position:absolute;right:4px;bottom:1px;font-size:calc(11px * var(--ui-scale));font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.65);pointer-events:none;}
+.bag-cell .bc-tag{position:absolute;left:3px;top:2px;font-size:calc(9px * var(--ui-scale));font-weight:800;color:#fff;background:var(--c-accent);border-radius:999px;padding:0 5px;pointer-events:none;}
+.bag-tip{position:fixed;z-index:120;width:max-content;max-width:min(260px,72vw);padding:calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));background:rgba(255,255,255,.97);color:#333;font-size:calc(12px * var(--ui-scale));line-height:1.5;box-shadow:0 10px 30px rgba(0,0,0,.22);border:1px solid rgba(var(--accent-rgb),.28);}
+.bag-tip::after{content:'';position:absolute;top:18px;left:-6px;width:0;height:0;border:6px solid transparent;border-right-color:rgba(255,255,255,.97);}
+.bag-tip.flip::after{left:auto;right:-6px;border-right-color:transparent;border-left-color:rgba(255,255,255,.97);}
+.bag-tip .bt-name{font-weight:800;font-size:calc(14px * var(--ui-scale));margin-bottom:2px;color:var(--c-ink);}
+.bag-tip .bt-meta{color:var(--c-sub);font-size:calc(11px * var(--ui-scale));margin-bottom:5px;}
+.bag-tip .bt-desc{white-space:pre-wrap;word-break:break-all;}
+.bag-tip .bt-use{margin-top:8px;width:100%;padding:calc(7px * var(--ui-scale)) 0;border:0;border-radius:999px;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));color:#fff;font-weight:800;font-size:calc(13px * var(--ui-scale));cursor:pointer;}
 
 /* 设置抽屉 / 主题切换 */
 .set-section{margin-bottom:22px;}
@@ -2957,6 +2974,24 @@ function persistCurrent(){
      否则会另存一份到 accounts[姓名] 造成数据分裂 */
   a[currentUser.key || currentUser.username] = currentUser;
   saveAccounts(a);
+  syncOutfitToNet();          // 存档即广播：换好衣服，同图的人立刻看得见
+}
+
+/* ★ 换装同步（2026-10-02）：只要「穿搭内容 / 所在关卡」变了就广播一次给同图玩家。
+   去重靠签名（内容字符串 + mapId），所以频繁存档不会刷屏；没联网直接跳过。
+   别人收到后 net-client 就地改 remotePlayers[from].outfit，下一帧就是新衣服。 */
+let _lastOutfitSig = '';
+function syncOutfitToNet(force){
+  try{
+    if(!currentUser || !currentUser.username) return;
+    if(!window.Net || !Net.connected || !Net.connected()) return;
+    const fit = currentUser.outfit || {};
+    const mid = (window.mapState && mapState.currentId) || 'lobby';
+    const sig = JSON.stringify(fit) + '|' + mid;
+    if(!force && sig === _lastOutfitSig) return;
+    _lastOutfitSig = sig;
+    Net.setOutfit(fit, mid);
+  }catch(e){}
 }
 /* 按显示名找账号（好友/名片用）：先精确键，再在账号里比对 username */
 function findAccountByName(n){
@@ -4535,6 +4570,7 @@ function netLogin(){
     _netLoggedIn = true;
     Net.mailList();
     refreshChatNet();
+    syncOutfitToNet(true);     // 上线先把当前穿搭推一次（服务端记的是上次登录那套，可能旧了）
   }).catch(()=>{ /* 服务器未启动时静默降级为单机 */ });
 }
 function netLogout(){
@@ -5605,8 +5641,8 @@ function pushChatMsg(m){
   if(_chatCh==='world' && m.channel==='world') renderChatLog();
   if(_chatCh==='level' && m.channel==='level') renderChatLog();
   if(_chatCh==='dm' && m.channel==='dm'){ const key=m.mine?m.to:m.from; if(_dmTarget===key) renderChatLog(); }
-  // 关卡聊天 → 头顶气泡（谁说的谁头顶冒泡）
-  if(m.channel==='level' && !m.mine){ showChatBubble(m.from, m.text); }
+  // 关卡聊天 → 头顶气泡（谁说的谁头顶冒泡，★ 自己也冒 —— 陛下钦定）
+  if(m.channel==='level'){ showChatBubble(m.from, m.text); }
   // 左下角自动显示（按设置：只看世界 / 只看关卡 / 都看）
   maybeAutoShow(m);
 }
@@ -5641,22 +5677,52 @@ function sendChat(){
 $('chat-send').onclick = sendChat;
 $('chat-input').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
 
-/* 关卡聊天头顶气泡：在说话玩家头顶挂一个 DOM 气泡，5 秒淡出 */
+/* 关卡聊天头顶气泡：在说话玩家头顶挂一个 DOM 气泡，5 秒淡出。
+   ★ 自己也冒泡（2026-10-02 陛下钦定）：自己不在 remotePlayers 里，改用本机角色坐标
+     mapRun.px/py（世界画布内像素 → 归一化）定位，跟别人走同一套换算。
+   ★ 气泡跟着角色走：每 120ms 按最新坐标重贴一次（角色走动气泡不留在原地），
+     说话者离开本图 / 切出地图屏 → 立刻收掉，不残留。 */
 function showChatBubble(from, text){
-  const players = (window.Net && Net.remotePlayers()) || {};
-  const p = players[from];
-  if(!p || p.mapId !== (mapState.currentId || 'lobby')) return;
-  const mc = $('map-canvas'); if(!mc) return;
-  const rect = mc.getBoundingClientRect();
-  // 归一化坐标 → 屏幕坐标（含 contain 居中留边）
-  const x = rect.left + (mapRun.ox||0) + p.x * mapRun.w;
-  const y = rect.top + (mapRun.oy||0) + p.y * mapRun.h - 46;   // 头顶上方
+  const isMe = !!(currentUser && from === currentUser.username);
+  const rp   = (window.Net && Net.remotePlayers()) || {};
+  const p    = isMe ? null : rp[from];
+  if(!isMe && (!p || p.mapId !== (mapState.currentId || 'lobby'))) return;   // 不在同一张图，不冒
+  const mc = $('map-canvas');
+  if(!mc || !mapRun || !mapRun.w) return;
   const b = document.createElement('div');
-  b.className = 'chat-bubble';
-  b.textContent = text;
-  b.style.left = x + 'px'; b.style.top = y + 'px';
+  b.className = 'chat-bubble' + (isMe ? ' mine' : '');
+  b.textContent = String(text || '').slice(0, 80);
   document.body.appendChild(b);
-  setTimeout(()=>{ try{ b.remove(); }catch(e){} }, 5000);
+  let iv = null, dead = false;
+  const clear = ()=>{
+    if(dead) return; dead = true;
+    if(iv){ clearInterval(iv); iv = null; }
+    try{ b.remove(); }catch(e){}
+  };
+  const place = ()=>{
+    if(dead) return;
+    /* 不在地图屏了 → 收掉 */
+    const ms = $('map-screen');
+    if(!ms || ms.classList.contains('hidden') || !mapRun.w){ clear(); return; }
+    let nx, ny;
+    if(isMe){
+      nx = (mapRun.px||0) / mapRun.w; ny = (mapRun.py||0) / mapRun.h;
+    }else{
+      const q = rp[from] || p;
+      if(!q || q.mapId !== (mapState.currentId || 'lobby')){ clear(); return; }
+      nx = q.x; ny = q.y;
+    }
+    const r = mc.getBoundingClientRect();
+    const cs = charScaleOf(mapRun.h || 0);
+    const x = r.left + (mapRun.ox||0) + nx * mapRun.w;                       // 角色中心（脚底）
+    const y = r.top  + (mapRun.oy||0) + ny * mapRun.h - (ENG_BASE_H*cs*1.14) - 30;  // 名牌上方
+    const half = 110;                                                        // 气泡居中（translateX(-50%)）
+    b.style.left = Math.max(half + 6, Math.min(window.innerWidth - half - 6, x)) + 'px';
+    b.style.top  = Math.max(6, y) + 'px';
+  };
+  place();
+  iv = setInterval(place, 120);
+  setTimeout(clear, 5000);                                                   // 5 秒后消失（CSS 也是 5s 淡出）
 }
 
 /* 邮件 */
@@ -5688,29 +5754,101 @@ function attachLabel(a){
   return a.name||a.type;
 }
 
-/* 背包 */
+/* 背包：九宫格小格子（2026-10-02 陛下钦定）
+   格子只放「图标/图 + 数量」，名字和详细信息收进**详情气泡**：
+   电脑上鼠标悬停即现，手机上点一下格子弹出、再点收起。 */
 function openBag(){ $('bag-drawer').classList.add('open'); renderBag(); }
-function closeBag(){ $('bag-drawer').classList.remove('open'); }
+function closeBag(){ $('bag-drawer').classList.remove('open'); hideBagTip(); }
 let _bagCache = [];
+function bagItemIcon(item){
+  if(item.preview || item.img || item.iconUrl) return '<img class="bc-img" src="' + (item.preview || item.img || item.iconUrl) + '" alt="">';
+  return '<span>' + (item.icon || '📦') + '</span>';
+}
+function bagItemMeta(item){
+  const bits = [];
+  if(item.qty > 1) bits.push('数量 ×' + item.qty);
+  if(item.grade)   bits.push('品级 ' + item.grade);
+  if(item.catId)   bits.push(String(item.catId));
+  if(item.type)    bits.push(String(item.type));
+  if(item.obtainedAt) bits.push(new Date(item.obtainedAt).toLocaleDateString());
+  return bits.join(' · ');
+}
+function hideBagTip(){
+  const t = $('bag-tip'); if(t) t.remove();
+  document.querySelectorAll('.bag-cell.on').forEach(c=>c.classList.remove('on'));
+}
+/* 详情气泡：贴着格子右侧弹，右边放不下就翻到左边，纵向夹在视口里 */
+function showBagTip(item, cell){
+  hideBagTip();
+  const tip = document.createElement('div');
+  tip.className = 'bag-tip'; tip.id = 'bag-tip';
+  const name = item.name || item.id || '道具';
+  const meta = bagItemMeta(item);
+  const desc = item.desc || '';
+  const usable = (item.id === 'rename_card' && (item.qty||1) > 0);
+  tip.innerHTML =
+    '<div class="bt-name">' + esc(name) + '</div>' +
+    (meta ? '<div class="bt-meta">' + esc(meta) + '</div>' : '') +
+    (desc ? '<div class="bt-desc">' + esc(desc) + '</div>' : '') +
+    (usable ? '<button class="bt-use" id="bt-use">🎫 使用改名卡</button>' : '');
+  document.body.appendChild(tip);
+  /* 定位：优先贴格子右侧，右边放不下翻到左侧，最后**无条件夹进视口**（绝不溢出屏幕）。
+     跑两趟：第一趟拿到真实尺寸，第二趟按实测宽度校正（一次算不准的常见坑）。 */
+  const layout = ()=>{
+    const r = cell.getBoundingClientRect();
+    const w = tip.offsetWidth || 200, h = tip.offsetHeight || 90;
+    const GAP = 10, VW = window.innerWidth, VH = window.innerHeight;
+    let flip = false, left = r.right + GAP;
+    if(left + w > VW - 8){
+      const alt = r.left - w - GAP;
+      if(alt >= 8){ left = alt; flip = true; }
+      else left = VW - w - 8;                       // 两边都挤 → 贴右边界
+    }
+    left = Math.max(8, Math.min(VW - w - 8, left)); // 兜底夹取
+    let top = r.top + r.height/2 - 24;
+    top = Math.max(8, Math.min(VH - h - 8, top));
+    tip.classList.toggle('flip', flip);
+    tip.style.left = Math.round(left) + 'px'; tip.style.top = Math.round(top) + 'px';
+  };
+  layout(); layout();
+  cell.classList.add('on');
+  if(usable){
+    $('bt-use').onclick = ()=>{
+      hideBagTip();
+      uiModal({title:'🎫 使用改名卡', msg:'给自己起个新昵称（最多 8 字）', input:{value:(currentUser && currentUser.nickname)||'', maxlen:8, placeholder:'新昵称'}, okText:'确认改名', cancelText:'再想想'})
+        .then(nn=>{ if(nn && window.Net) Net.rename(nn.slice(0,8)); });
+    };
+  }
+}
+/* 点空白处 / 滚动时收起气泡（点气泡内部不收，否则按钮点不到） */
+document.addEventListener('pointerdown', e=>{
+  const t = $('bag-tip'); if(!t) return;
+  if(t.contains(e.target)) return;
+  if(e.target.closest && e.target.closest('.bag-cell')) return;
+  hideBagTip();
+}, true);
 function renderBag(){
   const box = $('bag-list'); box.innerHTML='';
+  hideBagTip();
   const inv = (window.Net && Net.self() && Net.self().inventory) || _bagCache || [];
   if(!inv.length){ box.innerHTML='<div class="empty-tip">背包空空的</div>'; return; }
+  const g = document.createElement('div'); g.className = 'bag-grid';
   inv.forEach(item=>{
-    const row = document.createElement('div'); row.className='bag-item';
-    row.innerHTML = `
-      <div class="b-icon">${item.icon || '📦'}</div>
-      <div style="flex:1"><div class="b-name">${item.name || item.id}</div><div class="b-desc">${item.desc || ''}</div></div>
-      <div class="b-qty">×${item.qty||1}</div>
-      ${item.id==='rename_card' && item.qty>0 ? '<button class="b-use">使用</button>' : ''}`;
-    if(item.id==='rename_card' && item.qty>0){
-      row.querySelector('.b-use').onclick = ()=>{
-        uiModal({title:'🎫 使用改名卡', msg:'给自己起个新昵称（最多 8 字）', input:{value:currentUser.nickname||'', maxlen:8, placeholder:'新昵称'}, okText:'确认改名', cancelText:'再想想'})
-          .then(nn=>{ if(nn) Net.rename(nn.slice(0,8)); });
-      };
-    }
-    box.appendChild(row);
+    const qty = item.qty || 1;
+    const cell = document.createElement('div'); cell.className = 'bag-cell';
+    cell.innerHTML = bagItemIcon(item)
+      + (qty > 1 ? '<span class="bc-qty">×' + qty + '</span>' : '')
+      + (item.grade ? '<span class="bc-tag">' + esc(String(item.grade)) + '</span>' : '');
+    /* 电脑：悬停就看；手机：点一下看（on 状态由 click 切换） */
+    cell.addEventListener('mouseenter', ()=>{ if(!cell.classList.contains('on')) showBagTip(item, cell); });
+    cell.addEventListener('click', e=>{
+      e.stopPropagation();
+      if(cell.classList.contains('on')){ hideBagTip(); return; }
+      showBagTip(item, cell);
+    });
+    g.appendChild(cell);
   });
+  box.appendChild(g);
 }
 
 /* ================= 联机：事件绑定 ================= */
@@ -8249,6 +8387,7 @@ function enterMap(id,spawnId){
   if(!level.parent||!isMapNode(d.maps[level.parent])){toast('❌ LEVEL_NO_PARENT：关卡必须挂在 Map 下');return;}
   if(!Array.isArray(level.spawns)||!level.spawns.length){toast('❌ LEVEL_NO_SPAWN：关卡没有出生点');return;}
   mapState.currentId=id;mapState.spawnId=spawnId||null;loadRuntimeWalk(level);showScreen('map-screen');
+  syncOutfitToNet(true);       // 进新图：让已经在这张图里的人看到我穿的是什么
   const place=()=>{
     resizeMap();loadMapBg(level);renderMapFg(true);
     const W=mapRun.w||window.innerWidth||1,H=mapRun.h||window.innerHeight||1;

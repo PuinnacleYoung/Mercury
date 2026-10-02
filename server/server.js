@@ -178,6 +178,8 @@ const MAX_NEARBY = 8;
 function handleMove(c, msg){
   if(!c.username) return;
   c.x = msg.x; c.y = msg.y; c.facing = msg.facing; c.walk = msg.walk; c.mapId = msg.mapId || c.mapId;
+  /* 兜底：只要移动包里顺手带了新穿搭就一并更新（正常走 t:'outfit'，这里防漏） */
+  if(msg.outfit && typeof msg.outfit === 'object') c.outfit = msg.outfit;
   // 找同图其他玩家，按距离排序，只广播最近的 8 个
   const others = [];
   for(const [sock, o] of clients){
@@ -200,6 +202,27 @@ function handleMove(c, msg){
     nick:it.o.nickname, avatar:it.o.avatar, element:it.o.element, outfit:it.o.outfit,
   }));
   if(nearbySnapshot.length) send(c.sock, { t:'nearby', list: nearbySnapshot });
+}
+
+/* ================= 业务：换装同步（2026-10-02） =================
+   客户端换好衣服发 t:'outfit' → 记进连接状态 + 写回账号（下次登录还是这套），
+   再广播给同一张图的其他玩家：别人的屏幕上当场换装，不用等对方重登。
+   只传「部位 → 衣服 id」的映射（十一个部位，几百字节），素材走云端 outfit 槽。 */
+function handleOutfit(c, msg){
+  if(!c.username) return;
+  const fit = (msg.outfit && typeof msg.outfit === 'object') ? msg.outfit : {};
+  c.outfit = fit;
+  if(msg.mapId) c.mapId = msg.mapId;
+  const acc = DB.accounts[c.username];
+  if(acc){ acc.outfit = fit; persist(); }
+  const payload = { t:'outfit', from:c.username, outfit:fit, mapId:c.mapId,
+                    nick:c.nickname, avatar:c.avatar, element:c.element };
+  const buf = encodeFrame(JSON.stringify(payload));
+  for(const [sock, other] of clients){
+    if(sock === c.sock) continue;
+    if(other.mapId !== c.mapId) continue;      // 只给同图的人
+    try{ sock.write(buf); }catch(e){}
+  }
 }
 
 /* ================= 业务：好友 ================= */
@@ -636,6 +659,7 @@ function onMessage(sock, text){
       break;
     }
     case 'move':   handleMove(c, msg); break;
+    case 'outfit': handleOutfit(c, msg); break;
     case 'chat':   handleChat(c, msg); break;
     case 'friendReq': handleFriendReq(c, msg); break;
     case 'friendAcc': handleFriendAcc(c, msg); break;

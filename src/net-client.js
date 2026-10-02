@@ -87,6 +87,13 @@
             nick:msg.nick, avatar:msg.avatar, element:msg.element, outfit:msg.outfit, lastSeen:Date.now(),
           };
           if(msg.t === 'nearby'){ (msg.list||[]).forEach(p=>{ remotePlayers[p.username] = Object.assign(remotePlayers[p.username]||{}, p, { lastSeen:Date.now() }); }); }
+          /* 别人换装了：就地改外观（坐标/朝向不动），下一帧 drawRemotePlayers 就是新衣服 */
+          if(msg.t === 'outfit' && msg.from){
+            remotePlayers[msg.from] = Object.assign(remotePlayers[msg.from] || { x:.5, y:.5, mapId:msg.mapId },
+              { outfit:msg.outfit || {}, nick:msg.nick, avatar:msg.avatar, element:msg.element,
+                mapId: msg.mapId || (remotePlayers[msg.from] && remotePlayers[msg.from].mapId),
+                lastSeen: Date.now() });
+          }
           Net.emit(msg.t, msg);
         };
       });
@@ -106,6 +113,9 @@
     },
     /* 上报位置 */
     move(x, y, facing, walk, mapId){ Net.send({ t:'move', x, y, facing, walk, mapId }); },
+    /* ★ 换装广播（2026-10-02）：换好衣服立刻告诉同图的其他人，别人屏幕上当场换装。
+       只发 id 映射（十一个部位 → 衣服 id），素材走云端 outfit 槽，别人库里本来就有。 */
+    setOutfit(outfit, mapId){ Net.send({ t:'outfit', outfit: outfit || {}, mapId: mapId || '' }); },
     /* 大厅/频道聊天：channel = 'world'(世界) | 'level'(关卡) | 'dm'(好友私聊) */
     chat(text){ Net.send({ t:'chat', text, channel:'world' }); },
     chatCh(channel, text, to){ Net.send({ t:'chat', text, channel, to }); },
