@@ -972,10 +972,108 @@ const sessionStorage = _mkStore(window.sessionStorage);
   /* ====== 协作：导出 / 导入（多人产出服装） ====== */
   const EXPORT_TYPE='chibi_outfit_pack', EXPORT_VER=1;
   function collectAllItems(){ const arr=[]; CATEGORIES.forEach(c=>{ (library[c.id]||[]).forEach(it=>arr.push(it)); }); return arr; }
+  /* ── 缩略图：优先用「全图层合成预览」（it.thumb），没有再退回第一图层 ──
+     为什么要全图层：头发有前发片/后发片、上衣有主体前后+左右袖前后……以前只截 layers[0]，
+     头发就只剩前发片，后发片（垫在头后面的那一大坨）根本没进图，看着像秃了一块。
+     it.thumb 由 captureItemThumb() 生成：把这件衣服的**所有图层按 z 序叠在一张画布上再裁边**。 */
   function itemThumb(it){
+    if(it && it.thumb) return it.thumb;
     const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return null;
     const firstL=cat.layers[0]; const sub=it.layers[firstL.key];
     return (sub && sub.composed) ? sub.composed.dataUrl : (sub && sub.pieces && sub.pieces[0] ? sub.pieces[0].imgSrc : null);
+  }
+  /* 图层指纹：任一图层的合成结果变了，预览就得重画 */
+  function itemThumbSig(it){
+    const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return '';
+    return cat.layers.map(L=>{
+      const s=it.layers[L.key]; if(!s) return '0';
+      if(s.composed) return 'c'+Math.round(s.composed.w||0)+'x'+Math.round(s.composed.h||0)
+        +'x'+Math.round(s.composed.cx||0)+'x'+Math.round(s.composed.cy||0)+'x'+(s.composed.dataUrl?s.composed.dataUrl.length:0);
+      return 'p'+((s.pieces||[]).length)+(s.mirrorEnabled?'m':'');
+    }).join('|');
+  }
+  /* 全图层叠加 → 一张紧凑预览图（不含素体，按像素裁边，只留衣服本身） */
+  async function captureItemThumb(it){
+    const cat=CAT_MAP[it.category]; if(!cat || !it.layers) return null;
+    const anchors=getAnchors();
+    const layers=[];
+    cat.layers.forEach(L=>{
+      const sub=it.layers[L.key]; if(!sub) return;
+      const src = sub.composed ? sub.composed.dataUrl : ((sub.pieces && sub.pieces.length) ? sub.pieces[0].imgSrc : null);
+      if(!src) return;
+      const box=SLOT_BOX[cat.id+'/'+L.key]; if(!box) return;
+      const a=anchors[L.anchor]; if(!a) return;
+      layers.push({ z:L.z, src, x:a.x-box.w/2+box.ox, y:a.y-box.h/2+box.oy, w:box.w, h:box.h,
+                    mirror: !!(L.mirrorOf && sub.mirrorEnabled) });
+    });
+    if(!layers.length) return null;
+    layers.sort((a,b)=>a.z-b.z);          // 后片（负 z）先画，前片压上去
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    layers.forEach(L=>{ x0=Math.min(x0,L.x); y0=Math.min(y0,L.y); x1=Math.max(x1,L.x+L.w); y1=Math.max(y1,L.y+L.h); });
+    if(!isFinite(x0)) return null;
+    const PAD=8, bw=(x1-x0)+PAD*2, bh=(y1-y0)+PAD*2;
+    const MAX=420;                                        // 预览图最长边（列表缩略图够用又不撑爆 localStorage）
+    const k=Math.min(1, MAX/Math.max(bw,bh));
+    const cw=Math.max(2,Math.round(bw*k)), ch=Math.max(2,Math.round(bh*k));
+    const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+    const ctx=c.getContext('2d'); ctx.imageSmoothingQuality='high';
+    ctx.scale(k,k); ctx.translate(-(x0-PAD), -(y0-PAD));
+    for(const L of layers){
+      const im=await loadImgAsync(L.src); if(!im) continue;
+      ctx.save();
+      if(L.mirror){ ctx.translate(L.x+L.w, 0); ctx.scale(-1,1); ctx.drawImage(im, 0, L.y, L.w, L.h); }
+      else ctx.drawImage(im, L.x, L.y, L.w, L.h);
+      ctx.restore();
+    }
+    // 像素级裁边：把叠加后的整块透明去掉，缩略图才不会缩成一小点
+    let data;
+    try{ data=ctx.getImageData(0,0,cw,ch).data; }catch(e){ data=null; }
+    if(data){
+      let mX=cw,mY=ch,MX=-1,MY=-1;
+      for(let y=0;y<ch;y++){ const row=y*cw*4;
+        for(let x=0;x<cw;x++){ if(data[row+x*4+3]>8){ if(x<mX)mX=x; if(x>MX)MX=x; if(y<mY)mY=y; if(y>MY)MY=y; } } }
+      if(MX>=0){
+        const p=3, tX=Math.max(0,mX-p), tY=Math.max(0,mY-p), tW=Math.min(cw-tX,MX-mX+1+p*2), tH=Math.min(ch-tY,MY-mY+1+p*2);
+        const o=document.createElement('canvas'); o.width=tW; o.height=tH;
+        o.getContext('2d').drawImage(c, tX, tY, tW, tH, 0, 0, tW, tH);
+        try{ const u=o.toDataURL('image/webp',0.82); if(u && u.indexOf('data:image/webp')===0) return u; }catch(e){}
+        return o.toDataURL('image/png');
+      }
+    }
+    try{ const u=c.toDataURL('image/webp',0.82); if(u && u.indexOf('data:image/webp')===0) return u; }catch(e){}
+    return c.toDataURL('image/png');
+  }
+  /* 单件：重画预览 → 写回 it.thumb → 存盘 → 刷新列表（不会重复排队） */
+  let thumbBusy=null;
+  async function refreshItemThumb(it, silent){
+    if(!it) return null;
+    const sig=itemThumbSig(it);
+    if(it.thumb && it.thumbSig===sig) return it.thumb;
+    thumbBusy = (thumbBusy || Promise.resolve()).then(async ()=>{
+      try{ const u=await captureItemThumb(it); if(u){ it.thumb=u; it.thumbSig=itemThumbSig(it); saveLib(); } }
+      catch(e){ console.warn('[thumb] 生成失败', e); }
+      if(!silent){ renderCatCol(); renderRightPanel(); }
+    }).catch(()=>{});
+    await thumbBusy;
+    return it.thumb||null;
+  }
+  /* 批量补：谁还没全图层预览就排队补一张（空闲串行，不卡 UI） */
+  let thumbQueueOn=false;
+  function ensureThumbs(){
+    if(thumbQueueOn) return; thumbQueueOn=true;
+    const todo=[];
+    CATEGORIES.forEach(cat=>{ (library[cat.id]||[]).forEach(it=>{ if(!it.thumb || it.thumbSig!==itemThumbSig(it)) todo.push(it); }); });
+    const step=async ()=>{
+      const it=todo.shift();
+      if(!it){ thumbQueueOn=false; return; }
+      try{ const u=await captureItemThumb(it); if(u){ it.thumb=u; it.thumbSig=itemThumbSig(it); } }catch(e){}
+      saveLib();
+      if(typeof renderCatCol==='function') renderCatCol();
+      if(typeof renderShopCards==='function') renderShopCards();
+      if(typeof renderWbItems==='function') renderWbItems();
+      setTimeout(step, 30);
+    };
+    setTimeout(step, 60);
   }
   function closeOvl(ovl){ if(ovl && ovl.parentNode) ovl.parentNode.removeChild(ovl); }
   function downloadJSON(obj, name){
@@ -1929,8 +2027,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
       list.forEach(it=>{
         const b=document.createElement('div'); b.className='mini-item'+(currentItemId===it.id?' on':'');
         const cat=CAT_MAP[it.category];
-        const firstL=cat.layers[0]; const firstSub=it.layers[firstL.key];
-        const src=firstSub && firstSub.composed ? firstSub.composed.dataUrl : (firstSub && firstSub.pieces[0] ? firstSub.pieces[0].imgSrc : null);
+        const src=itemThumb(it);
         b.innerHTML=`<div class="th">${src?`<img src="${src}">`:cat.em}</div><span class="nm">${it.name}</span>`;
         b.onclick=()=>{ currentItemId=it.id; currentSubKey=cat.layers[0].key; currentPieceId=null; renderCatCol(); renderRightPanel(); stageMgrs.cloth.render(); };
         div.appendChild(b);
@@ -1979,7 +2076,8 @@ const sessionStorage = _mkStore(window.sessionStorage);
     // 保存按钮
     const btns=document.createElement('div'); btns.className='btn-row'; btns.style.marginTop='10px';
     btns.innerHTML=`<button class="btn primary small" id="btnSaveItem">💾 保存合成</button>
-      <button class="btn violet small" id="btnTryOn">👗 试穿</button>`;
+      <button class="btn violet small" id="btnTryOn">👗 试穿</button>
+      <button class="btn small" id="btnItemThumb" title="把这件衣服的所有图层（前发片+后发片、主体+左右袖…）叠成一张预览图">📷 全图层预览</button>`;
     meta.appendChild(btns);
     c.appendChild(meta);
 
@@ -2112,7 +2210,17 @@ const sessionStorage = _mkStore(window.sessionStorage);
         s.composed = composeSubLayer(s.pieces, SLOT_BOX[cat2.id+'/'+LL.key]);
       });
       saveLib(); renderRightPanel(); stageMgrs.cloth.render(); renderCatCol(); updateTopMeta();
+      refreshItemThumb(it);                 // 合成完顺手把「全图层预览」刷新一遍
       toast('已合成保存 ✓');
+    };
+    /* 📷 全图层预览：把这件衣服的所有图层（前发片+后发片 / 主体前后+左右袖前后…）
+       按 z 序叠在一张画布上再裁边，当作它在商店、衣橱、导出列表里的缩略图。
+       —— 以前只截 layers[0]，头发就只剩前发片，后发片根本没进图。 */
+    $('btnItemThumb').onclick=async ()=>{
+      toast('正在合成全图层预览…');
+      const u=await refreshItemThumb(it);
+      renderRightPanel(); renderCatCol();
+      toast(u ? '📷 全图层预览已生成' : '这件还没有可合成的图层');
     };
     $('btnTryOn').onclick=()=>{
       // 保存并试穿到当前穿搭
@@ -2123,7 +2231,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
         if(s.pieces && s.pieces.length) s.composed = composeSubLayer(s.pieces, SLOT_BOX[cat2.id+'/'+LL.key]);
       });
       currentOutfit[currentCat]=it.id;
-      saveLib(); toast('已试穿 → 衣橱预览');
+      saveLib(); refreshItemThumb(it); toast('已试穿 → 衣橱预览');
     };
     const chk=document.getElementById('chkMirror');
     if(chk){
@@ -2198,8 +2306,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     }
     list.forEach(it=>{
       const cat=CAT_MAP[it.category];
-      const firstL=cat.layers[0]; const firstSub=it.layers[firstL.key];
-      const src=firstSub && firstSub.composed ? firstSub.composed.dataUrl : (firstSub && firstSub.pieces[0] ? firstSub.pieces[0].imgSrc : null);
+      const src=itemThumb(it);
       const d=document.createElement('div'); d.className='wb-item'+(currentOutfit[currentCat]===it.id?' on':'');
       d.innerHTML=`<div class="th">${src?`<img src="${src}">`:'<span style="font-size:20px">'+cat.em+'</span>'}</div><div class="nm">${esc(it.name)}</div><div class="equip-check">${currentOutfit[currentCat]===it.id?'✓':''}</div>`;
       d.onclick=()=>{ currentOutfit[currentCat]=it.id; renderWbItems(); stageMgrs.wb.render(); };
@@ -2772,6 +2879,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
     });
   }
   function renderShopCards(){
+    ensureThumbs();                 // 没有全图层预览的商品，后台补一张再刷新
     const box=$('shopCards'); box.innerHTML='';
     const list=shopEntries();
     $('shopCount').textContent='本区 '+list.length+' 件 · 拖拽调序';
@@ -3444,6 +3552,7 @@ const sessionStorage = _mkStore(window.sessionStorage);
   CATEGORIES.forEach(c=>{ if(!(c.id in currentOutfit)) currentOutfit[c.id]=null; });
   stageMgrs.body.render(); refreshPartsGrid();
   updateTopMeta();
+  ensureThumbs();                                     // 老数据补「全图层预览」
 })();
 </script>
 <!-- PWA 安装引导（装到桌面去页签） -->

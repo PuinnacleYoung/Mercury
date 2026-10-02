@@ -2721,6 +2721,9 @@ function engCacheComposed(key, pieces, box){
   return c.ready ? { dataUrl:c.dataUrl, w:c.w, h:c.h, cx:c.cx, cy:c.cy } : null;
 }
 function engItemThumb(item){
+  /* 工坊生成的「全图层预览」（前发片+后发片、主体前后+左右袖前后…叠成一张）优先；
+     老数据没有 thumb 才退回第一图层 —— 否则头发缩略图只有前发片，看着像缺了一块。 */
+  if(item && item.thumb) return item.thumb;
   const cat = ENG_CAT_MAP[item.category]; if(!cat || !item.layers) return null;
   const L = cat.layers[0]; const sub = item.layers[L.key]; if(!sub) return null;
   return (sub.composed) ? sub.composed.dataUrl : (sub.pieces && sub.pieces[0] ? sub.pieces[0].imgSrc : null);
