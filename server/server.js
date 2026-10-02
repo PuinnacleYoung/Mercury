@@ -328,7 +328,8 @@ function newRoomCode(){
 }
 function roomPublic(r){
   return { code:r.code, game:r.game, seats:r.seats, host:r.host, started:!!r.started,
-           players:r.players.filter(p=>!!p.u).map(p=>({ u:p.u, n:p.n || p.u, me:false })) };
+           watchers:(r.watchers||[]).length,
+           players:r.players.filter(p=>!!p.u).map(p=>({ u:p.u, n:p.n || p.u, me:false, outfit:p.outfit || null })) };
 }
 function sockOfUser(u){
   for(const [sock, o] of clients){ if(o && o.username === u) return sock; }
@@ -336,15 +337,43 @@ function sockOfUser(u){
 }
 function roomSend(code, obj, exceptSock){
   const r = ROOMS[code]; if(!r) return;
-  r.players.forEach(p=>{
-    const s = sockOfUser(p.u);
+  const names = r.players.map(p=>p.u).concat(r.watchers||[]);
+  names.forEach(u=>{
+    const s = sockOfUser(u);
     if(s && s !== exceptSock) send(s, obj);
   });
 }
 function roomOfUser(u){
   const codes = Object.keys(ROOMS);
-  for(const code of codes){ if(ROOMS[code].players.some(p=>p.u===u)) return ROOMS[code]; }
+  for(const code of codes){
+    const r = ROOMS[code];
+    if(r.players.some(p=>p.u===u) || (r.watchers||[]).includes(u)) return r;
+  }
   return null;
+}
+/* 十七更：桌内聊天——同桌 + 全体观战者都收得到（观战递纸条大家看得见） */
+function handleTableChat(c, msg){
+  if(!c || !c.username) return;
+  const code = String(msg.code||'').toUpperCase();
+  const r = ROOMS[code]; if(!r) return;
+  const inTable = r.players.some(p=>p.u===c.username) || (r.watchers||[]).includes(c.username);
+  if(!inTable) return;
+  const names = r.players.map(p=>p.u).concat(r.watchers||[]);
+  names.forEach(u=>{
+    if(u === c.username) return;
+    const s = sockOfUser(u);
+    if(s) send(s, { t:'chat', channel:'dm', from:c.username, name:c.nickname || c.username, text: msg.text || '' });
+  });
+}
+
+/* 十七更：桌列表——进来先看全场有几桌、每桌桌号/玩法/人数/局况 */
+function handleRoomList(c){
+  const rooms = Object.keys(ROOMS).map(code=>{
+    const r = ROOMS[code];
+    return { code:r.code, game:r.game, seats:r.seats, host:r.host, started:!!r.started,
+             n:r.players.length, watchers:(r.watchers||[]).length };
+  });
+  send(c.sock, { t:'roomListRes', rooms });
 }
 function handleRoomCreate(c, msg){
   if(!c || !c.username){ send(c && c.sock, { t:'roomErr', msg:'连接还没认上号，稍等两秒再试' }); return; }
@@ -352,8 +381,8 @@ function handleRoomCreate(c, msg){
   const seats = Math.max(2, Math.min(4, parseInt(msg.seats,10) || 3));
   const old = roomOfUser(c.username); if(old) handleRoomLeave(c, {});
   const code = newRoomCode();
-  ROOMS[code] = { code, game, seats, host:c.username, started:false, setup:null,
-                  players:[{ u:c.username, n:c.nickname || c.username }] };
+  ROOMS[code] = { code, game, seats, host:c.username, started:false, setup:null, watchers:[],
+                  players:[{ u:c.username, n:c.nickname || c.username, outfit: msg.outfit || null }] };
   send(c.sock, { t:'roomInfo', room: roomPublic(ROOMS[code]) });
   console.log('[room] 开房', code, game, seats, 'by', c.username);
 }
@@ -363,10 +392,27 @@ function handleRoomJoin(c, msg){
   const code = String(msg.code||'').trim().toUpperCase();
   const r = ROOMS[code];
   if(!r){ send(c.sock, { t:'roomErr', msg:'房号 ' + code + ' 不存在（房主可能已经关了）' }); return; }
+  /* 十七更：观战席——不占座、随时可入，进行中的局也能进来看 */
+  if(msg.watch){
+    r.watchers = r.watchers || [];
+    if(!r.watchers.includes(c.username)){
+      const oldw = roomOfUser(c.username); if(oldw && oldw.code !== code) handleRoomLeave(c, {});
+      r.watchers.push(c.username);
+    }
+    send(c.sock, { t:'roomInfo', room: roomPublic(r), watch:true });
+    roomSend(code, { t:'roomInfo', room: roomPublic(r) });
+    /* 十七更：局已经开了就别让观战者干等——直接把牌面推过去，立刻进观战席 */
+    if(r.started && r.setup){
+      send(c.sock, { t:'roomStart', code:code, game:r.game, setup:r.setup });
+      console.log('[room] 观战即时进场', code, c.username);
+    }
+    console.log('[room] 观战加入', code, c.username);
+    return;
+  }
   if(r.players.some(p=>p.u===c.username)){ send(c.sock, { t:'roomInfo', room: roomPublic(r) }); return; }
-  if(r.players.length >= r.seats){ send(c.sock, { t:'roomErr', msg:'这桌已经坐满了（' + r.seats + ' 人）' }); return; }
+  if(r.players.length >= r.seats){ send(c.sock, { t:'roomErr', msg:'这桌已经坐满了（' + r.seats + ' 人）。想看就点「观战」。' }); return; }
   const old = roomOfUser(c.username); if(old && old.code !== code) handleRoomLeave(c, {});
-  r.players.push({ u:c.username, n:c.nickname || c.username });
+  r.players.push({ u:c.username, n:c.nickname || c.username, outfit: msg.outfit || null });
   roomSend(code, { t:'roomInfo', room: roomPublic(r) });
   console.log('[room] 加入', code, c.username, '→', r.players.length + '/' + r.seats);
 }
@@ -375,6 +421,7 @@ function handleRoomLeave(c, msg){
   const r = code ? ROOMS[code] : roomOfUser(c.username);
   if(!r) return;
   r.players = r.players.filter(p=>p.u !== c.username);
+  if(r.watchers) r.watchers = r.watchers.filter(u => u !== c.username);
   if(!r.players.length){ delete ROOMS[r.code]; return; }
   if(r.host === c.username){ r.host = r.players[0].u; }
   roomSend(r.code, { t:'roomInfo', room: roomPublic(r) });
@@ -755,6 +802,8 @@ function onMessage(sock, text){
     case 'roomLeave':  handleRoomLeave(c, msg); break;
     case 'roomSeats':  handleRoomSeats(c, msg); break;
     case 'roomStart':  handleRoomStart(c, msg); break;
+    case 'roomList':   handleRoomList(c); break;
+    case 'tableChat':  handleTableChat(c, msg); break;
     case 'adminList': handleAdminList(c, msg); break;
     case 'adminMail': handleAdminMail(c, msg); break;
     /* 云端资产库 */
