@@ -1345,6 +1345,10 @@
     $('cg-acts').style.display = '';
     $('cg-quit').style.display = '';
     _actsKey = '';
+    /* 十九更续：开局标题切到「对局中」——别再挂着「等待位面 · 还没开房」 */
+    var gTop = GAMES[setup.game];
+    $('cg-tt').textContent = gTop.em + ' ' + gTop.name + (spectate ? ' · 观战中' : ' · 对局中');
+    $('cg-st').textContent = gTop.place + (hall.code ? ' · 房号 ' + hall.code : ' · 单机快局');
     resizeCanvas();
     /* 大屏展开左右栏（openHall 里收起过），手机保持抽屉（机型适配） */
     var wide2 = window.innerWidth > 880;
@@ -1678,13 +1682,16 @@
   /* 座位布局（绘制与命中共用一份，十七更续重写）
      ⚠️ 陛下钦定：出牌一律摆在「朝牌桌中央」的一侧——
         左家的牌摆右边、右家的牌摆左边、正对家的牌摆手牌下方。 */
-  function seatLayout(p, an, W, H, cw, ch) {
+  function seatLayout(p, an, W, H, cw, ch, deck) {
     var hand = G.hands ? G.hands[p] : null;
     var cnt = hand ? Math.min(hand.length, 12) : 0;
     var mw = cw * 0.5, mh = ch * 0.5, gap = mw * 0.32;   /* 十七更续：对手的牌做大一号 */
     var fanW = cnt ? (cnt - 1) * gap + mw : 0;
-    /* 川麻将：牌河是「这一家打出去的全部牌」，按顺序摆在自家面前（十七更续） */
+    /* 川麻将：牌河是「这一家打出去的全部牌」，按顺序摆在自家面前（十七更续）
+       十九更：牌河已改画到中央（drawMjRiver）——座位旁只放大「刚打的那一张」，
+       所以 mahjong 路径只按最后一张算宽度，手牌行不再被整条牌河撑得漂移。 */
     var played = (G.river && G.river[p] && G.river[p].length) ? G.river[p].slice(-8) : ((G.lastPlay && G.lastPlay[p]) || []);
+    if (deck === 'mahjong') played = played.length ? [played[played.length - 1]] : [];
     var pw = played.length ? Math.min(cw * (G.spectate ? 0.92 : 0.78), W * 0.34 / Math.max(played.length, 1)) : 0;
     var ph = pw * 1.42, pstep = pw * 0.78;
     var playW = played.length ? (played.length - 1) * pstep + pw : 0;
@@ -1706,7 +1713,7 @@
   }
   /* 第一趟：光框 + 头像 + 名牌 + 手牌背面（全部画完再画第二趟的出牌，出牌才压在最上面） */
   function drawSeat(c, p, an, W, H, deck, cw, ch, extra) {
-    var L = seatLayout(p, an, W, H, cw, ch);
+    var L = seatLayout(p, an, W, H, cw, ch, deck);
     var played = L.played, mw = L.mw, mh = L.mh, gap = L.gap;
     var isTurn = (G.turn === p && !G.over);
     var pu = pulse();
@@ -2296,6 +2303,103 @@
     mjSortHand(G.hands[t]);
     mjAiDiscard(t);
   }
+  /* ================= 十九更：欢乐麻将式牌河 =================
+     陛下钦定（对照欢乐麻将）：① 打出去的牌【全部】缩小平铺在牌桌中央，
+     每家占一方（上家顶行 / 我底行 / 左右家两侧块）；② 刚打出来的那一张
+     才放大摆在座位旁（带金光）；③ 碰 / 杠的副露缩小摆在各家手牌边上。 */
+  function mjRiverGeom(W, H, tw, th) {
+    var baseY = H - th - 20;
+    var rw = Math.max(17, Math.min(tw * 0.32, W * 0.032));
+    var rh = rw * 1.36, rstep = rw * 1.12;
+    var per = Math.max(10, Math.floor((W * 0.42) / rstep));   /* 中央每行张数 */
+    var x0 = W / 2 - per * rstep / 2;
+    var ans = seatAnchors(G.seats);
+    var top = H * 0.30;
+    /* 正对家的出牌大牌摆手牌下方——牌河顶行要让它一等 */
+    for (var p = 1; p < G.seats; p++) {
+      if (ans[p - 1].a === 'c') {
+        var L = seatLayout(p, ans[p - 1], W, H, tw, th);
+        top = Math.max(top, L.playY + L.ph + 8);
+      }
+    }
+    return { rw: rw, rh: rh, rstep: rstep, per: per, x0: x0, top: top, bot: baseY - 8 - rh };
+  }
+  function mjRiverRows(c, tiles, cx, y0, dir, per, rw, rh, rstep) {
+    var R = Math.ceil(tiles.length / per);
+    for (var i = 0; i < tiles.length; i++) {
+      var r = Math.floor(i / per), col = i % per;
+      var nRow = Math.min(tiles.length - r * per, per);
+      var xL = cx - nRow * rstep / 2;   /* 每行独立居中（最后一行不满也居中） */
+      var yy = dir > 0 ? y0 + r * (rh + 4) : y0 - (R - 1 - r) * (rh + 4);
+      SK.drawCard(c, 'mahjong', tiles[i], xL + col * rstep, yy, rw, rh, {});
+    }
+  }
+  function drawMjRiver(c, W, H, tw, th) {
+    var g = mjRiverGeom(W, H, tw, th);
+    var sideW = 6 * g.rstep;
+    for (var p = 0; p < G.seats; p++) {
+      var rv = (G.river && G.river[p]) || [];
+      if (!rv.length) continue;
+      if (p === 0) {
+        /* 我：中央底部，行向上叠（贴着手牌），最多两行 */
+        mjRiverRows(c, rv.slice(-2 * g.per), W / 2, g.bot, -1, g.per, g.rw, g.rh, g.rstep);
+      } else {
+        var an = seatAnchors(G.seats)[p - 1];
+        if (an.a === 'c') mjRiverRows(c, rv.slice(-3 * g.per), W / 2, g.top, 1, g.per, g.rw, g.rh, g.rstep);
+        else if (an.a === 'l') mjRiverRows(c, rv.slice(-12), g.x0 - sideW / 2 - 8, g.top, 1, 6, g.rw, g.rh, g.rstep);
+        else mjRiverRows(c, rv.slice(-12), g.x0 + g.per * g.rstep + sideW / 2 + 8, g.top, 1, 6, g.rw, g.rh, g.rstep);
+      }
+    }
+  }
+  /* 刚打出来的最后一张：放大、金光、亮在座位朝中央的一侧 */
+  function drawMjLast(c, p, an, W, H, tw, th) {
+    if (!G || (G.passed && G.passed[p])) return;
+    var rv = (G.river && G.river[p]) || [];
+    if (!rv.length) return;
+    var L = seatLayout(p, an, W, H, tw, th, 'mahjong');
+    var pw = L.pw, ph = L.ph, x, y;
+    if (an.a === 'c') { x = L.handX + L.fanW / 2 - pw / 2; y = L.handY + L.mh + 8; }
+    else if (an.a === 'l') { x = L.handX + L.fanW + 12; y = L.handY + L.mh / 2 - ph / 2 + 4; }
+    else { x = L.handX - pw - 12; y = L.handY + L.mh / 2 - ph / 2 + 4; }
+    SK.drawCard(c, 'mahjong', rv[rv.length - 1], x, y, pw, ph, { hi: '#ffd166' });
+  }
+  /* 我刚打的最后一张：手牌行右上角放大亮着（不压中央牌河） */
+  function drawMjMyLast(c, W, H, tw, th) {
+    var played = (G.lastPlay && G.lastPlay[0]) || [];
+    if (!played.length) return;
+    var baseY = H - th - 20;
+    var pw = Math.min(tw * 0.72, W * 0.14), ph = pw * 1.42;
+    SK.drawCard(c, 'mahjong', played[played.length - 1], W - 14 - pw, baseY - ph - 8, pw, ph, { hi: '#ffd166' });
+  }
+  /* 副露（碰/杠）：缩小摆在各家手牌边上——mini 尺寸，几副排开 */
+  function mjMeldsRow(c, ms, x, y, kw, kh, kstep) {
+    var unitW = 4 * kstep + 8, cx = x;
+    for (var m = 0; m < ms.length; m++) {
+      var ts = ms[m].tiles || [];
+      for (var i = 0; i < ts.length; i++) SK.drawCard(c, 'mahjong', ts[i], cx + i * kstep, y, kw, kh, {});
+      cx += unitW;
+    }
+  }
+  function drawMjMelds(c, p, an, W, H, tw, th) {
+    var ms = (G.melds && G.melds[p]) || [];
+    if (!ms.length) return;
+    var L = seatLayout(p, an, W, H, tw, th, 'mahjong');
+    var kw = Math.max(13, tw * 0.3), kh = kw * 1.36, kstep = kw * 1.1;
+    var totalW = ms.length * (4 * kstep + 8) - 8;
+    var x, y;
+    if (an.a === 'c') { x = L.playX + L.pw + 12; y = L.playY + 6; }          /* 上家：大牌右侧 */
+    else if (an.a === 'l') { x = 14; y = L.playY + L.ph + 10; }              /* 左家：大牌下方 */
+    else { x = W - 14 - totalW; y = L.playY + L.ph + 10; }                   /* 右家：大牌下方右对齐 */
+    mjMeldsRow(c, ms, Math.max(8, Math.min(x, W - 8 - totalW)), y, kw, kh, kstep);
+  }
+  /* 我的副露：手牌行上方左侧一排 mini */
+  function drawMyMelds(c, W, H, tw, th) {
+    var ms = (G.melds && G.melds[0]) || [];
+    if (!ms.length) return;
+    var baseY = H - th - 20;
+    var kw = Math.max(13, tw * 0.3), kh = kw * 1.36, kstep = kw * 1.1;
+    mjMeldsRow(c, ms, 12, baseY - kh - 8, kw, kh, kstep);
+  }
   function drawMj(c, W, H) {
     var tw = cardW(W, H, 11), th = tw * 1.36;
     setActsBottom(th + 20 + 46);
@@ -2303,7 +2407,10 @@
     for (var p = 1; p < G.seats; p++) {
       drawSeat(c, p, ans[p - 1], W, H, 'mahjong', tw, th, G.lack && G.lack[p] ? ' 缺' + MJ_SUIT_N[G.lack[p]] : '');
     }
-    for (var pm2 = 1; pm2 < G.seats; pm2++) drawSeatPlayed(c, pm2, ans[pm2 - 1], W, H, 'mahjong', tw, th);
+    /* 十九更：欢乐麻将式——①牌河全量缩小平铺中央；②刚打的放大亮座位旁；③副露 mini 缩手牌边 */
+    drawMjRiver(c, W, H, tw, th);
+    for (var pm2 = 1; pm2 < G.seats; pm2++) drawMjLast(c, pm2, ans[pm2 - 1], W, H, tw, th);
+    for (var md2 = 1; md2 < G.seats; md2++) drawMjMelds(c, md2, ans[md2 - 1], W, H, tw, th);
     c.fillStyle = 'rgba(255,255,255,.7)'; c.textAlign = 'left'; c.font = '12px sans-serif';
     c.fillText('牌墙 ' + G.wall.length, 14, H * 0.52);
     /* 十七更：各家门口的牌墙——一排小牌背摆在座位名牌下方 */
@@ -2325,7 +2432,9 @@
         }
       }
     }
-    drawMyPlayed(c, 'mahjong', W, H, tw, th, H - th - 20);
+    /* 十九更：我的最后一张大牌亮在手牌右上角（不压中央牌河）；副露 mini 摆手牌上方左侧 */
+    drawMyMelds(c, W, H, tw, th);
+    drawMjMyLast(c, W, H, tw, th);
     if (!G.spectate) {
       var hand = G.hands[0];
       var gm = handGeom(hand.length, tw, W);
@@ -3502,6 +3611,11 @@
     _helpText: function () { var b = $('cg-helpbody'); return b ? b.textContent : ''; },
     _helpTab: function () { return _helpGame; },
     _unoDrew: function () { return G ? !!G.unoDrew : null; },
+    _mjRiverGeom: function (w, h) {
+      if (!G || G.game !== 'mahjong') return null;
+      var W = w || 1103, H = h || 557, tw = cardW(W, H, 11);
+      return mjRiverGeom(W, H, tw, tw * 1.36);
+    },
     _mjDraw: function () { mjDraw(); },
     _mjKey: function (t) { return mjKey(t); },
     _mjHand: function (p) { return (G && G.hands[p]) ? G.hands[p].slice() : []; },
