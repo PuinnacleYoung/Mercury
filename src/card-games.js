@@ -50,15 +50,22 @@
     return cands[rnd(cands.length)];
   }
 
-  /* ---------- 飞行棋 v5 几何（总纲 1.2，已校验） ---------- */
-  var FL_RING = 52, FL_TOTAL = 56;                        // 0..50 环 · 51..55 归航臂 · 56 王座
-  var FL_START = { r: 8, y: 21, g: 34, b: 47 };           // ▶ 出道格
-  var FL_ENTRY = { r: 6, y: 19, g: 32, b: 45 };           // ↵ 归航入口
-  var FL_STAR = [4, 11, 17, 24, 30, 36, 43, 49];          // ★ 事件格
-  var FL_LINE = { 2: 14, 15: 27, 28: 40, 41: 1 };         // ✈ 航线起点→落点（+12）
+  /* ---------- 飞行棋棋盘几何（二十一更：按传统飞行棋重排） ----------
+     传统飞行棋 = 十字形：外圈 52 格 + 四角机库 + 四条归航道直通中心王座。
+     ① 每家的 ▶ 出道格【紧贴自家机库的顺时针出口】——出基地一脚就踏上赛道；
+     ② 每家的归航道在自己机库的【另一侧】，绕完一整圈才从那边的边中点拐进来；
+     ③ 四家起点等距 13 格，起点格与归航入口格【同为自家颜色】（因为外圈走 44 步 = 4 的倍数）。
+     外圈步数 v=0..44（45 个位置，含起点与入口）→ 归航臂 5 格 v=45..49 → 王座 v=50。 */
+  var FL_RING = 52;                                       // 环上格子总数
+  var FL_OUT = 45;                                        // 外圈步数：v=0(起点) … v=44(归航入口)
+  var FL_TOTAL = 50;                                      // 45..49 归航臂 · 50 王座
+  var FL_START = { r: 1, y: 14, g: 27, b: 40 };           // ▶ 出道格（自家机库顺时针出口）
+  var FL_ENTRY = { r: 45, y: 6, g: 19, b: 32 };           // ↵ 归航入口（=(START+44)%52，自家另一条边中点）
+  var FL_STAR = [8, 11, 21, 24, 34, 37, 47, 50];          // ★ 事件格（避开起点/入口/航线）
+  var FL_LINE = { 17: 12, 30: 12, 43: 12, 4: 12 };        // ✈ 航线格（自家色）→ 直飞 +12 步
   var FL_COL = { r: '#e8b23a', y: '#2fa8a0', g: '#3fa34d', b: '#3b82f6' };
   var FL_SOC = { r: '星幕', y: '潮声', g: '拾光', b: '云顶' };
-  var FL_CI = { r: 0, y: 1, g: 2, b: 3 };                 // 格号 mod 4 = 色号
+  var FL_CI = { r: 1, y: 2, g: 3, b: 0 };                 // 自家色号 = 起点格号 mod 4
   /* 环格号 → 网格(行,列)：顶14 + 右13 + 底13 + 左12（四角共享） */
   function flRC(i) {
     if (i <= 13) return [0, i];
@@ -66,14 +73,14 @@
     if (i <= 39) return [13, 12 - (i - 27)];
     return [12 - (i - 40), 0];
   }
-  /* 归航臂第 k 格（k=0..4） */
+  /* 归航臂第 k 格（k=0..4）：从自家归航入口一路通到中心王座 */
   function flArmRC(c, k) {
-    if (c === 'r') return [1 + k, 6];
-    if (c === 'y') return [6, 12 - k];
-    if (c === 'g') return [12 - k, 7];
-    return [7, 1 + k];
+    if (c === 'r') return [7, 1 + k];        // 左边中点 → 向右
+    if (c === 'y') return [1 + k, 6];        // 顶边中点 → 向下
+    if (c === 'g') return [6, 12 - k];       // 右边中点 → 向左
+    return [12 - k, 7];                      // 底边中点 → 向上
   }
-  var FL_THRONE = { r: [6, 6], y: [6, 7], g: [7, 7], b: [7, 6] };
+  var FL_THRONE = { r: [7, 6], y: [6, 6], g: [6, 7], b: [7, 7] };
   /* 机库象限（行1, 列1, 行2, 列2） */
   var FL_QUAD = { r: [1, 1, 5, 5], y: [1, 8, 5, 12], g: [8, 8, 12, 12], b: [8, 1, 12, 5] };
 
@@ -281,6 +288,24 @@
       '.cg-hk .t{font-weight:900;color:#ffd166;font-size:12px;}' +
       '.cg-hwarn{background:rgba(229,72,77,.16);border:1px solid rgba(229,72,77,.45);border-radius:10px;padding:7px 10px;margin:6px 0;}' +
       '.cg-hwarn .t{font-weight:900;color:#ff9aa0;font-size:12px;}' +
+      /* 二十一更：血战到底结算面板（陛下钦定：打完要看见各人胡了什么牌型、赚了多少） */
+      '#cg-mjres{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,94%);max-height:88%;' +
+      'z-index:28;display:none;flex-direction:column;background:rgba(14,8,30,.985);border:1px solid rgba(255,209,102,.5);' +
+      'border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.7);overflow:hidden;}' +
+      '#cg-mjres.open{display:flex;}' +
+      '#cg-mjres .rh{padding:12px 14px 8px;background:linear-gradient(135deg,rgba(139,111,214,.35),rgba(255,209,102,.18));}' +
+      '#cg-mjres .rt{font-size:15px;font-weight:900;color:#ffd166;line-height:1.4;}' +
+      '#cg-mjres .rs{font-size:11px;opacity:.8;margin-top:3px;}' +
+      '#cg-mjres .rb{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 12px;}' +
+      '.cg-rcard{border:1px solid rgba(255,255,255,.16);border-radius:11px;padding:8px 10px;margin:6px 0;background:rgba(255,255,255,.05);}' +
+      '.cg-rcard.win{border-color:rgba(255,209,102,.6);background:rgba(255,209,102,.11);}' +
+      '.cg-rcard .n{font-size:12.5px;font-weight:900;}' +
+      '.cg-rcard .r{float:right;font-size:13px;font-weight:900;}' +
+      '.cg-rcard .up{color:#ff6b6b;}' +
+      '.cg-rcard .dn{color:#4ade80;}' +
+      '.cg-rcard .m{font-size:11px;opacity:.85;margin-top:3px;line-height:1.5;}' +
+      '.cg-rcard .tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;margin-right:4px;' +
+      'background:rgba(255,209,102,.2);border:1px solid rgba(255,209,102,.45);color:#ffd166;}' +
       /* 聊天抽屉 */
       '#cg-chat{position:absolute;top:0;right:0;bottom:0;width:min(300px,86%);z-index:20;display:none;flex-direction:column;' +
       'background:rgba(16,9,34,.96);border-left:1px solid rgba(255,255,255,.18);box-shadow:-8px 0 24px rgba(0,0,0,.4);}' +
@@ -344,6 +369,14 @@
       '    <div class="cg-htabs" id="cg-htabs"></div>' +
       '    <div id="cg-helpbody"></div>' +
       '  </div>' +
+      '  <div id="cg-mjres">' +
+      '    <div class="rh"><div class="rt" id="cg-rtitle">结算</div><div class="rs" id="cg-rsub"></div></div>' +
+      '    <div class="rb" id="cg-rbody"></div>' +
+      '    <div style="padding:8px 12px 12px;display:flex;gap:8px;">' +
+      '      <button class="cg-btn pri" id="cg-ragain" style="flex:1;padding:9px 0;font-size:13px;font-weight:900;">🔄 再来一局</button>' +
+      '      <button class="cg-btn" id="cg-rclose" style="padding:9px 14px;">看看牌桌</button>' +
+      '    </div>' +
+      '  </div>' +
       '</div>';
     document.body.appendChild(el);
     $('cg-x').onclick = closeHall;
@@ -378,6 +411,14 @@
     };
     syncRailBtns();
     $('cg-cbtn').onclick = function () { toggleChat(); };
+    /* 二十一更：结算面板按钮 */
+    var rg = $('cg-ragain');
+    if (rg) rg.onclick = function () {
+      closeMjResult();
+      if (G) startGame(buildSetup(G.game, G.seats, G.entry ? { amt: G.entry.amt, cur: G.entry.cur } : null), { spectate: G.spectate });
+    };
+    var rc = $('cg-rclose');
+    if (rc) rc.onclick = closeMjResult;
     $('cg-hbtn').onclick = function () { openHelp(hall.game || (G && G.game) || 'uno'); };
     $('cg-quit').onclick = closeHall;
     Array.prototype.forEach.call(document.querySelectorAll('.cg-chtab'), function (t) {
@@ -584,6 +625,41 @@
     body.scrollTop = 0;
   }
 
+  /* 二十一更：血战到底结算面板——每家胡了什么牌型、几番、实时赚了多少 */
+  function renderMjResult() {
+    var box = $('cg-mjres');
+    if (!box || !G) return;
+    if (G.game !== 'mahjong') { box.classList.remove('open'); return; }
+    var cur = (G.entry && G.entry.cur) || 'diamond';
+    var cn = CUR[cur].n, ce = CUR[cur].em;
+    $('cg-rtitle').textContent = '🀄 血战到底 · 本局结算';
+    $('cg-rsub').textContent = (G.over || '本局结束') + '　·　底注 ' + fmt(mjBase()) + ' ' + cn;
+    var order = {};
+    G.huOrder.forEach(function (p, i) { order[p] = i + 1; });
+    var h = '';
+    for (var p = 0; p < G.seats; p++) {
+      var s = G.score[p] || 0, hu = G.hu[p];
+      h += '<div class="cg-rcard' + (hu ? ' win' : '') + '">';
+      h += '<div class="n">' + esc((G.real && G.real[p]) || G.names[p]) +
+        (hu ? '<span class="tag">第 ' + order[p] + ' 个胡</span>' : '<span class="tag" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#ccc;">未胡</span>') +
+        '<span class="r ' + (s >= 0 ? 'up' : 'dn') + '">' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + ce + '</span></div>';
+      if (hu) {
+        h += '<div class="m">' + esc(hu.name) + ' · <b>' + hu.fan + ' 番</b> ×' + (hu.mult || 1).toFixed(1) +
+          ' → 此把 <b>' + (hu.pts >= 0 ? '+' : '') + fmt(hu.pts) + '</b> ' + cn + '（' + (hu.ziMo ? '自摸' : '接炮') + '）· 含之前杠/输赢的累计看右侧正负数';
+        if (hu.detail && hu.detail.length) h += '<br><span style="opacity:.78">' + hu.detail.map(esc).join('、') + '</span>';
+        h += '</div>';
+      } else {
+        var kk = ((G.melds && G.melds[p]) || []).filter(function (m) { return m.type === 'kong' || m.type === 'ankong'; }).length;
+        h += '<div class="m">没能结案' + (kk ? '（途中杠了 ' + kk + ' 副，收过杠钱）' : '') + '</div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="m" style="text-align:center;opacity:.62;margin-top:9px;">📒 番位账本已写回主账本（' + ce + cn + '）· 红=赚 绿=亏</div>';
+    $('cg-rbody').innerHTML = h;
+    box.classList.add('open');
+  }
+  function closeMjResult() { var b = $('cg-mjres'); if (b) b.classList.remove('open'); }
+
   /* ================= 战报 / HUD / 侧栏 ================= */
   function cgLog(txt) {
     if (G) { G.log.push(txt); if (G.log.length > 120) G.log.shift(); }
@@ -599,7 +675,20 @@
          这里每一局的数据都要先判存在，否则一个 undefined.length 能把整局开局掐死。 */
       if (G.game === 'uno') out += '<span class="cg-hi">通告池 ' + (G.stock ? G.stock.length : 0) + '</span>' +
         '<span class="cg-hi">方向 ' + (G.dir === 1 ? '顺' : '逆') + '</span>';
-      else if (G.game === 'mahjong') out += '<span class="cg-hi">牌墙 ' + (G.wall ? G.wall.length : 0) + '</span>';
+      else if (G.game === 'mahjong') {
+        out += '<span class="cg-hi">牌墙 ' + (G.wall ? G.wall.length : 0) + '</span>';
+        /* 二十一更：番位账本——杠了吃三家、胡了按牌型收钱，全程实时看得见 */
+        if (G.score) {
+          var cur0 = (G.entry && G.entry.cur) || 'diamond';
+          var sc = [];
+          for (var sp = 0; sp < G.seats; sp++) {
+            var nm = (G.real && G.real[sp]) || (G.names && G.names[sp]) || ('P' + sp);
+            var v = G.score[sp] || 0;
+            sc.push('<b style="color:' + (v > 0 ? '#ff6b6b' : (v < 0 ? '#4ade80' : '#ddd')) + '">' + esc(nm) + (v >= 0 ? ' +' : ' ') + fmt(v) + '</b>' + (G.hu && G.hu[sp] ? '✓' : ''));
+          }
+          out += '<span class="cg-hi cur">📒 ' + sc.join('　') + ' ' + CUR[cur0].em + '</span>';
+        }
+      }
       else if (G.game === 'doudizhu') out += '<span class="cg-hi">倍数 ×' + (G.mult || 1) + '</span>';
       else if (G.game === 'flight') {
         out += '<span class="cg-hi">第 ' + G.round + ' 回合</span>';
@@ -870,6 +959,7 @@
       el.classList.remove('on');
       var q = $('cg-quit'); if (q) q.style.display = 'none';
       var hp = $('cg-help'); if (hp) hp.classList.remove('open');
+      closeMjResult();                  /* 二十一更：收摊时把结算面板一起收掉 */
     }
   }
 
@@ -1305,9 +1395,15 @@
       G.lack = []; G.melds = []; G.river = [];
       for (var mj = 0; mj < setup.seats; mj++) { G.lack.push(null); G.melds.push([]); G.river.push([]); }
       G.pending = null; G.claimMine = []; G.mustDiscard = false; G.canKong = [];
+      /* 二十一更：血战到底 + 番位账本
+         hu[p]=已胡的结算信息（没胡是 null）  huOrder=胡牌先后顺序
+         score[p]=实时盈亏（币）  mjBase=底注（杠/胡都按它翻番） */
+      G.hu = []; G.huOrder = []; G.score = [];
+      for (var hs = 0; hs < setup.seats; hs++) { G.hu.push(null); G.score.push(0); }
+      G.mjBase = Math.max(20, Math.round((G.entry ? G.entry.amt : 500) * 0.1));
       /* AI 立刻定缺（选手里最少的那一门），玩家自己点按钮选 */
       for (var al = 1; al < setup.seats; al++) G.lack[al] = mjAiLack(G.hands[al]);
-      cgLog('🀄 川麻开局：先定缺（手里那一门打光了才能胡）');
+      cgLog('🀄 川麻开局：先定缺（手里那一门打光了才能胡）· 血战到底（胡了不退场，打到只剩一家）· 底注 ' + fmt(G.mjBase));
     } else if (setup.game === 'flight') {
       G.colors = setup.colors;
       G.planes = setup.colors.map(function () { return [-1, -1, -1, -1]; });
@@ -1345,6 +1441,7 @@
     $('cg-acts').style.display = '';
     $('cg-quit').style.display = '';
     _actsKey = '';
+    closeMjResult();                    /* 二十一更：开新局把上一局的结算面板收掉 */
     /* 十九更续：开局标题切到「对局中」——别再挂着「等待位面 · 还没开房」 */
     var gTop = GAMES[setup.game];
     $('cg-tt').textContent = gTop.em + ' ' + gTop.name + (spectate ? ' · 观战中' : ' · 对局中');
@@ -1412,7 +1509,7 @@
     /* 十七更：当前回合指针 + 倒计时条（陛下要的：中间有指针指着谁在出牌 + 高亮 + 倒计时） */
     if (!G.over && !G.spectate) drawTurnBar(c, W, H);
     var turnTxt = G.over ? ('🏁 ' + G.over) : (G.msg || ('轮到：' + (G.names[G.turn] || '—')));
-    $('cg-tip').textContent = turnTxt + '　' + (G.over ? ('（点下面「再来一局」重开）') : tipText());
+    $('cg-tip').textContent = turnTxt + '　' + (G.over ? ('（结算面板已弹出 · 点「再来一局」重开）') : tipText());
     renderActs(actionDefs());
     /* 聊天气泡画在最后一层：泡是浮在最上面的，谁都压不住它 */
     drawBubbles(c, W, H);
@@ -1557,7 +1654,9 @@
             fn: function () { mjDoKong(kk); }
           });
         });
-        out.push({ label: G.mustDiscard ? '🎴 打一张' : '🎴 接令', pri: !G.drawn, disabled: !!G.drawn || G.turn !== 0, fn: mjDraw });
+        /* 二十一更（陛下钦定）：底栏不再塞「接令」按钮——轮到我自动摸牌，
+           按钮挡住手牌看得见摸不着。打牌直接点手牌那一张。 */
+        if (!G.drawn && !G.mustDiscard) out.push({ label: '🎴 自动接令中…', disabled: true, fn: function () { } });
       }
     } else if (G.game === 'flight') {
       out.push({ label: '🎲 掷骰', pri: true, disabled: G.turn !== 0 || !!G.over, fn: flRoll });
@@ -1572,7 +1671,7 @@
         out.push({ label: '🧹 清空选择', fn: function () { G.sel = []; drawGame(); } });
       }
     }
-    out.push({ label: '🔄 再来一局', pri: true, fn: function () { var sp = G.spectate; var en = G.entry ? { amt: G.entry.amt, cur: G.entry.cur } : null; startGame(buildSetup(G.game, G.seats, en), { spectate: sp }); } });
+    /* 二十一更（陛下钦定）：「再来一局」只在对局结束后才出现——打牌过程中它挡手牌 */
     return out;
   }
 
@@ -2079,7 +2178,11 @@
       cgLog('🀄 四家定缺完毕——手里这门打光了才能胡');
     }
     touchTurn(); drawGame();
-    if (G.phase === 'play') scheduleAI();
+    if (G.phase === 'play') {
+      /* 二十一更：定缺完毕 → 轮到我自动摸牌，不用点「接令」 */
+      if (!mjAutoDraw()) scheduleAI();
+      else drawGame();
+    }
   }
   /* 缺门清了没：手里（含副露）还有自己定缺那门就不许胡 */
   function mjLackOk(p, tiles) {
@@ -2104,6 +2207,7 @@
   /* 别人打出一张后我能干嘛：胡 > 杠 > 碰 */
   function mjClaimOpts(p, tile) {
     if (!tile || G.phase !== 'play') return [];
+    if (G.hu && G.hu[p]) return [];      /* 血战到底：已经胡了的人不再碰杠胡 */
     var out = [], hand = G.hands[p] || [];
     if (mjCanWin(p, hand.concat([tile]))) out.push('win');
     var same = hand.filter(function (t) { return t.suit === tile.suit && t.rank === tile.rank; });
@@ -2122,14 +2226,27 @@
     cgLog('🀄 ' + (kind === 'kong' ? '杠！' : '碰！') + G.names[p] + ' ' + MJ_SUIT_N[tile.suit] + tile.rank);
     G.pending = null; G.claimMine = [];
     G.turn = p; touchTurn();
-    if (kind === 'kong') { mjKongDraw(p); return; }
+    if (kind === 'kong') { mjKongScore(p, 'ming', from); mjKongDraw(p); return; }
     G.drawn = null; G.mustDiscard = true;    /* 碰完必须打一张，不能再摸 */
     mjSortHand(hand); drawGame();
     if (p !== 0) scheduleAI();
   }
+  /* 二十一更：杠了立刻收钱——暗杠吃三家（每家 2 底）、补杠每家 1 底、明杠点杠者包 3 底 */
+  function mjKongScore(p, type, from) {
+    var b = mjBase();
+    if (type === 'ming') {
+      if (typeof from === 'number' && from >= 0 && from !== p && !G.hu[from]) mjPay(from, p, b * 3, '明杠');
+      return;
+    }
+    var each = (type === 'an' ? b * 2 : b);
+    mjAliveList().forEach(function (q) {
+      if (q !== p) mjPay(q, p, each, type === 'an' ? '暗杠' : '补杠');
+    });
+  }
   /* 杠完从牌墙尾补一张 */
   function mjKongDraw(p) {
-    if (!G.wall.length) { G.over = '牌墙摸完了，流局'; settleBets(); drawGame(); return; }
+    if (!G.wall.length) { mjFinish(mjAliveList()); return; }
+    G._kongDrawFlag = true;              /* 杠上开花判定用 */
     var t = G.wall.pop();
     if (G.wallPer) G.wallPer[p] = Math.max(0, G.wallPer[p] - 1);
     if (p === 0) { G.drawn = t; G.mustDiscard = false; mjSortHand(G.hands[0]); mjAfterDraw(0); touchTurn(); drawGame(); return; }
@@ -2167,18 +2284,119 @@
       }
     } else G.melds[0].push({ type: 'ankong', tile: got[0], from: 0, tiles: got.slice() });
     cgLog('🀄 ' + (kk.type === 'bu' ? '补杠！' : '暗杠！') + G.names[0]);
+    mjKongScore(0, kk.type === 'bu' ? 'bu' : 'an', -1);
     G.canKong = []; G.canWin = false; G.drawn = null;
     mjSortHand(hand);
     mjKongDraw(0);
   }
+  /* ============ 二十一更（陛下钦定）：血战到底 + 实时番位账本 ============
+     ① 一家胡了不退场，牌桌继续打，一直打到只剩一家没胡（或牌墙摸完）；
+     ② 杠了立刻吃三家、胡了立刻按牌型收钱——G.score[] 全程实时起伏，
+        牌桌顶栏与结算面板都能看见每家赚了多少；
+     ③ 一局打完把 G.score 一次性写回主账本（真钱）。 */
+  function mjBase() { return G.mjBase || 50; }
+  function mjPay(from, to, amt, why) {
+    if (!amt || from === to || G.score[from] === undefined || G.score[to] === undefined) return;
+    G.score[from] -= amt; G.score[to] += amt;
+    cgLog('💸 ' + G.names[from] + ' → ' + G.names[to] + ' ' + fmt(amt) + ' ' + CUR[G.entry ? G.entry.cur : 'diamond'].n + '（' + why + '）');
+  }
+  /* 牌型 → 番数（牌桌黑话） */
+  function mjFanOf(p, all, ziMo, afterKong) {
+    var cnt = mjCounts(all), keys = Object.keys(cnt);
+    var suits = {}; keys.forEach(function (k) { suits[String(k).split('_')[0]] = 1; });
+    var nsuit = Object.keys(suits).length;
+    var melds = (G.melds && G.melds[p]) || [];
+    var is7 = mjWinShape(mjCounts(all)) === '连环计（七对）';
+    var triAll = keys.length > 0;
+    keys.forEach(function (k) { if (cnt[k] % 3 !== 0) triAll = false; });
+    var name = '小捷（平胡）', fan = 1;
+    if (is7) { name = '连环计（七对）'; fan = 2; }
+    else if (nsuit === 1 && melds.length >= 0) { name = '清一色'; fan = 3; }
+    else if (triAll) { name = '碰碰胡（对对胡）'; fan = 2; }
+    var det = [];
+    if (G.lack && G.lack[p]) { fan += 1; det.push('定缺 ' + MJ_SUIT_N[G.lack[p]] + ' +1'); }
+    if (ziMo) { fan += 1; det.push('自摸 +1'); }
+    if (afterKong) { fan += 1; det.push('杠上开花 +1'); }
+    var kongs = melds.filter(function (m) { return m.type === 'kong' || m.type === 'ankong'; }).length;
+    if (kongs) { fan += kongs; det.push('杠 ' + kongs + ' 副 +' + kongs); }
+    return { name: name, fan: fan, detail: det };
+  }
+  /* 还有几家没胡（血战到底的继续条件） */
+  function mjAliveList() {
+    var a = [];
+    for (var i = 0; i < G.seats; i++) if (!G.hu[i]) a.push(i);
+    return a;
+  }
+  /* 从 from 往下找第一个还没胡的人（已胡的直接跳过，不再摸打） */
+  function mjNextAlive(from) {
+    for (var n = 1; n <= G.seats; n++) {
+      var t = (from + n) % G.seats;
+      if (!G.hu[t]) return t;
+    }
+    return -1;
+  }
   function mjWin(p, tile, from, ziMo) {
     var all = (G.hands[p] || []).concat(tile ? [tile] : []);
-    var sh = mjCanWin(p, all) || mjWinShape(mjCounts(all)) || '小捷（平胡）';
-    G.winSeat = p; G.winName = sh;
-    G.over = G.names[p] + (ziMo ? ' 自摸' : ' 接炮') + ' · ' + sh + ' · 结案！🀄🎉';
-    G.pending = null; G.claimMine = [];
-    cgLog('🀄🎉 ' + G.over);
-    settleBets(); drawGame();
+    var afterKong = !!G._kongDrawFlag; G._kongDrawFlag = false;
+    var F = mjFanOf(p, all, ziMo, afterKong);
+    /* 血战加成：越晚胡赚得越狠（第 1 家 ×1、第 2 家 ×1.5、第 3 家 ×2） */
+    var mult = 1 + 0.5 * G.huOrder.length;
+    var pts = Math.round(mjBase() * F.fan * mult);
+    /* 收钱：自摸 = 所有没胡的人各出一份；接炮 = 点炮的一家包圆 ×3 */
+    var gain = 0;
+    if (ziMo) {
+      mjAliveList().forEach(function (q) {
+        if (q === p) return;
+        mjPay(q, p, pts, F.name + ' 自摸 ' + F.fan + ' 番');
+        gain += pts;
+      });
+    } else {
+      var src = (typeof from === 'number' && from >= 0 && from !== p) ? from : mjNextAlive(p);
+      if (src >= 0 && src !== p) { mjPay(src, p, pts * 3, F.name + ' 接炮 ' + F.fan + ' 番'); gain += pts * 3; }
+      else mjAliveList().forEach(function (q) { if (q !== p) { mjPay(q, p, pts, F.name); gain += pts; } });
+    }
+    G.hu[p] = { name: F.name, fan: F.fan, detail: F.detail, pts: gain, ziMo: !!ziMo, from: from, mult: mult };
+    G.huOrder.push(p);
+    G.pending = null; G.claimMine = []; G.drawn = null; G.mustDiscard = false;
+    if (typeof G.winSeat !== 'number') G.winSeat = p;   /* 押注结算认第一个胡的人 */
+    cgLog('🀄🎉 ' + G.names[p] + (ziMo ? ' 自摸' : ' 接炮') + ' · ' + F.name + ' · ' + F.fan + ' 番 ×' + mult.toFixed(1) +
+      ' → 进账 ' + fmt(gain) + (F.detail.length ? '（' + F.detail.join('、') + '）' : ''));
+    var left = mjAliveList();
+    if (left.length <= 1) { mjFinish(left); return; }
+    /* 血战到底：胡了的人退出摸打，牌桌继续 */
+    cgLog('🩸 血战到底！' + G.names[p] + ' 已胡牌退场，牌桌继续——还剩 ' + left.length + ' 家厮杀');
+    G.msg = '🩸 血战到底：' + G.names[p] + ' 已胡，剩 ' + left.length + ' 家继续';
+    var nt = mjNextAlive(p);
+    if (nt < 0) { mjFinish([]); return; }
+    G.turn = nt; touchTurn();
+    mjAutoDraw(); drawGame(); scheduleAI();
+  }
+  /* 一局打完：写回主账本 + 弹结算 */
+  function mjFinish(left) {
+    var un = left && left.length ? left[0] : -1;
+    G.over = G.huOrder.length
+      ? ('🀄 血战到底结束！' + G.huOrder.map(function (p) { return G.names[p]; }).join(' → ') + ' 依次胡牌' + (un >= 0 ? '，' + G.names[un] + ' 没能胡' : ''))
+      : '牌墙摸完了，流局';
+    if (un >= 0) G.msg = '😵 ' + G.names[un] + ' 本局没能结案';
+    G.winSeat = G.huOrder.length ? G.huOrder[0] : G.winSeat;
+    /* 真钱落账：把局内番位账本一次写回主账本（赢家收钱、输家扣钱） */
+    var cur = (G.entry && G.entry.cur) || 'diamond';
+    G.score.forEach(function (s, p) {
+      if (!s) return;
+      if (p === 0 && !G.spectate) { walletAdd(cur, s); cgLog('💰 本局结算：我 ' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + CUR[cur].n); }
+      else cgLog('📒 ' + G.names[p] + ' 本局 ' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + CUR[cur].n);
+    });
+    settleBets();
+    drawGame();
+    renderMjResult();
+  }
+  /* 轮到我自动摸牌（不再需要点「接令」按钮） */
+  function mjAutoDraw() {
+    if (!G || G.game !== 'mahjong' || G.over || G.spectate) return false;
+    if (G.phase !== 'play' || G.turn !== 0) return false;
+    if (G.hu[0] || G.pending || G.drawn || G.mustDiscard) return false;
+    mjDraw();
+    return true;
   }
   /* 打出一张 → 进牌河 → 谁响应（胡>杠>碰）→ 没人要就下家摸 */
   function mjEmit(from, tile) {
@@ -2188,7 +2406,7 @@
     cgLog(G.names[from] + ' 传令 ' + MJ_SUIT_N[tile.suit] + tile.rank);
     var plz = [];
     for (var p = 0; p < G.seats; p++) {
-      if (p === from) continue;
+      if (p === from || G.hu[p]) continue;    /* 打牌的人自己 & 已胡的人不响应 */
       var o = mjClaimOpts(p, tile);
       if (o.length) plz.push({ p: p, o: o });
     }
@@ -2206,7 +2424,7 @@
     G.claimMine = [];
     var aiPicks = [];
     for (var p = 1; p < G.seats; p++) {
-      if (p === from) continue;
+      if (p === from || G.hu[p]) continue;
       var o = mjClaimOpts(p, tile);
       if (o.length) aiPicks.push({ p: p, o: o });
     }
@@ -2222,13 +2440,17 @@
   }
   function mjNext(from) {
     G.pending = null; G.claimMine = [];
-    G.turn = (from + 1) % G.seats;
-    touchTurn(); drawGame(); scheduleAI();
+    var nt = mjNextAlive(from);          /* 血战到底：已胡的人跳过，不再摸打 */
+    if (nt < 0) { mjFinish([]); return; }
+    G.turn = nt;
+    touchTurn(); drawGame();
+    if (!mjAutoDraw()) scheduleAI(); else drawGame();
   }
   function mjDraw() {
     if (G.turn !== 0 || G.drawn || G.mustDiscard || G.spectate) return;
     if (G.phase !== 'play') return;
-    if (!G.wall.length) { G.over = '牌墙摸完了，流局'; settleBets(); drawGame(); return; }
+    if (!G.wall.length) { mjFinish(mjAliveList()); return; }
+    G._kongDrawFlag = false;
     G.drawn = G.wall.pop();
     if (G.wallPer) G.wallPer[0] = Math.max(0, G.wallPer[0] - 1);
     mjSortHand(G.hands[0]);   /* 十七更：摸完自动理牌 */
@@ -2279,8 +2501,10 @@
     mjEmit(t, tile);
   }
   function mjAI(t) {
+    if (G.hu && G.hu[t]) return;             /* 血战到底：已胡的人不再摸打 */
     if (G.mustDiscard) { mjAiDiscard(t); return; }
-    if (!G.wall.length) { G.over = '牌墙摸完了，流局'; settleBets(); drawGame(); return; }
+    if (!G.wall.length) { mjFinish(mjAliveList()); return; }
+    G._kongDrawFlag = false;
     var tile = G.wall.pop();
     if (G.wallPer) G.wallPer[t] = Math.max(0, G.wallPer[t] - 1);
     var all = G.hands[t].concat([tile]);
@@ -2297,6 +2521,7 @@
       }
       G.melds[t].push({ type: 'ankong', tile: got[0], from: t, tiles: got.slice() });
       cgLog('🀄 ' + G.names[t] + ' 暗杠！');
+      mjKongScore(t, 'an', -1);
       mjKongDraw(t); return;
     }
     G.hands[t].push(tile);
@@ -2451,7 +2676,8 @@
       drawMyAvatar(c, W, H, H - 6);
       c.fillStyle = (G.turn === 0 && !G.over) ? '#ffd166' : 'rgba(255,255,255,.88)';
       c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
-      c.fillText((G.turn === 0 && !G.over ? '▶ ' : '') + '我 · ' + hand.length + ' 张' + (G.drawn ? '（含接令先传一张）' : '（点「接令」）'), W / 2, H - 6);
+      c.fillText((G.turn === 0 && !G.over ? '▶ ' : '') + '我 · ' + hand.length + ' 张' +
+        (G.drawn ? '（点一张传令出去 · 右边那张是刚接的）' : (G.mustDiscard ? '（碰/杠完了，打一张）' : '（自动接令中…）')), W / 2, H - 6);
     } else {
       var g0 = handGeom(Math.min(G.hands[0].length, 13), tw * 0.6, W);
       for (var k = 0; k < Math.min(G.hands[0].length, 13); k++) SK.drawBack(c, 'mahjong', g0.x0 + k * g0.step, H - th * 0.6 - 16, tw * 0.6, th * 0.6);
@@ -2709,29 +2935,42 @@
   /* v=0..50 在外环；51..55 归航臂；56 王座 */
   function flPieceRC(p, v) {
     var col = G.colors[p];
-    if (v <= 50) return flRC((FL_START[col] + v) % FL_RING);
-    if (v <= 55) return flArmRC(col, v - 51);
+    if (v < FL_OUT) return flRC((FL_START[col] + v) % FL_RING);
+    if (v < FL_OUT + 5) return flArmRC(col, v - FL_OUT);
     return FL_THRONE[col];
   }
-  function flRingCell(p, v) { return v <= 50 ? (FL_START[G.colors[p]] + v) % FL_RING : -1; }
-  /* 撞子：有敌机落在同一环格 → 全回机库 */
+  function flRingCell(p, v) { return (v >= 0 && v < FL_OUT) ? (FL_START[G.colors[p]] + v) % FL_RING : -1; }
+  /* 撞子（二十一更：整叠一起撞飞 + 醒目提示）：
+     落点格上有敌方的艺人 → 那一格上敌方【整摞】全部回机库（叠子就是这么没的） */
   function flBounceAt(p, cell) {
     if (cell < 0) return;
+    var hitMap = {};
     G.planes.forEach(function (other, q) {
       if (q === p) return;
       other.forEach(function (ov, oi) {
-        if (ov >= 0 && ov <= 50 && flRingCell(q, ov) === cell) {
+        if (ov >= 0 && ov < FL_OUT && flRingCell(q, ov) === cell) {
           other[oi] = -1;
-          cgLog('📸 撞机！' + (FL_SOC[G.colors[q]] + '社') + '的艺人被撞回机库（狗仔闪光灯+头条）');
+          hitMap[q] = (hitMap[q] || 0) + 1;
         }
       });
     });
+    var ks = Object.keys(hitMap);
+    if (!ks.length) return;
+    var total = 0;
+    ks.forEach(function (k) {
+      var q = parseInt(k, 10), n = hitMap[k];
+      total += n;
+      cgLog('📸 撞机！' + FL_SOC[G.colors[q]] + '社·' + G.real[q] + ' 的 ' + n + ' 架艺人被撞回机库（狗仔闪光灯+头条）');
+    });
+    G.msg = '📸 撞机！' + G.names[p] + ' 一口气撞飞 ' + total + ' 架，全部回机库！';
+    G.flash = { cell: cell, t0: Date.now(), n: total };   /* 棋盘上闪一下 + 大字，看得见发生了啥 */
+    if (p === 0) toast('📸 撞机！撞飞 ' + total + ' 架——回机库反省！');
   }
   function flKillEnemy(p) {
     var cands = [];
     G.planes.forEach(function (ps, q) {
       if (q === p) return;
-      ps.forEach(function (v, i) { if (v >= 0 && v <= 50) cands.push([q, i]); });
+      ps.forEach(function (v, i) { if (v >= 0 && v < FL_OUT) cands.push([q, i]); });
     });
     if (!cands.length) return;
     var hit = cands[rnd(cands.length)];
@@ -2749,8 +2988,8 @@
     if (f === 'wheel') { var pool = [2, 3, 'again', -2, 'kill', 'skip', null]; f = pool[rnd(pool.length)]; }
     if (typeof f === 'number') {
       var v = G.planes[p][idx];
-      if (v >= 0 && v <= 50) {
-        var nv = Math.max(0, Math.min(50, v + f));
+      if (v >= 0 && v < FL_OUT) {
+        var nv = Math.max(0, Math.min(FL_OUT - 1, v + f));
         G.planes[p][idx] = nv;
         flBounceAt(p, flRingCell(p, nv));
         G.msg = G.names[p] + ' 的艺人 ' + (f > 0 ? '前进' : '后退') + ' ' + Math.abs(f) + ' 格';
@@ -2770,7 +3009,7 @@
     var f = e.f;
     if (f === 'all1') {
       G.planes.forEach(function (ps, q) {
-        ps.forEach(function (v, i) { if (v >= 0 && v <= 49) { ps[i] = v + 1; flBounceAt(q, flRingCell(q, v + 1)); } });
+        ps.forEach(function (v, i) { if (v >= 0 && v < FL_OUT - 1) { ps[i] = v + 1; flBounceAt(q, flRingCell(q, v + 1)); } });
       });
       G.msg = '全场热搜！所有艺人前进 1 格';
     } else if (f === 'lead2' || f === 'last4') {
@@ -2784,16 +3023,16 @@
       }
       if (t < 0) t = 0;
       var best = -1, bv = -1;
-      G.planes[t].forEach(function (v, i) { if (v > bv && v <= 50) { bv = v; best = i; } });
+      G.planes[t].forEach(function (v, i) { if (v > bv && v < FL_OUT) { bv = v; best = i; } });
       if (best >= 0) {
-        G.planes[t][best] = Math.max(0, Math.min(50, bv + (f === 'lead2' ? -2 : 4)));
+        G.planes[t][best] = Math.max(0, Math.min(FL_OUT - 1, bv + (f === 'lead2' ? -2 : 4)));
         flBounceAt(t, flRingCell(t, G.planes[t][best]));
       }
       G.msg = G.names[t] + (f === 'lead2' ? ' 被限薪令砍了 2 格' : ' 观众缘爆棚 +4');
     } else if (f === 'me3') {
       var best2 = -1, bv2 = -1;
-      G.planes[p].forEach(function (v, i) { if (v > bv2 && v <= 50) { bv2 = v; best2 = i; } });
-      if (best2 >= 0) { G.planes[p][best2] = Math.min(50, bv2 + 3); flBounceAt(p, flRingCell(p, G.planes[p][best2])); }
+      G.planes[p].forEach(function (v, i) { if (v > bv2 && v < FL_OUT) { bv2 = v; best2 = i; } });
+      if (best2 >= 0) { G.planes[p][best2] = Math.min(FL_OUT - 1, bv2 + 3); flBounceAt(p, flRingCell(p, G.planes[p][best2])); }
       G.msg = G.names[p] + ' 金牌经纪人加持 +3';
     } else if (f === 'kill') { flKillEnemy(p); }
     else if (f === 'reroll') {
@@ -2801,32 +3040,40 @@
       G.msg = '天命轮盘转动，一批未出道艺人直接站上出道格！';
     } else { G.msg = e.n; }
   }
-  /* 落格结算（总纲 1.11.2 顺序）：撞子 → 航线+12 → 同色+4 → ★事件 / 命运 */
+  /* 落格结算（二十一更：按传统飞行棋修正顺序与条件）
+     撞子 → ✈ 航线直飞（只有落在本社色格才起飞）→ 🚀 同色连跳（+4，可连跳）→ ★ 事件 / 命运
+     ⚠️ 老实现的三个错：① 航线格不判颜色，谁落上去都能飞；② 同色跳只跳一次，不连跳；
+        ③ 连跳/直飞之后不再撞子，敌机白捡一条命。 */
   function flLand(p, idx, v, depth) {
     if (v > FL_TOTAL) v = FL_TOTAL;
-    if (v <= 50) {
-      var ci = FL_CI[G.colors[p]];
-      var cell = flRingCell(p, v);
-      flBounceAt(p, cell);
-      if (depth === 0 && FL_LINE[cell] !== undefined) {
-        v = Math.min(50, v + 12);
-        cgLog('✈ 航线冲刺 +12！' + G.names[p]);
-        flBounceAt(p, flRingCell(p, v));
-      }
-      var cell2 = flRingCell(p, v);
-      if (depth === 0 && cell2 % 4 === ci && cell2 !== cell) {
-        v = Math.min(50, v + 4);
-        cgLog('🚀 同色连跳 +4！' + G.names[p]);
-        flBounceAt(p, flRingCell(p, v));
-      }
-      G.planes[p][idx] = v;
-      var cellF = flRingCell(p, v);
-      /* 十七更：抽卡仪式——落 ★ 抽事件卡、冲 ✈ 航线抽命运卡，塔罗式三选一 */
-      if (depth === 0 && FL_STAR.indexOf(cellF) >= 0) startDraw(p, 'event', idx);
-      else if (depth === 0 && FL_LINE[cell] !== undefined) startDraw(p, 'fate', idx);
-    } else {
-      G.planes[p][idx] = v;
+    if (v >= FL_OUT) { G.planes[p][idx] = v; return G.planes[p][idx]; }
+    var ci = FL_CI[G.colors[p]];
+    var cell0 = flRingCell(p, v);
+    flBounceAt(p, cell0);
+    var flew = false;
+    /* ① ✈ 航线：落在本社颜色的航线格 → 一次直飞 12 步（跨越 1/4 圈） */
+    if (depth === 0 && FL_LINE[cell0] !== undefined && cell0 % 4 === ci) {
+      v = Math.min(FL_TOTAL, v + FL_LINE[cell0]);
+      flew = true;
+      cgLog('✈ 航线直飞 +' + FL_LINE[cell0] + '！' + G.names[p] + ' 的艺人搭上包机');
+      G.msg = '✈ ' + G.names[p] + ' 冲上航线，直飞 ' + FL_LINE[cell0] + ' 格！';
+      if (v < FL_OUT) flBounceAt(p, flRingCell(p, v));
     }
+    /* ② 🚀 同色跳：停在本社颜色的格子上 → 往前跳 4 格（跳到下一个本社色格）
+       ⚠️ 只能跳一次！外圈每 4 格一循环，+4 之后【必定又是本社色】，
+          要是写「跳到不是本社色为止」就会无限跳（臣试过，直接跳到王座）。 */
+    var c2 = flRingCell(p, v);
+    if (depth === 0 && v < FL_OUT && c2 % 4 === ci) {
+      v = Math.min(FL_TOTAL, v + 4);
+      cgLog('🚀 同色跳 +4！' + G.names[p] + ' 踩中本社色格，往前蹿一格');
+      G.msg = '🚀 ' + G.names[p] + ' 踩中本社色格，同色跳 +4！';
+      if (v < FL_OUT) flBounceAt(p, flRingCell(p, v));
+    }
+    G.planes[p][idx] = v;
+    var cellF = flRingCell(p, v);
+    /* 十七更：抽卡仪式——落 ★ 抽事件卡、冲 ✈ 航线抽命运卡，塔罗式三选一 */
+    if (depth === 0 && v < FL_OUT && FL_STAR.indexOf(cellF) >= 0) startDraw(p, 'event', idx);
+    else if (depth === 0 && flew) startDraw(p, 'fate', idx);
     return G.planes[p][idx];
   }
   /* ================= 抽卡仪式（塔罗式三选一 · 十七更） ================= */
@@ -2850,7 +3097,8 @@
     D.cards.forEach(function (cd, k) { if (k !== i) deck.unshift(cd); });
     cgLog('🎴 ' + G.names[D.p] + ' 抽走了第 ' + (i + 1) + ' 张……');
     var iv = setInterval(function () { if (G) drawGame(); }, 50);
-    setTimeout(function () { clearInterval(iv); applyDrawCard(); }, 950);
+    /* 二十一更（陛下钦定）：翻牌别一闪而过——停留 2.4 秒，看得清抽中了什么再走 */
+    setTimeout(function () { clearInterval(iv); applyDrawCard(); }, 2400);
     drawGame();
   }
   function applyDrawCard() {
@@ -2859,6 +3107,16 @@
     var card = D.cards[D.picked];
     if (D.kind === 'event') flApplyEventCard(D.p, D.idx, card);
     else flApplyFateCard(D.p, card);
+    /* 二十一更：抽中什么要有醒目横幅——牌桌中央大字停 2.6 秒 */
+    G.cardBanner = {
+      kind: D.kind, name: card.n, desc: flCardDesc(card.n),
+      who: G.names[D.p], t0: Date.now(), ms: 2600
+    };
+    var iv2 = setInterval(function () {
+      if (!G) { clearInterval(iv2); return; }
+      drawGame();
+      if (Date.now() - G.cardBanner.t0 > G.cardBanner.ms + 500) clearInterval(iv2);
+    }, 220);
     G.draw = null;
     var after = G._afterDraw; G._afterDraw = null;
     if (after) after();
@@ -2917,6 +3175,13 @@
     drawGame();
     requestAnimationFrame(flAnimLoop);
   }
+  /* 二十一更·叠子：同一格上本社的几架艺人算「一叠」，一起走、一起被撞回机库 */
+  function flStackOf(p, v) {
+    var out = [];
+    if (v === -1 || v === undefined || v === null) return out;
+    G.planes[p].forEach(function (ov, i) { if (ov === v) out.push(i); });
+    return out;
+  }
   function flMove(p, idx, dice) {
     if (G.anim) return;
     var ps = G.planes[p];
@@ -2927,11 +3192,16 @@
     if (to > FL_TOTAL) return;
     G.options = null;
     G.sel = [];
+    /* 跟这一架叠在同一格的兄弟姐妹（不含自己）——整叠一起挪 */
+    var mates = v0 >= 0 ? flStackOf(p, v0).filter(function (i) { return i !== idx; }) : [];
+    if (mates.length) cgLog('🗼 叠子起飞：' + G.names[p] + ' 的 ' + (mates.length + 1) + ' 架艺人叠成一摞一起走！');
     if (v0 === -1) cgLog('🎬 ' + G.names[p] + ' 的艺人在 ▶ 出道格出道！');
     /* 走到位之后的收尾（原 flMove 下半段，原样保留） */
     var finish = function () {
       var v = ps[idx];
       flLand(p, idx, v, 0);
+      /* 叠子：整摞跟到同一个落点（撞机时 flBounceAt 会把整摞一起清掉） */
+      mates.forEach(function (mi) { if (G.planes[p][mi] !== FL_TOTAL) G.planes[p][mi] = G.planes[p][idx]; });
       G.msg = G.names[p] + ' 掷 ' + dice + '，艺人走到第 ' + Math.max(0, ps[idx]) + ' 步';
       var after = function () {
         if (ps.every(function (x) { return x === FL_TOTAL; })) {
@@ -2963,7 +3233,7 @@
       if (FL_STAR.indexOf(cell) >= 0) sc += 4;
       for (var q = 0; q < G.seats; q++) {
         if (q === t) continue;
-        G.planes[q].forEach(function (ov) { if (ov >= 0 && ov <= 50 && flRingCell(q, ov) === cell) sc += 10; });
+        G.planes[q].forEach(function (ov) { if (ov >= 0 && ov < FL_OUT && flRingCell(q, ov) === cell) sc += 10; });
       }
       sc += target * 0.05;
       return { i: idx, v: sc };
@@ -3061,14 +3331,24 @@
       if (FL_LINE[i] !== undefined) mark = '✈';
       if (mark) c.fillText(mark, xy2[0] + csx / 2, xy2[1] + csy * 0.75);
     }
-    /* 棋子（出道后上环 / 归航臂 / 王座） */
-    var stack = {};
+    /* 棋子（出道后上环 / 归航臂 / 王座）
+       二十一更·叠子：先统计「同一社同一格有几架」，画的时候摞起来 + 角标 ×N */
+    var stack = {}, stackN = {};
+    G.colors.forEach(function (col, p) {
+      G.planes[p].forEach(function (v) {
+        if (v === -1) return;
+        var rc0 = flPieceRC(p, v);
+        var k0 = p + '|' + rc0[0] + ',' + rc0[1];
+        stackN[k0] = (stackN[k0] || 0) + 1;
+      });
+    });
     G.colors.forEach(function (col, p) {
       G.planes[p].forEach(function (v, idx) {
         if (v === -1) return;
         var rc = flPieceRC(p, v), xy = rcxy(rc);
         var key = rc[0] + ',' + rc[1];
         var n = stack[key] || 0; stack[key] = n + 1;
+        var myN = stackN[p + '|' + rc[0] + ',' + rc[1]] || 1;
         var r = Math.max(6, cs * 0.34);
         var ox = (n % 2) * r * 0.7, oy = Math.floor(n / 2) * r * 0.7;
         var cx2 = xy[0] + csx / 2 - r / 2 + ox, cy2 = xy[1] + csy / 2 - r / 2 + oy;
@@ -3092,8 +3372,21 @@
         c.beginPath(); c.arc(cx2, cy2, r / 1.7, 0, 6.2832);
         c.fillStyle = FL_COL[col]; c.fill();
         c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = 1.6; c.stroke();
+        /* 叠子：同格 2 架以上 → 摞起来画个 ×N 角标（一起走、一起被撞飞） */
+        if (myN >= 2) {
+          c.fillStyle = 'rgba(10,6,24,.92)';
+          c.strokeStyle = '#ffd166'; c.lineWidth = 1.4;
+          var bw3 = Math.max(15, r * 1.15), bh3 = Math.max(11, r * 0.62);
+          var bx3 = cx2 + r / 2 - bw3 / 2 + r * 0.55, by3 = cy2 - bh3 * 0.6;
+          c.fillRect(bx3, by3, bw3, bh3); c.strokeRect(bx3, by3, bw3, bh3);
+          c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(8, r * 0.5) + 'px sans-serif'; c.textAlign = 'center';
+          c.fillText('×' + myN, bx3 + bw3 / 2, by3 + bh3 * 0.78);
+        }
       });
     });
+    /* 二十一更：撞机闪光 + 抽卡横幅——牌桌上发生了什么，得让人一眼看见 */
+    drawFlFlash(c, W, H, csx, csy, bx, by);
+    drawFlBanner(c, W, H);
     /* 十七更：骰子大提示——掷了什么、能不能动、动哪架，牌桌中央一眼看清 */
     if (G.dice > 0 && !G.over) {
       var ds = Math.max(46, cs * 1.5), dx = W / 2 - ds / 2, dy = by + csy * 5.6;
@@ -3152,17 +3445,66 @@
     if (G.draw) drawDrawLayer(c, W, H);
   }
   /* ---------- 抽卡仪式绘制：遮罩 + 三张背面牌，点一张翻开 ---------- */
+  /* 二十一更：撞机闪光——「谁把谁撞回机库了」要在棋盘上闪一下才看得见 */
+  function drawFlFlash(c, W, H, csx, csy, bx, by) {
+    var F = G && G.flash;
+    if (!F) return;
+    var age = Date.now() - F.t0;
+    if (age > 1500) { G.flash = null; return; }
+    var rc = flRC(F.cell), x = bx + rc[1] * csx, y = by + rc[0] * csy;
+    var k = age / 1500, a = 1 - k;
+    c.save();
+    c.globalAlpha = a;
+    var rr = Math.max(csx, csy) * (0.55 + k * 1.9);
+    c.strokeStyle = '#ffffff'; c.lineWidth = 3 + 5 * a;
+    c.beginPath(); c.arc(x + csx / 2, y + csy / 2, rr, 0, 6.2832); c.stroke();
+    c.strokeStyle = '#ffd166'; c.lineWidth = 2.5;
+    c.beginPath(); c.arc(x + csx / 2, y + csy / 2, rr * 0.6, 0, 6.2832); c.stroke();
+    c.fillStyle = '#ff9aa0';
+    c.font = 'bold ' + Math.max(15, csy * 0.6) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+    c.textAlign = 'center';
+    c.fillText('💥 撞飞 ×' + F.n + '！', x + csx / 2, y - 5);
+    c.restore();
+  }
+  /* 二十一更：抽卡横幅——抽中了什么，牌桌中央大字报 2.6 秒（陛下：太快看不出来） */
+  function drawFlBanner(c, W, H) {
+    var B = G && G.cardBanner;
+    if (!B) return;
+    var age = Date.now() - B.t0;
+    if (age > B.ms + 500) { G.cardBanner = null; return; }
+    var a = age < 220 ? age / 220 : (age > B.ms ? Math.max(0, 1 - (age - B.ms) / 500) : 1);
+    var bw = Math.min(W - 24, 430), bh = 78;
+    var x = W / 2 - bw / 2, y = H * 0.46 - bh / 2;
+    c.save();
+    c.globalAlpha = a;
+    c.fillStyle = 'rgba(10,6,24,.95)';
+    c.strokeStyle = B.kind === 'event' ? '#ffd166' : '#c9b6f5'; c.lineWidth = 2.5;
+    c.fillRect(x, y, bw, bh); c.strokeRect(x, y, bw, bh);
+    c.textAlign = 'center';
+    c.fillStyle = B.kind === 'event' ? '#ffd166' : '#c9b6f5';
+    c.font = 'bold 12px "PingFang SC","Microsoft YaHei",sans-serif';
+    c.fillText((B.kind === 'event' ? '🟠 事件卡' : '🔮 命运卡') + ' · ' + B.who + ' 抽中', W / 2, y + 20);
+    c.fillStyle = '#fff';
+    c.font = 'bold 17.5px "PingFang SC","Microsoft YaHei",sans-serif';
+    c.fillText(B.name, W / 2, y + 45);
+    if (B.desc) {
+      c.fillStyle = 'rgba(255,255,255,.82)'; c.font = '11.5px sans-serif';
+      c.fillText(B.desc, W / 2, y + 65);
+    }
+    c.restore();
+  }
   function drawDrawLayer(c, W, H) {
     var D = G.draw;
-    c.fillStyle = 'rgba(10,6,24,.74)'; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(10,6,24,.8)'; c.fillRect(0, 0, W, H);
     var n = D.cards.length;
-    var cw2 = Math.min(96, W / (n + 1.4)), ch2 = cw2 * 1.5;
-    var gap = cw2 * 1.16;
+    /* 二十一更（陛下钦定「太快看不清」）：牌放大、翻牌慢一点、抽中后定住让人看清楚 */
+    var cw2 = Math.min(122, W / (n + 1.2)), ch2 = cw2 * 1.5;
+    var gap = cw2 * 1.14;
     var x0 = W / 2 - (n - 1) * gap / 2 - cw2 / 2, y0 = H / 2 - ch2 / 2 + 8;
-    c.fillStyle = '#ffd166'; c.font = 'bold 16px "PingFang SC","Microsoft YaHei",sans-serif'; c.textAlign = 'center';
-    c.fillText(D.kind === 'event' ? '🟠 事件卡 · 落 ★ 抽一张' : '🔮 命运卡 · 航线加持抽一张', W / 2, y0 - 22);
-    c.fillStyle = 'rgba(255,255,255,.75)'; c.font = '12px sans-serif';
-    c.fillText(G.names[D.p] + (D.picked < 0 ? ' · 点一张牌揭开命运' : ' · 命运揭晓中……'), W / 2, y0 - 4);
+    c.fillStyle = '#ffd166'; c.font = 'bold 17px "PingFang SC","Microsoft YaHei",sans-serif'; c.textAlign = 'center';
+    c.fillText(D.kind === 'event' ? '🟠 事件卡 · 落 ★ 抽一张' : '🔮 命运卡 · 航线加持抽一张', W / 2, y0 - 26);
+    c.fillStyle = 'rgba(255,255,255,.78)'; c.font = '12.5px sans-serif';
+    c.fillText(G.names[D.p] + (D.picked < 0 ? ' · 点一张牌揭开命运' : ' · 命运揭晓，稍等就生效……'), W / 2, y0 - 8);
     for (var i = 0; i < n; i++) {
       var x = x0 + i * gap, y = y0;
       var picked = D.picked === i;
@@ -3170,8 +3512,16 @@
       c.save();
       if (dim) c.globalAlpha = 0.25;
       if (picked && D.revealAt) {
-        var t = Math.min(1, (Date.now() - D.revealAt) / 500);
-        var s = 0.7 + 0.3 * t;
+        var t = Math.min(1, (Date.now() - D.revealAt) / 800);
+        var s = 0.7 + 0.48 * t;
+        /* 抽中的那张：金光外圈一圈一圈荡开 */
+        if (t >= 1) {
+          var gl = 0.5 + 0.5 * Math.sin((Date.now() % 900) / 900 * 6.2832);
+          c.save();
+          c.strokeStyle = 'rgba(255,209,102,' + (0.35 + 0.45 * gl) + ')'; c.lineWidth = 3 + gl * 3;
+          c.strokeRect(x - 5 - gl * 3, y - 5 - gl * 3, cw2 + 10 + gl * 6, ch2 + 10 + gl * 6);
+          c.restore();
+        }
         c.translate(x + cw2 / 2, y + ch2 / 2);
         c.scale(s, s);
         c.translate(-(x + cw2 / 2), -(y + ch2 / 2));
@@ -3179,10 +3529,10 @@
         c.fillStyle = D.kind === 'event' ? '#3b2a5e' : '#241a3d';
         c.strokeStyle = D.kind === 'event' ? '#ffd166' : '#c9b6f5'; c.lineWidth = 2.5;
         c.fillRect(x, y, cw2, ch2); c.strokeRect(x, y, cw2, ch2);
-        c.fillStyle = '#fff'; c.font = 'bold ' + Math.max(11, cw2 * 0.14) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-        wrapText(c, D.cards[i].n, x + cw2 / 2, y + ch2 * 0.4, cw2 - 14, cw2 * 0.19);
-        c.fillStyle = 'rgba(255,255,255,.6)'; c.font = Math.max(9, cw2 * 0.1) + 'px sans-serif';
-        wrapText(c, flCardDesc(D.cards[i].n), x + cw2 / 2, y + ch2 * 0.74, cw2 - 16, cw2 * 0.13);
+        c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(13, cw2 * 0.165) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+        wrapText(c, D.cards[i].n, x + cw2 / 2, y + ch2 * 0.38, cw2 - 14, cw2 * 0.2);
+        c.fillStyle = 'rgba(255,255,255,.86)'; c.font = Math.max(10, cw2 * 0.108) + 'px sans-serif';
+        wrapText(c, flCardDesc(D.cards[i].n), x + cw2 / 2, y + ch2 * 0.72, cw2 - 16, cw2 * 0.145);
       } else {
         /* 背面牌（素材引擎的飞行棋牌背，没素材也有占位符） */
         if (global.SK && SK.drawBack) SK.drawBack(c, 'flight', x, y, cw2, ch2);
@@ -3600,9 +3950,17 @@
         melds: (G.melds || []).map(function (m) { return m.slice(); }),
         river: (G.river || []).map(function (r) { return r.length; }),
         handN: (G.hands || []).map(function (h) { return h.length; }),
-        pending: G.pending || null, drawn: !!G.drawn
+        pending: G.pending || null, drawn: !!G.drawn,
+        /* 二十一更：血战到底 + 番位账本 */
+        hu: (G.hu || []).map(function (x) { return x ? { name: x.name, fan: x.fan, pts: x.pts, ziMo: x.ziMo } : null; }),
+        huOrder: (G.huOrder || []).slice(), score: (G.score || []).slice(), base: G.mjBase,
+        over: G.over || null, mustDiscard: !!G.mustDiscard
       };
     },
+    _mjAuto: function () { return mjAutoDraw(); },
+    _mjWin: function (p, tile, from, ziMo) { mjWin(p, tile, from, ziMo); },
+    _mjResult: function () { var b = $('cg-mjres'); return b ? { open: b.classList.contains('open'), text: b.textContent } : null; },
+    _mjCloseResult: closeMjResult,
     _mjOpts: function (p, tile) { return mjClaimOpts(p, tile); },
     _mjClaim: function (p, kind, tile, from) { mjDoClaim(p, kind, tile, from); },
     _mjDiscard: function (i) { mjDiscard(i); },
@@ -3619,7 +3977,17 @@
     _mjDraw: function () { mjDraw(); },
     _mjKey: function (t) { return mjKey(t); },
     _mjHand: function (p) { return (G && G.hands[p]) ? G.hands[p].slice() : []; },
-    _fl: { RC: flRC, pieceRC: flPieceRC, START: FL_START, LINE: FL_LINE, STAR: FL_STAR, TOTAL: FL_TOTAL },
+    _fl: {
+      RC: flRC, pieceRC: flPieceRC, armRC: flArmRC, THRONE: FL_THRONE, QUAD: FL_QUAD,
+      START: FL_START, ENTRY: FL_ENTRY, LINE: FL_LINE, STAR: FL_STAR, CI: FL_CI,
+      TOTAL: FL_TOTAL, OUT: FL_OUT, RING: FL_RING
+    },
+    _flStack: function (p, v) { return flStackOf(p, v); },
+    _flMove: function (p, idx, dice) { flMove(p, idx, dice); },
+    _flStartDraw: function (p, kind, idx) { startDraw(p, kind, idx); },
+    _flPick: function (i) { pickDrawCard(i); },
+    _flBanner: function () { return G && G.cardBanner ? { name: G.cardBanner.name, kind: G.cardBanner.kind } : null; },
+    _flFlash: function () { return G && G.flash ? { n: G.flash.n } : null; },
     /* 棋盘棋子命中区（验证「点棋子出动」用；只读，不改玩法） */
     _flHits: function () { return _flHits.map(function (h) { return { idx: h.idx, x: Math.round(h.x), y: Math.round(h.y), r: Math.round(h.r) }; }); },
     _flOptions: function () { return G && G.options ? G.options.slice() : null; },
