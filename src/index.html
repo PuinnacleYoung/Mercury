@@ -1011,6 +1011,20 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-buy .sb-buy:hover{filter:brightness(1.07);}
 .shop-buy .sb-buy.off{background:rgba(140,130,160,.28);color:var(--c-sub);box-shadow:none;cursor:not-allowed;}
 .shop-buy .sb-nobuy{font-size:12px;color:var(--c-sub);}
+/* 试穿清单 chips：点一下脱下；已拥有的不计费 */
+.shop-buy .sb-chips{display:flex;gap:6px;flex-wrap:wrap;max-height:96px;overflow:auto;}
+.shop-buy .sb-chip{display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--glass-border);background:rgba(var(--glass-rgb),.72);color:var(--c-ink);
+  font-size:11.5px;font-weight:700;font-family:inherit;transition:.16s;}
+.shop-buy .sb-chip:hover{border-color:var(--c-accent);color:var(--c-accent);}
+.shop-buy .sb-chip.owned{opacity:.72;}
+.shop-buy .sb-chip .scx{color:var(--c-sub);font-weight:800;}
+.shop-buy .sb-chip .scp{color:var(--c-accent);}
+.shop-buy .sb-chip .sco{color:#4a8f68;}
+.shop-buy .sb-need{font-size:11.5px;font-weight:700;color:var(--c-sub);margin-left:6px;}
+/* 卡片上的「✓ 试穿中」小角标（叠加时一眼看出穿了几件） */
+.shop-on{position:absolute;left:0;top:0;background:linear-gradient(135deg,var(--c-accent),var(--c-accent2));
+  color:#fff;font-size:10.5px;font-weight:800;padding:2px 8px;border-bottom-right-radius:10px;z-index:2;}
 .shop-buy .sb-reset{align-self:flex-start;padding:6px 12px;border-radius:999px;border:1px solid var(--glass-border);
   background:rgba(var(--glass-rgb),.6);color:var(--c-sub);font-size:12px;font-weight:700;cursor:pointer;}
 .shop-buy .sb-reset:hover{color:var(--c-ink);}
@@ -1206,6 +1220,10 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 .shop-buy{padding:calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));gap:calc(8px * var(--ui-scale));border-radius:calc(18px * var(--ui-scale));}
 .shop-buy .sb-name{font-size:calc(15px * var(--ui-scale));}
 .shop-buy .sb-buy{font-size:calc(13px * var(--ui-scale));padding:calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));}
+.shop-buy .sb-chip{font-size:calc(11.5px * var(--ui-scale));padding:calc(4px * var(--ui-scale)) calc(9px * var(--ui-scale));gap:calc(5px * var(--ui-scale));}
+.shop-buy .sb-chips{gap:calc(6px * var(--ui-scale));max-height:calc(96px * var(--ui-scale));}
+.shop-buy .sb-need{font-size:calc(11.5px * var(--ui-scale));margin-left:calc(6px * var(--ui-scale));}
+.shop-on{font-size:calc(10.5px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale));border-bottom-right-radius:calc(10px * var(--ui-scale));}
 .shop-cat{width:calc(92px * var(--ui-scale));gap:calc(6px * var(--ui-scale));}
 .shop-cat-btn{font-size:calc(12.5px * var(--ui-scale));padding:calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));}
 .shop-items{gap:calc(12px * var(--ui-scale));}
@@ -7161,7 +7179,8 @@ function getShopEntries(zone){
      · 套装不占门店，是商店里的一个「👗 套装」分类、也是衣橱里的一个分类；
      · 点商品 = 左边立刻上身预览；没买就显示总价，一键「买下并穿上」。
    ========================================================================= */
-let shopState = { bld:null, zones:[], zone:null, cat:'all', trial:null, trialOutfit:null };
+/* trial = 试穿清单（数组）：不重叠的插槽可以叠加，重叠的自动替换（同部位后穿的赢） */
+let shopState = { bld:null, zones:[], zone:null, cat:'all', trial:[], trialOutfit:null };
 function openShop(bld){
   refreshEngineData(); refreshProfile();
   const tags = bld.shopTags || SHOP_ZONES.map(z=>z.id);
@@ -7169,7 +7188,7 @@ function openShop(bld){
   /* 门店只认四档；outfit（套装）是分类不是门店，不单独占一家店 */
   shopState.zones = SHOP_ZONES.filter(z=>tags.indexOf(z.id)>=0 && !z.wardrobeOnly);
   shopState.zone  = shopState.zones.length ? shopState.zones[0].id : null;
-  shopState.trial = null; shopState.trialOutfit = null;
+  shopState.trial = []; shopState.trialOutfit = null;
   shopState.cat = 'all';
   buildShopDOM();
   renderShopTabs(); renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage();
@@ -7216,7 +7235,7 @@ function renderShopTabs(){
     const b = document.createElement('button');
     b.className = 'shop-tab' + (z.id === shopState.zone ? ' on' : '');
     b.textContent = z.em + ' ' + z.name;
-    b.onclick = ()=>{ shopState.zone = z.id; shopState.cat='all'; shopState.trial=null; shopState.trialOutfit=null;
+    b.onclick = ()=>{ shopState.zone = z.id; shopState.cat='all'; shopState.trial=[]; shopState.trialOutfit=null;
                       renderShopTabs(); renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage(); };
     box.appendChild(b);
   });
@@ -7270,8 +7289,7 @@ function renderShopItems(){
   list.forEach(en=>{
     const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
     const card = document.createElement('div');
-    card.className = 'shop-card r-' + (shopState.zone||'common') +
-      (shopState.trial && shopState.trial.id === en.id && shopState.trial.kind === en.kind ? ' on' : '');
+    card.className = 'shop-card r-' + (shopState.zone||'common') + (shopTrialHas(en) ? ' on' : '');
     const thumbHtml = en.thumb
       ? '<img src="' + en.thumb + '" alt="">'
       : '<span style="font-size:34px">' + (en.kind==='set' ? '👗' : ((ENG_CAT_MAP[en.category]||{}).em || '🎁')) + '</span>';
@@ -7283,7 +7301,8 @@ function renderShopItems(){
       '<div class="shop-thumb">' + thumbHtml + '</div>' +
       '<div class="shop-nm">' + esc(en.name) + '</div>' +
       '<div class="shop-price">' + (badges || '<span class="price-badge">未定价</span>') + '</div>' +
-      (owned ? '<div class="shop-owned">已拥有</div>' : '');
+      (owned ? '<div class="shop-owned">已拥有</div>' : '') +
+      (shopTrialHas(en) ? '<div class="shop-on">✓ 试穿中</div>' : '');
     /* 点一下 = 左边立刻试穿（不弹窗、不扣钱） */
     card.onclick = ()=>shopPreview(en);
     g.appendChild(card);
@@ -7300,77 +7319,144 @@ function paintShopStage(){
   };
   paint(); afterEngineReady(paint);
 }
-function shopTrialOutfit(en){
-  const base = Object.assign({}, (currentUser && currentUser.outfit) || {});
+/* ---- 试穿清单：插槽重叠模型 ----
+   · 单件只占自己那个部位（category）；套装占 itemIds 里所有部位。
+   · 新试穿的和清单里**插槽重叠**的会被顶掉（后穿的赢）；不重叠的一起穿着 → 可叠加。
+   · 再点一次同一件 = 脱下（从清单里摘掉）。 */
+function shopEntrySlots(en){
   if(en.kind === 'set'){
-    const o = {};
-    ENG_CATEGORIES.forEach(c=>{ const iid = en.itemIds && en.itemIds[c.id]; if(iid) o[c.id] = iid; else o[c.id] = base[c.id]; });
-    return o;
+    const s = [];
+    ENG_CATEGORIES.forEach(c=>{ if(en.itemIds && en.itemIds[c.id]) s.push(c.id); });
+    return s.length ? s : ['__set'];        // 空套装兜底：当成占一个虚拟槽
   }
+  return [en.category || '__item'];
+}
+function shopTrialHas(en){
+  return (shopState.trial||[]).some(t => t.id === en.id && t.kind === en.kind);
+}
+function shopTrialOutfit(){
+  const base = Object.assign({}, (currentUser && currentUser.outfit) || {});
   const o = Object.assign({}, base);
-  o[en.category] = en.id;
+  (shopState.trial||[]).forEach(en=>{
+    if(en.kind === 'set'){
+      ENG_CATEGORIES.forEach(c=>{ const iid = en.itemIds && en.itemIds[c.id]; if(iid) o[c.id] = iid; });
+    } else {
+      if(en.category) o[en.category] = en.id;
+    }
+  });
   return o;
 }
+/* 点商品：脱下 / 叠加（重叠的先摘掉） */
 function shopPreview(en){
-  shopState.trial = en;
-  shopState.trialOutfit = shopTrialOutfit(en);
+  if(!shopState.trial) shopState.trial = [];
+  if(shopTrialHas(en)){
+    shopState.trial = shopState.trial.filter(t => !(t.id === en.id && t.kind === en.kind));
+    toast('脱下「' + en.name + '」');
+  } else {
+    const mine = shopEntrySlots(en);
+    shopState.trial = shopState.trial.filter(t=>{
+      const theirs = shopEntrySlots(t);
+      return !theirs.some(s => mine.indexOf(s) >= 0);   // 插槽撞了 → 顶掉旧的
+    });
+    shopState.trial.push(en);
+  }
+  shopState.trialOutfit = shopTrialOutfit();
   renderShopItems(); renderShopBuy(); paintShopStage();
 }
 function shopResetTrial(){
-  shopState.trial = null; shopState.trialOutfit = null;
+  shopState.trial = []; shopState.trialOutfit = null;
   renderShopItems(); renderShopBuy(); paintShopStage();
 }
 /* ---- 底部：总价 + 一键买下并穿上 ---- */
 function renderShopBuy(){
   const box = $('shop-buy'); if(!box) return;
-  const en = shopState.trial;
-  if(!en){
-    box.innerHTML = '<div class="sb-tip">点右边任意一件 → 左边立刻试穿<br><span class="sb-sub">没买的会显示总价，可一键买下并穿上</span></div>';
+  const trial = shopState.trial || [];
+  if(!trial.length){
+    box.innerHTML = '<div class="sb-tip">点右边任意一件 → 左边立刻试穿<br>'
+      + '<span class="sb-sub">不同部位（妆容 / 上衣 / 裙子…）可以一起穿，底下一键算总价</span></div>';
     return;
   }
-  const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
-  const prices = CURR_KEYS.filter(k => en.price && en.price[k] > 0);
-  const badges = prices.map(k=>'<span class="price-badge ' + k + '">' + curIcon(k) + ' ' + en.price[k] + '</span>').join('');
+  const isOwned = en => (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
+  const need = trial.filter(en=>!isOwned(en));              // 还没买的
+  const chips = trial.map((en,i)=>
+    '<button class="sb-chip' + (isOwned(en) ? ' owned' : '') + '" data-i="' + i + '" title="点一下脱下">'
+      + '<span class="scx">✕</span><span class="scn">' + esc(en.name) + '</span>'
+      + (isOwned(en) ? '<span class="sco">已拥有</span>' : '<span class="scp">'
+          + (CURR_KEYS.filter(k=>(en.price||{})[k]>0)
+                .map(k=>curIcon(k) + (en.price[k])).join(' ') || '未定价') + '</span>')
+    + '</button>').join('');
+  /* 三货币分别汇总：只统计「用该货币能付」的那些件的价格 */
+  const totals = {};
+  CURR_KEYS.forEach(k=>{
+    let sum = 0, n = 0;
+    need.forEach(en=>{ const p = (en.price||{})[k]; if(p > 0){ sum += p; n++; } });
+    if(n) totals[k] = { sum, n };
+  });
+  const canPayAll = {};                                     // 用这个货币能把所有未买的付清
+  CURR_KEYS.forEach(k=>{ canPayAll[k] = need.every(en=>((en.price||{})[k]||0) > 0); });
+  const totalBtns = CURR_KEYS.filter(k=>totals[k]).map(k=>
+    '<span class="price-badge ' + k + '">' + curIcon(k) + ' 合计 ' + totals[k].sum + '（' + totals[k].n + ' 件）</span>').join('')
+    || '<span class="price-badge">未定价</span>';
+
   box.innerHTML =
-    '<div class="sb-name">' + esc(en.name) + '</div>' +
-    '<div class="sb-price">' + (owned ? '<span class="sb-owned-tag">已拥有</span>' : (badges || '<span class="price-badge">未定价</span>')) + '</div>' +
+    '<div class="sb-name">试穿中 · ' + trial.length + ' 件'
+      + (need.length ? '<span class="sb-need">（' + need.length + ' 件未拥有）</span>' : '<span class="sb-need">（都已是你的啦）</span>') + '</div>' +
+    '<div class="sb-chips">' + chips + '</div>' +
+    '<div class="sb-price">' + totalBtns + '</div>' +
     '<div class="sb-btns"></div>' +
     '<button class="sb-reset" id="sb-reset">还原穿着</button>';
+
+  box.querySelectorAll('.sb-chip').forEach(ch=>{
+    ch.onclick = ()=>{ const i = +ch.getAttribute('data-i'); const en = (shopState.trial||[])[i];
+      if(en) shopPreview(en); };                            // 点 chip = 脱下这件
+  });
   const btns = box.querySelector('.sb-btns');
-  if(owned){
+  if(!need.length){                                          // 全部已有 → 直接换上
     const b = document.createElement('button');
-    b.className = 'sb-buy'; b.textContent = '👗 换上这一套';
+    b.className = 'sb-buy'; b.textContent = '👗 换上这 ' + trial.length + ' 件';
     b.onclick = ()=>shopConfirmTrial(null);
     btns.appendChild(b);
-  } else if(!prices.length){
-    const s = document.createElement('span');
-    s.className = 'sb-nobuy'; s.textContent = '这件还没定价，暂时买不了';
-    btns.appendChild(s);
   } else {
-    prices.forEach(k=>{
-      const afford = (profile.currency[k]||0) >= en.price[k];
+    CURR_KEYS.filter(k=>totals[k]).forEach(k=>{
+      const afford = (profile.currency[k]||0) >= totals[k].sum;
       const b = document.createElement('button');
       b.className = 'sb-buy' + (afford ? '' : ' off');
-      b.innerHTML = curIcon(k) + ' ' + en.price[k] + ' 买下并穿上' + (afford ? '' : '（余额不足）');
+      b.innerHTML = curIcon(k) + ' ' + totals[k].sum + ' · 买下这 ' + totals[k].n + ' 件并穿上'
+        + (canPayAll[k] ? '' : '（部分）') + (afford ? '' : '（余额不足）');
       if(afford) b.onclick = ()=>shopConfirmTrial(k); else b.disabled = true;
       btns.appendChild(b);
     });
+    if(!CURR_KEYS.some(k=>totals[k])){
+      const s = document.createElement('span');
+      s.className = 'sb-nobuy'; s.textContent = '这几件还没定价，暂时买不了';
+      btns.appendChild(s);
+    }
   }
   $('sb-reset').onclick = shopResetTrial;
 }
-/* 付钱（cur=null 表示已经拥有，直接穿）→ 立刻上身 → 存盘 */
+/* 结算：cur=null 表示清单都已拥有、直接穿；否则用该货币把清单里「能用它付」的件全买下，
+   买到的和已有的整套一起上身并存盘。买不全的留在清单里，换别的货币接着付。 */
 function shopConfirmTrial(cur){
-  const en = shopState.trial; if(!en) return;
-  const owned = (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
-  if(!owned){
-    if(!cur) return;
-    if(!doPurchase(en, cur)) return;
+  const trial = (shopState.trial||[]).slice(); if(!trial.length) return;
+  const isOwned = en => (en.kind==='set') ? ownsSet(en.id) : owns(en.id);
+  let bought = 0, skipped = 0;
+  if(cur){
+    trial.forEach(en=>{
+      if(isOwned(en)) return;
+      if(((en.price||{})[cur]||0) > 0){ if(doPurchase(en, cur)) bought++; else skipped++; }
+      else skipped++;
+    });
   }
+  const stillNeed = trial.filter(en=>!isOwned(en));
+  if(stillNeed.length && !bought){ toast('没有能结算的东西'); return; }
+  shopState.trialOutfit = shopTrialOutfit();
   currentUser.outfit = normalizeOutfit(Object.assign({}, shopState.trialOutfit));
   if(profile){ profile.wornOutfit = Object.assign({}, currentUser.outfit); saveProfile(profile); }
   persistCurrent(); refreshProfile(); renderCoins();
-  toast(owned ? ('👗 已换上「' + en.name + '」') : ('🎉 已买下并穿上「' + en.name + '」'));
-  shopState.trial = null; shopState.trialOutfit = null;
+  toast(bought ? ('🎉 已买下 ' + bought + ' 件并穿上' + (stillNeed.length ? ('（还有 ' + stillNeed.length + ' 件需用别的货币）') : ''))
+               : ('👗 已换上这 ' + trial.length + ' 件'));
+  if(!stillNeed.length){ shopState.trial = []; shopState.trialOutfit = null; }
+  else { shopState.trial = stillNeed; shopState.trialOutfit = shopTrialOutfit(); }
   renderShopCat(); renderShopItems(); renderShopBuy(); paintShopStage();
   drawLobby();
 }
