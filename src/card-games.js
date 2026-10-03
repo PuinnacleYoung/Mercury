@@ -2774,48 +2774,141 @@
     var kw = Math.max(13, tw * 0.3), kh = kw * 1.36, kstep = kw * 1.1;
     mjMeldsRow(c, ms, 12, baseY - kh - 8, kw, kh, kstep);
   }
+  /* ============ 二十三更 v2：经典麻将牌桌布局（完全重写） ============
+     参考欢乐麻将 / 雀魂 / kobalab/majiang-ui 的标准四家布局：
+     五区分离——① 我的手牌区（底部）② 对手手牌区（顶/左/右，牌背）
+     ③ 中央牌河（四方各占一方，严格不重叠）④ 副露（各家手牌旁）⑤ 信息栏
+     ⚠️ 不再调用 drawSeat / seatLayout / drawSeatPlayed——这些是 UNO/斗地主共用的，
+     麻将有自己专属的座位画法，彻底分开。 */
   function drawMj(c, W, H) {
     var tw = cardW(W, H, 11), th = tw * 1.36;
     setActsBottom(th + 20 + 46);
-    var ans = seatAnchors(G.seats);
-    for (var p = 1; p < G.seats; p++) {
-      drawSeat(c, p, ans[p - 1], W, H, 'mahjong', tw, th, G.lack && G.lack[p] ? ' 缺' + MJ_SUIT_N[G.lack[p]] : '');
+    /* 尺寸常量 */
+    var sw = Math.max(14, tw * 0.32), sh = sw * 1.36, ss = sw * 1.05;  /* 小牌（对手手牌 + 牌河） */
+    var kw = Math.max(12, tw * 0.26), kh = kw * 1.36, ks = kw * 1.1;  /* 副露 mini */
+    var rw = Math.max(11, tw * 0.24), rh = rw * 1.36, rs = rw * 1.08; /* 牌河 micro */
+    var per = Math.max(6, Math.min(12, Math.floor((W * 0.38) / rs)));  /* 牌河每行张数 */
+
+    /* ── 区域划分（从外到内，严格不重叠） ── */
+    var myH = th + 36;                                    /* 我的手牌区高度 */
+    var topH = sh + 32;                                   /* 上家手牌区高度 */
+    var sideW = sw + 24;                                  /* 左右家手牌区宽度 */
+    var riverTop = topH + 6;                              /* 牌河区顶 */
+    var riverBot = H - myH - 6;                           /* 牌河区底 */
+    var riverLeft = sideW + 6;                            /* 牌河区左 */
+    var riverRight = W - sideW - 6;                       /* 牌河区右 */
+    var cx = W / 2, cy = (riverTop + riverBot) / 2;       /* 牌河中心 */
+
+    /* ── ① 上家（顶部，牌背横排 + 名牌） ── */
+    if (G.seats >= 3) {
+      var pi = G.seats === 3 ? 1 : 2;   /* 4 人局上家座位号=2，3 人局=1 */
+      var topHand = G.hands[pi] || [];
+      var topN = Math.min(topHand.length, 13);
+      var topFan = topN * ss;
+      var topX0 = cx - topFan / 2;
+      for (var ti = 0; ti < topN; ti++) SK.drawBack(c, 'mahjong', topX0 + ti * ss, 6, sw, sh);
+      /* 名牌 */
+      c.fillStyle = G.turn === pi ? '#ffd166' : 'rgba(255,255,255,.85)';
+      c.font = 'bold 11px sans-serif'; c.textAlign = 'center';
+      c.fillText((G.turn === pi ? '▶ ' : '') + realName(pi) + ' · ' + topHand.length + '张' +
+        (G.lack && G.lack[pi] ? ' 缺' + MJ_SUIT_N[G.lack[pi]] : ''), cx, sh + 16);
+      /* 副露（上家手牌右端） */
+      var topMs = (G.melds && G.melds[pi]) || [];
+      if (topMs.length) mjMeldsRow(c, topMs, topX0 + topFan + 8, 8, kw, kh, ks);
     }
-    /* 十九更：欢乐麻将式——①牌河全量缩小平铺中央；②刚打的放大亮座位旁；③副露 mini 缩手牌边 */
-    drawMjRiver(c, W, H, tw, th);
-    for (var pm2 = 1; pm2 < G.seats; pm2++) drawMjLast(c, pm2, ans[pm2 - 1], W, H, tw, th);
-    for (var md2 = 1; md2 < G.seats; md2++) drawMjMelds(c, md2, ans[md2 - 1], W, H, tw, th);
-    c.fillStyle = 'rgba(255,255,255,.7)'; c.textAlign = 'left'; c.font = '12px sans-serif';
-    c.fillText('牌墙 ' + G.wall.length, 14, H * 0.52);
-    /* 十七更：各家门口的牌墙——一排小牌背摆在座位名牌下方 */
-    if (G.wallPer) {
-      for (var wp2 = 0; wp2 < G.seats; wp2++) {
-        var nWall = Math.min(G.wallPer[wp2], 21);
-        if (wp2 === 0 || !nWall) continue;
-        var anw = ans[wp2 - 1];
-        var bxw = anw.a === 'l' ? 16 : anw.a === 'r' ? W - 16 : W * anw.x;
-        var byw = anw.y * H + 26;
-        var mw2 = tw * 0.26, gapw = mw2 * 0.5;
-        c.fillStyle = 'rgba(255,255,255,.35)';
-        c.font = '10px sans-serif';
-        c.textAlign = anw.a === 'l' ? 'left' : anw.a === 'r' ? 'right' : 'center';
-        c.fillText('门前牌墙 ' + G.wallPer[wp2], bxw + (anw.a === 'c' ? 0 : (anw.a === 'l' ? 46 : -46)), byw - 3);
-        for (var wi = 0; wi < nWall; wi++) {
-          var wx = anw.a === 'l' ? bxw + 46 + wi * gapw : anw.a === 'r' ? bxw - 46 - wi * gapw : bxw - (nWall * gapw) / 2 + wi * gapw;
-          SK.drawBack(c, 'mahjong', wx, byw, mw2, mw2 * 1.3);
-        }
+
+    /* ── ② 左家（左侧，牌背竖排） ── */
+    var leftP = G.seats >= 4 ? 1 : (G.seats >= 3 ? -1 : -1);
+    if (G.seats === 3) leftP = -1;   /* 3 人局没有左家 */
+    if (G.seats === 4) leftP = 1;
+    if (leftP >= 0) {
+      var leftHand = G.hands[leftP] || [];
+      var leftN = Math.min(leftHand.length, 13);
+      var leftY0 = riverTop + 4;
+      for (var li = 0; li < leftN; li++) SK.drawBack(c, 'mahjong', 4, leftY0 + li * (sh * 0.5), sw, sh);
+      c.save();
+      c.fillStyle = G.turn === leftP ? '#ffd166' : 'rgba(255,255,255,.85)';
+      c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
+      c.translate(sw + 14, (riverTop + riverBot) / 2);
+      c.rotate(-Math.PI / 2);
+      c.fillText((G.turn === leftP ? '▶ ' : '') + realName(leftP) + ' · ' + leftHand.length + '张' +
+        (G.lack && G.lack[leftP] ? ' 缺' + MJ_SUIT_N[G.lack[leftP]] : ''), 0, 0);
+      c.restore();
+      var leftMs = (G.melds && G.melds[leftP]) || [];
+      if (leftMs.length) mjMeldsRow(c, leftMs, 4, leftY0 + leftN * (sh * 0.5) + 6, kw, kh, ks);
+    }
+
+    /* ── ③ 右家（右侧，牌背竖排） ── */
+    var rightP = G.seats >= 4 ? 3 : (G.seats >= 3 ? 2 : -1);
+    if (G.seats === 2) rightP = 1;
+    if (rightP >= 0) {
+      var rightHand = G.hands[rightP] || [];
+      var rightN = Math.min(rightHand.length, 13);
+      var rightX = W - sw - 4;
+      var rightY0 = riverTop + 4;
+      for (var ri = 0; ri < rightN; ri++) SK.drawBack(c, 'mahjong', rightX, rightY0 + ri * (sh * 0.5), sw, sh);
+      c.save();
+      c.fillStyle = G.turn === rightP ? '#ffd166' : 'rgba(255,255,255,.85)';
+      c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
+      c.translate(rightX - 6, (riverTop + riverBot) / 2);
+      c.rotate(Math.PI / 2);
+      c.fillText((G.turn === rightP ? '▶ ' : '') + realName(rightP) + ' · ' + rightHand.length + '张' +
+        (G.lack && G.lack[rightP] ? ' 缺' + MJ_SUIT_N[G.lack[rightP]] : ''), 0, 0);
+      c.restore();
+      var rightMs = (G.melds && G.melds[rightP]) || [];
+      if (rightMs.length) {
+        var rmTotalW = rightMs.length * (4 * ks + 8) - 8;
+        mjMeldsRow(c, rightMs, Math.max(rightX - rmTotalW, riverRight - rmTotalW), rightY0 + rightN * (sh * 0.5) + 6, kw, kh, ks);
       }
     }
-    /* 十九更：我的最后一张大牌亮在手牌右上角（不压中央牌河）；副露 mini 摆手牌上方左侧 */
-    drawMyMelds(c, W, H, tw, th);
-    drawMjMyLast(c, W, H, tw, th);
+
+    /* ── ④ 中央牌河（四方各占自己的象限，严格不重叠） ── */
+    var halfH = (riverBot - riverTop) / 2 - 4;
+    var halfW = (riverRight - riverLeft) / 2 - 4;
+    /* 我的牌河：中央偏下，行向上叠 */
+    var myRv = (G.river && G.river[0]) || [];
+    if (myRv.length) {
+      var myRowN = Math.min(myRv.length, per * 3);
+      var myRows = Math.ceil(myRowN / per);
+      var myRY0 = riverBot - myRows * (rh + 2);
+      mjRiverRows(c, myRv.slice(-myRowN), cx, myRY0, 1, per, rw, rh, rs);
+    }
+    /* 上家牌河：中央偏上，行向下叠 */
+    var topP2 = G.seats === 3 ? 1 : (G.seats >= 4 ? 2 : -1);
+    if (topP2 >= 0) {
+      var topRv = (G.river && G.river[topP2]) || [];
+      if (topRv.length) mjRiverRows(c, topRv.slice(-per * 3), cx, riverTop, 1, per, rw, rh, rs);
+    }
+    /* 左家牌河：中央偏左，竖排向右延伸 */
+    if (leftP >= 0) {
+      var leftRv = (G.river && G.river[leftP]) || [];
+      if (leftRv.length) mjRiverCol(c, leftRv.slice(-18), riverLeft, cy - 4 * (rh + 2), 1, 6, rw, rh);
+    }
+    /* 右家牌河：中央偏右，竖排向左延伸 */
+    if (rightP >= 0) {
+      var rightRv = (G.river && G.river[rightP]) || [];
+      if (rightRv.length) mjRiverCol(c, rightRv.slice(-18), riverRight - rw, cy - 4 * (rh + 2), -1, 6, rw, rh);
+    }
+
+    /* 中心信息（牌墙数 + 当前回合） */
+    c.fillStyle = 'rgba(255,255,255,.5)'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
+    c.fillText('牌墙 ' + G.wall.length, cx, cy);
+
+    /* ── ⑤ 我的手牌区（底部） ── */
+    /* 副露摆手牌左端 */
+    var myMs = (G.melds && G.melds[0]) || [];
+    var myMsW = 0;
+    if (myMs.length) {
+      myMsW = myMs.length * (4 * ks + 8);
+      mjMeldsRow(c, myMs, 8, H - th - 20 - kh - 6, kw, kh, ks);
+    }
     if (!G.spectate) {
       var hand = G.hands[0];
       var gm = handGeom(hand.length, tw, W);
       drawHandRow(c, hand, W, H, tw, th, H - th - 20, null, 'mahjong', null);
       if (G.drawn) {
-        var rowW = gm.step * (hand.length - 1) + tw;
-        var gx = Math.min(gm.x0 + rowW + 14, W - tw - 10);
+        var drRowW = gm.step * (hand.length - 1) + tw;
+        var gx = Math.min(gm.x0 + drRowW + 14, W - tw - 10);
         SK.drawCard(c, 'mahjong', G.drawn, gx, H - th - 34, tw, th, { hi: G.canWin ? '#ffd166' : null });
         if (G.canWin) {
           c.fillStyle = '#ffd166'; c.font = 'bold 13px sans-serif'; c.textAlign = 'center';
@@ -2826,7 +2919,7 @@
       c.fillStyle = (G.turn === 0 && !G.over) ? '#ffd166' : 'rgba(255,255,255,.88)';
       c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
       c.fillText((G.turn === 0 && !G.over ? '▶ ' : '') + '我 · ' + hand.length + ' 张' +
-        (G.drawn ? '（点一张传令出去 · 右边那张是刚接的）' : (G.mustDiscard ? '（碰/杠完了，打一张）' : '（自动接令中…）')), W / 2, H - 6);
+        (G.drawn ? '（点一张出去 · 右边隔开的是刚接的）' : (G.mustDiscard ? '（碰/杠完了，打一张）' : '（自动接令中…）')), W / 2, H - 6);
     } else {
       var g0 = handGeom(Math.min(G.hands[0].length, 13), tw * 0.6, W);
       for (var k = 0; k < Math.min(G.hands[0].length, 13); k++) SK.drawBack(c, 'mahjong', g0.x0 + k * g0.step, H - th * 0.6 - 16, tw * 0.6, th * 0.6);
