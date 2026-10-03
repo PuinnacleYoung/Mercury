@@ -3368,11 +3368,14 @@
     /* 跟这一架叠在同一格的兄弟姐妹（不含自己）——整叠一起挪 */
     var mates = v0 >= 0 ? flStackOf(p, v0).filter(function (i) { return i !== idx; }) : [];
     if (mates.length) cgLog('🗼 叠子起飞：' + G.names[p] + ' 的 ' + (mates.length + 1) + ' 架艺人叠成一摞一起走！');
-    if (v0 === -1) cgLog('🎬 ' + G.names[p] + ' 的艺人在 ▶ 出道格出道！');
+    var wasDepart = v0 === -1;
+    if (wasDepart) cgLog('🎬 ' + G.names[p] + ' 的艺人在 ▶ 出道格出道！');
     /* 走到位之后的收尾（原 flMove 下半段，原样保留） */
     var finish = function () {
       var v = ps[idx];
-      flLand(p, idx, v, 0);
+      /* 二十三更修：出道只停在起点格，不触发同色跳/航线/撞子（传统飞行棋规矩）
+         depth=99 让 flLand 跳过所有 depth===0 的分支 */
+      flLand(p, idx, v, wasDepart ? 99 : 0);
       /* 叠子：整摞跟到同一个落点（撞机时 flBounceAt 会把整摞一起清掉） */
       mates.forEach(function (mi) { if (G.planes[p][mi] !== FL_TOTAL) G.planes[p][mi] = G.planes[p][idx]; });
       G.msg = G.names[p] + ' 掷 ' + dice + '，艺人走到第 ' + Math.max(0, ps[idx]) + ' 步';
@@ -3414,134 +3417,157 @@
     var pickF = aiPick(fc);
     flMove(t, pickF ? pickF.i : opts[rnd(opts.length)], dice);
   }
-  /* 棋盘几何：绘制 / 点击 / tooltip 共用一份 */
+  /* 二十三更：传统飞行棋棋盘几何（参考 bocaletto-luca/Ludo 的 15×15 Canvas）
+     14×14 网格正方形棋盘，等比缩放居中，四角 5×5 色块机库 + 十字路径 + 中心 2×2 王座。 */
   function flGeom(W, H) {
-    var bx = 12, by = Math.max(4, Math.round(H * 0.07));
-    var bw = W - 24, bh = H - by - 66;
-    return { bx: bx, by: by, csx: bw / 14, csy: bh / 14, cs: Math.min(bw / 14, bh / 14) };
+    var topBar = Math.max(4, Math.round(H * 0.07));
+    var botBar = 66;
+    var avail = Math.min(W - 24, H - topBar - botBar);
+    var cs = avail / 14;
+    var bx = Math.round((W - cs * 14) / 2);
+    var by = topBar + Math.round((H - topBar - botBar - cs * 14) / 2);
+    return { bx: bx, by: by, csx: cs, csy: cs, cs: cs };
   }
+  /* ============ 二十三更：传统飞行棋棋盘绘制（参考 bocaletto-luca/Ludo 的 15×15 Canvas） ============
+     14×14 正方形棋盘，等比缩放居中。
+     四角 5×5 色块机库（大色块里画 4 个圆形停机位）+ 十字形白底路径 + 归航道半透明色 + 中心 2×2 王座。
+     路径格子画成圆角方块 + 深色描边，起点格大三角 ▶ + 粗描边。
+     棋子用**圆形**（不是方块），叠子角标 ×N，当前回合金圈呼吸。 */
   function drawFlight(c, W, H) {
     setActsBottom(96 + 46);
-    _flHits = [];                        /* 每帧重建棋盘棋子命中区（点棋子出动/走位） */
-    /* 十七更：棋盘铺满可用区（横向 cs × 纵向 csy 非均匀），外环格子明显放大；
-       机库从 5×5 象限缩成 2×2 小巢，腾出视野。 */
+    _flHits = [];
     var G0 = flGeom(W, H);
-    var bx = G0.bx, by = G0.by, csx = G0.csx, csy = G0.csy, cs = G0.cs;
-    function rcxy(rc) { return [bx + rc[1] * csx, by + rc[0] * csy]; }
-    /* 二十三更：四社机库——当前回合的机库呼吸高亮 + 机库内写战报 */
-    Object.keys(FL_QUAD).forEach(function (col) {
-      var q = FL_QUAD[col];
-      var midR = (q[0] + q[2]) / 2, midC = (q[1] + q[3]) / 2;
-      var x = bx + (midC - 1) * csx, y = by + (midR - 1) * csy, w = csx * 2, hh = csy * 2;
-      var p = G.colors.indexOf(col);
-      var active = p >= 0;
+    var bx = G0.bx, by = G0.by, cs = G0.cs;
+    function rcxy(rc) { return [bx + rc[1] * cs, by + rc[0] * cs]; }
+    function rcCenter(rc) { return [bx + rc[1] * cs + cs / 2, by + rc[0] * cs + cs / 2]; }
+    var FL_CI_REV = ['b', 'r', 'y', 'g'];
+    var pu0 = pulse();
+
+    /* ── ① 四角机库大色块（6×6 区域，传统飞行棋的标志性视觉） ── */
+    var QUAD_DRAW = { r: [0, 0], y: [0, 8], g: [8, 8], b: [8, 0] };
+    Object.keys(QUAD_DRAW).forEach(function (col) {
+      var qr = QUAD_DRAW[col][0], qc = QUAD_DRAW[col][1];
+      var p = G.colors.indexOf(col), active = p >= 0;
       var isCurTurn = active && G.turn === p && !G.over;
-      /* 当前回合机库底色高亮 */
-      c.fillStyle = isCurTurn ? ('rgba(' + (col === 'r' ? '232,178,58' : col === 'y' ? '47,168,160' : col === 'g' ? '63,163,77' : '59,130,246') + ',.18)')
-        : (active ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.02)');
-      c.fillRect(x + 2, y + 2, w - 4, hh - 4);
-      /* 当前回合机库呼吸边框 */
-      if (isCurTurn) {
-        var pu4 = pulse();
-        c.strokeStyle = 'rgba(255,209,102,' + (0.5 + 0.5 * pu4).toFixed(3) + ')';
-        c.lineWidth = 2.5 + pu4 * 1.5;
-      } else {
-        c.strokeStyle = FL_COL[col]; c.globalAlpha = active ? 0.8 : 0.25; c.lineWidth = 1.5;
-      }
-      c.strokeRect(x + 2, y + 2, w - 4, hh - 4);
+      /* 大色块底色 */
+      c.fillStyle = FL_COL[col]; c.globalAlpha = active ? 0.22 : 0.08;
+      c.fillRect(bx + qc * cs, by + qr * cs, 6 * cs, 6 * cs);
       c.globalAlpha = 1;
-      c.fillStyle = FL_COL[col];
-      c.globalAlpha = active ? 0.85 : 0.25;
-      c.font = 'bold ' + Math.max(9, cs * 0.4) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      /* 边框（当前回合呼吸） */
+      if (isCurTurn) {
+        c.strokeStyle = 'rgba(255,209,102,' + (0.5 + 0.5 * pu0).toFixed(3) + ')';
+        c.lineWidth = 3 + pu0 * 2;
+      } else {
+        c.strokeStyle = FL_COL[col]; c.globalAlpha = active ? 0.6 : 0.2; c.lineWidth = 2;
+      }
+      c.strokeRect(bx + qc * cs + 1, by + qr * cs + 1, 6 * cs - 2, 6 * cs - 2);
+      c.globalAlpha = 1;
+      /* 机库内标题 */
+      c.fillStyle = FL_COL[col]; c.globalAlpha = active ? 0.95 : 0.3;
+      c.font = 'bold ' + Math.max(11, cs * 0.52) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
       c.textAlign = 'center';
-      c.fillText(FL_SOC[col] + '社' + (active ? '·' + ((G.real && G.real[p]) || G.names[p]) : '（虚位）'), x + w / 2, y - 4);
+      c.fillText(FL_SOC[col] + '社' + (active ? '·' + ((G.real && G.real[p]) || '?') : ''), bx + (qc + 3) * cs, by + (qr + 1.3) * cs);
       c.globalAlpha = 1;
       if (!active) return;
-      /* 二十三更：机库内写战报（骰子数 / 前进 / 停一轮 / 被撞 / 抽卡等）——
-         田字格那么大的区域，不写东西太浪费了 */
-      var lastDice = (G.lastPlay && G.lastPlay[p] && G.lastPlay[p][0] && G.lastPlay[p][0].kind === 'dice') ? G.lastPlay[p][0].n : null;
-      var info = '';
-      if (isCurTurn) info = '🎲 当前回合';
-      else if (G.skipFlag && G.skipFlag[p]) info = '⏸ 停一轮';
-      else if (lastDice !== null) info = '🎲 ' + lastDice;
-      if (info) {
-        c.fillStyle = isCurTurn ? '#ffd166' : 'rgba(255,255,255,.62)';
-        c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif';
-        c.fillText(info, x + w / 2, y + hh - Math.max(6, cs * 0.2));
-      }
-      /* 停机位（一行 4 圈摆在机巢下沿）
-         十七更续：等待中的棋子也要能点——陛下钦定点棋盘上等待区那一架，不是点底栏。 */
-      var sw2 = cs * 0.4, gap2 = sw2 * 1.35;
-      var sx = x + w / 2 - 1.5 * gap2, sy = y + hh * 0.6;
+      /* 4 个圆形停机位（2×2 排列在机库中心） */
+      var homeR = cs * 0.42;
+      var positions = [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]];
+      var hcx = bx + (qc + 3) * cs, hcy = by + (qr + 3.4) * cs;
       G.planes[p].forEach(function (v, i) {
         if (v !== -1) return;
-        var px2 = sx + i * gap2, py2 = sy;
+        var px2 = hcx + positions[i][0] * cs * 1.1, py2 = hcy + positions[i][1] * cs * 0.9;
         var canGo = p === 0 && G.options && G.options.indexOf(i) >= 0;
+        /* 停机圈 */
+        c.beginPath(); c.arc(px2, py2, homeR, 0, 6.2832);
+        c.fillStyle = 'rgba(255,255,255,.08)'; c.fill();
+        c.strokeStyle = canGo ? '#ffd166' : FL_COL[col]; c.lineWidth = canGo ? 2.5 : 1.5;
+        c.globalAlpha = canGo ? 1 : 0.5; c.stroke(); c.globalAlpha = 1;
+        /* 待出道棋子（圆形，自家色） */
+        c.beginPath(); c.arc(px2, py2, homeR * 0.65, 0, 6.2832);
+        c.fillStyle = FL_COL[col]; c.globalAlpha = 0.6; c.fill(); c.globalAlpha = 1;
+        c.strokeStyle = '#fff'; c.lineWidth = 1; c.stroke();
         if (canGo) {
-          /* 能出动的那一架：金环呼吸 + 照亮点，一眼看见点哪儿 */
-          c.beginPath(); c.arc(px2, py2, sw2 * 0.72 + pulse() * 3, 0, 6.2832);
-          c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = 2.6; c.stroke();
-          c.beginPath(); c.arc(px2, py2, sw2 / 2, 0, 6.2832);
-          c.fillStyle = 'rgba(255,209,102,.35)'; c.fill();
+          c.beginPath(); c.arc(px2, py2, homeR + pu0 * 4, 0, 6.2832);
+          c.strokeStyle = 'rgba(255,209,102,.9)'; c.lineWidth = 2.8; c.stroke();
         }
-        c.strokeStyle = canGo ? '#ffd166' : 'rgba(255,255,255,.4)'; c.lineWidth = canGo ? 2 : 1.5;
-        c.beginPath(); c.arc(px2, py2, sw2 / 2, 0, 6.2832); c.stroke();
-        if (p === 0) _flHits.push({ idx: i, x: px2, y: py2, r: sw2 * 0.8 + 5 });
+        if (p === 0) _flHits.push({ idx: i, x: px2, y: py2, r: homeR + 6 });
       });
-    });
-    /* 归航臂 */
-    Object.keys(FL_ENTRY).forEach(function (col) {
-      for (var k = 0; k < 5; k++) {
-        var rc = flArmRC(col, k), xy = rcxy(rc);
-        c.fillStyle = FL_COL[col]; c.globalAlpha = 0.35;
-        c.fillRect(xy[0] + 2, xy[1] + 2, csx - 4, csy - 4);
-        c.globalAlpha = 1;
+      /* 战报（骰子数/当前回合/停一轮） */
+      var lastDice = (G.lastPlay && G.lastPlay[p] && G.lastPlay[p][0] && G.lastPlay[p][0].kind === 'dice') ? G.lastPlay[p][0].n : null;
+      var info = isCurTurn ? '🎲 当前回合' : (G.skipFlag && G.skipFlag[p]) ? '⏸ 停一轮' : (lastDice !== null ? '🎲 ' + lastDice : '');
+      if (info) {
+        c.fillStyle = isCurTurn ? '#ffd166' : 'rgba(255,255,255,.55)';
+        c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif';
+        c.fillText(info, hcx, by + (qr + 5.4) * cs);
       }
     });
-    /* 永恒王座（中心 2×2） */
-    Object.keys(FL_THRONE).forEach(function (col) {
-      var xy = rcxy(FL_THRONE[col]);
-      c.fillStyle = FL_COL[col]; c.globalAlpha = 0.5;
-      c.fillRect(xy[0] + 2, xy[1] + 2, csx - 4, csy - 4);
-      c.globalAlpha = 1;
-    });
-    var txy = rcxy([6, 6]);
-    c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(14, cs * 0.9) + 'px sans-serif'; c.textAlign = 'center';
-    c.fillText('♛', txy[0] + csx, txy[1] + csy * 1.45);
-    /* 二十三更：外环 52 格——颜色映射必须和 FL_CI 对齐！
-       FL_CI = { r:1, y:2, g:3, b:0 }，格子 i 的色 = i%4：0→b, 1→r, 2→y, 3→g
-       这样红色棋子（CI=1）踩到 cell%4===1 的格子就是红色格，才会触发同色跳。
-       ⚠️ 以前写的 ['r','y','g','b'][i%4] 是错的——红棋子踩到的红色格实际上被涂成了黄色。 */
-    var FL_CI_REV = ['b', 'r', 'y', 'g'];   /* i%4 → 颜色 key（和 FL_CI 反查一致） */
+
+    /* ── ② 十字路径：外环 52 格（白底 + 对应色标记） ── */
     for (var i = 0; i < FL_RING; i++) {
       var xy2 = rcxy(flRC(i));
       var colName = FL_CI_REV[i % 4];
-      /* 起点格特殊高亮：比普通格更亮，让陛下一眼看到出发在哪 */
       var isStart = false, startCol = null;
       Object.keys(FL_START).forEach(function (k) { if (FL_START[k] === i) { isStart = true; startCol = k; } });
+      /* 格子底色：白底 + 角上一点自家色（传统飞行棋风格） */
+      c.fillStyle = 'rgba(255,255,255,.12)';
+      c.fillRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
+      /* 色条：底边一条窄色带标识这格属于哪家 */
+      c.fillStyle = FL_COL[colName]; c.globalAlpha = 0.45;
+      c.fillRect(xy2[0] + 1, xy2[1] + cs - 5, cs - 2, 4);
+      c.globalAlpha = 1;
+      /* 起点格特殊：大色块 + 粗描边 + ▶ */
       if (isStart) {
-        c.fillStyle = FL_COL[startCol]; c.globalAlpha = 0.65;
-        c.fillRect(xy2[0] + 1, xy2[1] + 1, csx - 2, csy - 2);
+        c.fillStyle = FL_COL[startCol]; c.globalAlpha = 0.55;
+        c.fillRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
         c.globalAlpha = 1;
         c.strokeStyle = FL_COL[startCol]; c.lineWidth = 2.5;
-        c.strokeRect(xy2[0] + 1, xy2[1] + 1, csx - 2, csy - 2);
-      } else {
-        c.fillStyle = FL_COL[colName]; c.globalAlpha = 0.32;
-        c.fillRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
-        c.globalAlpha = 1;
-        c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;
-        c.strokeRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
+        c.strokeRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
       }
-      c.font = Math.max(8, cs * 0.4) + 'px sans-serif'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.85)';
-      var mark = null;
-      if (isStart) mark = '▶';
+      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.8;
+      c.strokeRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
+      /* 格子标记 */
+      c.font = Math.max(9, cs * 0.42) + 'px sans-serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(255,255,255,.9)';
+      var mark = isStart ? '▶' : null;
       Object.keys(FL_ENTRY).forEach(function (k) { if (FL_ENTRY[k] === i) mark = '↵'; });
       if (FL_STAR.indexOf(i) >= 0) mark = '★';
       if (FL_LINE[i] !== undefined) mark = '✈';
-      if (mark) c.fillText(mark, xy2[0] + csx / 2, xy2[1] + csy * 0.75);
+      if (mark) c.fillText(mark, xy2[0] + cs / 2, xy2[1] + cs * 0.7);
     }
-    /* 棋子（出道后上环 / 归航臂 / 王座）
-       二十一更·叠子：先统计「同一社同一格有几架」，画的时候摞起来 + 角标 ×N */
+
+    /* ── ③ 归航臂（半透明色条） ── */
+    Object.keys(FL_ENTRY).forEach(function (col) {
+      for (var k = 0; k < 5; k++) {
+        var rc = flArmRC(col, k), xy = rcxy(rc);
+        c.fillStyle = FL_COL[col]; c.globalAlpha = 0.3;
+        c.fillRect(xy[0] + 1, xy[1] + 1, cs - 2, cs - 2);
+        c.globalAlpha = 1;
+        c.strokeStyle = 'rgba(255,255,255,.15)'; c.lineWidth = 0.8;
+        c.strokeRect(xy[0] + 1, xy[1] + 1, cs - 2, cs - 2);
+        /* 归航格编号 */
+        c.fillStyle = FL_COL[col]; c.globalAlpha = 0.7;
+        c.font = Math.max(8, cs * 0.35) + 'px sans-serif'; c.textAlign = 'center';
+        c.fillText(k + 1, xy[0] + cs / 2, xy[1] + cs * 0.7);
+        c.globalAlpha = 1;
+      }
+    });
+
+    /* ── ④ 永恒王座（中心 2×2，四色三角拼） ── */
+    var tc = rcCenter([6.5, 6.5]); /* 中心点 */
+    var tSize = cs;
+    ['r', 'y', 'g', 'b'].forEach(function (col, qi) {
+      var angle = qi * Math.PI / 2;
+      c.beginPath();
+      c.moveTo(tc[0], tc[1]);
+      c.lineTo(tc[0] + Math.cos(angle - 0.78) * tSize, tc[1] + Math.sin(angle - 0.78) * tSize);
+      c.lineTo(tc[0] + Math.cos(angle + 0.78) * tSize, tc[1] + Math.sin(angle + 0.78) * tSize);
+      c.closePath();
+      c.fillStyle = FL_COL[col]; c.globalAlpha = 0.55; c.fill();
+      c.globalAlpha = 1;
+    });
+    c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(16, cs * 0.9) + 'px sans-serif'; c.textAlign = 'center';
+    c.fillText('♛', tc[0], tc[1] + cs * 0.3);
+    /* ── ⑤ 棋子（圆形，传统飞行棋风格） ── */
     var stack = {}, stackN = {};
     G.colors.forEach(function (col, p) {
       G.planes[p].forEach(function (v) {
@@ -3554,52 +3580,58 @@
     G.colors.forEach(function (col, p) {
       G.planes[p].forEach(function (v, idx) {
         if (v === -1) return;
-        var rc = flPieceRC(p, v), xy = rcxy(rc);
+        var rc = flPieceRC(p, v), ctr = rcCenter(rc);
         var key = rc[0] + ',' + rc[1];
         var n = stack[key] || 0; stack[key] = n + 1;
         var myN = stackN[p + '|' + rc[0] + ',' + rc[1]] || 1;
-        var r = Math.max(6, cs * 0.34);
-        var ox = (n % 2) * r * 0.7, oy = Math.floor(n / 2) * r * 0.7;
-        var cx2 = xy[0] + csx / 2 - r / 2 + ox, cy2 = xy[1] + csy / 2 - r / 2 + oy;
-        /* 十七更：轮到谁的社，谁的棋子带呼吸金环 */
+        var r = Math.max(8, cs * 0.38);
+        /* 多子偏移（最多 4 子堆在一格） */
+        var ox = (n % 2 - 0.5) * r * 0.6, oy = (Math.floor(n / 2) - 0.5) * r * 0.6;
+        if (myN <= 1) { ox = 0; oy = 0; }
+        var cx2 = ctr[0] + ox, cy2 = ctr[1] + oy;
         var isTurn = (G.turn === p && !G.over);
-        /* 十七更续：这一步能走的棋子画「可点」高亮——陛下要看清该点哪一架 */
         var canGo = p === 0 && G.options && G.options.indexOf(idx) >= 0;
+        /* 可点高亮 */
         if (canGo) {
-          c.beginPath(); c.arc(cx2 + r / 2, cy2 + r / 2, r * 1.05 + pulse() * 4, 0, 6.2832);
+          c.beginPath(); c.arc(cx2, cy2, r + pu0 * 4, 0, 6.2832);
           c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = 3; c.stroke();
-          /* 往前的箭头，指着它要走的方向 */
           c.fillStyle = '#ffd166';
-          c.font = 'bold ' + Math.max(10, cs * 0.46) + 'px sans-serif'; c.textAlign = 'center';
-          c.fillText('▼', cx2 + r / 2, cy2 - r * 0.5);
+          c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif'; c.textAlign = 'center';
+          c.fillText('▼', cx2, cy2 - r - 3);
         }
+        /* 当前回合金圈 */
         if (isTurn) {
-          c.beginPath(); c.arc(cx2 + r / 2, cy2 + r / 2, r * 0.85 + pulse() * 3.5, 0, 6.2832);
-          c.strokeStyle = 'rgba(255,209,102,.85)'; c.lineWidth = 2.2; c.stroke();
+          c.beginPath(); c.arc(cx2, cy2, r * 0.9 + pu0 * 3, 0, 6.2832);
+          c.strokeStyle = 'rgba(255,209,102,.85)'; c.lineWidth = 2; c.stroke();
         }
-        if (p === 0) _flHits.push({ idx: idx, x: cx2 + r / 2, y: cy2 + r / 2, r: r * 1.05 + 4 });
-        c.beginPath(); c.arc(cx2, cy2, r / 1.7, 0, 6.2832);
+        if (p === 0) _flHits.push({ idx: idx, x: cx2, y: cy2, r: r + 5 });
+        /* 棋子本体（圆形 + 白边 + 编号） */
+        c.beginPath(); c.arc(cx2, cy2, r * 0.72, 0, 6.2832);
         c.fillStyle = FL_COL[col]; c.fill();
-        c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = 1.6; c.stroke();
-        /* 叠子：同格 2 架以上 → 摞起来画个 ×N 角标（一起走、一起被撞飞） */
-        if (myN >= 2) {
+        c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#fff'; c.font = 'bold ' + Math.max(9, r * 0.55) + 'px sans-serif';
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(idx + 1, cx2, cy2 + 1);
+        c.textBaseline = 'alphabetic';
+        /* 叠子角标 */
+        if (myN >= 2 && n === 0) {
           c.fillStyle = 'rgba(10,6,24,.92)';
           c.strokeStyle = '#ffd166'; c.lineWidth = 1.4;
-          var bw3 = Math.max(15, r * 1.15), bh3 = Math.max(11, r * 0.62);
-          var bx3 = cx2 + r / 2 - bw3 / 2 + r * 0.55, by3 = cy2 - bh3 * 0.6;
+          var bw3 = Math.max(16, r * 1.1), bh3 = Math.max(12, r * 0.6);
+          var bx3 = cx2 + r * 0.4, by3 = cy2 - r - bh3 * 0.3;
           c.fillRect(bx3, by3, bw3, bh3); c.strokeRect(bx3, by3, bw3, bh3);
-          c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(8, r * 0.5) + 'px sans-serif'; c.textAlign = 'center';
+          c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(9, r * 0.5) + 'px sans-serif';
           c.fillText('×' + myN, bx3 + bw3 / 2, by3 + bh3 * 0.78);
         }
       });
     });
-    /* 二十一更：撞机闪光 + 抽卡横幅——牌桌上发生了什么，得让人一眼看见 */
-    drawFlFlash(c, W, H, csx, csy, bx, by);
+    /* 撞机闪光 + 抽卡横幅 */
+    drawFlFlash(c, W, H, cs, cs, bx, by);
     drawFlBanner(c, W, H);
     /* 二十三更·骰子大提示：掷骰动画中也要画——数字快速跳动增加刺激感 */
     var showDice = (G.dice > 0 || _diceAnim) && !G.over;
     if (showDice) {
-      var ds = Math.max(46, cs * 1.5), dx = W / 2 - ds / 2, dy = by + csy * 5.6;
+      var ds = Math.max(46, cs * 1.5), dx = W / 2 - ds / 2, dy = by + cs * 5.6;
       /* 动画中的微旋转和弹跳效果 */
       if (_diceAnim) {
         var frac0 = Math.min(1, (Date.now() - _diceAnim.t0) / _diceAnim.dur);
@@ -3639,7 +3671,7 @@
       c.fillStyle = 'rgba(255,209,102,.9)';
       c.font = 'bold ' + Math.max(16, cs * 0.8) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
       c.textAlign = 'center';
-      c.fillText('👆 点击屏幕摇骰子', W / 2, by + csy * 6.8);
+      c.fillText('👆 点击屏幕摇骰子', W / 2, by + cs * 6.8);
     }
     /* 底栏：我的经纪人条（观战则显示提示） */
     var bh2 = 52, byy = H - bh2;
