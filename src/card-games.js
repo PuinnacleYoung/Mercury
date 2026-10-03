@@ -288,7 +288,7 @@
       '.cg-hk .t{font-weight:900;color:#ffd166;font-size:12px;}' +
       '.cg-hwarn{background:rgba(229,72,77,.16);border:1px solid rgba(229,72,77,.45);border-radius:10px;padding:7px 10px;margin:6px 0;}' +
       '.cg-hwarn .t{font-weight:900;color:#ff9aa0;font-size:12px;}' +
-      /* 二十一更：血战到底结算面板（陛下钦定：打完要看见各人胡了什么牌型、赚了多少） */
+      /* 二十一更：结算面板；二十二更：四玩法通用——打完必弹「入场费 / 名次分账 / 牌桌输赢 / 押注 / 净收 / 余额」总账 */
       '#cg-mjres{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,94%);max-height:88%;' +
       'z-index:28;display:none;flex-direction:column;background:rgba(14,8,30,.985);border:1px solid rgba(255,209,102,.5);' +
       'border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.7);overflow:hidden;}' +
@@ -306,6 +306,18 @@
       '.cg-rcard .m{font-size:11px;opacity:.85;margin-top:3px;line-height:1.5;}' +
       '.cg-rcard .tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:99px;margin-right:4px;' +
       'background:rgba(255,209,102,.2);border:1px solid rgba(255,209,102,.45);color:#ffd166;}' +
+      /* 二十二更：账本明细行（一行一项，红=赚 绿=亏） */
+      '.cg-rrow{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;border-top:1px dashed rgba(255,255,255,.09);}' +
+      '.cg-rrow .k{opacity:.78;}' +
+      '.cg-rrow .k b{color:#ffd166;}' +
+      '.cg-rrow .v{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums;}' +
+      '.cg-rbig{display:flex;align-items:baseline;gap:8px;margin-top:9px;padding:9px 11px;border-radius:11px;' +
+      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);}' +
+      '.cg-rbig .k{font-size:12.5px;font-weight:900;}' +
+      '.cg-rbig .v{margin-left:auto;font-size:21px;font-weight:900;line-height:1.1;}' +
+      '.cg-rsec{font-size:11px;font-weight:900;color:#c9b6f5;margin:12px 0 3px;padding-left:7px;border-left:3px solid #8b6fd6;}' +
+      '.cg-rup{color:#ff6b6b;}' +
+      '.cg-rdn{color:#4ade80;}' +
       /* 聊天抽屉 */
       '#cg-chat{position:absolute;top:0;right:0;bottom:0;width:min(300px,86%);z-index:20;display:none;flex-direction:column;' +
       'background:rgba(16,9,34,.96);border-left:1px solid rgba(255,255,255,.18);box-shadow:-8px 0 24px rgba(0,0,0,.4);}' +
@@ -625,27 +637,133 @@
     body.scrollTop = 0;
   }
 
-  /* 二十一更：血战到底结算面板——每家胡了什么牌型、几番、实时赚了多少 */
-  function renderMjResult() {
+  /* ================= 二十二更：四玩法通用结算面板 =================
+     陛下钦定：打完必须看见「赢了多少 / 亏了多少 / 入场费多少 / 最后到手多少」。
+     账本来源 G.settle：开局前余额 + 入场费 + 名次分账 + 牌桌输赢 + 押注本金/回款，
+     三项玩法（UNO / 飞行棋 / 斗地主）只有入场费与押注，川麻额外有番位账本。
+     红=赚 绿=亏（中国习惯：涨红跌绿）。 */
+  /* 每一笔收支记进 G.settle.by[币]，结算面板照它算总账 */
+  function stAcc(cur, field, v) {
+    if (!G) return 0;
+    var S = G.settle = G.settle || { bal0: null, by: {}, rankPay: [] };
+    var b = S.by[cur] = S.by[cur] || { entryPaid: 0, entryBack: 0, tableNet: 0, betStake: 0, betBack: 0 };
+    b[field] = (b[field] || 0) + v;
+    return b[field];
+  }
+  function rrow(k, v, cls) {
+    return '<div class="cg-rrow"><span class="k">' + k + '</span><span class="v ' +
+      (cls ? (cls === 'up' ? 'cg-rup' : 'cg-rdn') : '') + '">' + v + '</span></div>';
+  }
+  function safeRank() {
+    try { return entryRank(); } catch (e) {
+      var a = []; for (var i = 0; i < (G ? G.seats : 0); i++) a.push(i); return a;
+    }
+  }
+  function showResult() {
     var box = $('cg-mjres');
     if (!box || !G) return;
-    if (G.game !== 'mahjong') { box.classList.remove('open'); return; }
+    var g = GAMES[G.game] || { name: '棋牌', em: '🎴' };
+    var S = G.settle || { bal0: null, by: {}, rankPay: [] };
+    var wal = walletAll();
+    var rank = (S.rankPay && S.rankPay.length) ? S.rankPay.map(function (x) { return x.p; }) : safeRank();
+    var myRank = G.spectate ? -1 : (rank.indexOf(0) + 1);
+    $('cg-rtitle').textContent = '🏁 ' + g.em + ' ' + g.name + ' · 本局结算';
+    $('cg-rsub').textContent = (G.over || '本局结束') +
+      (myRank > 0 ? ('　·　我第 ' + myRank + ' 名 / ' + G.seats + ' 人') : (G.spectate ? '　·　观战席（只有押注账）' : ''));
+    var h = '';
+    /* ── ① 我的账本：一个币一张卡，逐项摊开 ── */
+    h += '<div class="cg-rsec">🧾 我的账本</div>';
+    var mainCur = (G.entry && G.entry.cur) || (GAMES[G.game] && GAMES[G.game].cur) || 'diamond';
+    var changed = Object.keys(S.by || {}).filter(function (k) {
+      var b = S.by[k];
+      return b && (b.entryPaid || b.entryBack || b.tableNet || b.betStake || b.betBack);
+    });
+    if (changed.indexOf(mainCur) < 0) changed.unshift(mainCur);
+    changed.forEach(function (cur) {
+      var b = (S.by && S.by[cur]) || {};
+      var ep = b.entryPaid || 0, eb = b.entryBack || 0, tn = b.tableNet || 0, bs = b.betStake || 0, bb = b.betBack || 0;
+      var net = eb - ep + tn + (bb - bs);
+      var bal0 = (S.bal0 && typeof S.bal0[cur] === 'number') ? S.bal0[cur] : null;
+      h += '<div class="cg-rcard">';
+      h += '<div class="n">' + CUR[cur].em + ' ' + CUR[cur].n +
+        '<span class="r ' + (net >= 0 ? 'up' : 'dn') + '">' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + '</span></div>';
+      if (bal0 !== null) h += rrow('开局前余额', fmt(bal0), '');
+      if (ep) h += rrow('🎟 入场费（开局交出去）', '−' + fmt(ep), 'dn');
+      if (eb) h += rrow('🏆 名次分账（第 ' + (myRank > 0 ? myRank : '—') + ' 名）', '+' + fmt(eb), 'up');
+      if (tn) h += rrow((G.game === 'mahjong' ? '🀄 牌桌输赢（番位账本）' : '🎴 牌桌输赢'),
+        (tn >= 0 ? '+' : '−') + fmt(Math.abs(tn)), tn >= 0 ? 'up' : 'dn');
+      if (bs) h += rrow('💰 押注本金', '−' + fmt(bs), 'dn');
+      if (bb) h += rrow('🎊 押注回款（含未中退还）', '+' + fmt(bb), 'up');
+      if (!ep && !eb && !tn && !bs && !bb) h += '<div class="m">这一局没有动到 ' + CUR[cur].n + '（没付入场费也没押注）。</div>';
+      h += '<div class="cg-rbig"><span class="k">本局净收</span><span class="v ' +
+        (net >= 0 ? 'cg-rup' : 'cg-rdn') + '">' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ' ' + CUR[cur].em + '</span></div>';
+      h += '<div class="m" style="margin-top:6px">最后到手：<b>' + fmt(wal[cur] || 0) + '</b> ' + CUR[cur].em + CUR[cur].n +
+        (bal0 !== null ? ('（开局 ' + fmt(bal0) + ' → 现在 ' + fmt(wal[cur] || 0) + '）') : '') + '</div>';
+      h += '</div>';
+    });
+    /* ── ② 名次与分账：谁吃肉谁喝汤 ── */
+    h += '<div class="cg-rsec">🏆 名次与分账</div><div class="cg-rcard">';
+    var medal = ['🥇', '🥈', '🥉', '🏅'];
+    var ce0 = CUR[mainCur].em;
+    rank.forEach(function (p, i) {
+      var get = 0;
+      (S.rankPay || []).forEach(function (x) { if (x.p === p) get = x.get; });
+      h += '<div class="cg-rrow"><span class="k">' + (medal[i] || '🏅') + ' ' + esc(realName(p)) +
+        (p === 0 && !G.spectate ? ' <b>（我）</b>' : '') + '</span>' +
+        '<span class="v ' + (get ? 'cg-rup' : '') + '">' + (get ? '+' + fmt(get) + ' ' + ce0 : '—') + '</span></div>';
+    });
+    if (G.entry) h += '<div class="m">入场池 ' + fmt(G.entry.amt * G.seats) + '（' + CUR[mainCur].em + fmt(G.entry.amt) +
+      ' × ' + G.seats + ' 人），池子 95% 按名次分（2 人 70/30，3–4 人 50/30/20），5% 归荷官。</div>';
+    h += '</div>';
+    /* ── ③ 本局战况：一眼看见这局是怎么打完的 ── */
+    h += '<div class="cg-rsec">📊 本局战况</div><div class="cg-rcard">';
+    if (G.game === 'uno') {
+      for (var u = 0; u < G.seats; u++) {
+        h += rrow(esc(realName(u)) + ' 剩通告', ((G.hands[u] || []).length) + ' 张', (G.hands[u] || []).length === 0 ? 'up' : '');
+      }
+    } else if (G.game === 'flight') {
+      for (var f = 0; f < G.seats; f++) {
+        var ps = G.planes[f] || [], top = ps.filter(function (v) { return v === FL_TOTAL; }).length;
+        h += rrow(esc(realName(f)) + ' 登顶艺人', top + '/4 架', top === 4 ? 'up' : '');
+      }
+    } else if (G.game === 'doudizhu') {
+      h += rrow('本局倍数', '×' + (G.mult || 1), '');
+      for (var d = 0; d < G.seats; d++) {
+        h += rrow(esc(realName(d)) + (G.landlord === d ? ' 👑庄家' : ' 散户') + ' 剩牌',
+          ((G.hands[d] || []).length) + ' 张', (G.hands[d] || []).length === 0 ? 'up' : '');
+      }
+    } else if (G.game === 'mahjong') {
+      h += rrow('血战到底 · 胡牌顺序', G.huOrder.length ? G.huOrder.map(function (p) { return realName(p); }).join(' → ') : '流局（无人结案）', G.huOrder.length ? 'up' : '');
+      h += rrow('底注', fmt(mjBase()) + ' ' + ce0, '');
+    }
+    h += '</div>';
+    /* ── ④ 川麻专属：各家的牌型与番数 ── */
+    if (G.game === 'mahjong') h += mjResultCards();
+    h += '<div class="m" style="text-align:center;opacity:.62;margin-top:9px;">📒 钱已写回主账本（档案资产）· 红=赚 绿=亏</div>';
+    $('cg-rbody').innerHTML = h;
+    box.classList.add('open');
+    /* 二十二更：打完要让人知道结账了——尤其 UNO 以前赢完啥提示都没有 */
+    toast('🏁 ' + g.em + g.name + ' 本局结束，账本已出（点结算面板看收支）');
+  }
+  function realName(p) { return (G.real && G.real[p]) || (G.names && G.names[p]) || ('P' + p); }
+
+  /* 川麻结算卡（二十二更：并入通用面板，牌型/番数/此把进账照旧） */
+  function renderMjResult() { showResult(); }
+  function mjResultCards() {
     var cur = (G.entry && G.entry.cur) || 'diamond';
     var cn = CUR[cur].n, ce = CUR[cur].em;
-    $('cg-rtitle').textContent = '🀄 血战到底 · 本局结算';
-    $('cg-rsub').textContent = (G.over || '本局结束') + '　·　底注 ' + fmt(mjBase()) + ' ' + cn;
     var order = {};
-    G.huOrder.forEach(function (p, i) { order[p] = i + 1; });
-    var h = '';
+    (G.huOrder || []).forEach(function (p, i) { order[p] = i + 1; });
+    var h = '<div class="cg-rsec">🀄 各家牌型（川麻专属）</div>';
     for (var p = 0; p < G.seats; p++) {
-      var s = G.score[p] || 0, hu = G.hu[p];
+      var s = (G.score && G.score[p]) || 0, hu = (G.hu && G.hu[p]) || null;
       h += '<div class="cg-rcard' + (hu ? ' win' : '') + '">';
-      h += '<div class="n">' + esc((G.real && G.real[p]) || G.names[p]) +
+      h += '<div class="n">' + esc(realName(p)) +
         (hu ? '<span class="tag">第 ' + order[p] + ' 个胡</span>' : '<span class="tag" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#ccc;">未胡</span>') +
-        '<span class="r ' + (s >= 0 ? 'up' : 'dn') + '">' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + ce + '</span></div>';
+        '<span class="r ' + (s >= 0 ? 'up' : 'dn') + '">' + (s >= 0 ? '+' : '−') + fmt(Math.abs(s)) + ' ' + ce + '</span></div>';
       if (hu) {
         h += '<div class="m">' + esc(hu.name) + ' · <b>' + hu.fan + ' 番</b> ×' + (hu.mult || 1).toFixed(1) +
-          ' → 此把 <b>' + (hu.pts >= 0 ? '+' : '') + fmt(hu.pts) + '</b> ' + cn + '（' + (hu.ziMo ? '自摸' : '接炮') + '）· 含之前杠/输赢的累计看右侧正负数';
+          ' → 此把 <b>' + (hu.pts >= 0 ? '+' : '') + fmt(hu.pts) + '</b> ' + cn + '（' + (hu.ziMo ? '自摸' : '接炮') + '）· 右侧是含杠钱的总盈亏';
         if (hu.detail && hu.detail.length) h += '<br><span style="opacity:.78">' + hu.detail.map(esc).join('、') + '</span>';
         h += '</div>';
       } else {
@@ -654,9 +772,7 @@
       }
       h += '</div>';
     }
-    h += '<div class="m" style="text-align:center;opacity:.62;margin-top:9px;">📒 番位账本已写回主账本（' + ce + cn + '）· 红=赚 绿=亏</div>';
-    $('cg-rbody').innerHTML = h;
-    box.classList.add('open');
+    return h;
   }
   function closeMjResult() { var b = $('cg-mjres'); if (b) b.classList.remove('open'); }
 
@@ -1424,12 +1540,14 @@
        ⚠️ 必须放在各局数据建完之后：walletAdd() 会调 renderHud()，
        那时 renderHud 要读 G.stock/G.wall/G.colors——早一步就是 undefined，
        一抛异常后面 initBet/drawGame 全被吞掉，整张牌桌画不出来（十七更踩过）。 */
+    /* 二十二更：本局账本先建好——开局前余额留底，打完结算面板照它算「赢了多少/亏了多少」 */
+    G.settle = { bal0: walletAll(), by: {}, rankPay: [] };
     if (setup.entryFee && setup.entryFee.amt > 0) {
       var ef = setup.entryFee;
       G.entry = { amt: ef.amt, cur: ef.cur, mine: !spectate };
       if (!spectate) {
         var w0 = walletAll();
-        if ((w0[ef.cur] || 0) >= ef.amt) walletAdd(ef.cur, -ef.amt);
+        if ((w0[ef.cur] || 0) >= ef.amt) { walletAdd(ef.cur, -ef.amt); stAcc(ef.cur, 'entryPaid', ef.amt); }
         else { G.entry.mine = false; cgLog('⚠️ 入场费没付上（' + CUR[ef.cur].n + '不够），这局赢不了分账'); }
       }
       cgLog('🎟 入场费 ' + CUR[ef.cur].em + fmt(ef.amt) + ' × ' + setup.seats + ' 人入池（95% 按名次分）');
@@ -2044,7 +2162,7 @@
     G.unoDrew = false; G.unoDrewIdx = -1;   /* 出掉就不再是「抽完待决」状态 */
     if (card.shape === 'skip') cgLog('📸 ' + G.names[0] + ' 打出「封杀」——狗仔闪光灯糊脸！');
     if (card.shape === 'wild4') cgLog('🦢 ' + G.names[0] + ' 甩出「黑天鹅」！全场暗场 0.5 秒');
-    if (G.hands[0].length === 0) { G.winSeat = 0; G.over = G.names[0] + ' 杀青！本局通告全部播完 🎉'; settleBets(); drawGame(); return; }
+    if (G.hands[0].length === 0) { G.winSeat = 0; G.over = G.names[0] + ' 杀青！本局通告全部播完 🎉'; settleBets(); drawGame(); showResult(); return; }
     if (G.hands[0].length === 1) cgLog('📣 ' + G.names[0] + ' 官宣！（就剩 1 张了）');
     if (card.shape === 'wild' || card.shape === 'wild4') { G.pendingWild = card; drawGame(); return; }
     applyUno(card);
@@ -2143,7 +2261,7 @@
       var card = h.splice(idx, 1)[0]; G.pile.push(card); G.cur = card.color; G.lastPlay[t] = [card]; clearPass();
       if (card.shape === 'skip') cgLog('📸 ' + G.names[t] + ' 封杀！');
       if (card.shape === 'wild4') cgLog('🦢 ' + G.names[t] + ' 甩出黑天鹅！');
-      if (h.length === 0) { G.winSeat = t; G.over = G.names[t] + ' 杀青！'; settleBets(); drawGame(); return; }
+      if (h.length === 0) { G.winSeat = t; G.over = G.names[t] + ' 杀青！'; settleBets(); drawGame(); showResult(); return; }
       if (h.length === 1) cgLog('📣 ' + G.names[t] + ' 官宣！');
       if (card.shape === 'wild' || card.shape === 'wild4') {
         G.cur = ['r', 'y', 'g', 'b'][rnd(4)];
@@ -2383,12 +2501,12 @@
     var cur = (G.entry && G.entry.cur) || 'diamond';
     G.score.forEach(function (s, p) {
       if (!s) return;
-      if (p === 0 && !G.spectate) { walletAdd(cur, s); cgLog('💰 本局结算：我 ' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + CUR[cur].n); }
+      if (p === 0 && !G.spectate) { walletAdd(cur, s); stAcc(cur, 'tableNet', s); cgLog('💰 本局结算：我 ' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + CUR[cur].n); }
       else cgLog('📒 ' + G.names[p] + ' 本局 ' + (s >= 0 ? '+' : '') + fmt(s) + ' ' + CUR[cur].n);
     });
     settleBets();
     drawGame();
-    renderMjResult();
+    showResult();
   }
   /* 轮到我自动摸牌（不再需要点「接令」按钮） */
   function mjAutoDraw() {
@@ -2802,7 +2920,7 @@
       G.winSeat = zWin ? 'z' : 's';
       G.winSeatNum = p;   /* 入场费结算按具体座位排名 */
       G.over = (zWin ? '庄家 ' : '散户 ') + G.names[p] + (zWin ? ' 通吃！👑' : ' 反杀！🎉');
-      settleBets(); drawGame(); return;
+      settleBets(); drawGame(); showResult(); return;
     }
     G.turn = (p + 1) % G.seats;
     drawGame(); scheduleAI();
@@ -3206,7 +3324,7 @@
       var after = function () {
         if (ps.every(function (x) { return x === FL_TOTAL; })) {
           G.winSeat = p; G.over = G.names[p] + ' 的艺人全体登上永恒王座，番位之战大获全胜！♛🎉';
-          settleBets(); drawGame(); return;
+          settleBets(); drawGame(); showResult(); return;
         }
         var again = G.againFlag || dice === 6;
         G.againFlag = false;
@@ -3690,8 +3808,11 @@
     var B = G && G.bet;
     if (!B || B.settled) return;
     B.settled = true; B.closed = true;
+    /* 二十二更：我的押注本金先记进账本——结算面板要算「最后到手多少」 */
+    (B.bets || []).forEach(function (b0) { if (b0.mine) stAcc(b0.cur, 'betStake', b0.paid); });
     function refund(b) {
       walletAdd(b.cur, b.paid);
+      stAcc(b.cur, 'betBack', b.paid);
       cgLog('🧾 押注原路退还（' + fmt(b.paid) + ' ' + CUR[b.cur].n + '）');
     }
     if (B.mode === 'pot') {
@@ -3707,6 +3828,7 @@
           if (b.target === G.winSeat && poolW > 0) {
             var pay = Math.floor(b.paid * 0.95 * total / poolW);
             walletAdd(cur, pay);
+            stAcc(cur, 'betBack', pay);
             cgLog('🎊 注单命中！' + esc(b.targetName) + ' 赔率 ×' + (0.95 * total / poolW).toFixed(2) + ' → 回款 ' + fmt(pay) + ' ' + CUR[cur].n);
           } else {
             cgLog('🧾 注单未中（' + fmt(b.paid) + ' ' + CUR[cur].n + ' 支持了 ' + esc(b.targetName) + '）');
@@ -3722,6 +3844,7 @@
         if (hit) {
           var pay2 = Math.floor(b.paid * oddsL[b.target]);
           walletAdd(b.cur, pay2);
+          stAcc(b.cur, 'betBack', pay2);
           cgLog('🎊 固定赔率命中 ×' + oddsL[b.target] + ' → 回款 ' + fmt(pay2) + ' ' + CUR[b.cur].n);
         } else {
           cgLog('🧾 注单未中（' + fmt(b.paid) + ' ' + CUR[b.cur].n + '）');
@@ -3746,8 +3869,18 @@
       rest.sort(function (a, b) { return a.cnt - b.cnt; });
       rest.forEach(function (x) { rank.push(x.p); });
     } else if (G.game === 'mahjong') {
-      for (var q = 0; q < n; q++) if (q !== G.winSeat) rank.push(q);
-      rank.unshift(G.winSeat);
+      /* 二十二更：别再认 G.winSeat（流局时它是 -1，名次会冒出个「P-1」）——
+         按「胡没胡 → 胡的顺序 → 番位账本高低」排，稳。 */
+      var mjr = [];
+      for (var q = 0; q < n; q++) mjr.push(q);
+      mjr.sort(function (a, b) {
+        var ha = (G.hu && G.hu[a]) || null, hb = (G.hu && G.hu[b]) || null;
+        if (ha && hb) return (G.huOrder.indexOf(a) - G.huOrder.indexOf(b));
+        if (ha) return -1;
+        if (hb) return 1;
+        return ((G.score && G.score[b]) || 0) - ((G.score && G.score[a]) || 0);
+      });
+      rank = mjr;
     } else if (G.game === 'doudizhu') {
       /* 庄赢：庄第一，两散按剩牌少在前；散赢：先走的第一，另一散第二，庄第三 */
       var others = [];
@@ -3768,13 +3901,19 @@
     G.entryDone = true;
     var E = G.entry, total = E.amt * G.seats;
     var pot = Math.floor(total * 0.95);
-    if (G.seats < 2 || pot < E.amt) { cgLog('📊 入场费不满一档，原路退还'); if (E.mine) walletAdd(E.cur, E.amt); return; }
+    if (G.seats < 2 || pot < E.amt) {
+      cgLog('📊 入场费不满一档，原路退还');
+      if (E.mine) { walletAdd(E.cur, E.amt); stAcc(E.cur, 'entryBack', E.amt); }
+      return;
+    }
     var rank = entryRank();
     var shares = G.seats === 2 ? [0.7, 0.3] : [0.5, 0.3, 0.2];
     var lines = [];
     for (var i = 0; i < rank.length && i < shares.length; i++) {
       var p = rank[i], get = Math.floor(pot * shares[i]);
-      if (p === 0 && E.mine) walletAdd(E.cur, get);
+      /* 二十二更：名次分账留档——结算面板要按它摆「谁分了多少」 */
+      if (G.settle) G.settle.rankPay.push({ p: p, get: get });
+      if (p === 0 && E.mine) { walletAdd(E.cur, get); stAcc(E.cur, 'entryBack', get); }
       lines.push(GAMES[G.game].em + ' ' + (p === 0 ? '🥇' : p === 1 ? '🥈' : '🥉') + ' ' + G.names[p] + ' ' + fmt(get) + ' ' + CUR[E.cur].n);
     }
     cgLog('🏆 入场费结算（' + fmt(E.amt) + '×' + G.seats + '，抽水 5%）：' + lines.join('　'));
@@ -3960,6 +4099,28 @@
     _mjAuto: function () { return mjAutoDraw(); },
     _mjWin: function (p, tile, from, ziMo) { mjWin(p, tile, from, ziMo); },
     _mjResult: function () { var b = $('cg-mjres'); return b ? { open: b.classList.contains('open'), text: b.textContent } : null; },
+    /* 二十二更：通用结算面板调试口（四玩法同款） */
+    _result: function () {
+      var b = $('cg-mjres');
+      return b ? {
+        open: b.classList.contains('open'),
+        title: ($('cg-rtitle') || {}).textContent || '',
+        text: b.textContent || '',
+        settle: G ? JSON.parse(JSON.stringify(G.settle || null)) : null,
+        wal: walletAll()
+      } : null;
+    },
+    _closeResult: closeMjResult,
+    _showResult: function () { showResult(); },
+    /* 无头测试：把某一家直接推到胜利（只改状态，不碰规则） */
+    _forceWin: function (p) {
+      if (!G) return null;
+      if (G.game === 'uno') { G.hands[p].length = 0; G.winSeat = p; G.over = G.names[p] + ' 杀青！'; settleBets(); drawGame(); showResult(); return G.over; }
+      if (G.game === 'doudizhu') { G.winSeatNum = p; G.winSeat = (p === G.landlord) ? 'z' : 's'; G.over = G.names[p] + ' 通吃！'; G.hands[p].length = 0; settleBets(); drawGame(); showResult(); return G.over; }
+      if (G.game === 'flight') { G.winSeat = p; G.over = G.names[p] + ' 登顶！'; settleBets(); drawGame(); showResult(); return G.over; }
+      if (G.game === 'mahjong') { mjFinish([p]); return G.over; }
+      return null;
+    },
     _mjCloseResult: closeMjResult,
     _mjOpts: function (p, tile) { return mjClaimOpts(p, tile); },
     _mjClaim: function (p, kind, tile, from) { mjDoClaim(p, kind, tile, from); },
