@@ -2520,6 +2520,9 @@
   function mjEmit(from, tile) {
     G.river[from].push(tile);
     G.lastPlay[from] = [tile]; clearPass();
+    /* 二十三更：记录出牌时间，刚打的那张放大只亮 3 秒（修鬼牌/二筒一直挂着的问题） */
+    if (!G._mjLastAt) G._mjLastAt = {};
+    G._mjLastAt[from] = Date.now();
     G.discard = tile;
     cgLog(G.names[from] + ' 传令 ' + MJ_SUIT_N[tile.suit] + tile.rank);
     var plz = [];
@@ -2677,37 +2680,65 @@
       SK.drawCard(c, 'mahjong', tiles[i], xL + col * rstep, yy, rw, rh, {});
     }
   }
+  /* 二十三更：牌河竖排（左右家）/ 横排（上家/我）——不重叠 */
+  function mjRiverCol(c, tiles, x0, y0, dir, perCol, rw, rh) {
+    /* 竖排：一列 perCol 张，列从 x0 向 dir 方向增长 */
+    var cols = Math.ceil(tiles.length / perCol);
+    for (var i = 0; i < tiles.length; i++) {
+      var col = Math.floor(i / perCol), row = i % perCol;
+      var x = x0 + dir * col * (rw + 3);
+      var y = y0 + row * (rh + 2);
+      SK.drawCard(c, 'mahjong', tiles[i], x, y, rw, rh, {});
+    }
+  }
   function drawMjRiver(c, W, H, tw, th) {
     var g = mjRiverGeom(W, H, tw, th);
-    var sideW = 6 * g.rstep;
+    /* 牌河尺寸再缩小一点避免重叠 */
+    var rw = Math.max(12, Math.min(g.rw, tw * 0.28));
+    var rh = rw * 1.36;
+    var rstep = rw * 1.1;
+    var ans = seatAnchors(G.seats);
+    /* 计算中央安全区域（不叠到手牌区）：上缘 ~ 下缘 */
+    var topY = H * 0.16, botY = H - th - 70;
+    var leftX = 8, rightX = W - 8;
     for (var p = 0; p < G.seats; p++) {
       var rv = (G.river && G.river[p]) || [];
       if (!rv.length) continue;
       if (p === 0) {
-        /* 我：中央底部，行向上叠（贴着手牌），最多两行 */
-        mjRiverRows(c, rv.slice(-2 * g.per), W / 2, g.bot, -1, g.per, g.rw, g.rh, g.rstep);
+        /* 我：中央底部横排，行向上叠 */
+        mjRiverRows(c, rv.slice(-2 * g.per), W / 2, botY, -1, g.per, rw, rh, rstep);
       } else {
-        var an = seatAnchors(G.seats)[p - 1];
-        if (an.a === 'c') mjRiverRows(c, rv.slice(-3 * g.per), W / 2, g.top, 1, g.per, g.rw, g.rh, g.rstep);
-        else if (an.a === 'l') mjRiverRows(c, rv.slice(-12), g.x0 - sideW / 2 - 8, g.top, 1, 6, g.rw, g.rh, g.rstep);
-        else mjRiverRows(c, rv.slice(-12), g.x0 + g.per * g.rstep + sideW / 2 + 8, g.top, 1, 6, g.rw, g.rh, g.rstep);
+        var an = ans[p - 1];
+        if (an.a === 'c') {
+          /* 上家：中央顶部横排，行向下叠 */
+          mjRiverRows(c, rv.slice(-2 * g.per), W / 2, topY, 1, g.per, rw, rh, rstep);
+        } else if (an.a === 'l') {
+          /* 左家：竖排，从左边向右延伸 */
+          mjRiverCol(c, rv.slice(-18), leftX, topY + rh + 8, 1, 6, rw, rh);
+        } else {
+          /* 右家：竖排，从右边向左延伸 */
+          mjRiverCol(c, rv.slice(-18), rightX - rw, topY + rh + 8, -1, 6, rw, rh);
+        }
       }
     }
   }
-  /* 刚打出来的最后一张：放大、金光、亮在座位朝中央的一侧 */
+  /* 二十三更：刚打出来的最后一张只亮 3 秒然后自动隐藏（避免一直挂着像鬼牌）。
+     用 G._mjLastAt[p] 记录最后出牌时间，超过 3 秒就不画了。 */
   function drawMjLast(c, p, an, W, H, tw, th) {
     if (!G || (G.passed && G.passed[p])) return;
     var rv = (G.river && G.river[p]) || [];
     if (!rv.length) return;
+    if (G._mjLastAt && G._mjLastAt[p] && Date.now() - G._mjLastAt[p] > 3000) return;
     var L = seatLayout(p, an, W, H, tw, th, 'mahjong');
-    var pw = L.pw, ph = L.ph, x, y;
+    var pw = Math.min(L.pw, tw * 0.65), ph = pw * 1.36, x, y;
     if (an.a === 'c') { x = L.handX + L.fanW / 2 - pw / 2; y = L.handY + L.mh + 8; }
     else if (an.a === 'l') { x = L.handX + L.fanW + 12; y = L.handY + L.mh / 2 - ph / 2 + 4; }
     else { x = L.handX - pw - 12; y = L.handY + L.mh / 2 - ph / 2 + 4; }
     SK.drawCard(c, 'mahjong', rv[rv.length - 1], x, y, pw, ph, { hi: '#ffd166' });
   }
-  /* 我刚打的最后一张：手牌行右上角放大亮着（不压中央牌河） */
+  /* 我刚打的最后一张：也只亮 3 秒（二十三更：修鬼牌二筒问题） */
   function drawMjMyLast(c, W, H, tw, th) {
+    if (G._mjLastAt && G._mjLastAt[0] && Date.now() - G._mjLastAt[0] > 3000) return;
     var played = (G.lastPlay && G.lastPlay[0]) || [];
     if (!played.length) return;
     var baseY = H - th - 20;
@@ -3240,18 +3271,41 @@
     if (after) after();
     else { drawGame(); scheduleAI(); }
   }
+  /* 二十三更：骰子旋转动画（1.5 秒快速滚数→慢停→定格+弹跳）增强赌狗刺激感 */
+  var _diceAnim = null;
   function flRoll() {
-    if (G.turn !== 0 || G.over || G.spectate) return;
-    G.dice = 1 + rnd(6);
-    G.pick = -1; G.options = null;
-    G.lastPlay[0] = [{ kind: 'dice', n: G.dice }];
-    var opts = flMoves(0, G.dice);
-    touchTurn();
-    if (!opts.length) { G.msg = '我 掷了 ' + G.dice + '，没艺人可动'; flNext(0); touchTurn(); drawGame(); scheduleAI(); return; }
-    if (opts.length === 1) flMove(0, opts[0], G.dice);
-    else { G.msg = '我 掷了 ' + G.dice + '，点一架艺人出动'; G.options = opts; }
-    drawGame();
-    if (!G.options) scheduleAI();
+    if (G.turn !== 0 || G.over || G.spectate || _diceAnim) return;
+    var finalDice = 1 + rnd(6);
+    var dur = 1500;
+    var t0 = Date.now();
+    G.msg = '🎲 摇骰子中……';
+    _diceAnim = { t0: t0, dur: dur, final: finalDice };
+    function animStep() {
+      if (!G || !_diceAnim) return;
+      var elapsed = Date.now() - t0;
+      if (elapsed >= dur) {
+        /* 定格 */
+        _diceAnim = null;
+        G.dice = finalDice;
+        G.pick = -1; G.options = null;
+        G.lastPlay[0] = [{ kind: 'dice', n: finalDice }];
+        var opts = flMoves(0, finalDice);
+        touchTurn();
+        if (!opts.length) { G.msg = '我 掷了 ' + finalDice + '，没艺人可动'; flNext(0); touchTurn(); drawGame(); scheduleAI(); return; }
+        if (opts.length === 1) flMove(0, opts[0], finalDice);
+        else { G.msg = '我 掷了 ' + finalDice + '，点一架艺人出动'; G.options = opts; }
+        drawGame();
+        if (!G.options) scheduleAI();
+        return;
+      }
+      /* 滚动中：数字快速变化（前 70% 快、后 30% 慢） */
+      var frac = elapsed / dur;
+      var interval = frac < 0.7 ? 60 : (frac < 0.9 ? 150 : 300);
+      G.dice = 1 + Math.floor(Math.random() * 6);
+      drawGame();
+      setTimeout(animStep, interval);
+    }
+    animStep();
   }
   function flMoves(p, dice) {
     var out = [], ps = G.planes[p];
@@ -3268,6 +3322,7 @@
     if (G.skipFlag && G.skipFlag[t]) { G.skipFlag[t] = false; cgLog('🐕 ' + G.names[t] + ' 被狗仔盯梢，停一回合'); t = (t + 1) % G.seats; }
     G.turn = t;
     G.round++;
+    G.dice = 0;   /* 二十三更：重置骰子，这样下一回合点画布才能掷骰 */
     touchTurn();
   }
   /* 十七更续：逐格走路动画——走 3 步就一格一格挪，不许「嗖」地瞬移 */
@@ -3373,26 +3428,47 @@
     var G0 = flGeom(W, H);
     var bx = G0.bx, by = G0.by, csx = G0.csx, csy = G0.csy, cs = G0.cs;
     function rcxy(rc) { return [bx + rc[1] * csx, by + rc[0] * csy]; }
-    /* 四社机库（缩成 2×2 小巢，摆在象限中心） */
+    /* 二十三更：四社机库——当前回合的机库呼吸高亮 + 机库内写战报 */
     Object.keys(FL_QUAD).forEach(function (col) {
       var q = FL_QUAD[col];
       var midR = (q[0] + q[2]) / 2, midC = (q[1] + q[3]) / 2;
       var x = bx + (midC - 1) * csx, y = by + (midR - 1) * csy, w = csx * 2, hh = csy * 2;
       var p = G.colors.indexOf(col);
       var active = p >= 0;
-      c.fillStyle = active ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.02)';
+      var isCurTurn = active && G.turn === p && !G.over;
+      /* 当前回合机库底色高亮 */
+      c.fillStyle = isCurTurn ? ('rgba(' + (col === 'r' ? '232,178,58' : col === 'y' ? '47,168,160' : col === 'g' ? '63,163,77' : '59,130,246') + ',.18)')
+        : (active ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.02)');
       c.fillRect(x + 2, y + 2, w - 4, hh - 4);
-      c.strokeStyle = FL_COL[col]; c.globalAlpha = active ? 0.8 : 0.25; c.lineWidth = 1.5;
+      /* 当前回合机库呼吸边框 */
+      if (isCurTurn) {
+        var pu4 = pulse();
+        c.strokeStyle = 'rgba(255,209,102,' + (0.5 + 0.5 * pu4).toFixed(3) + ')';
+        c.lineWidth = 2.5 + pu4 * 1.5;
+      } else {
+        c.strokeStyle = FL_COL[col]; c.globalAlpha = active ? 0.8 : 0.25; c.lineWidth = 1.5;
+      }
       c.strokeRect(x + 2, y + 2, w - 4, hh - 4);
       c.globalAlpha = 1;
       c.fillStyle = FL_COL[col];
       c.globalAlpha = active ? 0.85 : 0.25;
       c.font = 'bold ' + Math.max(9, cs * 0.4) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
       c.textAlign = 'center';
-      /* ⚠️ G.names 在飞行棋里已经带了社名，这里要挂真名，别再叠一遍社名 */
       c.fillText(FL_SOC[col] + '社' + (active ? '·' + ((G.real && G.real[p]) || G.names[p]) : '（虚位）'), x + w / 2, y - 4);
       c.globalAlpha = 1;
       if (!active) return;
+      /* 二十三更：机库内写战报（骰子数 / 前进 / 停一轮 / 被撞 / 抽卡等）——
+         田字格那么大的区域，不写东西太浪费了 */
+      var lastDice = (G.lastPlay && G.lastPlay[p] && G.lastPlay[p][0] && G.lastPlay[p][0].kind === 'dice') ? G.lastPlay[p][0].n : null;
+      var info = '';
+      if (isCurTurn) info = '🎲 当前回合';
+      else if (G.skipFlag && G.skipFlag[p]) info = '⏸ 停一轮';
+      else if (lastDice !== null) info = '🎲 ' + lastDice;
+      if (info) {
+        c.fillStyle = isCurTurn ? '#ffd166' : 'rgba(255,255,255,.62)';
+        c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif';
+        c.fillText(info, x + w / 2, y + hh - Math.max(6, cs * 0.2));
+      }
       /* 停机位（一行 4 圈摆在机巢下沿）
          十七更续：等待中的棋子也要能点——陛下钦定点棋盘上等待区那一架，不是点底栏。 */
       var sw2 = cs * 0.4, gap2 = sw2 * 1.35;
@@ -3432,18 +3508,33 @@
     var txy = rcxy([6, 6]);
     c.fillStyle = '#ffd166'; c.font = 'bold ' + Math.max(14, cs * 0.9) + 'px sans-serif'; c.textAlign = 'center';
     c.fillText('♛', txy[0] + csx, txy[1] + csy * 1.45);
-    /* 外环 52 格 */
+    /* 二十三更：外环 52 格——颜色映射必须和 FL_CI 对齐！
+       FL_CI = { r:1, y:2, g:3, b:0 }，格子 i 的色 = i%4：0→b, 1→r, 2→y, 3→g
+       这样红色棋子（CI=1）踩到 cell%4===1 的格子就是红色格，才会触发同色跳。
+       ⚠️ 以前写的 ['r','y','g','b'][i%4] 是错的——红棋子踩到的红色格实际上被涂成了黄色。 */
+    var FL_CI_REV = ['b', 'r', 'y', 'g'];   /* i%4 → 颜色 key（和 FL_CI 反查一致） */
     for (var i = 0; i < FL_RING; i++) {
       var xy2 = rcxy(flRC(i));
-      var colName = ['r', 'y', 'g', 'b'][i % 4];
-      c.fillStyle = FL_COL[colName]; c.globalAlpha = 0.32;
-      c.fillRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
-      c.globalAlpha = 1;
-      c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;
-      c.strokeRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
+      var colName = FL_CI_REV[i % 4];
+      /* 起点格特殊高亮：比普通格更亮，让陛下一眼看到出发在哪 */
+      var isStart = false, startCol = null;
+      Object.keys(FL_START).forEach(function (k) { if (FL_START[k] === i) { isStart = true; startCol = k; } });
+      if (isStart) {
+        c.fillStyle = FL_COL[startCol]; c.globalAlpha = 0.65;
+        c.fillRect(xy2[0] + 1, xy2[1] + 1, csx - 2, csy - 2);
+        c.globalAlpha = 1;
+        c.strokeStyle = FL_COL[startCol]; c.lineWidth = 2.5;
+        c.strokeRect(xy2[0] + 1, xy2[1] + 1, csx - 2, csy - 2);
+      } else {
+        c.fillStyle = FL_COL[colName]; c.globalAlpha = 0.32;
+        c.fillRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
+        c.globalAlpha = 1;
+        c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1;
+        c.strokeRect(xy2[0] + 2, xy2[1] + 2, csx - 4, csy - 4);
+      }
       c.font = Math.max(8, cs * 0.4) + 'px sans-serif'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.85)';
       var mark = null;
-      Object.keys(FL_START).forEach(function (k) { if (FL_START[k] === i) mark = '▶'; });
+      if (isStart) mark = '▶';
       Object.keys(FL_ENTRY).forEach(function (k) { if (FL_ENTRY[k] === i) mark = '↵'; });
       if (FL_STAR.indexOf(i) >= 0) mark = '★';
       if (FL_LINE[i] !== undefined) mark = '✈';
@@ -3505,27 +3596,50 @@
     /* 二十一更：撞机闪光 + 抽卡横幅——牌桌上发生了什么，得让人一眼看见 */
     drawFlFlash(c, W, H, csx, csy, bx, by);
     drawFlBanner(c, W, H);
-    /* 十七更：骰子大提示——掷了什么、能不能动、动哪架，牌桌中央一眼看清 */
-    if (G.dice > 0 && !G.over) {
+    /* 二十三更·骰子大提示：掷骰动画中也要画——数字快速跳动增加刺激感 */
+    var showDice = (G.dice > 0 || _diceAnim) && !G.over;
+    if (showDice) {
       var ds = Math.max(46, cs * 1.5), dx = W / 2 - ds / 2, dy = by + csy * 5.6;
+      /* 动画中的微旋转和弹跳效果 */
+      if (_diceAnim) {
+        var frac0 = Math.min(1, (Date.now() - _diceAnim.t0) / _diceAnim.dur);
+        var bounce = Math.sin(frac0 * Math.PI * 6) * (1 - frac0) * 4;
+        c.save();
+        c.translate(dx + ds / 2, dy + ds / 2);
+        c.rotate(Math.sin(frac0 * Math.PI * 8) * (1 - frac0) * 0.15);
+        c.translate(-ds / 2, -ds / 2 + bounce);
+        dx = 0; dy = 0;
+      }
       c.fillStyle = '#fff';
       c.fillRect(dx, dy, ds, ds);
       c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.strokeRect(dx, dy, ds, ds);
       c.fillStyle = '#241a3d';
       var dn = G.dice, pts = { 1: [[.5, .5]], 2: [[.28, .28], [.72, .72]], 3: [[.25, .25], [.5, .5], [.75, .75]], 4: [[.28, .28], [.72, .28], [.28, .72], [.72, .72]], 5: [[.28, .28], [.72, .28], [.5, .5], [.28, .72], [.72, .72]], 6: [[.28, .25], [.72, .25], [.28, .5], [.72, .5], [.28, .75], [.72, .75]] }[dn];
-      pts.forEach(function (pt) {
-        c.beginPath(); c.arc(dx + pt[0] * ds, dy + pt[1] * ds, ds * 0.09, 0, 6.2832); c.fill();
-      });
+      if (dn >= 1 && dn <= 6) {
+        pts.forEach(function (pt) {
+          c.beginPath(); c.arc(dx + pt[0] * ds, dy + pt[1] * ds, ds * 0.09, 0, 6.2832); c.fill();
+        });
+      }
+      if (_diceAnim) c.restore();   /* 二十三更：骰子旋转动画结束后恢复坐标系 */
       c.font = 'bold ' + Math.max(12, cs * 0.48) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
       c.textAlign = 'center';
-      if (G.options && G.options.length) {
+      if (_diceAnim) {
         c.fillStyle = '#ffd166';
-        /* 十七更续：文案跟着操作方式改——现在是点棋盘上金圈里那一架 */
+        c.fillText('🎲 摇骰子中……', W / 2, dy + ds + 20);
+      } else if (G.options && G.options.length) {
+        c.fillStyle = '#ffd166';
         c.fillText('点棋盘上金圈里的艺人出动／走位！', W / 2, dy + ds + 20);
       } else if (G.dice === 6) {
         c.fillStyle = '#ffd166';
         c.fillText('掷到 6！再摇一次', W / 2, dy + ds + 20);
       }
+    }
+    /* 二十三更：没掷骰子时中央提示「点击屏幕摇骰子」——不再只靠底栏那个小按钮 */
+    if (!showDice && G.turn === 0 && !G.over && !G.spectate && !G.anim && !G.draw && !_diceAnim) {
+      c.fillStyle = 'rgba(255,209,102,.9)';
+      c.font = 'bold ' + Math.max(16, cs * 0.8) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.textAlign = 'center';
+      c.fillText('👆 点击屏幕摇骰子', W / 2, by + csy * 6.8);
     }
     /* 底栏：我的经纪人条（观战则显示提示） */
     var bh2 = 52, byy = H - bh2;
@@ -3987,6 +4101,17 @@
     } else if (G.game === 'flight') {
       /* 抽卡仪式进行中：只响应选牌 */
       if (G.draw) { var dl = drawLayerHit(x, y, W, H); if (dl >= 0) pickDrawCard(dl); return; }
+      /* 二十三更·陛下钦定：我的回合点画布任意位置 → 掷骰子（除了点到棋子命中区） */
+      if (G.turn === 0 && !G.over && !G.spectate && !G.options && !G.anim && !_diceAnim && G.dice === 0) {
+        /* 先检查是不是点到了棋子/头像等可交互区域 */
+        var hitAnything = false;
+        for (var fch = 0; fch < _flHits.length; fch++) {
+          var fc2 = _flHits[fch];
+          var dcx2 = x - fc2.x, dcy2 = y - fc2.y;
+          if (dcx2 * dcx2 + dcy2 * dcy2 <= fc2.r * fc2.r) { hitAnything = true; break; }
+        }
+        if (!hitAnything) { flRoll(); return; }
+      }
       if (G.turn !== 0 || !G.options) {
         var info0 = flCellAt(x, y, W, H);
         if (info0) showCellTip(x, y, info0);
