@@ -1821,6 +1821,15 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
           </div>
         </div>
       </div>
+      <div class="set-section">
+        <div class="set-label">🔄 数据与缓存</div>
+        <div class="chat-set-row" style="flex-direction:column;gap:8px;">
+          <button class="profile-settings" id="set-refresh-data" style="background:rgba(255,107,107,.18);border-color:rgba(255,107,107,.45);">🔄 刷新全部数据（重新从云端拉取）</button>
+          <div class="cs-desc" style="opacity:.7;font-size:12px;">如果 Pad/手机上看到旧数据（地图、服装、云端资产没更新），点这个按钮会清掉本地缓存并重新拉取最新数据。不会删除你的账号和存档。</div>
+          <button class="profile-settings" id="set-clear-sw" style="background:rgba(139,111,214,.18);border-color:rgba(139,111,214,.45);">🧹 清除浏览器缓存并刷新</button>
+          <div class="cs-desc" style="opacity:.7;font-size:12px;">强制清空 Service Worker 缓存 + 刷新页面，确保拿到最新版本的代码。适用于页面显示异常时。</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1858,7 +1867,7 @@ img.cur-img{display:inline-block;width:1.15em;height:1.15em;object-fit:contain;
 <script src="./media-store.js?v=20261001k"></script>
 <script src="./net-client.js?v=20261002b"></script>
 <script src="./card-skin.js?v=20261002a"></script>
-<script src="./card-games.js?v=20261003d"></script>
+<script src="./card-games.js?v=20261004d"></script>
 <script>
 /* ================= 存储兜底 =================
    某些环境（隐私模式 / 禁用 Cookie / 部分浏览器对 file:// 的限制）
@@ -5022,6 +5031,44 @@ document.querySelectorAll('.cs-seg-btn').forEach(b=>{
     buildChatSettings();
   };
 });
+
+/* 二十三更 v3：设置里的「刷新数据」和「清除缓存」按钮 */
+$('set-refresh-data').onclick = async ()=>{
+  if(!confirm('🔄 确认要重新拉取全部云端数据吗？\n\n这会清掉本地的地图/服装/云端资产缓存，然后自动刷新页面重新下载最新数据。\n\n你的账号、存档、货币不会受影响。')) return;
+  /* 清掉云端资产缓存标记——下次启动 cloud-sync 会重新拉取 */
+  try {
+    var keys = Object.keys(localStorage);
+    keys.forEach(function(k) {
+      if (k.indexOf('cloud_applied') >= 0 || k.indexOf('cloud_rev') >= 0 ||
+          k.indexOf('cloud_draft') >= 0 || k.indexOf('cloud_live') >= 0) {
+        localStorage.removeItem(k);
+      }
+    });
+    /* 清地图缓存——强制下次从云端拉最新 */
+    localStorage.removeItem('game_maps');
+    localStorage.removeItem('game_maps_rev');
+  } catch(e) { console.warn('清缓存出错', e); }
+  toast('🔄 本地缓存已清除，正在刷新页面……');
+  setTimeout(function(){ location.reload(true); }, 600);
+};
+
+$('set-clear-sw').onclick = async ()=>{
+  if(!confirm('🧹 确认要清除浏览器缓存并刷新吗？\n\n这会注销 Service Worker 并清空所有缓存的代码文件，然后刷新页面重新下载。\n\n适用于页面显示异常、代码没更新等情况。')) return;
+  try {
+    /* 注销所有 SW */
+    if ('serviceWorker' in navigator) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i = 0; i < regs.length; i++) await regs[i].unregister();
+    }
+    /* 清空所有 Cache Storage */
+    if ('caches' in window) {
+      var ks = await caches.keys();
+      for (var j = 0; j < ks.length; j++) await caches.delete(ks[j]);
+    }
+  } catch(e) { console.warn('清SW出错', e); }
+  toast('🧹 缓存已清除，正在刷新……');
+  setTimeout(function(){ location.reload(true); }, 600);
+};
 $('btn-wardrobe').onclick = ()=>{
   wbZoneFilter = null;                          // 左侧入口 = 全部衣橱，不按商店分区过滤
   wbTitle = '';                                 // 标题回归朴素「衣橱」

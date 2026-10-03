@@ -1,20 +1,18 @@
-/* 拾光·澈屿 Service Worker —— 导航页/HTML 用 network-first（保证陛下改完代码立刻生效），
-   其他静态资源用 stale-while-revalidate（秒开 + 后台更新）。 */
-const CACHE = 'shuguang-v121';
+/* 拾光·澈屿 Service Worker v122
+   二十三更 v3：解决 Pad/手机缓存不更新问题——
+   ① JS/CSS/JSON 改 network-first（3s 超时回缓存），保证每次拿最新
+   ② 预缓存不再写版本号（避免 sw.js 里的旧版本号和 index.html 里的新版本号对不上）
+   ③ 页面端通过 postMessage 拿 SW 版本号做比对，不一致自动刷新 */
+const CACHE = 'shuguang-v131';
 const PRECACHE = [
   './',
   './index.html',
   './manifest.webmanifest',
   './body-template.js',
-  // 素体：URL 必须带和页面一样的 ?v=，否则预缓存的版本号的键对不上（请求带 query 时 match 不命中无 query 条目）
-  './legacy-body-v4.js?v=20261002a',
   './npc-render.js',
   './map-placeholders.js',
   './media-store.js',
-  './net-client.js?v=20261002b',
   './cloud-sync.js',
-  './card-skin.js?v=20261002a',
-  './card-games.js?v=20261002p',
   './棋牌引擎.html',
   './银行引擎.html',
   './二合游戏引擎.html',
@@ -30,7 +28,6 @@ const PRECACHE = [
   './数据备份与迁移.html',
   './安全区方案.html',
   './数据恢复工具.html',
-  // cloud-defaults.json 不预缓存：650KB 且只有「数据恢复工具」用（联网即可，恢复操作本来就要求在线）
   './assets/',
   './assets/cur/cur-coin.webp',
   './assets/cur/cur-diamond.webp',
@@ -53,36 +50,54 @@ self.addEventListener('activate', e => {
   })());
 });
 
+/* 页面端发 {type:'GET_SW_VERSION'} → 回 CACHE 版本号，页面比对不一致就自动刷新 */
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'GET_SW_VERSION') {
+    e.source.postMessage({ type: 'SW_VERSION', version: CACHE });
+  }
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // 媒体视频（/media/*.mp4）：不进 Cache Storage —— 几十 MB 会把配额撑爆。
-  // 直接放行给浏览器，靠 nginx 的 7 天 HTTP 缓存 + 浏览器自己的视频缓存，第二次照样秒开。
+  // 媒体（/media/）：不进缓存，靠 nginx 7d HTTP 缓存
   if (url.pathname.indexOf('/media/') >= 0) return;
 
-  // HTML 导航：网络优先（2.5s 超时回缓存）—— 改代码立刻生效，离线也能用
-  if (req.mode === 'navigate' || (req.destination === 'document')) {
+  // 带 Range 的请求（音视频分片）：直接透传（Cache 不收 206）
+  if (req.headers.has('range')) { e.respondWith(fetch(req)); return; }
+
+  // ── 判断是否是"关键资源"（JS/CSS/JSON + HTML 导航） ──
+  var isNav = req.mode === 'navigate' || req.destination === 'document';
+  var isCode = /\.(js|css|json)(\?|$)/i.test(url.pathname);
+
+  if (isNav || isCode) {
+    // 网络优先（3s 超时回缓存）—— 改完代码 Pad 也能立刻拿到
     e.respondWith((async () => {
       try {
         const net = await Promise.race([
-          fetch(req),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('net-timeout')), 2500))
+          fetch(new Request(req.url, { cache: 'no-cache' })),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
         ]);
-        const c = await caches.open(CACHE);
-        c.put(req, net.clone());
+        if (net && net.ok) {
+          const c = await caches.open(CACHE);
+          c.put(req, net.clone());
+        }
         return net;
       } catch (_) {
         const c = await caches.open(CACHE);
-        return (await c.match(req)) || (await c.match('./index.html')) || Response.error();
+        const hit = await c.match(req);
+        if (hit) return hit;
+        if (isNav) return (await c.match('./index.html')) || Response.error();
+        return Response.error();
       }
     })());
     return;
   }
 
-  // 线上数据包：永远网络优先（陛下更新了数据要立刻能拉到），断网才回缓存
+  // 线上数据包：永远网络优先
   if (url.pathname.indexOf('online-data.json') >= 0) {
     e.respondWith((async () => {
       try {
@@ -98,10 +113,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // 其他静态资源：缓存优先 + 后台更新
+  // 其他静态资源（图片/字体/wasm）：缓存优先 + 后台更新
   e.respondWith((async () => {
-    // 带 Range 的请求（音视频分片等）不进缓存，直接透传（Cache 不收 206，硬塞会被吞成 504）
-    if (req.headers.has('range')) return fetch(req);
     const c = await caches.open(CACHE);
     const hit = await c.match(req);
     const net = fetch(req).then(r => {

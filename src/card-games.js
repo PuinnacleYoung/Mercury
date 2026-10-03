@@ -1670,7 +1670,10 @@
     var t = G.turn;
     cgLog('⏰ ' + (t === 0 ? '你' : G.names[t]) + ' 超时，系统代打一手');
     if (G.game === 'uno') { unoDraw(); if (G.turn === t && !G.over) { advance(1); drawGame(); scheduleAI(); } }
-    else if (G.game === 'mahjong') { if (!G.drawn) mjDraw(); if (G.drawn) mjDiscard(rnd(G.hands[0].length + 1)); }
+    else if (G.game === 'mahjong') {
+      if (G.mustDiscard) { mjDiscard(rnd(G.hands[0].length)); }  /* 碰完只能打手牌里的 */
+      else { if (!G.drawn) mjDraw(); if (G.drawn) mjDiscard(rnd(G.hands[0].length + 1)); }
+    }
     else if (G.game === 'flight') { flRollAuto(); }
     else if (G.game === 'doudizhu') {
       if (G.phase === 'bid') { G.bidPass++; if (G.bidPass >= G.seats) { G.landlord = rnd(G.seats); ddTakeBottom(); } else { G.turn = (t + 1) % G.seats; touchTurn(); scheduleAI(); } drawGame(); }
@@ -1777,7 +1780,11 @@
         if (!G.drawn && !G.mustDiscard) out.push({ label: '🎴 自动接令中…', disabled: true, fn: function () { } });
       }
     } else if (G.game === 'flight') {
-      out.push({ label: '🎲 掷骰', pri: true, disabled: G.turn !== 0 || !!G.over, fn: flRoll });
+      /* 二十三更 v4：掷骰按钮从底栏删掉——点画布任意位置就能掷，底栏按钮多余。
+         底栏只在有选项时显示文字提示。 */
+      if (G.options && G.options.length > 0) {
+        out.push({ label: '点棋子走位', disabled: true, fn: function () { } });
+      }
     } else if (G.game === 'doudizhu') {
       if (G.phase === 'bid') {
         out.push({ label: '💰 满仓坐庄', pri: true, fn: function () { G.landlord = 0; ddTakeBottom(); } });
@@ -1811,13 +1818,29 @@
     }
     return -1;
   }
-  function drawHandRow(c, hand, W, H, cw, ch, baseY, sel, deck, flipIdx) {
+  /* drawHandRow：画手牌一排。
+     lackSuit=定缺的门（传 null 不灰），缺门的牌半透明+「缺」角标。
+     mjSelIdx=麻将选中预览的那张（弹起+金框），其他游戏传 -1。 */
+  function drawHandRow(c, hand, W, H, cw, ch, baseY, sel, deck, flipIdx, lackSuit, mjSelIdx) {
     var n = hand.length;
     var g = handGeom(n, cw, W);
     for (var i = 0; i < n; i++) {
-      var cx = g.x0 + i * g.step, cy = baseY - (sel && sel.indexOf(i) >= 0 ? Math.round(cw * 0.2) : 0);
+      var isSel = (sel && sel.indexOf(i) >= 0) || (mjSelIdx === i);
+      var cx = g.x0 + i * g.step, cy = baseY - (isSel ? Math.round(cw * 0.28) : 0);
+      var isLack = lackSuit && hand[i] && hand[i].suit === lackSuit;
+      if (isLack && !isSel) c.globalAlpha = 0.45;
       if (flipIdx && flipIdx.indexOf(i) >= 0) SK.drawBack(c, deck, cx, cy, cw, ch);
-      else SK.drawCard(c, deck, hand[i], cx, cy, cw, ch, {});
+      else SK.drawCard(c, deck, hand[i], cx, cy, cw, ch, isSel ? { hi: '#ffd166' } : {});
+      if (isLack && !isSel) {
+        c.globalAlpha = 1;
+        c.fillStyle = 'rgba(0,0,0,.35)';
+        c.fillRect(cx, cy, cw, ch);
+        c.fillStyle = 'rgba(255,100,100,.9)';
+        c.font = 'bold ' + Math.max(9, Math.round(cw * 0.18)) + 'px sans-serif';
+        c.textAlign = 'center';
+        c.fillText('缺', cx + cw / 2, cy + ch - 4);
+      }
+      c.globalAlpha = 1;
     }
   }
   function setActsBottom(px) {
@@ -2303,12 +2326,13 @@
     }
   }
   /* 缺门清了没：手里（含副露）还有自己定缺那门就不许胡 */
+  /* 二十三更 v3 修：mjLackOk 只看手牌（tiles）里有没有缺门的牌，不看副露！
+     川麻规则：碰/杠过的缺门牌已经固定在台面上了，不算"手上有缺门"。
+     ⚠️ 以前多查了副露 → 一旦碰了缺门牌就永远不让胡（严重 bug）。 */
   function mjLackOk(p, tiles) {
     var lk = G.lack && G.lack[p];
     if (!lk) return true;
     for (var i = 0; i < tiles.length; i++) if (tiles[i].suit === lk) return false;
-    var ms = (G.melds && G.melds[p]) || [];
-    for (var j = 0; j < ms.length; j++) if (ms[j].tile && ms[j].tile.suit === lk) return false;
     return true;
   }
   function mjCanWin(p, tiles) {
@@ -2322,16 +2346,37 @@
     for (var j = 0; j < ms.length; j++) if (ms[j].tile && mjKey(ms[j].tile) === k) return ms[j].tile;
     return null;
   }
-  /* 别人打出一张后我能干嘛：胡 > 杠 > 碰 */
+  /* 别人打出一张后我能干嘛：胡 > 杠 > 碰
+     ⚠️ 二十三更 v5：定缺的牌不能碰不能杠（川麻铁律）！
+     比如定缺万，别人打万你不能碰/杠，只有不是缺门的牌才能碰杠。 */
   function mjClaimOpts(p, tile) {
     if (!tile || G.phase !== 'play') return [];
     if (G.hu && G.hu[p]) return [];      /* 血战到底：已经胡了的人不再碰杠胡 */
     var out = [], hand = G.hands[p] || [];
+    var lk = G.lack && G.lack[p];
     if (mjCanWin(p, hand.concat([tile]))) out.push('win');
+    /* 缺门的牌不能碰杠（川麻定缺铁律） */
+    if (lk && tile.suit === lk) return out;   /* 只可能胡（如果手上缺门清了的话），不能碰杠 */
     var same = hand.filter(function (t) { return t.suit === tile.suit && t.rank === tile.rank; });
     if (same.length >= 3) out.push('kong');
     if (same.length >= 2) out.push('pong');
     return out;
+  }
+  /* 二十三更 v4：牌数校验——每次操作后检查手牌+副露是否平衡，不平衡就 log 报警 */
+  function mjCheckCount(label) {
+    if (!G || G.game !== 'mahjong') return;
+    for (var cp = 0; cp < G.seats; cp++) {
+      if (G.hu && G.hu[cp]) continue;
+      var h = (G.hands[cp] || []).length;
+      var m = 0; (G.melds[cp] || []).forEach(function (md) { m += (md.tiles || []).length; });
+      var d = (cp === 0 && G.drawn) ? 1 : 0;
+      var total = h + m + d;
+      /* 川麻正确值：开局 13 张 = 手牌 + 副露；摸牌中 = 14 张 */
+      if (total !== 13 && total !== 14) {
+        cgLog('⚠️ 牌数异常[' + label + '] P' + cp + ': 手' + h + '+副' + m + '+摸' + d + '=' + total + '（应为13或14）');
+        console.warn('MJ_COUNT_ERROR', label, 'P' + cp, '手' + h, '副' + m, '摸' + d, '=' + total);
+      }
+    }
   }
   function mjDoClaim(p, kind, tile, from) {
     if (!tile) return;
@@ -2344,9 +2389,10 @@
     cgLog('🀄 ' + (kind === 'kong' ? '杠！' : '碰！') + G.names[p] + ' ' + MJ_SUIT_N[tile.suit] + tile.rank);
     G.pending = null; G.claimMine = [];
     G.turn = p; touchTurn();
-    if (kind === 'kong') { mjKongScore(p, 'ming', from); mjKongDraw(p); return; }
+    if (kind === 'kong') { mjKongScore(p, 'ming', from); mjKongDraw(p); mjCheckCount('杠后'); return; }
     G.drawn = null; G.mustDiscard = true;    /* 碰完必须打一张，不能再摸 */
     mjSortHand(hand); drawGame();
+    mjCheckCount('碰后');
     if (p !== 0) scheduleAI();
   }
   /* 二十一更：杠了立刻收钱——暗杠吃三家（每家 2 底）、补杠每家 1 底、明杠点杠者包 3 底 */
@@ -2382,11 +2428,96 @@
     G.canWin = !!G.winShape;
     G.canKong = [];
     var cnt = mjCounts(all);
-    Object.keys(cnt).forEach(function (k) { if (cnt[k] >= 4) G.canKong.push({ k: k, type: 'an' }); });
+    var lk = G.lack && G.lack[p];
+    /* 暗杠/补杠也不能杠缺门的牌（川麻定缺铁律） */
+    Object.keys(cnt).forEach(function (k) {
+      if (cnt[k] >= 4 && !(lk && k.indexOf(lk) === 0)) G.canKong.push({ k: k, type: 'an' });
+    });
     ((G.melds && G.melds[p]) || []).forEach(function (m) {
-      if (m.type === 'pong' && (cnt[mjKey(m.tile)] || 0) >= 1) G.canKong.push({ k: mjKey(m.tile), type: 'bu' });
+      if (m.type === 'pong' && (cnt[mjKey(m.tile)] || 0) >= 1 && !(lk && m.tile.suit === lk)) G.canKong.push({ k: mjKey(m.tile), type: 'bu' });
     });
   }
+  /* ================= 二十三更 v5：听牌提示系统（欢乐麻将同款） =================
+     1. mjTenpaiInfo(p) → 检测 p 号玩家是否听牌，听哪些牌，每张剩几张
+     2. mjDiscardHints(p) → 打哪张能听，听什么，用于"出牌提示"
+     3. 可见牌计数 = 所有人牌河 + 所有人副露 + 我的手牌（别人的手牌看不到，不算） */
+
+  /* 全部可见牌计数（牌河+副露+我的手牌+摸到的） */
+  function mjVisibleCounts() {
+    var vc = {};
+    function add(t) { if (t) { var k = mjKey(t); vc[k] = (vc[k] || 0) + 1; } }
+    /* 所有人的牌河 */
+    for (var p = 0; p < G.seats; p++) ((G.river && G.river[p]) || []).forEach(add);
+    /* 所有人的副露 */
+    for (var q = 0; q < G.seats; q++) ((G.melds && G.melds[q]) || []).forEach(function (m) { (m.tiles || []).forEach(add); });
+    /* 我的手牌 + 摸到的 */
+    (G.hands[0] || []).forEach(add);
+    if (G.drawn) add(G.drawn);
+    return vc;
+  }
+
+  /* 所有可能的牌（万1-9、条1-9、筒1-9） */
+  var MJ_ALL_TILES = [];
+  ['wan', 'tiao', 'tong'].forEach(function (s) {
+    for (var r = 1; r <= 9; r++) MJ_ALL_TILES.push({ suit: s, rank: r });
+  });
+
+  /* 检测 p 号玩家是否听牌：手牌（不含 drawn）差一张能胡 → 返回听哪些牌 + 每张剩几张 */
+  function mjTenpaiInfo(p) {
+    var hand = (G.hands[p] || []).slice();
+    /* 手牌必须是 3N+1 张（碰后 10/7/4/1 都可能）才能听 */
+    if (hand.length % 3 !== 1) return null;
+    var lk = G.lack && G.lack[p];
+    var vc = mjVisibleCounts();
+    var waits = [];
+    MJ_ALL_TILES.forEach(function (t) {
+      if (lk && t.suit === lk) return;   /* 缺门的牌不能胡 */
+      var testHand = hand.concat([t]);
+      if (!mjLackOk(p, testHand)) return;
+      if (mjWinShape(mjCounts(testHand))) {
+        var k = mjKey(t);
+        var seen = vc[k] || 0;
+        var remain = 4 - seen;
+        if (remain > 0) waits.push({ tile: t, key: k, remain: remain, name: MJ_SUIT_N[t.suit] + t.rank });
+      }
+    });
+    return waits.length ? waits : null;
+  }
+
+  /* 打哪张能听：遍历手牌每一张，假设打出 → 检测剩余手牌是否听牌
+     返回 [{discard, discardName, waits}] */
+  function mjDiscardHints(p) {
+    var hand = (G.hands[p] || []).slice();
+    if (G.drawn) hand.push(G.drawn);
+    /* 手牌必须是 3N+2 张才能"打一张后听"（3N+1） */
+    if (hand.length % 3 !== 2) return [];
+    var lk = G.lack && G.lack[p];
+    var vc = mjVisibleCounts();
+    var results = [], seen = {};
+    for (var i = 0; i < hand.length; i++) {
+      var dk = mjKey(hand[i]);
+      if (seen[dk]) continue; seen[dk] = true;
+      var rest = hand.slice(0, i).concat(hand.slice(i + 1));
+      /* 检查打出 hand[i] 后是否听牌 */
+      var waits = [];
+      MJ_ALL_TILES.forEach(function (t) {
+        if (lk && t.suit === lk) return;
+        var testHand = rest.concat([t]);
+        if (!mjLackOk(p, testHand)) return;
+        if (mjWinShape(mjCounts(testHand))) {
+          var k = mjKey(t);
+          var s = vc[k] || 0;
+          /* 打出 hand[i] 后它也变成可见牌了，如果跟测试牌同 key 要+1 */
+          var extra = (k === dk) ? 1 : 0;
+          var remain = 4 - s - extra;
+          if (remain > 0) waits.push({ tile: t, key: k, remain: remain, name: MJ_SUIT_N[t.suit] + t.rank });
+        }
+      });
+      if (waits.length) results.push({ discard: hand[i], discardName: MJ_SUIT_N[hand[i].suit] + hand[i].rank, waits: waits });
+    }
+    return results;
+  }
+
   function mjDoKong(kk) {
     if (!kk || G.turn !== 0 || G.spectate) return;
     var hand = G.hands[0];
@@ -2573,29 +2704,50 @@
     if (!G.wall.length) { mjFinish(mjAliveList()); return; }
     G._kongDrawFlag = false;
     G.drawn = G.wall.pop();
+    G._mjSel = -1;   /* 摸牌后清掉选中 */
     if (G.wallPer) G.wallPer[0] = Math.max(0, G.wallPer[0] - 1);
-    mjSortHand(G.hands[0]);   /* 十七更：摸完自动理牌 */
+    mjSortHand(G.hands[0]);
+    mjCheckCount('摸牌后');
     mjAfterDraw(0);
     touchTurn();
     drawGame();
   }
   /* 十七更：麻将理牌——万/条/筒分组、点数升序（摸牌/传令后自动排） */
-  function mjSortHand(hand) {
+  /* 二十三更 v5：理牌时缺门的牌排到最左边（先打），其他按万/条/筒+点数排
+     只有 0 号位（我）才排缺门到左边（AI 不需要这个视觉排列） */
+  function mjSortHand(hand, forPlayer) {
+    var lk = (forPlayer === 0 || forPlayer === undefined) ? (G && G.lack && G.lack[0]) : null;
     var ord = { wan: 0, tiao: 1, tong: 2 };
     hand.sort(function (a, b) {
-      var d = (ord[a.suit] - ord[b.suit]) || (a.rank - b.rank);
-      return d;
+      var la = (lk && a.suit === lk) ? 0 : 1;
+      var lb = (lk && b.suit === lk) ? 0 : 1;
+      if (la !== lb) return la - lb;
+      return (ord[a.suit] - ord[b.suit]) || (a.rank - b.rank);
     });
     return hand;
   }
   function mjDiscard(i) {
     if (G.turn !== 0 || G.spectate) return;
-    if (!G.drawn && !G.mustDiscard) return;      /* 碰完之后没摸牌，也得打一张 */
+    if (!G.drawn && !G.mustDiscard) return;
     var hand = G.hands[0];
-    var tile = (i === hand.length && G.drawn) ? G.drawn : hand.splice(i, 1)[0];
-    if (G.drawn && i !== hand.length) hand.push(G.drawn);
+    var before = hand.length;
+    var tile;
+    if (i === hand.length && G.drawn) {
+      /* 打出刚摸到的那张 */
+      tile = G.drawn;
+    } else if (i >= 0 && i < hand.length) {
+      /* 打出手牌里的一张，把 drawn 塞回手牌 */
+      tile = hand.splice(i, 1)[0];
+      if (G.drawn) hand.push(G.drawn);
+    } else {
+      /* ⚠️ 二十三更 v4：越界保护（超时代打可能 roll 到 hand.length 而 drawn 是 null） */
+      console.warn('mjDiscard 越界: i=' + i + ' hand=' + before + ' drawn=' + !!G.drawn);
+      if (hand.length > 0) tile = hand.splice(hand.length - 1, 1)[0];
+      else return;
+    }
     G.drawn = null; G.canWin = false; G.canKong = []; G.mustDiscard = false;
-    mjSortHand(hand);   /* 传令后自动理牌 */
+    mjSortHand(hand);
+    mjCheckCount('出牌后');
     mjEmit(0, tile);
   }
   function mjWinDo() {
@@ -2617,8 +2769,10 @@
     mc.sort(function (a, b) { return b.v - a.v; });
     var pickM = aiPick(mc);
     var drop = pickM ? pickM.i : rnd(hand.length);
+    if (drop >= hand.length) drop = hand.length - 1;   /* 越界保护 */
     var tile = hand.splice(drop, 1)[0];
     G.mustDiscard = false; G.msg = G.names[t] + ' 接令传令';
+    mjCheckCount('AI出牌后');
     mjEmit(t, tile);
   }
   function mjAI(t) {
@@ -2774,141 +2928,241 @@
     var kw = Math.max(13, tw * 0.3), kh = kw * 1.36, kstep = kw * 1.1;
     mjMeldsRow(c, ms, 12, baseY - kh - 8, kw, kh, kstep);
   }
-  /* ============ 二十三更 v2：经典麻将牌桌布局（完全重写） ============
-     参考欢乐麻将 / 雀魂 / kobalab/majiang-ui 的标准四家布局：
-     五区分离——① 我的手牌区（底部）② 对手手牌区（顶/左/右，牌背）
-     ③ 中央牌河（四方各占一方，严格不重叠）④ 副露（各家手牌旁）⑤ 信息栏
-     ⚠️ 不再调用 drawSeat / seatLayout / drawSeatPlayed——这些是 UNO/斗地主共用的，
-     麻将有自己专属的座位画法，彻底分开。 */
+  /* ============ 二十三更 v3：经典麻将牌桌布局 ============
+     彻底修正：所有方向统一横排、对手牌放大、副露和牌河不重叠。
+     布局：三条水平带 = 上家带（顶 18%）+ 中央牌河带（中间 44%）+ 我的手牌带（底 38%）
+     左右家贴在中央带两侧（不占独立列，跟牌河共存）。 */
   function drawMj(c, W, H) {
     var tw = cardW(W, H, 11), th = tw * 1.36;
     setActsBottom(th + 20 + 46);
-    /* 尺寸常量 */
-    var sw = Math.max(14, tw * 0.32), sh = sw * 1.36, ss = sw * 1.05;  /* 小牌（对手手牌 + 牌河） */
-    var kw = Math.max(12, tw * 0.26), kh = kw * 1.36, ks = kw * 1.1;  /* 副露 mini */
-    var rw = Math.max(11, tw * 0.24), rh = rw * 1.36, rs = rw * 1.08; /* 牌河 micro */
-    var per = Math.max(6, Math.min(12, Math.floor((W * 0.38) / rs)));  /* 牌河每行张数 */
 
-    /* ── 区域划分（从外到内，严格不重叠） ── */
-    var myH = th + 36;                                    /* 我的手牌区高度 */
-    var topH = sh + 32;                                   /* 上家手牌区高度 */
-    var sideW = sw + 24;                                  /* 左右家手牌区宽度 */
-    var riverTop = topH + 6;                              /* 牌河区顶 */
-    var riverBot = H - myH - 6;                           /* 牌河区底 */
-    var riverLeft = sideW + 6;                            /* 牌河区左 */
-    var riverRight = W - sideW - 6;                       /* 牌河区右 */
-    var cx = W / 2, cy = (riverTop + riverBot) / 2;       /* 牌河中心 */
+    /* 统一尺寸：对手牌/副露/牌河全用同一个 "小牌" 尺寸，PC 上放大到看得清 */
+    var sw = Math.max(20, Math.min(tw * 0.42, W * 0.038));  /* 对手小牌宽（PC 上约 38~45px） */
+    var sh = sw * 1.36, ss = sw * 1.05;
+    var rw = sw, rh = sh, rs = sw * 1.05;                    /* 牌河用同尺寸（不再 micro） */
+    var kw = Math.max(15, sw * 0.7), kh = kw * 1.36, ks = kw * 1.1;  /* 副露略小 */
+    var per = Math.max(6, Math.min(12, Math.floor((W * 0.42) / rs)));
 
-    /* ── ① 上家（顶部，牌背横排 + 名牌） ── */
-    if (G.seats >= 3) {
-      var pi = G.seats === 3 ? 1 : 2;   /* 4 人局上家座位号=2，3 人局=1 */
-      var topHand = G.hands[pi] || [];
-      var topN = Math.min(topHand.length, 13);
-      var topFan = topN * ss;
-      var topX0 = cx - topFan / 2;
-      for (var ti = 0; ti < topN; ti++) SK.drawBack(c, 'mahjong', topX0 + ti * ss, 6, sw, sh);
-      /* 名牌 */
-      c.fillStyle = G.turn === pi ? '#ffd166' : 'rgba(255,255,255,.85)';
-      c.font = 'bold 11px sans-serif'; c.textAlign = 'center';
-      c.fillText((G.turn === pi ? '▶ ' : '') + realName(pi) + ' · ' + topHand.length + '张' +
-        (G.lack && G.lack[pi] ? ' 缺' + MJ_SUIT_N[G.lack[pi]] : ''), cx, sh + 16);
-      /* 副露（上家手牌右端） */
-      var topMs = (G.melds && G.melds[pi]) || [];
-      if (topMs.length) mjMeldsRow(c, topMs, topX0 + topFan + 8, 8, kw, kh, ks);
+    /* 座位号映射 */
+    var topP = G.seats === 3 ? 1 : (G.seats >= 4 ? 2 : -1);
+    var leftP = G.seats >= 4 ? 1 : -1;
+    var rightP = G.seats >= 4 ? 3 : (G.seats >= 3 ? 2 : (G.seats === 2 ? 1 : -1));
+
+    /* ── 区域划分 ── */
+    var topBand = Math.max(sh + 30, H * 0.15);    /* 上家带 */
+    var myBand = th + 42;                           /* 我的手牌带 */
+    var midTop = topBand;                           /* 中央带顶 */
+    var midBot = H - myBand;                        /* 中央带底 */
+    var midH = midBot - midTop;
+    var cx = W / 2, cy = midTop + midH / 2;
+
+    /* ── 画一家的名牌（水平） ── */
+    function drawLabel(p, x, y, align) {
+      var isTurn = G.turn === p && !G.over;
+      c.fillStyle = isTurn ? '#ffd166' : 'rgba(255,255,255,.85)';
+      c.font = 'bold 12px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.textAlign = align;
+      var lk = G.lack && G.lack[p] ? ' 缺' + MJ_SUIT_N[G.lack[p]] : '';
+      c.fillText((isTurn ? '▶ ' : '') + realName(p) + ' · ' + (G.hands[p] || []).length + '张' + lk, x, y);
     }
 
-    /* ── ② 左家（左侧，牌背竖排） ── */
-    var leftP = G.seats >= 4 ? 1 : (G.seats >= 3 ? -1 : -1);
-    if (G.seats === 3) leftP = -1;   /* 3 人局没有左家 */
-    if (G.seats === 4) leftP = 1;
+    /* ── ① 上家（顶部，牌背横排 + 副露横排 + 名牌） ── */
+    if (topP >= 0) {
+      var tHand = G.hands[topP] || [];
+      var tN = Math.min(tHand.length, 13);
+      var tFan = tN * ss;
+      var tMs = (G.melds && G.melds[topP]) || [];
+      var tMsW = tMs.length * (4 * ks + 8);
+      var tTotalW = tFan + (tMs.length ? 12 + tMsW : 0);
+      var tX0 = cx - tTotalW / 2;
+      /* 手牌背 */
+      for (var ti = 0; ti < tN; ti++) SK.drawBack(c, 'mahjong', tX0 + ti * ss, 6, sw, sh);
+      /* 副露（手牌右侧，同一行） */
+      if (tMs.length) mjMeldsRow(c, tMs, tX0 + tFan + 12, 6 + (sh - kh) / 2, kw, kh, ks);
+      drawLabel(topP, cx, sh + 20, 'center');
+    }
+
+    /* ── ② 左家（中央带左侧，牌背横排，竖着叠行） ── */
     if (leftP >= 0) {
-      var leftHand = G.hands[leftP] || [];
-      var leftN = Math.min(leftHand.length, 13);
-      var leftY0 = riverTop + 4;
-      for (var li = 0; li < leftN; li++) SK.drawBack(c, 'mahjong', 4, leftY0 + li * (sh * 0.5), sw, sh);
-      c.save();
-      c.fillStyle = G.turn === leftP ? '#ffd166' : 'rgba(255,255,255,.85)';
-      c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
-      c.translate(sw + 14, (riverTop + riverBot) / 2);
-      c.rotate(-Math.PI / 2);
-      c.fillText((G.turn === leftP ? '▶ ' : '') + realName(leftP) + ' · ' + leftHand.length + '张' +
-        (G.lack && G.lack[leftP] ? ' 缺' + MJ_SUIT_N[G.lack[leftP]] : ''), 0, 0);
-      c.restore();
-      var leftMs = (G.melds && G.melds[leftP]) || [];
-      if (leftMs.length) mjMeldsRow(c, leftMs, 4, leftY0 + leftN * (sh * 0.5) + 6, kw, kh, ks);
+      var lHand = G.hands[leftP] || [];
+      var lN = Math.min(lHand.length, 13);
+      var lPerRow = Math.max(4, Math.min(7, Math.floor((W * 0.2) / ss)));
+      var lRows = Math.ceil(lN / lPerRow);
+      var lY0 = midTop + 4;
+      for (var li = 0; li < lN; li++) {
+        var lr = Math.floor(li / lPerRow), lc = li % lPerRow;
+        SK.drawBack(c, 'mahjong', 4 + lc * ss, lY0 + lr * (sh + 4), sw, sh);
+      }
+      var lLabelY = lY0 + lRows * (sh + 4) + 2;
+      drawLabel(leftP, 4, lLabelY, 'left');
+      /* 副露（名牌下方） */
+      var lMs = (G.melds && G.melds[leftP]) || [];
+      if (lMs.length) mjMeldsRow(c, lMs, 4, lLabelY + 6, kw, kh, ks);
     }
 
-    /* ── ③ 右家（右侧，牌背竖排） ── */
-    var rightP = G.seats >= 4 ? 3 : (G.seats >= 3 ? 2 : -1);
-    if (G.seats === 2) rightP = 1;
+    /* ── ③ 右家（中央带右侧，牌背横排，竖着叠行） ── */
     if (rightP >= 0) {
-      var rightHand = G.hands[rightP] || [];
-      var rightN = Math.min(rightHand.length, 13);
-      var rightX = W - sw - 4;
-      var rightY0 = riverTop + 4;
-      for (var ri = 0; ri < rightN; ri++) SK.drawBack(c, 'mahjong', rightX, rightY0 + ri * (sh * 0.5), sw, sh);
-      c.save();
-      c.fillStyle = G.turn === rightP ? '#ffd166' : 'rgba(255,255,255,.85)';
-      c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
-      c.translate(rightX - 6, (riverTop + riverBot) / 2);
-      c.rotate(Math.PI / 2);
-      c.fillText((G.turn === rightP ? '▶ ' : '') + realName(rightP) + ' · ' + rightHand.length + '张' +
-        (G.lack && G.lack[rightP] ? ' 缺' + MJ_SUIT_N[G.lack[rightP]] : ''), 0, 0);
-      c.restore();
-      var rightMs = (G.melds && G.melds[rightP]) || [];
-      if (rightMs.length) {
-        var rmTotalW = rightMs.length * (4 * ks + 8) - 8;
-        mjMeldsRow(c, rightMs, Math.max(rightX - rmTotalW, riverRight - rmTotalW), rightY0 + rightN * (sh * 0.5) + 6, kw, kh, ks);
+      var rHand = G.hands[rightP] || [];
+      var rN = Math.min(rHand.length, 13);
+      var rPerRow = Math.max(4, Math.min(7, Math.floor((W * 0.2) / ss)));
+      var rRows = Math.ceil(rN / rPerRow);
+      var rRowW = Math.min(rN, rPerRow) * ss;
+      var rX0 = W - 4 - rRowW;
+      var rY0 = midTop + 4;
+      for (var ri = 0; ri < rN; ri++) {
+        var rr = Math.floor(ri / rPerRow), rc = ri % rPerRow;
+        SK.drawBack(c, 'mahjong', rX0 + rc * ss, rY0 + rr * (sh + 4), sw, sh);
+      }
+      var rLabelY = rY0 + rRows * (sh + 4) + 2;
+      drawLabel(rightP, W - 4, rLabelY, 'right');
+      var rMs = (G.melds && G.melds[rightP]) || [];
+      if (rMs.length) {
+        var rmW = rMs.length * (4 * ks + 8) - 8;
+        mjMeldsRow(c, rMs, W - 4 - rmW, rLabelY + 6, kw, kh, ks);
       }
     }
 
-    /* ── ④ 中央牌河（四方各占自己的象限，严格不重叠） ── */
-    var halfH = (riverBot - riverTop) / 2 - 4;
-    var halfW = (riverRight - riverLeft) / 2 - 4;
-    /* 我的牌河：中央偏下，行向上叠 */
-    var myRv = (G.river && G.river[0]) || [];
-    if (myRv.length) {
-      var myRowN = Math.min(myRv.length, per * 3);
-      var myRows = Math.ceil(myRowN / per);
-      var myRY0 = riverBot - myRows * (rh + 2);
-      mjRiverRows(c, myRv.slice(-myRowN), cx, myRY0, 1, per, rw, rh, rs);
+    /* ── ④ 中央牌河（严格四象限，每家占自己的 1/4 区域，绝不重叠） ── */
+    var rvLeft = (leftP >= 0) ? Math.max(4 + Math.min(lN || 0, lPerRow || 7) * ss + 12, W * 0.22) : 12;
+    var rvRight = (rightP >= 0) ? W - Math.max(4 + Math.min(rN || 0, rPerRow || 7) * ss + 12, W * 0.22) : W - 12;
+    var rvW = rvRight - rvLeft;
+    var rvH = midBot - midTop;
+    /* 每家牌河最多 6 张一行，行数不超过区域高度 */
+    var rvPerH = Math.max(4, Math.min(7, Math.floor(rvW * 0.45 / rs)));
+
+    /* 上家：中央上半区，居中 */
+    if (topP >= 0) {
+      var topRv = (G.river && G.river[topP]) || [];
+      if (topRv.length) mjRiverRows(c, topRv.slice(-rvPerH * 2), cx, midTop + 4, 1, rvPerH, rw, rh, rs);
     }
-    /* 上家牌河：中央偏上，行向下叠 */
-    var topP2 = G.seats === 3 ? 1 : (G.seats >= 4 ? 2 : -1);
-    if (topP2 >= 0) {
-      var topRv = (G.river && G.river[topP2]) || [];
-      if (topRv.length) mjRiverRows(c, topRv.slice(-per * 3), cx, riverTop, 1, per, rw, rh, rs);
-    }
-    /* 左家牌河：中央偏左，竖排向右延伸 */
+    /* 左家：中央左半区（左对齐） */
     if (leftP >= 0) {
       var leftRv = (G.river && G.river[leftP]) || [];
-      if (leftRv.length) mjRiverCol(c, leftRv.slice(-18), riverLeft, cy - 4 * (rh + 2), 1, 6, rw, rh);
+      if (leftRv.length) {
+        var lrvCx = rvLeft + Math.min(leftRv.length, rvPerH) * rs / 2;
+        mjRiverRows(c, leftRv.slice(-rvPerH * 3), lrvCx, cy - rvH * 0.05, 1, rvPerH, rw, rh, rs);
+      }
     }
-    /* 右家牌河：中央偏右，竖排向左延伸 */
+    /* 右家：中央右半区（右对齐） */
     if (rightP >= 0) {
       var rightRv = (G.river && G.river[rightP]) || [];
-      if (rightRv.length) mjRiverCol(c, rightRv.slice(-18), riverRight - rw, cy - 4 * (rh + 2), -1, 6, rw, rh);
+      if (rightRv.length) {
+        var rrvCx = rvRight - Math.min(rightRv.length, rvPerH) * rs / 2;
+        mjRiverRows(c, rightRv.slice(-rvPerH * 3), rrvCx, cy - rvH * 0.05, 1, rvPerH, rw, rh, rs);
+      }
+    }
+    /* 我：中央下半区，居中 */
+    var myRv = (G.river && G.river[0]) || [];
+    if (myRv.length) {
+      var myRowN = Math.min(myRv.length, rvPerH * 2);
+      var myRows2 = Math.ceil(myRowN / rvPerH);
+      var myRY0 = midBot - 6 - myRows2 * (rh + 2);
+      mjRiverRows(c, myRv.slice(-myRowN), cx, myRY0, 1, rvPerH, rw, rh, rs);
     }
 
-    /* 中心信息（牌墙数 + 当前回合） */
-    c.fillStyle = 'rgba(255,255,255,.5)'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
-    c.fillText('牌墙 ' + G.wall.length, cx, cy);
+    /* 中心信息 */
+    c.fillStyle = 'rgba(255,255,255,.45)'; c.font = 'bold 13px sans-serif'; c.textAlign = 'center';
+    c.fillText('牌墙 ' + G.wall.length, cx, cy + 4);
 
-    /* ── ⑤ 我的手牌区（底部） ── */
-    /* 副露摆手牌左端 */
+    /* ── ⑤ 听牌提示（我的手牌上方） ── */
+    if (!G.spectate && !G.over && G.phase === 'play') {
+      var tpInfo = G.drawn ? null : mjTenpaiInfo(0);   /* 没摸牌时（打完后）才检测听牌 */
+      var dhInfo = G.drawn ? mjDiscardHints(0) : null;  /* 有摸牌时显示"打哪张能听" */
+      var tipY = H - th - 20 - kh - 28;
+      if (tpInfo && tpInfo.length) {
+        /* 听牌了！显示听哪些牌 + 剩几张 */
+        c.fillStyle = 'rgba(255,107,107,.95)'; c.font = 'bold 13px "PingFang SC","Microsoft YaHei",sans-serif'; c.textAlign = 'left';
+        var tpTxt = '🀄 听牌！听 ';
+        tpInfo.forEach(function (w, wi) {
+          tpTxt += w.name + '(' + w.remain + '张)';
+          if (wi < tpInfo.length - 1) tpTxt += '、';
+        });
+        c.fillText(tpTxt, 8, tipY);
+      } else if (dhInfo && dhInfo.length) {
+        /* 还没听但能听——显示"打 X 听 Y" */
+        c.fillStyle = 'rgba(255,209,102,.85)'; c.font = '12px "PingFang SC","Microsoft YaHei",sans-serif'; c.textAlign = 'left';
+        var dhTxt = '💡 ';
+        dhInfo.slice(0, 3).forEach(function (d, di) {
+          dhTxt += '打' + d.discardName + '→听';
+          d.waits.forEach(function (w, wi) {
+            dhTxt += w.name + '(' + w.remain + ')';
+            if (wi < d.waits.length - 1) dhTxt += '/';
+          });
+          if (di < Math.min(dhInfo.length, 3) - 1) dhTxt += '　';
+        });
+        if (dhInfo.length > 3) dhTxt += '…（还有 ' + (dhInfo.length - 3) + ' 种）';
+        c.fillText(dhTxt, 8, tipY);
+      }
+    }
+
+    /* ── ⑥ 我的手牌区（底部） ── */
     var myMs = (G.melds && G.melds[0]) || [];
-    var myMsW = 0;
-    if (myMs.length) {
-      myMsW = myMs.length * (4 * ks + 8);
-      mjMeldsRow(c, myMs, 8, H - th - 20 - kh - 6, kw, kh, ks);
-    }
+    if (myMs.length) mjMeldsRow(c, myMs, 8, H - th - 20 - kh - 6, kw, kh, ks);
     if (!G.spectate) {
       var hand = G.hands[0];
       var gm = handGeom(hand.length, tw, W);
-      drawHandRow(c, hand, W, H, tw, th, H - th - 20, null, 'mahjong', null);
-      if (G.drawn) {
-        var drRowW = gm.step * (hand.length - 1) + tw;
-        var gx = Math.min(gm.x0 + drRowW + 14, W - tw - 10);
+      var mjSel0 = (G._mjSel >= 0 && G._mjSel < hand.length) ? G._mjSel : -1;
+      drawHandRow(c, hand, W, H, tw, th, H - th - 20, null, 'mahjong', null, G.lack && G.lack[0], mjSel0);
+      /* 选中的牌上方：显示"打这张→听什么" */
+      if (mjSel0 >= 0 && (G.drawn || G.mustDiscard)) {
+        var selTile = hand[mjSel0];
+        var selName = MJ_SUIT_N[selTile.suit] + selTile.rank;
+        /* 模拟打出这张后检查听牌 */
+        var simHand = hand.slice(0, mjSel0).concat(hand.slice(mjSel0 + 1));
+        if (G.drawn) simHand.push(G.drawn);
+        var simWaits = [];
+        var lk0 = G.lack && G.lack[0];
+        var vc0 = mjVisibleCounts();
+        MJ_ALL_TILES.forEach(function (t) {
+          if (lk0 && t.suit === lk0) return;
+          var testH = simHand.concat([t]);
+          if (!mjLackOk(0, testH)) return;
+          if (mjWinShape(mjCounts(testH))) {
+            var k = mjKey(t); var remain = 4 - (vc0[k] || 0);
+            if (k === mjKey(selTile)) remain--;
+            if (remain > 0) simWaits.push({ name: MJ_SUIT_N[t.suit] + t.rank, remain: remain });
+          }
+        });
+        /* 在选中牌上方画大字提示 */
+        var gSel = handGeom(hand.length, tw, W);
+        var selX = gSel.x0 + mjSel0 * gSel.step + tw / 2;
+        var selY = H - th - 20 - Math.round(tw * 0.28) - 8;
+        if (simWaits.length) {
+          /* 有听！红色醒目大字 */
+          c.fillStyle = 'rgba(14,8,30,.92)';
+          var tipW = Math.max(180, simWaits.length * 80);
+          var tipH = 42;
+          var tipX = Math.max(4, Math.min(selX - tipW / 2, W - tipW - 4));
+          c.fillRect(tipX, selY - tipH - 4, tipW, tipH);
+          c.strokeStyle = '#ff6b6b'; c.lineWidth = 2;
+          c.strokeRect(tipX, selY - tipH - 4, tipW, tipH);
+          c.fillStyle = '#ff6b6b'; c.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif'; c.textAlign = 'left';
+          c.fillText('打' + selName + ' → 听', tipX + 8, selY - tipH + 16);
+          c.fillStyle = '#ffd166'; c.font = 'bold 13px sans-serif';
+          var wx = tipX + 8;
+          simWaits.forEach(function (w) {
+            var wt = w.name + '(' + w.remain + '张) ';
+            c.fillText(wt, wx + 70, selY - tipH + 16);
+            wx += c.measureText(wt).width + 4;
+          });
+          c.fillStyle = 'rgba(255,255,255,.6)'; c.font = '11px sans-serif'; c.textAlign = 'center';
+          c.fillText('再点一下打出', selX, selY - 2);
+        } else {
+          /* 没听 */
+          c.fillStyle = 'rgba(255,255,255,.55)'; c.font = '12px sans-serif'; c.textAlign = 'center';
+          c.fillText('打' + selName + '（未听牌）· 再点一下打出', selX, selY - 6);
+        }
+      }
+      /* drawn 牌的选中状态（右边隔开的那张） */
+      if (G.drawn && G._mjSel === hand.length) {
+        var drGm = handGeom(hand.length, tw, W);
+        var drX = Math.min(drGm.x0 + drGm.step * (hand.length - 1) + tw + 14, W - tw - 10);
+        SK.drawCard(c, 'mahjong', G.drawn, drX, H - th - 34 - Math.round(tw * 0.28), tw, th, { hi: '#ffd166' });
+        c.fillStyle = 'rgba(255,255,255,.55)'; c.font = '12px sans-serif'; c.textAlign = 'center';
+        c.fillText('再点一下打出', drX + tw / 2, H - th - 34 - Math.round(tw * 0.28) - 6);
+      } else if (G.drawn) {
+        var drRowW2 = gm.step * (hand.length - 1) + tw;
+        var gx = Math.min(gm.x0 + drRowW2 + 14, W - tw - 10);
         SK.drawCard(c, 'mahjong', G.drawn, gx, H - th - 34, tw, th, { hi: G.canWin ? '#ffd166' : null });
         if (G.canWin) {
           c.fillStyle = '#ffd166'; c.font = 'bold 13px sans-serif'; c.textAlign = 'center';
@@ -3419,7 +3673,7 @@
     touchTurn();
   }
   /* 十七更续：逐格走路动画——走 3 步就一格一格挪，不许「嗖」地瞬移 */
-  var FL_STEP_MS = 230;
+  var FL_STEP_MS = 320;   /* 二十三更 v4：每格 320ms（原 230ms），走路更明显看清谁在动 */
   function flStartAnim(p, idx, from, to, dice, finish) {
     G.anim = { p: p, idx: idx, from: from, to: to, dice: dice, t0: Date.now(), finish: finish };
     G.planes[p][idx] = from;
@@ -3480,6 +3734,7 @@
         var again = G.againFlag || dice === 6;
         G.againFlag = false;
         if (!again) flNext(p);
+        else G.dice = 0;   /* 二十三更 v4：掷6再掷时重置骰子，让点画布掷骰生效 */
         drawGame(); scheduleAI();
       };
       /* 抽卡仪式进行中 → 挂起后续，等牌翻开再走 */
@@ -3536,15 +3791,15 @@
     var FL_CI_REV = ['b', 'r', 'y', 'g'];
     var pu0 = pulse();
 
-    /* ── ① 四角机库大色块（6×6 区域，传统飞行棋的标志性视觉） ── */
-    var QUAD_DRAW = { r: [0, 0], y: [0, 8], g: [8, 8], b: [8, 0] };
+    /* ── ① 四角机库色块（5×5 区域，跟 FL_QUAD 对齐，不盖路径格） ── */
+    var QUAD_DRAW = { r: [1, 1], y: [1, 8], g: [8, 8], b: [8, 1] };
     Object.keys(QUAD_DRAW).forEach(function (col) {
       var qr = QUAD_DRAW[col][0], qc = QUAD_DRAW[col][1];
       var p = G.colors.indexOf(col), active = p >= 0;
       var isCurTurn = active && G.turn === p && !G.over;
-      /* 大色块底色 */
+      /* 机库色块（5×5，不盖路径格） */
       c.fillStyle = FL_COL[col]; c.globalAlpha = active ? 0.22 : 0.08;
-      c.fillRect(bx + qc * cs, by + qr * cs, 6 * cs, 6 * cs);
+      c.fillRect(bx + qc * cs, by + qr * cs, 5 * cs, 5 * cs);
       c.globalAlpha = 1;
       /* 边框（当前回合呼吸） */
       if (isCurTurn) {
@@ -3553,19 +3808,19 @@
       } else {
         c.strokeStyle = FL_COL[col]; c.globalAlpha = active ? 0.6 : 0.2; c.lineWidth = 2;
       }
-      c.strokeRect(bx + qc * cs + 1, by + qr * cs + 1, 6 * cs - 2, 6 * cs - 2);
+      c.strokeRect(bx + qc * cs + 1, by + qr * cs + 1, 5 * cs - 2, 5 * cs - 2);
       c.globalAlpha = 1;
       /* 机库内标题 */
       c.fillStyle = FL_COL[col]; c.globalAlpha = active ? 0.95 : 0.3;
       c.font = 'bold ' + Math.max(11, cs * 0.52) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
       c.textAlign = 'center';
-      c.fillText(FL_SOC[col] + '社' + (active ? '·' + ((G.real && G.real[p]) || '?') : ''), bx + (qc + 3) * cs, by + (qr + 1.3) * cs);
+      c.fillText(FL_SOC[col] + '社' + (active ? '·' + ((G.real && G.real[p]) || '?') : ''), bx + (qc + 2.5) * cs, by + (qr + 1) * cs);
       c.globalAlpha = 1;
       if (!active) return;
       /* 4 个圆形停机位（2×2 排列在机库中心） */
       var homeR = cs * 0.42;
       var positions = [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]];
-      var hcx = bx + (qc + 3) * cs, hcy = by + (qr + 3.4) * cs;
+      var hcx = bx + (qc + 2.5) * cs, hcy = by + (qr + 3) * cs;
       G.planes[p].forEach(function (v, i) {
         if (v !== -1) return;
         var px2 = hcx + positions[i][0] * cs * 1.1, py2 = hcy + positions[i][1] * cs * 0.9;
@@ -3591,7 +3846,7 @@
       if (info) {
         c.fillStyle = isCurTurn ? '#ffd166' : 'rgba(255,255,255,.55)';
         c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif';
-        c.fillText(info, hcx, by + (qr + 5.4) * cs);
+        c.fillText(info, hcx, by + (qr + 4.5) * cs);
       }
     });
 
@@ -3601,22 +3856,16 @@
       var colName = FL_CI_REV[i % 4];
       var isStart = false, startCol = null;
       Object.keys(FL_START).forEach(function (k) { if (FL_START[k] === i) { isStart = true; startCol = k; } });
-      /* 格子底色：白底 + 角上一点自家色（传统飞行棋风格） */
-      c.fillStyle = 'rgba(255,255,255,.12)';
+      /* 格子底色：整格上自家色（传统飞行棋——四色格子一目了然） */
+      c.fillStyle = FL_COL[colName]; c.globalAlpha = isStart ? 0.6 : 0.35;
       c.fillRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
-      /* 色条：底边一条窄色带标识这格属于哪家 */
-      c.fillStyle = FL_COL[colName]; c.globalAlpha = 0.45;
-      c.fillRect(xy2[0] + 1, xy2[1] + cs - 5, cs - 2, 4);
       c.globalAlpha = 1;
-      /* 起点格特殊：大色块 + 粗描边 + ▶ */
+      /* 起点格特殊：加粗描边 */
       if (isStart) {
-        c.fillStyle = FL_COL[startCol]; c.globalAlpha = 0.55;
-        c.fillRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
-        c.globalAlpha = 1;
         c.strokeStyle = FL_COL[startCol]; c.lineWidth = 2.5;
-        c.strokeRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
+        c.strokeRect(xy2[0], xy2[1], cs, cs);
       }
-      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.8;
+      c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 0.8;
       c.strokeRect(xy2[0] + 1, xy2[1] + 1, cs - 2, cs - 2);
       /* 格子标记 */
       c.font = Math.max(9, cs * 0.42) + 'px sans-serif'; c.textAlign = 'center';
@@ -4214,14 +4463,30 @@
       var i = hitHand(x, y, G.hands[0].length, W, H, cw, ch, H - ch - 16);
       if (i >= 0) unoPlay(i);
     } else if (G.game === 'mahjong') {
+      /* 二十三更 v6：单击选中预览听牌，双击（再点同一张）打出。
+         陛下钦定：点一张牌 → 显示"打这张听什么"，再点同一张才真出去。 */
       var tw = cardW(W, H, 11), th = tw * 1.36;
       var n = G.hands[0].length;
       var j = hitHand(x, y, n, W, H, tw, th, H - th - 20);
-      if (j >= 0) mjDiscard(j);
-      else if (G.drawn) {
+      var clickedDrawn = false;
+      if (j < 0 && G.drawn) {
         var gmj = handGeom(n, tw, W);
         var gx = Math.min(gmj.x0 + gmj.step * (n - 1) + tw + 14, W - tw - 10);
-        if (x >= gx && x <= gx + tw && y >= H - th - 34 && y <= H - 34) mjDiscard(n);
+        if (x >= gx && x <= gx + tw && y >= H - th - 34 && y <= H - 34) { j = n; clickedDrawn = true; }
+      }
+      if (j >= 0) {
+        if (G._mjSel === j) {
+          /* 再点同一张 → 真正打出 */
+          G._mjSel = -1;
+          mjDiscard(j);
+        } else {
+          /* 第一次点 → 选中预览（不打出） */
+          G._mjSel = j;
+          drawGame();
+        }
+      } else {
+        /* 点空白 → 取消选中 */
+        if (G._mjSel >= 0) { G._mjSel = -1; drawGame(); }
       }
     } else if (G.game === 'flight') {
       /* 抽卡仪式进行中：只响应选牌 */
@@ -4386,6 +4651,8 @@
       return mjRiverGeom(W, H, tw, tw * 1.36);
     },
     _mjDraw: function () { mjDraw(); },
+    _mjTenpai: function () { return mjTenpaiInfo(0); },
+    _mjHints: function () { return mjDiscardHints(0); },
     _mjKey: function (t) { return mjKey(t); },
     _mjHand: function (p) { return (G && G.hands[p]) ? G.hands[p].slice() : []; },
     _fl: {
