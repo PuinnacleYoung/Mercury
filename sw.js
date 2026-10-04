@@ -1,6 +1,6 @@
 /* 拾光·澈屿 Service Worker（根目录版）v79 —— 策略同 src/sw.js
    JS/CSS/JSON 走 network-first（3s 超时回缓存），保证 Pad/手机也能立刻拿到最新代码 */
-const CACHE = 'shuguang-root-v89';
+const CACHE = 'shuguang-root-v90';
 const PRECACHE = [
   './',
   './index.html',

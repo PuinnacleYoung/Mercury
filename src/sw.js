@@ -3,7 +3,7 @@
    ① JS/CSS/JSON 改 network-first（3s 超时回缓存），保证每次拿最新
    ② 预缓存不再写版本号（避免 sw.js 里的旧版本号和 index.html 里的新版本号对不上）
    ③ 页面端通过 postMessage 拿 SW 版本号做比对，不一致自动刷新 */
-const CACHE = 'shuguang-v132';
+const CACHE = 'shuguang-v133';
 const PRECACHE = [
   './',
   './index.html',

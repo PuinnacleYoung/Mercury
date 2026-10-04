@@ -13,8 +13,12 @@
        对局者绝不押注（总纲硬规则）；观战满 3 分钟 +200 本桌币（每日 3 次）
      · 押注系统：彩池制赔率 = 0.95 × 总池 ÷ 该家池（实时滚动）；
        斗地主固定赔率 庄1.9 / 散2.1 / 跟庄1.8；单注 100–5000、每桌 3 注、押 1 或押 3 次
-     · 飞行棋 v5 棋盘：外圈 52 格方框环 + 中央田字格四社机库 + 归航臂 + 永恒王座；
-       ★事件格 8 个（事件区 32 张）+ ✈航线 +12 + 同色连跳 +4 + 命运区 20 张
+     · 飞行棋棋盘：二十六更起按参考源码 AeroplaneChess 1:1 复刻 ——
+       985 坐标系 / 外环 52 格（Coord.js 原坐标）/ 四角方形机库（绿左上·红右上·黄左下·蓝右下）/
+       自家走 50 格后拐进 6 格归航道登顶（全程 56 步）/ 原图 72 色块 + 73 圆孔 + 20 个字母 +
+       四条带箭头的虚线航线（「加油站」）；规则也对齐源码：超点回退、安全格不跳、三连 6 回库，
+       以及 ✈ 航线横跨对角社归航道第 3 格的撞飞（Rule.js superFlag 分支）。
+       ★事件格 / 命运卡这版整体关掉（FL_CARDS_ON=false，陛下钦定后面再聊）
      · 术语包装全换：封杀/官宣/黑天鹅、接令/结案、坐庄/满仓/散户…
      · PC 大屏牌面放大、手机横屏按机型自适应；每桌常驻聊天渠道（本桌/世界/关卡）
 
@@ -50,83 +54,155 @@
     return cands[rnd(cands.length)];
   }
 
-  /* ---------- 飞行棋棋盘几何（二十五更：按经典 AeroplaneChess / Ludo 模板严格重做） ----------
-     标准 Ludo 棋盘 = 15×15 网格（row / col 从 0 开始）：
-       · 四个角的 6×6 色块 = 机库（准备区），每个机库停 4 架
-       · 十字形跑道 3 格宽（row 6-8 / col 6-8），正中间 3×3 = 永恒王座
-       · 外环 52 格沿跑道外沿一圈，四色循环：绿 → 红 → 蓝 → 黄（顺时针）
-       · 每家一条 5 格归航道（十字臂的中线），走到头踩上王座
-     四角对应（陛下钦定）：
-       左下=红(r/星幕)  左上=黄(y/潮声)  右上=蓝(b/云顶)  右下=绿(g/拾光)
-     出道格就在自家机库旁边那一格；绕外环走满 51 格后，从臂端拐进自己那条归航道。 */
-
-  var FL_GRID = 15;        /* 棋盘 15×15 */
-  var FL_RING = 52;        /* 外环 52 格 */
-  var FL_OUT = 51;         /* v = 0..50 走外环 51 格（v=0 就是自家出道格） */
-  var FL_HOME = 5;         /* v = 51..55 归航道 5 格 */
-  var FL_TOTAL = 56;       /* v = 56 = 王座（出道 → 登顶全程 56 步，标准 Ludo） */
-
-  /* 52 格外环坐标（顺时针）。索引 0 = 黄社出道格，13 = 蓝，26 = 绿，39 = 红 */
-  var FL_PATH = [
-    [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],              /* 左臂上沿 → 左上拐角 */
-    [4,6],[3,6],[2,6],[1,6],[0,6],                     /* 上臂左列 → 顶 */
-    [0,7],[0,8],                                       /* 顶横排（(0,7) 是黄社归航口） */
-    [1,8],[2,8],[3,8],[4,8],[5,8],[6,9],               /* 上臂右列 → 右上拐角 */
-    [6,10],[6,11],[6,12],[6,13],[6,14],                /* 右臂上沿 → 右端 */
-    [7,14],[8,14],                                     /* 右端竖排（(7,14) 是蓝社归航口） */
-    [8,13],[8,12],[8,11],[8,10],[8,9],[9,8],           /* 右臂下沿 → 右下拐角 */
-    [10,8],[11,8],[12,8],[13,8],[14,8],                /* 下臂右列 → 底 */
-    [14,7],[14,6],                                     /* 底横排（(14,7) 是绿社归航口） */
-    [13,6],[12,6],[11,6],[10,6],[9,6],[8,5],           /* 下臂左列 → 左下拐角 */
-    [8,4],[8,3],[8,2],[8,1],[8,0],                     /* 左臂下沿 → 左端 */
-    [7,0],[6,0]                                        /* 左端竖排（(7,0) 是红社归航口） */
+  /* ---------- 飞行棋棋盘几何（二十五更 v2：按参考源码 AeroplaneChess 1:1 复刻） ----------
+     数据来源＝陛下给的参考源码 C://Users//pandanyang//Downloads//AeroplaneChess-master
+       · js/Coord.js        → 52 格外环坐标 + 四家归航道（61-66/71-76/81-86/91-96）+ 各家出口
+       · img/background.png → 棋盘图形（臣逐像素抠出 72 个色块轮廓 + 73 个圆孔，就是「拆格」）
+     坐标一律用参考源码的 985×985 坐标系，绘制时整体等比缩放到画布。
+     四角机库按原版方位（不许换）：左上=绿(拾光) 右上=红(星幕) 左下=黄(潮声) 右下=蓝(云顶)。
+     外环颜色循环 绿→红→蓝→黄（红社出道格 id=1 是绿格 —— 跟原图一致）。
+     规则：每家在外环走 50 格 → 拐进自家 6 格归航道 → 末格登顶，全程 56 步。 */
+  /* ── 经典飞行棋几何（二十五更 v2 · 按参考源码 1:1 复刻）──────────
+     数据源：参考源码 AeroplaneChess-master（js/Coord.js 坐标 + img/background.png 图形）
+     坐标单位 = 985×985；FL_SHAPES = 从背景图逐像素抠出的 72 个色块轮廓，
+     FL_DOTS = 挖在色块上的 73 个圆孔（露出底色），两者叠起来就是原版棋盘。 */
+  var FL_U = 985;        /* 参考坐标系边长 */
+  var FL_RING = 52;      /* 外环 52 格（一整圈） */
+  var FL_OUT = 50;       /* 自家在外环上走 50 格（v = 0..49） */
+  var FL_HOME = 6;       /* 归航道 6 格（v = 50..55，末格登顶） */
+  var FL_TOTAL = 55;     /* 登顶值（v = 0..55，出道 → 登顶全程 56 步） */
+  /* 外环 52 格中心（下标 0 = 红家出道格 id=1，顺时针一圈） */
+  var FL_RC = [[655,115],[678,174],[678,229],[655,288],[700,331],[758,310],[812,310],[871,330],[891,389],[891,440],[891,493],[891,546],[891,598],[870,655],[813,677],[757,677],[699,658],[656,699],[678,758],[678,812],[656,869],[599,893],[546,893],[493,893],[441,893],[389,893],[332,870],[309,812],[309,757],[333,700],[287,656],[228,677],[174,677],[115,654],[94,598],[94,546],[94,493],[94,440],[94,388],[117,331],[174,310],[229,310],[288,330],[331,287],[309,229],[309,174],[332,117],[389,95],[441,95],[494,95],[546,95],[598,95]];
+  var FL_START = { r: 0, b: 13, y: 26, g: 39 };   /* 各家在 FL_RC 里的起点下标 */
+  var FL_HOMER = [[494,179],[494,230],[494,283],[494,334],[494,386],[494,438]];
+  var FL_HOMEB = [[808,493],[756,493],[704,493],[652,493],[600,493],[548,493]];
+  var FL_HOMEY = [[493,808],[493,756],[493,704],[493,652],[493,600],[493,547]];
+  var FL_HOMEG = [[179,493],[231,493],[283,493],[335,493],[387,493],[437,493]];
+  var FL_CELLCOL = ['g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y'];  /* 52 格颜色循环 绿→红→蓝→黄 */
+  var FL_LINE = {4:12,17:12,30:12,43:12};  /* 航线格 → 直飞 +N 格 */
+  var FL_SAFE = {10:1,23:1,36:1,49:1};  /* 安全格：踩上不触发同色跳 */
+  /* ── 原图字母标注（20 个）────────────────────────────────────────────
+     key = 外环下标（＝ v），value = 原图印在该格中心圆盘上的字母。
+     原图做法：米色圆盘 + 用【本格颜色】镂空的字母（所以读起来像印在格子上）。
+     清单＝臣把原图逐格放大比对读出来的（N P O Q R S A T B C D F E G H I K J L W），
+     源码 Coord.js / Rule.js 都没引用它 —— 是原版棋盘印刷的站名标号，纯装饰。 */
+  var FL_LETTER = { 0:'N', 2:'P', 4:'O', 7:'Q', 10:'R', 13:'S', 15:'A', 17:'T', 20:'B', 23:'C', 26:'D', 28:'F', 30:'E', 33:'G', 36:'H', 39:'I', 41:'K', 43:'J', 46:'L', 49:'W' };
+  var FL_ART = { r:'M', y:'O', b:'C', g:'G' };   /* 逻辑色 → 原图印刷色（红=洋红/黄=橙/蓝=浅蓝/绿=绿） */
+  /* ── ✈ 航线横跨（源码 Rule.js attactPlane 的 superFlag 分支）─────────
+     谁飞完航线，谁就把「对角社」停在【归航道第 3 格】上的艺人撞回机库。
+     源码按 coordId 判：red→83（黄家）· blue→93（绿家）· yellow→63（红家）· green→73（蓝家）；
+     83/93/63/73 在臣的 v 体系里统一就是「该家 v = 52」＝归航道下标 2。
+     为什么是「对角社」：四条航线都是直线，红(右上)↔黄(左下)、蓝(右下)↔绿(左上) 两两对角，
+     飞过去正好横跨对家那条归航道 —— 原图那四条带箭头的虚线就是它的可视化。 */
+  var FL_HIT_K = 2;                                   /* 归航道第 3 格（下标 2） */
+  var FL_LINE_HIT = { r:'y', b:'g', y:'r', g:'b' };   /* 飞航线的人 → 撞谁家 */
+  var FL_LINE_COL = { r:'#db224e', b:'#76c5f0', y:'#e77918', g:'#83c326' };  /* 虚线原图配色 */
+  /* 原图四条虚线航线：[起点格下标, 终点格下标, 两个「加油站」标签的位置(沿线 0~1)]
+     标签位置是从原图实测的 —— 每条线中间都被一块色带挡着（黄家线被红带挡、蓝家线被绿带挡…），
+     标签必须落在那块色带之外的米色段上，否则会被色块盖住。 */
+  var FL_LINE_RC = [
+    { col:'y', a:43, b:3,  lab:[0.31, 0.80] },   /* 黄 id44→id4 ，横线 y≈287，跨 63（红家归航道第 3 格） */
+    { col:'b', a:30, b:42, lab:[0.30, 0.83] },   /* 蓝 id31→id43，竖线 x≈287，跨 93（绿家） */
+    { col:'g', a:4,  b:16, lab:[0.21, 0.79] },   /* 绿 id5 →id17，竖线 x≈700，跨 73（蓝家） */
+    { col:'r', a:17, b:29, lab:[0.27, 0.73] }    /* 红 id18→id30，横线 y≈699，跨 83（黄家） */
   ];
-  function flRC(i) { return FL_PATH[(((i % FL_RING) + FL_RING) % FL_RING)]; }
+  /* 机库出口 ready 点：[x, y, 旋转角]。臣从原图四角带标尺放大图量的 ——
+     ⚠️ 上面两家（绿左上 / 红右上）原图是【倒着印】的（给坐对面的上家看），下面两家正着印。 */
+  var FL_READY = { g: [69, 288, 180], r: [716, 62, 180], y: [307, 927, 0], b: [925, 712, 0] };
+  var FL_QUAD  = { r: [739,40,945,246], b: [739,738,945,945], y: [40,738,246,945], g: [40,40,246,246] };
+  var FL_PADS  = { r: [[795,98],[890,98],[795,190],[890,190]], b: [[795,796],[890,796],[795,888],[890,888]], y: [[96,796],[191,796],[96,888],[191,888]], g: [[96,98],[191,98],[96,190],[191,190]] };
+  var FL_PAL = { G:'#83c326', O:'#e77918', C:'#76c5f0', M:'#db224e', Y:'#fff500', l:'#c5de69', k:'#c5e5fa', p:'#f09abd' };
+  var FL_BG = '#fffdcb';
+  var FL_SHAPES = [
+    ["G",40,40,40,246,246,246,246,40],
+    ["M",740,40,739,246,944,246,944,40],
+    ["O",400,41,364,42,364,146,412,146,413,42,407,41],
+    ["G",415,41,415,146,465,146,465,41],
+    ["O",617,41,573,42,573,146,623,146,623,42,621,41],
+    ["M",469,42,467,405,420,407,495,480,495,480,568,407,519,406,518,403,518,42],
+    ["C",521,42,521,146,569,146,569,42],
+    ["G",625,43,624,144,626,146,726,146,728,145,625,43],
+    ["C",360,44,259,144,263,145,359,145,360,44],
+    ["lg",90,61,75,67,65,77,60,88,59,103,63,115,73,127,84,133,95,135,96,135,110,132,119,127,129,115,133,101,131,85,124,73,114,65,103,61],
+    ["lg",184,61,169,67,160,76,153,94,154,107,159,118,167,127,182,134,197,134,210,129,219,121,226,107,227,92,217,72,206,64,196,61],
+    ["pk",789,61,770,70,762,80,758,92,759,107,765,120,775,129,789,134,801,134,814,129,823,121,831,105,831,91,827,80,818,69,799,61],
+    ["pk",884,61,868,67,858,77,852,93,853,107,860,121,869,129,883,134,896,134,907,130,919,119,925,105,925,90,920,78,911,68,893,61],
+    ["M",257,148,257,199,360,199,360,148],
+    ["M",680,148,625,149,625,199,729,199,729,150,722,148],
+    ["lg",91,152,75,158,65,168,60,179,59,194,64,208,73,218,83,224,92,226,99,226,109,224,119,218,129,206,133,193,132,180,126,167,115,157,101,152],
+    ["lg",186,152,168,159,158,170,153,185,154,198,160,211,173,222,186,226,194,226,213,218,221,210,227,194,226,179,221,168,209,157,195,152],
+    ["pk",792,152,776,157,764,168,759,179,758,194,763,208,773,219,794,226,795,226,815,220,827,207,831,196,831,182,822,164,807,154,797,152],
+    ["pk",886,152,867,159,856,172,852,185,854,202,860,212,872,222,880,225,897,225,911,218,921,207,925,196,925,181,921,171,912,160,901,154,891,152],
+    ["G",256,202,256,254,258,256,258,256,361,255,361,203,359,202],
+    ["C",627,202,625,203,625,254,729,254,729,203,727,202],
+    ["G",148,256,149,361,199,361,200,256],
+    ["M",203,256,204,361,253,361,254,256],
+    ["O",328,256,261,257,360,357,361,357,360,256],
+    ["M",733,256,733,361,782,361,782,256],
+    ["C",787,256,787,361,836,361,836,256],
+    ["O",625,257,625,359,626,359,727,257],
+    ["O",146,258,44,360,146,360,146,258],
+    ["G",728,259,627,361,728,361,728,259],
+    ["O",840,259,841,361,941,361,841,259],
+    ["C",257,260,257,359,259,361,356,361,358,360,347,348,259,260],
+    ["G",840,362,840,413,943,413,944,362],
+    ["C",43,363,42,412,44,413,145,413,147,408,145,363],
+    ["M",42,416,42,464,47,465,47,465,146,464,146,416],
+    ["G",412,416,412,466,42,468,42,517,411,519,412,567,412,567,487,489,412,416],
+    ["M",841,416,840,464,944,464,944,416],
+    ["C",576,418,504,491,577,565,579,565,579,520,581,519,943,517,944,468,579,466,578,418],
+    ["O",495,500,419,575,467,576,468,943,472,944,516,944,518,943,519,836,519,576,568,573,496,500],
+    ["O",43,519,42,570,146,570,147,520,145,519],
+    ["O",841,520,839,522,840,571,944,571,944,520],
+    ["C",44,573,42,574,42,622,146,622,147,575,144,573],
+    ["G",839,573,840,622,944,623,944,623,944,573],
+    ["G",149,624,148,729,200,729,200,624],
+    ["O",202,624,203,729,254,729,254,624],
+    ["C",258,624,257,725,258,725,358,624],
+    ["G",628,624,728,726,728,726,729,624],
+    ["O",731,624,730,728,732,729,782,729,782,624],
+    ["C",789,624,786,625,787,729,837,729,837,624],
+    ["M",45,625,143,725,145,725,144,625],
+    ["M",841,625,841,726,841,726,941,625],
+    ["M",360,628,261,728,360,728,361,628],
+    ["M",625,628,626,728,726,728,627,628],
+    ["G",256,731,256,783,361,783,361,731],
+    ["C",625,732,624,781,626,783,728,783,729,732],
+    ["O",40,738,40,945,245,945,245,738],
+    ["C",741,738,739,739,739,944,742,945,943,945,945,944,945,739,943,738],
+    ["Y",92,759,79,763,66,774,60,787,60,804,64,814,72,824,84,831,94,833,98,833,114,828,124,820,131,808,133,798,131,784,123,771,111,762,100,759],
+    ["Y",187,759,172,764,162,772,154,787,154,804,165,823,178,831,188,833,190,833,202,831,215,823,223,813,227,799,225,784,217,771,205,762,193,759],
+    ["lb",790,759,774,765,766,772,759,785,758,802,763,815,769,823,782,831,791,833,799,833,818,825,826,816,831,804,831,789,826,776,818,767,799,759],
+    ["lb",884,759,870,764,858,775,852,790,852,802,858,817,867,826,885,833,892,833,909,827,917,820,924,808,926,799,924,784,917,772,908,764,894,759],
+    ["O",257,785,256,837,361,837,360,785],
+    ["O",624,785,624,838,730,838,730,785],
+    ["M",364,839,364,943,368,944,411,944,412,839],
+    ["G",416,839,416,944,466,944,465,839],
+    ["C",522,839,522,944,569,944,571,936,570,839],
+    ["M",575,839,574,943,622,943,621,839],
+    ["G",625,840,625,941,626,941,727,840],
+    ["C",260,841,360,941,360,941,360,841],
+    ["Y",95,850,84,852,72,859,62,872,59,886,61,899,68,911,81,921,94,924,98,924,111,921,122,913,131,899,133,884,127,867,121,860,108,852,97,850],
+    ["Y",189,850,178,852,169,857,160,866,154,879,154,895,162,911,171,919,188,924,193,924,205,921,220,909,225,899,227,884,221,867,215,860,204,853,191,850],
+    ["lb",791,850,773,857,762,869,758,881,759,898,764,908,775,919,790,924,800,924,817,917,826,907,831,895,831,879,827,869,819,859,799,850],
+    ["lb",887,850,867,857,858,866,852,882,853,897,858,908,868,918,884,924,894,924,908,919,918,910,924,899,926,886,923,873,918,864,911,857,892,850]];
+  var FL_DOTS = [[440,94,18],[388,94,17],[545,94,17],[598,94,18],[330,117,17],[309,174,18],[677,174,17],[493,178,18],[309,228,18],[677,230,17],[493,230,18],[493,282,18],[331,285,17],[655,287,18],[229,309,18],[174,309,17],[757,309,18],[812,309,17],[118,329,18],[867,329,17],[287,331,18],[699,331,17],[493,334,18],[493,386,18],[94,388,17],[892,388,17],[493,438,18],[94,440,18],[892,440,17],[93,492,17],[892,492,17],[178,493,18],[230,493,18],[282,493,17],[335,493,18],[387,493,18],[439,493,17],[547,493,17],[599,493,17],[651,493,17],[703,493,17],[755,492,17],[807,493,17],[94,545,18],[892,545,17],[493,547,18],[94,598,17],[892,597,17],[493,599,18],[493,651,18],[286,654,17],[868,656,18],[695,658,18],[174,677,17],[229,677,18],[756,676,18],[811,677,17],[331,699,18],[655,700,18],[493,703,18],[493,755,18],[309,757,18],[677,757,17],[493,807,18],[309,811,18],[677,811,18],[329,868,17],[656,868,18],[388,891,18],[494,892,18],[440,891,17],[546,891,17],[598,891,17]];
 
-  /* 每家出道格（外环下标）——就贴在自家机库旁边 */
-  var FL_START = { y: 0, b: 13, g: 26, r: 39 };
-  /* 归航口 = 走满 51 格后停的那一格（= 起点 + 50），从臂端拐进中线 */
-  var FL_ENTRY = { y: 50, b: 11, g: 24, r: 37 };
-  /* 归航道 5 格（十字臂的中线）：k = 0..4 从臂端一路走向中心 */
-  function flArmRC(col, k) {
-    if (col === 'y') return [7, 1 + k];          /* 左臂：左 → 右 */
-    if (col === 'b') return [1 + k, 7];          /* 上臂：上 → 下 */
-    if (col === 'g') return [7, 13 - k];         /* 右臂：右 → 左 */
-    return [13 - k, 7];                          /* 下臂：下 → 上（红） */
-  }
-  /* 王座：中心 3×3 里靠自家那一格，四家各一个 */
-  var FL_THRONE = { y: [7, 6], b: [6, 7], g: [7, 8], r: [8, 7] };
-  /* 机库 6×6 角块 [row1, col1, row2, col2] */
-  var FL_QUAD = { y: [0, 0, 5, 5], b: [0, 9, 5, 14], g: [9, 9, 14, 14], r: [9, 0, 14, 5] };
-  /* 机库内 4 个停机位的中心（以角块左上角为原点，单位 = 格，2×2 排列居中） */
-  var FL_PADS = [[2.0, 2.0], [2.0, 4.0], [4.0, 2.0], [4.0, 4.0]];
-
-  /* 四色视觉 */
-  var FL_COL = { r: '#e05050', y: '#e8b23a', b: '#3b82f6', g: '#3fa34d' };
+  var FL_COL = { r: '#e05050', y: '#e8b23a', b: '#3b82f6', g: '#3fa34d' };   /* 四社棋子色 */
   var FL_SOC = { r: '星幕', y: '潮声', g: '拾光', b: '云顶' };
-
-  /* 外环四色循环：绿 → 红 → 蓝 → 黄（顺时针）。基准 = 红社出道格（39）是绿格，
-     所以第 i 格的颜色 = FL_CELL_COL[(i - 39) mod 4]。 */
-  var FL_CELL_COL = ['g', 'r', 'b', 'y'];
-  var FL_CI = { g: 0, r: 1, b: 2, y: 3 };        /* 自家色号 = FL_CELL_COL 下标 */
-  function flCellColorIdx(i) { return (((i - FL_START.r) % 4) + 4) % 4; }
-  function flCellColorName(i) { return FL_CELL_COL[flCellColorIdx(i)]; }
-
-  /* ✈ 航线（经典飞行棋的「包机」）：每家一个，落在自家色格上直飞 +12。
-     取外环偏移 16~20 里第一个自家色格当航线口。 */
-  var FL_LINE = {};
-  (function () {
-    Object.keys(FL_START).forEach(function (col) {
-      for (var off = 16; off <= 20; off++) {
-        var i = (FL_START[col] + off) % FL_RING;
-        if (flCellColorIdx(i) === FL_CI[col]) { FL_LINE[i] = 12; break; }
-      }
-    });
-  })();
-
-  /* ★ 事件格 + 抽卡仪式：这版先做「基础模板」，暂时关掉（陛下钦定：事件卡后面再聊） */
+  var FL_HOMES = { r: FL_HOMER, b: FL_HOMEB, y: FL_HOMEY, g: FL_HOMEG };
+  var FL_ENTRY = { r: 0, b: 0, y: 0, g: 0 };   /* 兼容旧引用（归航口＝外环第 50 步那一格） */
+  function flRC(i) { return FL_RC[(((i % FL_RING) + FL_RING) % FL_RING)]; }
+  function flCellColorName(i) { return FL_CELLCOL[(((i % FL_RING) + FL_RING) % FL_RING)]; }
+  function flCellColorIdx(i) { return (((i % FL_RING) + FL_RING) % FL_RING) % 4; }
+  function flHomeRC(col, k) {
+    var a = FL_HOMES[col];
+    return a[Math.max(0, Math.min(a.length - 1, k))];
+  }
+  /* ★ 事件格 + 抽卡仪式：基础模板这版先关掉（陛下钦定：事件卡后面再聊） */
   var FL_CARDS_ON = false;
   var FL_STAR = [];
+
 
   /* ================= 工具 ================= */
   function $(id) { return document.getElementById(id); }
@@ -584,8 +660,8 @@
       terms: [
         ['机巢', '出发区。艺人停在里面时是待命状态'],
         ['出道', '掷出 6 才能把一架艺人从机巢送上起飞点'],
-        ['归航臂 ↵', '绕完一圈后拐进自己颜色那条 5 格通道'],
-        ['永恒王座 ♛', '自家机库终点，要掷出<b>精确点数</b>才能登顶']
+        ['归航臂 ↵', '绕完一圈后拐进自己颜色那条 6 格通道'],
+        ['永恒王座 ♛', '自家归航道最后一格，踩上去就登顶（点多了沿归航道往回退）']
       ],
       secs: [
         {
@@ -598,14 +674,15 @@
         {
           h: '走位规则',
           p: ['<b>掷出 6 才能出道</b>，出道后还能再掷一次；掷到 6 也再掷一次。',
-            '沿外环 <b>52 格</b>顺时针绕行，走满 <b>51 格</b>后从自家 ↵ 归航口拐进 <b>5 格归航道</b>。',
-            '<b>必须掷出精确点数</b>才能登上 ♛ —— 点多了要原地等下一轮。',
+            '沿外环 <b>52 格</b>顺时针绕行，走满 <b>50 格</b>后从自家 ↵ 归航口拐进 <b>6 格归航道</b>（全程 56 步）。',
+            '<b>点数超过终点</b>不要紧 —— 多出来的步数沿归航道<b>往回退</b>，退到哪儿算哪儿；正好踩上 ♛ 就登顶（跟参考源码一致）。',
             '<b>连掷三个 6</b>：外场艺人全部回机库（经典规矩，防一路 6 到底）。']
         },
         {
           h: '特殊格',
-          p: ['<b>同色跳 +4</b>：踩中自家颜色格，往前再蹿 4 格。',
+          p: ['<b>同色跳 +4</b>：踩中自家颜色格，往前再蹿 4 格（4 个安全格不跳）。',
             '<b>✈ 航线 +12</b>：踩中自家 ✈ 格，包机直飞 12 格（飞到的那格还是自家色，接着再跳 4）。',
+            '<b>✈💥 航线横跨撞飞</b>：四条航线都是<b>横穿棋盘</b>的直线，正好越过<b>对角社</b>归航道的第 3 格 —— 只要那格上停着对角社的艺人，包机飞过去就把它<b>一起撞回机库</b>（参考源码 Rule.js 的 superFlag 规则）。',
             '<b>撞子</b>：落点上有别家艺人 → 全部送回机库重排。']
         }
       ]
@@ -1749,7 +1826,7 @@
       return '锋线速演：点通告单出牌（同色/同数字/功能牌）；一张都出不了就「🂠 抽一张」——UNO 没有"过"，必须抽！剩 1 张记得官宣！';
     }
     if (G.game === 'mahjong') return '防线长议：接令一张传令一张，凑 4 组面子 + 1 对将就能结案，也能凑连环计（七对）。';
-    if (G.game === 'flight') return '永恒王座：掷 6 才能出道（掷 6 可再掷一次）；绕外环 51 格，从 ↵ 归航口拐进自家 5 格归航道，精确点数登上 ♛。踩中自家颜色格 同色跳 +4，踩中自家 ✈ 航线格 直飞 +12。';
+    if (G.game === 'flight') return '永恒王座：掷 6 才能出道（掷 6 可再掷一次）；绕外环 52 格走满 50 格，从自家归航口拐进 6 格归航道，登顶 ♛ 全程 56 步（点多了往回退）。踩中自家颜色格 同色跳 +4，踩中自家 ✈ 航线格 直飞 +12 —— 航线横穿棋盘，会把对角社停在归航道第 3 格的艺人一起撞回机库。';
     return '坐庄：先抢筹坐庄（吃 3 张暗料），再轮流出牌压上家（顺子/连对/黑天鹅…），庄家 vs 两家散户，谁先出完谁赢。';
   }
   /* ⚠️ 按钮每帧都会被调用重建——陛下要「当前回合闪烁」就得高频重绘，
@@ -3474,19 +3551,18 @@
     for (var i = 0; i < 3; i++) FL_FATE.forEach(function (e) { d.push({ n: e.n, f: e.f }); });
     return shuffle(d).slice(0, 20);
   }
-  /* 二十五更：v = 0..50 外环（51 格）· 51..55 归航道（5 格）· 56 王座 */
+  /* 二十五更 v2：v = 0..49 外环（50 格）· v = 50..55 归航道（6 格，v=55 登顶） */
   function flPieceRC(p, v) {
     if (v === -1 || v === undefined || v === null) return null;
     var col = G.colors[p];
-    if (v < FL_OUT) return flRC((FL_START[col] + v) % FL_RING);
-    if (v < FL_TOTAL) return flArmRC(col, v - FL_OUT);
-    return FL_THRONE[col];
+    if (v < FL_OUT) return flRC(FL_START[col] + v);
+    return flHomeRC(col, v - FL_OUT);
   }
   function flRingCell(p, v) { return (v >= 0 && v < FL_OUT) ? (FL_START[G.colors[p]] + v) % FL_RING : -1; }
   /* 撞子（二十一更：整叠一起撞飞 + 醒目提示）：
      落点格上有敌方的艺人 → 那一格上敌方【整摞】全部回机库（叠子就是这么没的） */
   function flBounceAt(p, cell) {
-    if (cell < 0) return;
+    if (cell < 0) return 0;
     var hitMap = {};
     G.planes.forEach(function (other, q) {
       if (q === p) return;
@@ -3498,7 +3574,7 @@
       });
     });
     var ks = Object.keys(hitMap);
-    if (!ks.length) return;
+    if (!ks.length) return 0;
     var total = 0;
     ks.forEach(function (k) {
       var q = parseInt(k, 10), n = hitMap[k];
@@ -3508,6 +3584,30 @@
     G.msg = '📸 撞机！' + G.names[p] + ' 一口气撞飞 ' + total + ' 架，全部回机库！';
     G.flash = { cell: cell, t0: Date.now(), n: total };   /* 棋盘上闪一下 + 大字，看得见发生了啥 */
     if (p === 0) toast('📸 撞机！撞飞 ' + total + ' 架——回机库反省！');
+    return total;   /* 返回值给 flLand 用来判「撞停了就别再连跳」（对齐源码 stopFlag） */
+  }
+  /* ── ✈ 航线横跨撞子（二十六更 · 源码 Rule.js attactPlane 的 superFlag 分支）────────
+     谁飞完航线，谁就把【对角社】停在自家归航道第 3 格上的艺人全部撞回机库。
+     源码写死了四个 coordId：red→83 · blue→93 · yellow→63 · green→73，
+     在臣的 v 体系里就是「该家 v = FL_OUT + FL_HIT_K」，所以这里按「色 + v」精确匹配
+     （比源码只比 coordId 更稳：归航道只有本家能进，等价且不会误伤）。 */
+  function flCrossHit(p, targetCol) {
+    if (!targetCol) return 0;
+    var hits = 0;
+    G.planes.forEach(function (ps, q) {
+      if (q === p || G.colors[q] !== targetCol) return;
+      ps.forEach(function (ov, oi) {
+        if (ov === FL_OUT + FL_HIT_K) { ps[oi] = -1; hits++; }
+      });
+    });
+    if (!hits) return 0;
+    var rc = flHomeRC(targetCol, FL_HIT_K);
+    cgLog('✈💥 航线横跨！' + FL_SOC[G.colors[p]] + '社·' + G.real[p] + ' 的包机越过'
+      + FL_SOC[targetCol] + '社归航道第 ' + (FL_HIT_K + 1) + ' 格，把停在那儿的 ' + hits + ' 架艺人撞回机库');
+    G.msg = '✈💥 ' + G.names[p] + ' 的包机横跨 ' + FL_SOC[targetCol] + '社归航道，撞飞 ' + hits + ' 架！';
+    G.flash = { home: targetCol, k: FL_HIT_K, t0: Date.now(), n: hits };
+    if (p === 0) toast('✈💥 航线横跨！撞飞 ' + FL_SOC[targetCol] + '社 ' + hits + ' 架艺人');
+    return hits;
   }
   function flKillEnemy(p) {
     var cands = [];
@@ -3590,23 +3690,33 @@
   function flLand(p, idx, v, depth) {
     if (v > FL_TOTAL) v = FL_TOTAL;
     if (v >= FL_OUT) { G.planes[p][idx] = v; return G.planes[p][idx]; }
-    var ci = FL_CI[G.colors[p]];
+    var mc = G.colors[p];                 /* 本社颜色（'r'/'y'/'b'/'g'） */
     var cell0 = flRingCell(p, v);
-    flBounceAt(p, cell0);
+    /* 落点撞子；撞到了就「停手」——对齐源码的 stopFlag（撞子之后不许再起飞/连跳） */
+    var stop = flBounceAt(p, cell0) > 0;
     var flew = false;
-    /* ① ✈ 航线：落在本社颜色的航线格 → 一次直飞 12 步（跨越 1/4 圈） */
-    if (depth === 0 && FL_LINE[cell0] !== undefined && flCellColorIdx(cell0) === ci) {
+    /* ① ✈ 航线：落在本社颜色的航线格 → 一次直飞 12 步（跨越 1/4 圈）
+       ⚠️ 航线上正好压着敌机时不起飞（源码 `coordValue.superCoord != null && !stopFlag`）。 */
+    if (depth === 0 && !stop && FL_LINE[cell0] !== undefined && FL_CELLCOL[cell0] === mc) {
       v = Math.min(FL_TOTAL, v + FL_LINE[cell0]);
       flew = true;
       cgLog('✈ 航线直飞 +' + FL_LINE[cell0] + '！' + G.names[p] + ' 的艺人搭上包机');
       G.msg = '✈ ' + G.names[p] + ' 冲上航线，直飞 ' + FL_LINE[cell0] + ' 格！';
-      if (v < FL_OUT) flBounceAt(p, flRingCell(p, v));
+      if (v < FL_OUT) {
+        /* ② 航线落点撞子（源码飞越后再调一次 attactPlane） */
+        if (flBounceAt(p, flRingCell(p, v))) stop = true;
+        /* ③ ✈ 航线横跨：撞飞「对角社」停在自家归航道第 3 格上的艺人
+           —— 源码 Rule.js superFlag 分支（red→83 / blue→93 / yellow→63 / green→73） */
+        if (flCrossHit(p, FL_LINE_HIT[mc])) stop = true;
+      }
     }
-    /* ② 🚀 同色跳：停在本社颜色的格子上 → 往前跳 4 格（跳到下一个本社色格）
+    /* ④ 🚀 同色跳：停在本社颜色的格子上 → 往前跳 4 格（下一个本社色格）
        ⚠️ 只能跳一次！外圈每 4 格一循环，+4 之后【必定又是本社色】，
-          要是写「跳到不是本社色为止」就会无限跳（臣试过，直接跳到王座）。 */
+          要是写「跳到不是本社色为止」就会无限跳。
+       ⚠️ 原图的 4 个「安全格」（id 11/24/37/50）踩上不触发跳子。
+       ⚠️ 刚撞到人就别跳了（源码 `!stopFlag`）。 */
     var c2 = flRingCell(p, v);
-    if (depth === 0 && v < FL_OUT && flCellColorIdx(c2) === ci) {
+    if (depth === 0 && !stop && v < FL_OUT && FL_CELLCOL[c2] === mc && !FL_SAFE[c2]) {
       v = Math.min(FL_TOTAL, v + 4);
       cgLog('🚀 同色跳 +4！' + G.names[p] + ' 踩中本社色格，往前蹿一格');
       G.msg = '🚀 ' + G.names[p] + ' 踩中本社色格，同色跳 +4！';
@@ -3709,9 +3819,9 @@
     var out = [], ps = G.planes[p];
     for (var i = 0; i < ps.length; i++) {
       var v = ps[i];
-      if (v >= FL_TOTAL) continue;   /* 已到终点 */
+      if (v >= FL_TOTAL) continue;   /* 已登顶 */
       if (v === -1) { if (dice === 6) out.push(i); continue; }
-      if (v + dice <= FL_TOTAL) out.push(i);
+      out.push(i);                   /* 经典规矩：点数超了按「回退」处理，不锁死不出 */
     }
     return out;
   }
@@ -3758,10 +3868,11 @@
     if (G.anim) return;
     var ps = G.planes[p];
     var v0 = ps[idx];
-    if (v0 === FL_TOTAL) return;
+    if (v0 >= FL_TOTAL) return;
     if (v0 === -1 && dice !== 6) return;
     var from = v0, to = v0 === -1 ? 0 : v0 + dice;
-    if (to > FL_TOTAL) return;
+    /* 经典规矩：点数超过终点 → 沿归航道往回退（源码 backStepFlag 就是这么定的） */
+    if (to > FL_TOTAL) { to = FL_TOTAL * 2 - to; if (to < 0) to = 0; }
     G.options = null;
     G.sel = [];
     /* 跟这一架叠在同一格的兄弟姐妹（不含自己）——整叠一起挪 */
@@ -3833,22 +3944,23 @@
     var pickF = aiPick(fc);
     flMove(t, pickF ? pickF.i : opts[rnd(opts.length)], dice);
   }
-  /* 二十五更：经典飞行棋棋盘几何 —— 15×15 正方形棋盘，等比缩放居中
+  /* 二十五更 v2：棋盘几何 —— 一律用参考源码的 985×985 坐标系，整体等比缩放到画布
      上留回合条、下留底栏（骰子 + 经纪人条），四周留一点纸边。 */
   function flGeom(W, H) {
     var topBar = Math.round(H * 0.075) + 6;   /* 回合条 */
     var botBar = 64;                          /* 底栏（骰子 + 经纪人条） */
     var avail = Math.min(W - 20, H - topBar - botBar);
-    var cs = Math.max(10, avail / FL_GRID);
-    var bw = cs * FL_GRID;
-    var bx = Math.round((W - bw) / 2);
-    var by = Math.round(topBar + Math.max(0, (H - topBar - botBar - bw) / 2));
-    return { bx: bx, by: by, csx: cs, csy: cs, cs: cs, bw: bw };
+    var sc = Math.max(0.05, avail / FL_U);
+    var side = FL_U * sc;
+    var bx = Math.round((W - side) / 2);
+    var by = Math.round(topBar + Math.max(0, (H - topBar - botBar - side) / 2));
+    return { bx: bx, by: by, sc: sc, side: side, cs: 52 * sc, csx: 52 * sc, csy: 52 * sc, bw: side };
   }
-  /* 棋盘底板（奶油纸板）+ 圆角矩形工具，drawFlight / flCellAt 共用 */
-  function flPanel(c, bx, by, cs, r) {
+  /* 棋盘底板（奶油纸板）圆角矩形，drawFlight / flCellAt 共用 */
+  function flPanel(c, bx, by, side, r) {
     c.beginPath();
-    var x0 = bx - cs * 0.22, y0 = by - cs * 0.22, w0 = cs * FL_GRID + cs * 0.44, p = Math.max(6, r || cs * 0.4);
+    var pad = Math.max(4, side * 0.016);
+    var x0 = bx - pad, y0 = by - pad, w0 = side + pad * 2, p = Math.max(6, r || side * 0.032);
     c.moveTo(x0 + p, y0);
     c.lineTo(x0 + w0 - p, y0); c.quadraticCurveTo(x0 + w0, y0, x0 + w0, y0 + p);
     c.lineTo(x0 + w0, y0 + w0 - p); c.quadraticCurveTo(x0 + w0, y0 + w0, x0 + w0 - p, y0 + w0);
@@ -3856,22 +3968,20 @@
     c.lineTo(x0, y0 + p); c.quadraticCurveTo(x0, y0, x0 + p, y0);
     c.closePath();
   }
-  /* ============ 二十五更：经典飞行棋棋盘绘制（AeroplaneChess / Ludo 模板） ============
-     15×15 网格：奶油纸板底板 + 四角 6×6 实色机库（各 4 个圆形停机位，即准备区）
-     + 十字跑道外沿 52 格（四色循环 绿→红→蓝→黄，实色格 + 中央白圆点）
-     + 中线 5 格归航道 + 中心 3×3 王座（四色三角拼 + ♛）。
-     出道格用 ▶ + 白框标出；✈ 航线格标航徽。棋子是圆形（本色 + 白边 + 编号），
-     同格叠子显示 ×N，当前回合金圈呼吸，能动的那几架带 ▼ 提示。 */
+  /* ============ 二十五更 v2：经典飞行棋棋盘绘制（按参考源码 1:1 复刻） ============
+     底板 + 72 个色块 + 73 个圆孔 ＝ 原版棋盘（臣从 background.png 逐像素抠出来的）；
+     再叠上 ▶ 出道格、✈ 航线格、四社机库（社名 / 经纪人 / 停机位）、归航道终点 ♛。
+     棋子 = 圆形（本色 + 白边 + 编号），同格同家叠成一摞写 ×N，
+     当前回合金圈呼吸，能动的那几架带 ▼ 提示。 */
   function drawFlight(c, W, H) {
     setActsBottom(96 + 46);
     _flHits = [];
-    var G0 = flGeom(W, H);
-    var bx = G0.bx, by = G0.by, cs = G0.cs, bw = G0.bw;
+    var Gm = flGeom(W, H);
+    var bx = Gm.bx, by = Gm.by, sc = Gm.sc, side = Gm.side;
+    var cs = Gm.cs;                 /* 一格边长（52 个参考单位） */
     var pu0 = pulse();
-    function X(col) { return bx + col * cs; }
-    function Y(row) { return by + row * cs; }
-    function cellXY(rc) { return [bx + rc[1] * cs, by + rc[0] * cs]; }
-    function cellCtr(rc) { return [bx + rc[1] * cs + cs / 2, by + rc[0] * cs + cs / 2]; }
+    function PX(x) { return bx + x * sc; }
+    function PY(y) { return by + y * sc; }
     function rrect(x, y, w, h, r) {
       r = Math.max(1, Math.min(r, w / 2, h / 2));
       c.beginPath();
@@ -3881,166 +3991,224 @@
       c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
       c.closePath();
     }
-    /* 一个跑道格：实色圆角方块（拐角处画菱形，环才连得起来）+ 中央白圆点
-       ⚠️ 有 ▶ / ✈ 标记的格子不点白圆点——不然白字压白点，什么都看不见 */
-    function trackCell(rc, col, isDiamond, noDot) {
-      var xy = cellXY(rc);
+
+    /* ── ① 底板：奶油纸板（原图底色）+ 投影 ── */
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = Math.max(8, side * 0.03); c.shadowOffsetY = 4;
+    flPanel(c, bx, by, side, side * 0.032);
+    c.fillStyle = FL_BG; c.fill();
+    c.restore();
+    c.save();
+    flPanel(c, bx, by, side, side * 0.032);
+    c.strokeStyle = 'rgba(122,100,62,.5)'; c.lineWidth = Math.max(1.5, side * 0.004); c.stroke();
+    c.restore();
+
+    /* ── ①b 四条虚线航线（原图：各家用自己那支原图色的双排虚线 + 箭头 + 「加油站」）──
+       原图把虚线【压在色块下面】——经过十字臂和归航道就被盖住，臣照原样：
+       先画线，再铺 ② 的色块，就得到一模一样的效果。
+       这四条线正好各横跨对角社归航道的第 3 格 —— 就是「航线撞飞」规则的可视化。 */
+    FL_LINE_RC.forEach(function (L) {
+      var A = flRC(L.a), B = flRC(L.b);
+      var x1 = PX(A[0]), y1 = PY(A[1]), x2 = PX(B[0]), y2 = PY(B[1]);
+      var ang = Math.atan2(y2 - y1, x2 - x1);
+      var K = side / FL_U;                         /* 985 参考单位 → 画布像素 */
+      var e0 = cs * 0.52, e1 = cs * 0.62;          /* 从起点格边缘画到终点格边缘 */
+      var sx = x1 + Math.cos(ang) * e0, sy = y1 + Math.sin(ang) * e0;
+      var ex = x2 - Math.cos(ang) * e1, ey = y2 - Math.sin(ang) * e1;
+      var colr = FL_LINE_COL[L.col];
+      var nx = -Math.sin(ang), ny = Math.cos(ang); /* 中心线的垂直方向 */
       c.save();
-      if (isDiamond) {
-        var cxm = xy[0] + cs / 2, cym = xy[1] + cs / 2, rr = cs * 0.6;
+      c.strokeStyle = colr; c.fillStyle = colr;
+      c.lineWidth = Math.max(1.2, side * 0.0045);
+      c.setLineDash([Math.max(4, side * 0.016), Math.max(3, side * 0.012)]);
+      /* 原图是【双排】虚线：一排离中心线 6.5 单位、一排 19.5 单位，都在同一侧 */
+      [6.5, 19.5].forEach(function (off) {
         c.beginPath();
-        c.moveTo(cxm, cym - rr); c.lineTo(cxm + rr, cym); c.lineTo(cxm, cym + rr); c.lineTo(cxm - rr, cym);
-        c.closePath();
-      } else {
-        var pad = cs * 0.055;
-        rrect(xy[0] + pad, xy[1] + pad, cs - pad * 2, cs - pad * 2, cs * 0.22);
-      }
-      c.fillStyle = FL_COL[col]; c.fill();
-      c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = Math.max(1, cs * 0.05); c.stroke();
+        c.moveTo(sx + nx * off * K, sy + ny * off * K);
+        c.lineTo(ex + nx * off * K, ey + ny * off * K);
+        c.stroke();
+      });
+      c.setLineDash([]);
+      /* 箭头挂在下面那排的末端，指向航线终点 */
+      var ax2 = ex + nx * 19.5 * K, ay2 = ey + ny * 19.5 * K;
+      var ah = Math.max(5, side * 0.019);
+      c.beginPath();
+      c.moveTo(ax2, ay2);
+      c.lineTo(ax2 - Math.cos(ang - 0.42) * ah, ay2 - Math.sin(ang - 0.42) * ah);
+      c.lineTo(ax2 - Math.cos(ang + 0.42) * ah, ay2 - Math.sin(ang + 0.42) * ah);
+      c.closePath(); c.fill();
+      /* 「加油站」×2（原图就写两处，避开中间被横跨的那一格）；先描一圈底色再写字，
+         免得虚线穿字看不清；竖线那两条原图是把字转 90° 竖排的。 */
+      var horiz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
+      var fs = Math.max(8, side * 0.017);
+      c.font = 'bold ' + fs + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      (L.lab || [0.30, 0.78]).forEach(function (t) {
+        var mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+        c.save();
+        if (!horiz) { c.translate(mx, my); c.rotate(-Math.PI / 2); mx = 0; my = 0; }
+        c.lineWidth = fs * 0.44; c.strokeStyle = FL_BG;
+        c.strokeText('加油站', mx, my);
+        c.fillStyle = colr;
+        c.fillText('加油站', mx, my);
+        c.restore();
+      });
       c.restore();
-      if (noDot) return;
-      c.beginPath(); c.arc(xy[0] + cs / 2, xy[1] + cs / 2, cs * 0.23, 0, 6.2832);
-      c.fillStyle = 'rgba(255,255,255,.85)'; c.fill();
-    }
-    function centerText(txt, xy, col, sz, dy) {
-      c.fillStyle = col; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = 'bold ' + Math.max(9, cs * sz) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(txt, xy[0] + cs / 2, xy[1] + cs * (dy === undefined ? 0.5 : dy));
-      c.textBaseline = 'alphabetic';
-    }
+    });
+    c.textBaseline = 'alphabetic';
 
-    /* ── ① 底板：奶油纸板（经典飞行棋的纸面底色），带投影 ── */
-    c.save();
-    c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = Math.max(8, cs * 0.5); c.shadowOffsetY = 4;
-    flPanel(c, bx, by, cs, cs * 0.5);
-    c.fillStyle = '#f7f1de'; c.fill();
-    c.restore();
-    c.save();
-    flPanel(c, bx, by, cs, cs * 0.5);
-    c.strokeStyle = 'rgba(122,100,62,.5)'; c.lineWidth = Math.max(1.5, cs * 0.06); c.stroke();
-    c.restore();
+    /* ── ② 72 个色块（原图逐像素抠出来的轮廓，就是「拆成一个个格子素材」）── */
+    FL_SHAPES.forEach(function (s) {
+      c.beginPath();
+      for (var k = 1; k < s.length; k += 2) {
+        var x = PX(s[k]), y = PY(s[k + 1]);
+        if (k === 1) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+      c.closePath();
+      c.fillStyle = FL_PAL[s[0]] || '#ccc';
+      c.fill();
+    });
 
-    /* ── ② 四角机库（准备区）：6×6 实色块 + 4 个圆形停机位 ── */
+    /* ── ③ 73 个圆孔（露出底色，就是原图那些点）── */
+    FL_DOTS.forEach(function (d) {
+      c.beginPath();
+      c.arc(PX(d[0]), PY(d[1]), Math.max(1.1, d[2] * sc), 0, 6.2832);
+      c.fillStyle = FL_BG; c.fill();
+    });
+
+    /* ── ③b 原图字母标注 20 个（N P O Q R S A T B C D F E G H I K J L W）──
+       原图做法：格中心那颗米色圆盘（＝ ③ 已经画好的圆孔）上，用【本格颜色】镂空一个字母。
+       纯装饰：源码 Coord.js / Rule.js 都没引用，是原版棋盘印的站名标号。 */
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    Object.keys(FL_LETTER).forEach(function (k) {
+      var i = parseInt(k, 10), rc = flRC(i);
+      c.fillStyle = FL_PAL[FL_ART[FL_CELLCOL[i]]];
+      c.font = 'bold ' + Math.max(9, cs * 0.62) + 'px "Arial","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillText(FL_LETTER[k], PX(rc[0]), PY(rc[1]) + cs * 0.03);
+    });
+    /* 四角 ready（机库出口标识，原图写在四角外侧、用本社颜色；上面两家倒着印） */
+    Object.keys(FL_READY).forEach(function (col) {
+      var p = G.colors.indexOf(col);
+      if (p < 0) return;
+      var rd = FL_READY[col];
+      c.save();
+      c.translate(PX(rd[0]), PY(rd[1]));
+      if (rd[2]) c.rotate(rd[2] * Math.PI / 180);
+      c.fillStyle = FL_PAL[FL_ART[col]];
+      c.globalAlpha = 0.92;
+      c.font = 'bold ' + Math.max(9, side * 0.030) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillText('ready', 0, 0);
+      c.restore();
+      c.globalAlpha = 1;
+    });
+    c.textBaseline = 'alphabetic';
+
+    /* ── ④ 四社机库：社名 + 经纪人真名 + 状态胶囊 + 4 个停机位 ── */
     Object.keys(FL_QUAD).forEach(function (col) {
       var q = FL_QUAD[col], p = G.colors.indexOf(col), active = p >= 0;
       var isCur = active && G.turn === p && !G.over;
-      var x0 = X(q[1]), y0 = Y(q[0]);
-      var w0 = (q[3] - q[1] + 1) * cs, h0 = (q[2] - q[0] + 1) * cs;
-      var inset = cs * 0.16;
-      c.save();
-      rrect(x0 + inset, y0 + inset, w0 - inset * 2, h0 - inset * 2, cs * 0.55);
-      c.fillStyle = FL_COL[col]; c.globalAlpha = active ? 0.95 : 0.3; c.fill();
-      c.globalAlpha = 1;
+      var x0 = PX(q[0]), y0 = PY(q[1]);
+      var w0 = (q[2] - q[0]) * sc, h0 = (q[3] - q[1]) * sc;
+      var cx0 = x0 + w0 / 2;
       if (isCur) {
+        var ip = Math.max(2, side * 0.005);
+        rrect(x0 + ip, y0 + ip, w0 - ip * 2, h0 - ip * 2, side * 0.022);
         c.strokeStyle = 'rgba(255,209,102,' + (0.65 + 0.35 * pu0).toFixed(3) + ')';
-        c.lineWidth = Math.max(2.5, cs * 0.13);
-      } else {
-        c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = Math.max(1.4, cs * 0.06);
+        c.lineWidth = Math.max(2.5, side * 0.008); c.stroke();
       }
-      c.stroke();
-      c.restore();
-      /* 社名 + 经纪人真名（机库顶部 / 底部各一行），状态行贴在真名下面 */
-      c.fillStyle = 'rgba(255,255,255,.97)';
+      /* 社名 + 经纪人真名：压在 4 个停机圆中间的空档上，垫一层半透明底才读得清 */
+      var cy0 = y0 + h0 / 2;
+      var nmTxt = FL_SOC[col] + '社';
+      var realTxt = active ? ((G.real && G.real[p]) || '？') : '虚位';
+      var f1 = Math.max(12, h0 * 0.125), f2 = Math.max(9, h0 * 0.085);
+      c.font = 'bold ' + f1 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      var w1 = c.measureText(nmTxt).width;
+      c.font = 'bold ' + f2 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      var w2 = c.measureText(realTxt).width;
+      var bw = Math.max(w1, w2) + h0 * 0.12, bh = f1 + f2 + h0 * 0.06;
+      var byy2 = cy0 - bh / 2;
+      rrect(cx0 - bw / 2, byy2, bw, bh, bh * 0.3);
+      c.fillStyle = 'rgba(28,16,44,.42)'; c.fill();
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = 'bold ' + Math.max(11, cs * 0.46) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(FL_SOC[col] + '社', x0 + w0 / 2, y0 + cs * 0.8);
+      c.fillStyle = 'rgba(255,255,255,.98)';
+      c.font = 'bold ' + f1 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillText(nmTxt, cx0, byy2 + bh * 0.33);
       c.globalAlpha = 0.95;
-      c.font = 'bold ' + Math.max(9, cs * 0.36) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(active ? ((G.real && G.real[p]) || '？') : '虚位', x0 + w0 / 2, y0 + h0 - cs * 0.9);
+      c.font = 'bold ' + f2 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillText(realTxt, cx0, byy2 + bh * 0.72);
       c.globalAlpha = 1; c.textBaseline = 'alphabetic';
       if (!active) return;
-      /* 4 个停机位 + 待出道的艺人 */
-      var padR = cs * 0.72;
+      var pads = FL_PADS[col], padR = side * 0.036, pr = side * 0.031;
       G.planes[p].forEach(function (v, i) {
-        var pcx = x0 + FL_PADS[i][1] * cs, pcy = y0 + FL_PADS[i][0] * cs;
+        var pc = pads[i]; if (!pc) return;
+        var pcx = PX(pc[0]), pcy = PY(pc[1]);
         var canGo = p === 0 && G.options && G.options.indexOf(i) >= 0;
         c.beginPath(); c.arc(pcx, pcy, padR, 0, 6.2832);
-        c.fillStyle = 'rgba(255,255,255,.26)'; c.fill();
-        c.strokeStyle = canGo ? '#ffd166' : 'rgba(255,255,255,.55)';
-        c.lineWidth = canGo ? Math.max(2, cs * 0.085) : Math.max(1, cs * 0.05); c.stroke();
-        if (v !== -1) return;    /* 已经出道的画在跑道上，机库里不留影 */
-        c.beginPath(); c.arc(pcx, pcy, cs * 0.5, 0, 6.2832);
+        c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();
+        c.strokeStyle = canGo ? '#ffd166' : 'rgba(255,255,255,.5)';
+        c.lineWidth = canGo ? Math.max(2, padR * 0.34) : Math.max(1, padR * 0.2); c.stroke();
+        if (v !== -1) return;    /* 已出道的画在跑道上，机库里不留影 */
+        c.beginPath(); c.arc(pcx, pcy, pr, 0, 6.2832);
         c.fillStyle = FL_COL[col]; c.globalAlpha = 0.95; c.fill(); c.globalAlpha = 1;
-        c.strokeStyle = '#fff'; c.lineWidth = Math.max(1, cs * 0.05); c.stroke();
+        c.strokeStyle = '#fff'; c.lineWidth = Math.max(1, pr * 0.16); c.stroke();
         c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = 'bold ' + Math.max(9, cs * 0.4) + 'px sans-serif';
-        c.fillText(i + 1, pcx, pcy + cs * 0.02);
+        c.font = 'bold ' + Math.max(9, pr * 1.1) + 'px sans-serif';
+        c.fillText(i + 1, pcx, pcy + pr * 0.06);
         c.textBaseline = 'alphabetic';
         if (canGo) {
-          c.beginPath(); c.arc(pcx, pcy, padR + pu0 * cs * 0.16, 0, 6.2832);
-          c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, cs * 0.09); c.stroke();
+          c.beginPath(); c.arc(pcx, pcy, padR + pu0 * side * 0.006, 0, 6.2832);
+          c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, padR * 0.3); c.stroke();
           c.fillStyle = '#ffd166'; c.textAlign = 'center';
-          c.font = 'bold ' + Math.max(10, cs * 0.4) + 'px sans-serif';
-          c.fillText('▼', pcx, pcy - padR - cs * 0.08);
+          c.font = 'bold ' + Math.max(10, pr * 1.05) + 'px sans-serif';
+          c.fillText('▼', pcx, pcy - padR - pr * 0.35);
         }
-        if (p === 0) _flHits.push({ idx: i, x: pcx, y: pcy, r: padR + cs * 0.1 });
+        if (p === 0) _flHits.push({ idx: i, x: pcx, y: pcy, r: padR + Math.max(4, side * 0.01) });
       });
-      /* 该家战报：当前回合 / 停一轮 / 刚掷的点数 */
+      /* 该家战报胶囊：当前回合 / 停一轮 / 刚掷的点数 */
       var lastDice = (G.lastPlay && G.lastPlay[p] && G.lastPlay[p][0] && G.lastPlay[p][0].kind === 'dice') ? G.lastPlay[p][0].n : null;
       var info = isCur ? '🎲 当前回合' : (G.skipFlag && G.skipFlag[p]) ? '⏸ 停一轮' : (lastDice !== null ? '🎲 ' + lastDice : '');
       if (info) {
         c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = 'bold ' + Math.max(10, cs * 0.3) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-        var iw = c.measureText(info).width + cs * 0.34, ih = Math.max(14, cs * 0.42);
-        var ix = x0 + w0 / 2 - iw / 2, iy = y0 + h0 - cs * 0.32 - ih / 2;
+        c.font = 'bold ' + Math.max(10, side * 0.018) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+        var iw = c.measureText(info).width + side * 0.02, ih = Math.max(14, side * 0.024);
+        var ix = cx0 - iw / 2, iy = y0 + h0 * 0.775 - ih / 2;
         rrect(ix, iy, iw, ih, ih / 2);
         c.fillStyle = isCur ? 'rgba(58,34,6,.72)' : 'rgba(0,0,0,.34)'; c.fill();
         c.strokeStyle = isCur ? 'rgba(255,209,102,.85)' : 'rgba(255,255,255,.28)';
         c.lineWidth = 1; c.stroke();
         c.fillStyle = isCur ? '#ffd166' : 'rgba(255,255,255,.95)';
-        c.fillText(info, x0 + w0 / 2, y0 + h0 - cs * 0.32);
+        c.fillText(info, cx0, y0 + h0 * 0.775);
         c.textBaseline = 'alphabetic';
       }
     });
 
-    /* ── ③ 外环 52 格（四色循环）+ ▶ 出道格 + ✈ 航线格 ── */
-    var DIAMOND = { 5: 1, 18: 1, 31: 1, 44: 1 };   /* 十字四个内拐角用菱形 */
-    for (var i = 0; i < FL_RING; i++) {
-      var rc0 = flRC(i), xy0 = cellXY(rc0);
-      var startCol = null;
-      Object.keys(FL_START).forEach(function (k) { if (FL_START[k] === i) startCol = k; });
-      var isLine = FL_LINE[i] !== undefined;
-      trackCell(rc0, flCellColorName(i), !!DIAMOND[i], !!(startCol || isLine));
-      if (startCol) {
-        c.strokeStyle = '#fff'; c.lineWidth = Math.max(2, cs * 0.1);
-        rrect(xy0[0] + cs * 0.04, xy0[1] + cs * 0.04, cs * 0.92, cs * 0.92, cs * 0.2); c.stroke();
-        centerText('▶', xy0, '#fff', 0.56);
-      }
-      if (isLine) centerText('✈', xy0, '#fff', 0.54);
-    }
-
-    /* ── ④ 归航道：每家 5 格（十字臂中线，自家色） ── */
-    Object.keys(FL_START).forEach(function (col) {
-      for (var k = 0; k < FL_HOME; k++) trackCell(flArmRC(col, k), col, false);
-    });
-
-    /* ── ⑤ 永恒王座：中心 3×3，四色三角拼 + ♛ ── */
-    var tX = X(6), tY = Y(6), tW = cs * 3;
-    var cxT = tX + tW / 2, cyT = tY + tW / 2;
-    c.save();
-    rrect(tX, tY, tW, tW, cs * 0.35);
-    c.fillStyle = '#fffdf6'; c.fill();
-    c.strokeStyle = 'rgba(122,100,62,.45)'; c.lineWidth = Math.max(1.4, cs * 0.06); c.stroke();
-    [['y', [tX, tY], [tX, tY + tW]], ['g', [tX + tW, tY], [tX + tW, tY + tW]],
-    ['b', [tX, tY], [tX + tW, tY]], ['r', [tX, tY + tW], [tX + tW, tY + tW]]].forEach(function (t) {
-      c.beginPath();
-      c.moveTo(t[1][0], t[1][1]); c.lineTo(t[2][0], t[2][1]); c.lineTo(cxT, cyT);
-      c.closePath();
-      c.fillStyle = FL_COL[t[0]]; c.globalAlpha = 0.88; c.fill(); c.globalAlpha = 1;
-      c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = Math.max(0.8, cs * 0.03); c.stroke();
-    });
-    c.fillStyle = '#fffdf6';
-    c.beginPath(); c.arc(cxT, cyT, cs * 0.62, 0, 6.2832); c.fill();
-    c.strokeStyle = 'rgba(122,100,62,.45)'; c.lineWidth = Math.max(1, cs * 0.05); c.stroke();
-    c.fillStyle = '#8a6a2f';
-    c.font = 'bold ' + Math.max(16, cs * 0.95) + 'px sans-serif';
+    /* ── ⑤ 功能角标：出道格 ▶ / 航线格 ✈ / 归航道终点 ♛ ──
+       ⚠️ 原图格子里【只有字母】，没有 ▶/✈ —— 臣把这两个提示缩成小角标，并且
+          只给「当前回合那一家」亮，静态棋盘就跟原图一致，轮到谁才提示谁。 */
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText('♛', cxT, cyT + cs * 0.05);
+    var curCol = (G.turn >= 0 && G.turn < G.colors.length) ? G.colors[G.turn] : null;
+    if (curCol) {
+      c.font = 'bold ' + Math.max(9, cs * 0.42) + 'px sans-serif';
+      var bd = [[flRC(FL_START[curCol]), '▶', '#ffd166'], [flRC(FL_LINE[FL_START[curCol] + 17]), '✈', FL_LINE_COL[curCol]]];
+      bd.forEach(function (b) {
+        if (!b[0]) return;
+        var bxx = PX(b[0][0]) - cs * 0.33, byy = PY(b[0][1]) + cs * 0.33;
+        c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = Math.max(1.5, cs * 0.06);
+        c.strokeText(b[1], bxx, byy);
+        c.fillStyle = b[2]; c.fillText(b[1], bxx, byy);
+      });
+    }
+    c.fillStyle = 'rgba(255,255,255,.92)';
+    c.font = 'bold ' + Math.max(10, cs * 0.62) + 'px sans-serif';
+    Object.keys(FL_HOMES).forEach(function (col) {
+      var arr = FL_HOMES[col], rc = arr[arr.length - 1];
+      c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = Math.max(1.5, cs * 0.06);
+      c.strokeText('♛', PX(rc[0]), PY(rc[1]) + cs * 0.04);
+      c.fillText('♛', PX(rc[0]), PY(rc[1]) + cs * 0.04);
+    });
     c.textBaseline = 'alphabetic';
-    c.restore();
 
-    /* ── ⑥ 棋子（圆形 + 编号）：同一格同一家叠成【一摞】只画一个圆，
-        中间直接写 ×N —— 一格里塞 4 个圆谁也看不清（陛下在参考图上也是叠着放的） ── */
+    /* ── ⑥ 棋子（圆形 + 编号；同格同家叠成一摞写 ×N） ── */
     var groups = {};
     G.colors.forEach(function (col, p) {
       G.planes[p].forEach(function (v, idx) {
@@ -4053,35 +4221,34 @@
     });
     Object.keys(groups).forEach(function (key) {
       var gp = groups[key], p = gp.p, col = gp.col, list = gp.list;
-      var ctr = cellCtr(gp.rc), n = list.length;
-      var r = Math.max(7, cs * 0.34);
+      var cx = PX(gp.rc[0]), cy = PY(gp.rc[1]), n = list.length;
+      var r = Math.max(6, side * 0.027);
       var isTurn = (G.turn === p && !G.over);
       var canGo = p === 0 && G.options && list.some(function (i) { return G.options.indexOf(i) >= 0; });
       if (canGo) {
-        c.beginPath(); c.arc(ctr[0], ctr[1], r + cs * 0.12 + pu0 * cs * 0.05, 0, 6.2832);
-        c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, cs * 0.09); c.stroke();
+        c.beginPath(); c.arc(cx, cy, r + side * 0.010 + pu0 * side * 0.004, 0, 6.2832);
+        c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, side * 0.007); c.stroke();
         c.fillStyle = '#ffb703'; c.textAlign = 'center';
-        c.font = 'bold ' + Math.max(10, cs * 0.42) + 'px sans-serif';
-        c.fillText('▼', ctr[0], ctr[1] - r - cs * 0.14);
+        c.font = 'bold ' + Math.max(10, side * 0.030) + 'px sans-serif';
+        c.fillText('▼', cx, cy - r - side * 0.011);
       }
       if (isTurn) {
-        c.beginPath(); c.arc(ctr[0], ctr[1], r * 0.98, 0, 6.2832);
-        c.strokeStyle = 'rgba(255,209,102,.8)'; c.lineWidth = Math.max(1.4, cs * 0.05); c.stroke();
+        c.beginPath(); c.arc(cx, cy, r * 0.98, 0, 6.2832);
+        c.strokeStyle = 'rgba(255,209,102,.8)'; c.lineWidth = Math.max(1.4, side * 0.004); c.stroke();
       }
-      if (p === 0) list.forEach(function (i) { _flHits.push({ idx: i, x: ctr[0], y: ctr[1], r: r + cs * 0.14 }); });
-      c.beginPath(); c.arc(ctr[0], ctr[1], r * 0.78, 0, 6.2832);
+      if (p === 0) list.forEach(function (i) { _flHits.push({ idx: i, x: cx, y: cy, r: r + side * 0.012 }); });
+      c.beginPath(); c.arc(cx, cy, r * 0.82, 0, 6.2832);
       c.fillStyle = FL_COL[col]; c.fill();
-      c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = Math.max(1.4, cs * 0.055); c.stroke();
+      c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = Math.max(1.4, side * 0.0045); c.stroke();
       c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = 'bold ' + Math.max(9, r * (n >= 2 ? 0.5 : 0.62)) + 'px sans-serif';
-      c.fillText(n >= 2 ? ('×' + n) : (list[0] + 1), ctr[0], ctr[1] + 1);
+      c.font = 'bold ' + Math.max(9, r * (n >= 2 ? 0.72 : 0.86)) + 'px sans-serif';
+      c.fillText(n >= 2 ? ('×' + n) : (list[0] + 1), cx, cy + 1);
       c.textBaseline = 'alphabetic';
     });
 
     /* 撞机闪光 + 抽卡横幅 */
-    drawFlFlash(c, W, H, cs, cs, bx, by);
+    drawFlFlash(c, W, H, sc, bx, by);
     drawFlBanner(c, W, H);
-
     /* ── ⑦ 底栏：骰子就摆在左下角（不再单独占一条横带，棋盘能画得更大） ── */
     var bh2 = 56, byy = H - bh2;
     c.fillStyle = 'rgba(0,0,0,.42)'; c.fillRect(0, byy, W, bh2);
@@ -4173,24 +4340,27 @@
   }
   /* ---------- 抽卡仪式绘制：遮罩 + 三张背面牌，点一张翻开 ---------- */
   /* 二十一更：撞机闪光——「谁把谁撞回机库了」要在棋盘上闪一下才看得见 */
-  function drawFlFlash(c, W, H, csx, csy, bx, by) {
+  function drawFlFlash(c, W, H, sc, bx, by) {
     var F = G && G.flash;
     if (!F) return;
     var age = Date.now() - F.t0;
     if (age > 1500) { G.flash = null; return; }
-    var rc = flRC(F.cell), x = bx + rc[1] * csx, y = by + rc[0] * csy;
+    /* 撞子在 52 格外环上 → flRC；航线横跨的撞子在【归航道】上 → flHomeRC */
+    var rc = (F.home !== undefined) ? flHomeRC(F.home, F.k || 0) : flRC(F.cell);
+    var cx = bx + rc[0] * sc, cy = by + rc[1] * sc;   /* 格子中心（985 坐标系） */
+    var unit = 52 * sc;
     var k = age / 1500, a = 1 - k;
     c.save();
     c.globalAlpha = a;
-    var rr = Math.max(csx, csy) * (0.55 + k * 1.9);
+    var rr = unit * (0.55 + k * 1.9);
     c.strokeStyle = '#ffffff'; c.lineWidth = 3 + 5 * a;
-    c.beginPath(); c.arc(x + csx / 2, y + csy / 2, rr, 0, 6.2832); c.stroke();
+    c.beginPath(); c.arc(cx, cy, rr, 0, 6.2832); c.stroke();
     c.strokeStyle = '#ffd166'; c.lineWidth = 2.5;
-    c.beginPath(); c.arc(x + csx / 2, y + csy / 2, rr * 0.6, 0, 6.2832); c.stroke();
+    c.beginPath(); c.arc(cx, cy, rr * 0.6, 0, 6.2832); c.stroke();
     c.fillStyle = '#ff9aa0';
-    c.font = 'bold ' + Math.max(15, csy * 0.6) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+    c.font = 'bold ' + Math.max(15, unit * 0.6) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
     c.textAlign = 'center';
-    c.fillText('💥 撞飞 ×' + F.n + '！', x + csx / 2, y - 5);
+    c.fillText('💥 撞飞 ×' + F.n + '！', cx, cy - unit * 0.72);
     c.restore();
   }
   /* 二十一更：抽卡横幅——抽中了什么，牌桌中央大字报 2.6 秒（陛下：太快看不出来） */
@@ -4286,38 +4456,37 @@
   /* ---------- 地块说明：悬停/点按任何格子都告诉你它是干嘛的 ---------- */
   function flCellAt(x, y, W, H) {
     var g = flGeom(W, H);
-    var col = Math.floor((x - g.bx) / g.csx), row = Math.floor((y - g.by) / g.csy);
-    if (row < 0 || row >= FL_GRID || col < 0 || col >= FL_GRID) return null;
-    /* 王座 */
-    var tk = Object.keys(FL_THRONE).find(function (k) { return FL_THRONE[k][0] === row && FL_THRONE[k][1] === col; });
-    if (tk) return { t: '♛ 永恒王座', d: '四社艺人走到这里即登上王座——番位之战的终点。要掷出精确点数才上得来。' };
-    /* 归航道 */
-    var arm = null;
-    Object.keys(FL_START).forEach(function (k) {
-      for (var q = 0; q < FL_HOME; q++) if (flArmRC(k, q)[0] === row && flArmRC(k, q)[1] === col) arm = k;
-    });
-    if (arm) return { t: FL_SOC[arm] + '社 · 归航道', d: '绕完外环 51 格后从臂端拐进来，再走 5 格就能登顶 ♛。归航道上不会被撞。' };
-    /* 机库象限 */
+    var sx = (x - g.bx) / g.sc, sy = (y - g.by) / g.sc;   /* 换回 985 参考坐标 */
+    if (sx < -10 || sx > FL_U + 10 || sy < -10 || sy > FL_U + 10) return null;
+    function near(pt, tol) { return Math.abs(sx - pt[0]) <= tol && Math.abs(sy - pt[1]) <= tol; }
+    /* ① 四社机库（准备区） */
     var quad = null;
     Object.keys(FL_QUAD).forEach(function (k) {
-      var q2 = FL_QUAD[k];
-      if (row >= q2[0] && row <= q2[2] && col >= q2[1] && col <= q2[3]) quad = k;
+      var q = FL_QUAD[k];
+      if (sx >= q[0] && sx <= q[2] && sy >= q[1] && sy <= q[3]) quad = k;
     });
     if (quad) return { t: FL_SOC[quad] + '社 · 机库（准备区）', d: '待出道艺人的停机位。掷到 6 才能把一架送上 ▶ 出道格，掷到 6 还能再掷一次。' };
-    /* 外环格 */
+    /* ② 归航道 6 格（末格 = 终点王座） */
+    var arm = null, armK = -1;
+    Object.keys(FL_HOMES).forEach(function (k) {
+      FL_HOMES[k].forEach(function (pt, q) { if (near(pt, 28)) { arm = k; armK = q; } });
+    });
+    if (arm) {
+      if (armK === FL_HOME - 1) return { t: '♛ ' + FL_SOC[arm] + '社 · 终点', d: '走到这一格即登上永恒王座，该架艺人完成番位之战。' };
+      return { t: FL_SOC[arm] + '社 · 归航道 ' + (armK + 1) + '/' + FL_HOME, d: '在外环走满 50 格后从这一头拐进来，一路走到王座。归航道上不会被撞。' };
+    }
+    /* ③ 外环 52 格 */
     for (var i = 0; i < FL_RING; i++) {
       var rc = flRC(i);
-      if (rc[0] === row && rc[1] === col) {
-        var colName = FL_SOC[FL_CELL_COL[flCellColorIdx(i)]];
-        var cname = colName + '色格';
-        var st = Object.keys(FL_START).find(function (k) { return FL_START[k] === i; });
-        if (st) return { t: '▶ ' + FL_SOC[st] + '社 · 出道格', d: '该社艺人掷到 6 后第一个落脚点（出道 → 登顶全程 56 步）。' };
-        var en = Object.keys(FL_ENTRY).find(function (k) { return FL_ENTRY[k] === i; });
-        if (en) return { t: '↵ ' + FL_SOC[en] + '社 · 归航口', d: '该社艺人绕完一圈后在这一格拐进自家归航道。' };
-        if (FL_STAR.indexOf(i) >= 0) return { t: '★ 事件格（' + cname + '）', d: '落上去自动进入事件卡抽卡仪式——32 张事件区，三选一。' };
-        if (FL_LINE[i] !== undefined) return { t: '✈ 航线（' + colName + '社专属）', d: '本社艺人踩中直飞 +12 格（包机）；飞到的那格还是自家颜色，接着同色跳 +4。' };
-        return { t: '普通格 · ' + cname, d: '普通环格。恰好落在自家颜色格上会触发同色跳 +4。' };
-      }
+      if (!near(rc, 30)) continue;
+      var colName = FL_SOC[FL_CELLCOL[i]];
+      var cname = colName + '色格';
+      var lt = FL_LETTER[i] ? '（格号 ' + FL_LETTER[i] + '）' : '';
+      var st = Object.keys(FL_START).find(function (k) { return FL_START[k] === i; });
+      if (st) return { t: '▶ ' + FL_SOC[st] + '社 · 出道格' + lt, d: '该社艺人掷到 6 后第一个落脚点（出道 → 登顶全程 56 步）。' };
+      if (FL_SAFE[i]) return { t: '⛑ 安全格 · ' + cname + lt, d: '原版 4 个安全点之一，踩上不触发同色跳。' };
+      if (FL_LINE[i] !== undefined) return { t: '✈ 航线（' + colName + '社专属）' + lt, d: '本社艺人踩中直飞 +12 格（包机），一次跨越 1/4 圈；航线横跨对角社归航道第 3 格 —— 停在那儿的敌机会被一起撞回机库。' };
+      return { t: '普通格 · ' + cname + lt, d: '恰好落在自家颜色格上会触发同色跳 +4。' };
     }
     return null;
   }
@@ -4778,10 +4947,13 @@
     _mjKey: function (t) { return mjKey(t); },
     _mjHand: function (p) { return (G && G.hands[p]) ? G.hands[p].slice() : []; },
     _fl: {
-      RC: flRC, pieceRC: flPieceRC, armRC: flArmRC, THRONE: FL_THRONE, QUAD: FL_QUAD, PADS: FL_PADS,
-      START: FL_START, ENTRY: FL_ENTRY, LINE: FL_LINE, STAR: FL_STAR, CI: FL_CI,
-      cellColor: flCellColorName, colorIdx: flCellColorIdx,
-      TOTAL: FL_TOTAL, OUT: FL_OUT, RING: FL_RING, GRID: FL_GRID, HOME: FL_HOME
+      RC: flRC, pieceRC: flPieceRC, homeRC: flHomeRC, QUAD: FL_QUAD, PADS: FL_PADS,
+      START: FL_START, LINE: FL_LINE, SAFE: FL_SAFE, STAR: FL_STAR,
+      cellColor: flCellColorName, HOMES: FL_HOMES, CELLCOL: FL_CELLCOL,
+      TOTAL: FL_TOTAL, OUT: FL_OUT, RING: FL_RING, HOME: FL_HOME, U: FL_U,
+      RINGRC: FL_RC, SHAPES: FL_SHAPES, DOTS: FL_DOTS,
+      LETTER: FL_LETTER, ART: FL_ART, LINE_RC: FL_LINE_RC, LINE_HIT: FL_LINE_HIT,
+      LINE_COL: FL_LINE_COL, HIT_K: FL_HIT_K, READY: FL_READY
     },
     _flStack: function (p, v) { return flStackOf(p, v); },
     _flMove: function (p, idx, dice) { flMove(p, idx, dice); },
