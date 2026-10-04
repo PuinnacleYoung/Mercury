@@ -14,7 +14,7 @@
      · 押注系统：彩池制赔率 = 0.95 × 总池 ÷ 该家池（实时滚动）；
        斗地主固定赔率 庄1.9 / 散2.1 / 跟庄1.8；单注 100–5000、每桌 3 注、押 1 或押 3 次
      · 飞行棋棋盘：二十六更起按参考源码 AeroplaneChess 1:1 复刻 ——
-       985 坐标系 / 外环 52 格（Coord.js 原坐标）/ 四角方形机库（绿左上·红右上·黄左下·蓝右下）/
+       985 坐标系 / 外环 52 格（Coord.js 原坐标）/ 四角方形练习室（绿左上·红右上·黄左下·蓝右下）/
        自家走 50 格后拐进 6 格归航道登顶（全程 56 步）/ 原图 72 色块 + 73 圆孔 + 20 个字母 +
        四条带箭头的虚线航线（「加油站」）；规则也对齐源码：超点回退、安全格不跳、三连 6 回库，
        以及 ✈ 航线横跨对角社归航道第 3 格的撞飞（Rule.js superFlag 分支）。
@@ -59,7 +59,7 @@
        · js/Coord.js        → 52 格外环坐标 + 四家归航道（61-66/71-76/81-86/91-96）+ 各家出口
        · img/background.png → 棋盘图形（臣逐像素抠出 72 个色块轮廓 + 73 个圆孔，就是「拆格」）
      坐标一律用参考源码的 985×985 坐标系，绘制时整体等比缩放到画布。
-     四角机库按原版方位（不许换）：左上=绿(拾光) 右上=红(星幕) 左下=黄(潮声) 右下=蓝(云顶)。
+     四角练习室按原版方位（不许换）：左上=绿(拾光) 右上=红(星幕) 左下=黄(潮声) 右下=蓝(云顶)。
      外环颜色循环 绿→红→蓝→黄（红社出道格 id=1 是绿格 —— 跟原图一致）。
      规则：每家在外环走 50 格 → 拐进自家 6 格归航道 → 末格登顶，全程 56 步。 */
   /* ── 经典飞行棋几何（二十六更按参考源码 1:1 复刻 · 二十七更拆成可编辑地块）──
@@ -73,18 +73,18 @@
   var FL_OUT = 50;       /* 自家在外环上走 50 格（v = 0..49） */
   var FL_HOME = 6;       /* 归航道 6 格（v = 50..55，末格登顶） */
   var FL_TOTAL = 55;     /* 登顶值（v = 0..55，出道 → 登顶全程 56 步） */
-  /* ── 两台「不在赛道上」的停靠位（二十七更 · 补上源码的等待区）────────────
-     v = FL_HANGAR 机库（未出道）· v = FL_PAD 等待区（ready）
-     源码 index.js movePlane()：飞机在机库里 state='unready'，掷 6 点它 →
+  /* ── 两台「不在赛道上」的停靠位（二十七更 · 补上源码的出道位）────────────
+     v = FL_HANGAR 练习室（未出道）· v = FL_PAD 出道位（ready）
+     源码 index.js movePlane()：艺人在练习室里 state='unready'，掷 6 点它 →
      先 animate 到 unTop/unLeft（＝原图四角印着「ready」的那块米色空地），
      状态改 'ready'；【下一次投骰】（任意点数，不必再是 6）才从那儿迈步，
      第 1 步正好落在自家出道格。臣之前把这一步整个吞了，是一出道就蹦上赛道。
-     ⚠️ 等待区坐标＝源码硬编码的 unTop/unLeft（top/left → 臣的 [x,y] 是 [left,top]）：
+     ⚠️ 出道位坐标＝源码硬编码的 unTop/unLeft（top/left → 臣的 [x,y] 是 [left,top]）：
         red 45/678 · blue 678/896 · yellow 892/258 · green 259/45 */
   var FL_HANGAR = -1;
   var FL_PAD = -2;
   var FL_PAD_RC = { r: [678, 45], b: [896, 678], y: [258, 892], g: [45, 259] };
-  var FL_DEPART_MS = 700;   /* 机库 → 等待区 的起飞动画时长（源码是 1500ms 的 animate） */
+  var FL_DEPART_MS = 700;   /* 练习室 → 出道位 的起飞动画时长（源码是 1500ms 的 animate） */
   /* 外环 52 格中心（下标 0 = 红家出道格 id=1，顺时针一圈） */
   var FL_RC = [[655,115],[678,174],[678,229],[655,288],[700,331],[758,310],[812,310],[871,330],[891,389],[891,440],[891,493],[891,546],[891,598],[870,655],[813,677],[757,677],[699,658],[656,699],[678,758],[678,812],[656,869],[599,893],[546,893],[493,893],[441,893],[389,893],[332,870],[309,812],[309,757],[333,700],[287,656],[228,677],[174,677],[115,654],[94,598],[94,546],[94,493],[94,440],[94,388],[117,331],[174,310],[229,310],[288,330],[331,287],[309,229],[309,174],[332,117],[389,95],[441,95],[494,95],[546,95],[598,95]];
   var FL_START = { r: 0, b: 13, y: 26, g: 39 };   /* 各家在 FL_RC 里的起点下标 */
@@ -101,16 +101,41 @@
      清单＝臣把原图逐格放大比对读出来的（N P O Q R S A T B C D F E G H I K J L W），
      源码 Coord.js / Rule.js 都没引用它 —— 是原版棋盘印刷的站名标号，纯装饰。 */
   var FL_LETTER = { 0:'N', 2:'P', 4:'O', 7:'Q', 10:'R', 13:'S', 15:'A', 17:'T', 20:'B', 23:'C', 26:'D', 28:'F', 30:'E', 33:'G', 36:'H', 39:'I', 41:'K', 43:'J', 46:'L', 49:'W' };
-  var FL_ART = { r:'M', y:'O', b:'C', g:'G' };   /* 逻辑色 → 原图印刷色（红=洋红/黄=橙/蓝=浅蓝/绿=绿） */
+  var FL_ART = { r:'r', y:'y', b:'b', g:'g' };   /* 逻辑色 → 调色键（三十更：键名直接就是社色） */
   /* ── ✈ 航线横跨（源码 Rule.js attactPlane 的 superFlag 分支）─────────
-     谁飞完航线，谁就把「对角社」停在【归航道第 3 格】上的艺人撞回机库。
+     谁飞完航线，谁就把「对角社」停在【归航道第 3 格】上的艺人撞回练习室。
      源码按 coordId 判：red→83（黄家）· blue→93（绿家）· yellow→63（红家）· green→73（蓝家）；
      83/93/63/73 在臣的 v 体系里统一就是「该家 v = 52」＝归航道下标 2。
      为什么是「对角社」：四条航线都是直线，红(右上)↔黄(左下)、蓝(右下)↔绿(左上) 两两对角，
      飞过去正好横跨对家那条归航道 —— 原图那四条带箭头的虚线就是它的可视化。 */
   var FL_HIT_K = 2;                                   /* 归航道第 3 格（下标 2） */
   var FL_LINE_HIT = { r:'y', b:'g', y:'r', g:'b' };   /* 飞航线的人 → 撞谁家 */
-  var FL_LINE_COL = { r:'#db224e', b:'#76c5f0', y:'#e77918', g:'#83c326' };  /* 虚线原图配色 */
+  /* ── 三十一更 · 起飞点数（对齐源码 index.html 的 #qifei 三档）──────────────
+     源码那个「起飞点数」只有三颗按钮 + 一句 `tabStyle('#qifei li')` 负责点击高亮，
+     Option.js / index.js 里【没有任何代码读 #qifei】—— 也就是说源码的实际行为恒等于
+     「只有 6 能起飞」，那三档是个没接线的空壳。臣这边把它真接上：
+       · set 里的点数 → 可以把练习室里的艺人送上出道位（其余点数只能动已出道的艺人）
+       · 补掷条件不动：源码 `if (diceNum != 6) nextUser(); else addDiceEvent();`
+         —— 只有掷出 6 才补掷一次，跟用哪个点数起飞无关。 */
+  var FL_TAKEOFF_MODES = [
+    { k:'6',   label:'6',     set:[6],
+      hint:'只有掷出 6 才能把练习室里的艺人送上出道位（源码默认档，最经典）' },
+    { k:'56',  label:'5,6',   set:[5,6],
+      hint:'掷出 5 或 6 都能把练习室里的艺人送上出道位，开局快一档' },
+    { k:'246', label:'2,4,6', set:[2,4,6],
+      hint:'掷出 2 / 4 / 6 都能把练习室里的艺人送上出道位，开局最快' }
+  ];
+  var FL_TAKEOFF = '6';   /* 候场选定的档位（跟着 setup 带进对局） */
+  function flTakeoffMode(k) {
+    for (var i = 0; i < FL_TAKEOFF_MODES.length; i++) if (FL_TAKEOFF_MODES[i].k === k) return FL_TAKEOFF_MODES[i];
+    return FL_TAKEOFF_MODES[0];
+  }
+  function flTakeoffK() { return (G && G.takeoff) || FL_TAKEOFF || '6'; }
+  function flTakeoffMode2() { return flTakeoffMode(flTakeoffK()); }
+  /* 这个点数能不能起飞（能不能把练习室里的艺人送到出道位） */
+  function flCanTakeoff(dice) { return flTakeoffMode2().set.indexOf(dice) >= 0; }
+  function flTakeoffLabel() { return flTakeoffMode2().label; }
+  var FL_LINE_COL = { r:'#e05050', b:'#3b82f6', y:'#e8b23a', g:'#3fa34d' };  /* 虚线航线 = 四社色（三十更） */
   /* 原图四条虚线航线：[起点格下标, 终点格下标, 两个「加油站」标签的位置(沿线 0~1)]
      标签位置是从原图实测的 —— 每条线中间都被一块色带挡着（黄家线被红带挡、蓝家线被绿带挡…），
      标签必须落在那块色带之外的米色段上，否则会被色块盖住。 */
@@ -120,7 +145,7 @@
     { col:'g', a:4,  b:16, lab:[0.21, 0.79] },   /* 绿 id5 →id17，竖线 x≈700，跨 73（蓝家） */
     { col:'r', a:17, b:29, lab:[0.27, 0.73] }    /* 红 id18→id30，横线 y≈699，跨 83（黄家） */
   ];
-  /* 机库出口 ready 点：[x, y, 旋转角]。臣从原图四角带标尺放大图量的 ——
+  /* 练习室出口 ready 点：[x, y, 旋转角]。臣从原图四角带标尺放大图量的 ——
      ⚠️ 上面两家（绿左上 / 红右上）原图是【倒着印】的（给坐对面的上家看），下面两家正着印。 */
   var FL_READY = { g: [69, 288, 180], r: [716, 62, 180], y: [307, 927, 0], b: [925, 712, 0] };
   var FL_QUAD  = { r: [739,40,945,246], b: [739,738,945,945], y: [40,738,246,945], g: [40,40,246,246] };
@@ -129,7 +154,7 @@
      缺了它也能跑：下面给一份同款兜底，只是改色入口会失效。 */
   var FL_BOARD = window.FL_BOARD || null;
   var FL_TILES = (FL_BOARD && FL_BOARD.TILES) || [];
-  var FL_SKIN_DEF = (FL_BOARD && FL_BOARD.SKIN_DEF) || { G:'#83c326', O:'#e77918', C:'#76c5f0', M:'#db224e', Y:'#fff500', l:'#c5de69', k:'#c5e5fa', p:'#f09abd', bg:'#fffdcb' };
+  var FL_SKIN_DEF = (FL_BOARD && FL_BOARD.SKIN_DEF) || { g:'#3fa34d', r:'#e05050', b:'#3b82f6', y:'#e8b23a', gl:'#a9d6ae', rl:'#f4b3b3', bl:'#a8c8fb', yl:'#f5d99a', bg:'#ece3fa' };
   var FL_SKIN = (FL_BOARD && FL_BOARD.loadSkin) ? FL_BOARD.loadSkin() : FL_SKIN_DEF;
   var FL_TILE_COL = (FL_BOARD && FL_BOARD.loadTileCol) ? FL_BOARD.loadTileCol() : {};
   function flTileColor(t) { return FL_TILE_COL[t.id] || FL_SKIN[t.tint] || '#ccc'; }
@@ -264,7 +289,8 @@
   /* ================= 状态 ================= */
   var el = null;
   var hall = { open: false, game: null, seats: 3, code: '', players: [], isHost: false, joined: false,
-               entry: null, fillAi: false, aiLevel: 3, rooms: null, watchMode: false, watchCode: '' };
+               entry: null, fillAi: false, aiLevel: 3, rooms: null, watchMode: false, watchCode: '',
+               takeoff: null };   /* 三十一更：飞行棋起飞点数档位（'6' / '56' / '246'） */
   var G = null;
   var _aiTimer = null, _tickTimer = null, _leftKey = '';
   var cgCh = 'table';
@@ -617,9 +643,10 @@
       title: '✈️ 永恒王座 · 番位之战（飞行棋）',
       goal: '把自家四架艺人全部送上 ♛ 永恒王座，先到齐的社赢。',
       terms: [
-        ['机巢', '出发区。艺人停在里面时是待命状态'],
-        ['ready 等待区', '掷 6 出机巢后先停在这儿待命（原图四角印着 ready 的那块空地）'],
-        ['出道', '从 ready 等待区迈出第 1 步，落在自家 ▶ 出道格'],
+        ['起飞点数', '入场时选的档位：6 / 5,6 / 2,4,6 —— 掷出这几个点数之一才能把艺人送出练习室'],
+        ['练习室', '四社各自的出发区。艺人停在站位上时是未出道状态'],
+        ['出道位', '掷出「起飞点数」把艺人从练习室滑到这儿待命（原图四角印着 ready 的那块空地）'],
+        ['出道', '从出道位迈出第 1 步，落在自家 ▶ 出道格'],
         ['归航臂 ↵', '绕完一圈后拐进自己颜色那条 6 格通道'],
         ['永恒王座 ♛', '自家归航道最后一格，踩上去就登顶（点多了沿归航道往回退）']
       ],
@@ -627,25 +654,38 @@
         {
           h: '怎么操作（重点）',
           p: ['先掷骰，然后<b>直接点棋盘上的棋子</b>：',
-            '• 棋子还在<b>机巢</b>里 → 点机巢里那个闪金圈的圈，它就滑到旁边的 <b>ready 等待区</b>待命；',
-            '• 棋子停在 <b>ready 等待区</b> → 点它按点数起步，第 1 步落在自家 ▶ 出道格；',
+            '• 艺人还在<b>练习室</b>里 → 点练习室里那个闪金圈的站位，它就滑到旁边的 <b>出道位</b>待命；',
+            '• 艺人停在 <b>出道位</b> → 点它按点数起步，第 1 步落在自家 ▶ 出道格；',
             '• 棋子已经<b>在路上</b> → 点棋盘格上那架艺人，它就往前走。',
             '能动的棋子会带<b>呼吸金环 + ▼ 箭头</b>高亮，点它就行，不用去底下找按钮。']
         },
         {
+          h: '起飞点数（入场时选）',
+          p: ['这一桌开局前先定档，决定<b>哪个点数能把练习室里的艺人送出去</b>：',
+            '<b>6</b>（默认 · 最经典）：只有掷出 6 才能离开练习室。',
+            '<b>5,6</b>：5 或 6 都能离开练习室，开局快一档。',
+            '<b>2,4,6</b>：2 / 4 / 6 都能离开练习室，开局最快。',
+            '⚠️ 参考源码 index.html 的「起飞点数」就是这三档（默认 6）。源码里那三颗按钮只接了点击高亮、'
+              + '没接任何逻辑，所以它的实际行为恒等于「只有 6」；咱这边是真接上的。',
+            '<b>补掷只看 6</b>：不论选哪一档，只有掷出 6 才补掷一次（源码 <code>diceNum == 6</code> 的判定如此）。',
+            '<b>离开练习室那一趟不算前进</b>：只滑到出道位停下，<b>下一次投骰</b>（任意点数）才真正起步。']
+        },
+        {
           h: '走位规则',
-          p: ['<b>掷出 6 才能出机巢</b>，出巢只滑到 <b>ready 等待区</b>停下；<b>下一次投骰</b>（不用再是 6）才真正起步。',
-            '掷到 6 可以<b>再掷一次</b>（出巢那一次也算），所以掷 6 通常能连着动两次。',
-            '沿外环 <b>52 格</b>顺时针绕行，走满 <b>50 格</b>后从自家 ↵ 归航口拐进 <b>6 格归航道</b>（全程 56 步）。',
+          p: ['沿外环 <b>52 格</b>顺时针绕行，走满 <b>50 格</b>后从自家 ↵ 归航口拐进 <b>6 格归航道</b>（全程 56 步）。',
             '<b>点数超过终点</b>不要紧 —— 多出来的步数沿归航道<b>往回退</b>，退到哪儿算哪儿；正好踩上 ♛ 就登顶（跟参考源码一致）。',
-            '<b>连掷三个 6</b>：外场艺人全部回机库（经典规矩，防一路 6 到底）。']
+            '<b>连掷三个 6</b>：外场艺人全部回练习室（经典规矩，防一路 6 到底）。',
+            '<b>四架全登顶才算赢</b>，缺一架都不算（源码 <code>winNum == 4</code>）。',
+            '<b>同格多架自己人</b>：一次只挪你点中的那一架，不会整摞一起走；但被别家撞的时候是那一格上<b>全部</b>回练习室。']
         },
         {
           h: '特殊格',
-          p: ['<b>同色跳 +4</b>：踩中自家颜色格，往前再蹿 4 格（4 个安全格不跳）。',
-            '<b>✈ 航线 +12</b>：踩中自家 ✈ 格，包机直飞 12 格（飞到的那格还是自家色，接着再跳 4）。',
-            '<b>✈💥 航线横跨撞飞</b>：四条航线都是<b>横穿棋盘</b>的直线，正好越过<b>对角社</b>归航道的第 3 格 —— 只要那格上停着对角社的艺人，包机飞过去就把它<b>一起撞回机库</b>（参考源码 Rule.js 的 superFlag 规则）。',
-            '<b>撞子</b>：落点上有别家艺人 → 全部送回机库重排。']
+          p: ['<b>同色跳 +4</b>：踩中自家颜色格，往前再蹿 4 格（原图那 4 个「安全格」踩上不跳）。',
+            '<b>✈ 航线 +12</b>：踩中自家 ✈ 格，包机直飞 12 格。',
+            '<b>跳 ↔ 飞 会互相接着来</b>：飞到的格子还是自家色 → 接着跳 4；跳到自家 ✈ 格上 → 接着飞 12。'
+              + '一趟结算里各走一次就收手（跟源码的结算帧一致），不会没完没了。',
+            '<b>✈💥 航线横跨撞飞</b>：四条航线都是<b>横穿棋盘</b>的直线，正好越过<b>对角社</b>归航道的第 3 格 —— 只要那格上停着对角社的艺人，包机飞过去就把它<b>一起撞回练习室</b>（参考源码 Rule.js 的 superFlag 规则）。',
+            '<b>撞子</b>：落点上有别家艺人 → 那一格上对方<b>全部</b>送回练习室重排；<b>撞到人这一趟就停手</b>，后面的跳格 / 航线都不再触发（源码 stopFlag）。']
         }
       ]
     },
@@ -1243,8 +1283,32 @@
     sub1.textContent = '座位摆法：2 人对面坐、3 人坐左上/右上、4 人四角分开，谁出牌牌就亮在谁头上。';
     c1.appendChild(sub1);
 
+    /* ①b 起飞点数（三十一更 · 只有飞行棋才有这一栏）
+       对齐源码 index.html 的「起飞点数」三档：2,4,6 / 5,6 / 6（默认 6）。
+       ⚠️ 源码那三颗按钮只接了点击高亮、没接逻辑，所以它恒等于「只有 6」；
+          咱这边是真接上的 —— 选哪档，哪个点数才能把练习室里的艺人送出去。 */
+    if (hall.game === 'flight') {
+      var cT = col('② 起飞点数');
+      var rT = document.createElement('div'); rT.className = 'cg-row';
+      FL_TAKEOFF_MODES.forEach(function (m) {
+        var btn = document.createElement('button');
+        btn.className = 'cg-btn' + ((hall.takeoff || '6') === m.k ? ' on' : '');
+        btn.textContent = m.label;
+        btn.disabled = !!hall.code;      /* 联机房里房主定档，别人别乱改 */
+        btn.onclick = function () { hall.takeoff = m.k; renderHall(); };
+        rT.appendChild(btn);
+      });
+      cT.appendChild(rT);
+      var subT = document.createElement('div'); subT.className = 'cg-sub';
+      subT.textContent = flTakeoffMode(hall.takeoff || '6').hint
+        + '（掷出这几个点数之一才能出练习室；补掷仍然只看 6。）';
+      cT.appendChild(subT);
+    }
+
     /* ② 座位（AI 补位可勾选） */
-    var c2 = col('② 座位');
+    var T2 = (hall.game === 'flight') ? '③' : '②';    /* 飞行棋多了「起飞点数」那一栏，序号顺延 */
+    var T3 = (hall.game === 'flight') ? '④' : '③';
+    var c2 = col(T2 + ' 座位');
     var r2 = document.createElement('div'); r2.className = 'cg-row';
     for (var i = 0; i < hall.seats; i++) {
       var p = hall.players[i];
@@ -1277,7 +1341,7 @@
     c2.appendChild(sub2);
 
     /* ③ 入场费（十七更：三档 · 三币任选 · 冠亚分账） */
-    var cE = col('③ 入场费（打完按名次分账）');
+    var cE = col(T3 + ' 入场费（打完按名次分账）');
     var rE = document.createElement('div'); rE.className = 'cg-row';
     ENTRY_FEES.forEach(function (v) {
       var btn = document.createElement('button');
@@ -1302,7 +1366,7 @@
     cE.appendChild(subE);
 
     /* ④ 开房 / 观战 / 加入 */
-    var c3 = col('④ 开房 · 观战 · 单机');
+    var c3 = col(((hall.game === 'flight') ? '⑤' : '④') + ' 开房 · 观战 · 单机');
     var r3 = document.createElement('div'); r3.className = 'cg-row';
     if (!hall.code) {
       r3.appendChild(mkBtn('pri', '🏠 开个房间', createRoom));
@@ -1416,9 +1480,10 @@
     var s = { game: gameId, seats: seats, seat: 0, seed: Date.now() };
     if (entry) s.entryFee = { amt: entry.amt, cur: entry.cur };
     s.aiLevel = hall.aiLevel || 3;
+    FL_TAKEOFF = hall.takeoff || FL_TAKEOFF || '6';   /* 三十一更：起飞点数档位（只飞行棋用） */
     if (gameId === 'uno') s.hands = unoDeal(seats);
     else if (gameId === 'mahjong') s.wall = shuffle(mjWall());
-    else if (gameId === 'flight') s.colors = ['r', 'y', 'g', 'b'].slice(0, seats);
+    else if (gameId === 'flight') { s.colors = ['r', 'y', 'g', 'b'].slice(0, seats); s.takeoff = FL_TAKEOFF || '6'; }
     else if (gameId === 'doudizhu') s.deal = ddDeal();
     return s;
   }
@@ -1605,12 +1670,15 @@
       for (var al = 1; al < setup.seats; al++) G.lack[al] = mjAiLack(G.hands[al]);
       cgLog('🀄 川麻开局：先定缺（手里那一门打光了才能胡）· 血战到底（胡了不退场，打到只剩一家）· 底注 ' + fmt(G.mjBase));
     } else if (setup.game === 'flight') {
+      flAnimStop();                                          /* 清掉上一局残留的演出帧 */
       G.colors = setup.colors;
+      G.takeoff = setup.takeoff || FL_TAKEOFF || '6';         /* 三十一更：本局起飞点数档位 */
       G.planes = setup.colors.map(function () { return [-1, -1, -1, -1]; });
       G.dice = 0; G.turn = 0; G.pick = -1; G.skipFlag = {}; G.againFlag = false;
-      G.six = setup.colors.map(function () { return 0; });   /* 连掷 6 计数（三个 6 全部回机库） */
+      G.six = setup.colors.map(function () { return 0; });   /* 连掷 6 计数（三个 6 全部回练习室） */
       G.fate = flDeck20(); G.evdeck = shuffle(flDeck32());
       G.lastFate = ''; G.lastEvent = '';
+      G.anims = []; G.flash = null; G._afterCards = null;
       /* 飞行棋：社名 + 真名（陛下要「知道是谁」） */
       G.names = G.colors.map(function (c, p) {
         return FL_SOC[c] + '社·' + (G.real[p] || '？');
@@ -1702,7 +1770,12 @@
     c.clearRect(0, 0, W, H);
     c.save();
     var grd = c.createRadialGradient(W / 2, H * 0.42, 40, W / 2, H * 0.42, Math.max(W, H) * 0.7);
-    grd.addColorStop(0, '#463270'); grd.addColorStop(1, '#241a3d');
+    if (G.game === 'flight') {
+      /* 三十更·陛下钦定：飞行棋的「画面背景」用淡紫（棋盘底板再浅一号，形成纸/桌层次） */
+      grd.addColorStop(0, '#d5c3f2'); grd.addColorStop(1, '#b09ae0');
+    } else {
+      grd.addColorStop(0, '#463270'); grd.addColorStop(1, '#241a3d');
+    }
     c.fillStyle = grd; c.fillRect(0, 0, W, H);
     c.restore();
     if (G.game === 'uno') drawUno(c, W, H);
@@ -1773,7 +1846,7 @@
   }
   /* 飞行棋托管掷骰：掷完自动选第一架可动的 */
   function flRollAuto() {
-    if (G.turn !== 0 || G.over || G.spectate) return;
+    if (G.turn !== 0 || G.over || G.spectate || flAnimBusy()) return;
     G.dice = 1 + rnd(6);
     G.pick = -1; G.options = null;
     G.lastPlay[0] = [{ kind: 'dice', n: G.dice }];
@@ -1788,7 +1861,11 @@
       return '锋线速演：点通告单出牌（同色/同数字/功能牌）；一张都出不了就「🂠 抽一张」——UNO 没有"过"，必须抽！剩 1 张记得官宣！';
     }
     if (G.game === 'mahjong') return '防线长议：接令一张传令一张，凑 4 组面子 + 1 对将就能结案，也能凑连环计（七对）。';
-    if (G.game === 'flight') return '永恒王座：掷 6 才能出机巢，出巢先滑到四角的 ready 等待区停下，下一次投骰（不必再是 6）才起步，第 1 步落在自家 ▶ 出道格。绕外环 52 格走满 50 格，从自家归航口拐进 6 格归航道，登顶 ♛ 全程 56 步（点多了往回退）。踩中自家颜色格 同色跳 +4，踩中自家 ✈ 航线格 直飞 +12 —— 航线横穿棋盘，会把对角社停在归航道第 3 格的艺人一起撞回机库。';
+    if (G.game === 'flight') return '永恒王座（起飞点数 ' + flTakeoffLabel() + '）：掷出 ' + flTakeoffLabel()
+      + ' 才能离开练习室，离场先滑到四角的出道位停下，下一次投骰（不必再是起飞点数）才起步，第 1 步落在自家 ▶ 出道格。'
+      + '绕外环 52 格走满 50 格，从自家归航口拐进 6 格归航道，登顶 ♛ 全程 56 步（点多了往回退）。'
+      + '踩中自家颜色格 同色跳 +4，踩中自家 ✈ 航线格 直飞 +12 —— 跳到的格子若压着自家 ✈ 会接着飞，飞到了自家色格会接着跳。'
+      + '航线横穿棋盘，会把对角社停在归航道第 3 格的艺人一起撞回练习室。';
     return '坐庄：先抢筹坐庄（吃 3 张暗料），再轮流出牌压上家（顺子/连对/黑天鹅…），庄家 vs 两家散户，谁先出完谁赢。';
   }
   /* ⚠️ 按钮每帧都会被调用重建——陛下要「当前回合闪烁」就得高频重绘，
@@ -3483,7 +3560,7 @@
     { n: '全场热搜 · 所有人前进 1', f: 'all1', d: '所有人前进 1 格，谁也别想掉队。' },
     { n: '限薪令 · 领先者后退 2', f: 'lead2', d: '当前领跑的经纪人被砍 2 格，高处不胜寒。' },
     { n: '金牌经纪人 · 己方最前的艺人 +3', f: 'me3', d: '抽卡者最靠前的艺人直接 +3 格。' },
-    { n: '封杀令 · 指定一家机库返航', f: 'kill', d: '随机一家的在场艺人被打回机库。' },
+    { n: '封杀令 · 指定一家练习室返航', f: 'kill', d: '随机一家的在场艺人被打回练习室。' },
     { n: '观众缘 · 垫底经纪人 +4', f: 'last4', d: '垫底的那位被观众捞一把，+4 格。' },
     { n: '资本入场 · 掌声雷动（气氛组）', f: null, d: '纯气氛卡：全场掌声雷动，但谁也没动。' },
     { n: '天命轮盘 · 所有未出道艺人重掷出道', f: 'reroll', d: '一半未出道的艺人当场站上 ▶ 出道格。' }
@@ -3493,7 +3570,7 @@
     { n: '喜提热搜 +3', f: 3, d: '热搜挂了一整天，前进 3 格。' },
     { n: '演唱会 · 立即再掷', f: 'again', d: '开完演唱会再摇一次骰子。' },
     { n: '绯闻缠身 −2', f: -2, d: '绯闻缠身，后退 2 格。' },
-    { n: '被封杀 · 敌机回机库', f: 'kill', d: '把对面一架在场艺人打回机库。' },
+    { n: '被封杀 · 敌机回练习室', f: 'kill', d: '把对面一架在场艺人打回练习室。' },
     { n: '狗仔盯梢 · 停一回合', f: 'skip', d: '被狗仔盯上，下回合停一轮。' },
     { n: '拿下代言（资源卡系统后补）', f: null, d: '代言到手——资源卡系统上线后会有额外效果。' },
     { n: '五宝转盘 · 随机效果', f: 'wheel', d: '🐹 五宝转盘：+2/+3/再掷/−2/封杀/停一轮 随机一个。' }
@@ -3517,15 +3594,16 @@
   function flPieceRC(p, v) {
     if (v === undefined || v === null) return null;
     var col = G.colors[p];
-    if (v === FL_HANGAR) return null;            /* 机库里的摆在 ④ 段停机位上，不在这儿画 */
-    if (v === FL_PAD) return FL_PAD_RC[col];     /* 等待区（原图印着 ready 的那块空地） */
+    if (v === FL_HANGAR) return null;            /* 练习室里的摆在 ④ 段站位上，不在这儿画 */
+    if (v === FL_PAD) return FL_PAD_RC[col];     /* 出道位（原图印着 ready 的那块空地） */
     if (v < 0) return null;
     if (v < FL_OUT) return flRC(FL_START[col] + v);
     return flHomeRC(col, v - FL_OUT);
   }
   function flRingCell(p, v) { return (v >= 0 && v < FL_OUT) ? (FL_START[G.colors[p]] + v) % FL_RING : -1; }
-  /* 撞子（二十一更：整叠一起撞飞 + 醒目提示）：
-     落点格上有敌方的艺人 → 那一格上敌方【整摞】全部回机库（叠子就是这么没的） */
+  /* 撞子（三十更：撞飞的每一架都有一段「飞回自家练习室」的一秒位移，看得清是谁被撞了）：
+     落点格上有敌方的艺人 → 那一格上敌方【全部】回练习室
+     （源码 Rule.js attactPlane 就是 `$j('.plane').each(...)` 全体打包送回） */
   function flBounceAt(p, cell) {
     if (cell < 0) return 0;
     var hitMap = {};
@@ -3533,7 +3611,9 @@
       if (q === p) return;
       other.forEach(function (ov, oi) {
         if (ov >= 0 && ov < FL_OUT && flRingCell(q, ov) === cell) {
-          other[oi] = -1;
+          var fromRC = flPieceRC(q, ov);        /* ⚠️ 先取坐标，再把它挪走 */
+          other[oi] = FL_HANGAR;
+          flFlyHome(q, oi, fromRC);              /* 一秒飞回练习室，不是凭空消失 */
           hitMap[q] = (hitMap[q] || 0) + 1;
         }
       });
@@ -3544,15 +3624,15 @@
     ks.forEach(function (k) {
       var q = parseInt(k, 10), n = hitMap[k];
       total += n;
-      cgLog('📸 撞机！' + FL_SOC[G.colors[q]] + '社·' + G.real[q] + ' 的 ' + n + ' 架艺人被撞回机库（狗仔闪光灯+头条）');
+      cgLog('📸 撞机！' + FL_SOC[G.colors[q]] + '社·' + G.real[q] + ' 的 ' + n + ' 架艺人被撞回练习室（狗仔闪光灯+头条）');
     });
-    G.msg = '📸 撞机！' + G.names[p] + ' 一口气撞飞 ' + total + ' 架，全部回机库！';
+    G.msg = '📸 撞机！' + G.names[p] + ' 一口气撞飞 ' + total + ' 架，全部回练习室！';
     G.flash = { cell: cell, t0: Date.now(), n: total };   /* 棋盘上闪一下 + 大字，看得见发生了啥 */
-    if (p === 0) toast('📸 撞机！撞飞 ' + total + ' 架——回机库反省！');
+    if (p === 0) toast('📸 撞机！撞飞 ' + total + ' 架——回练习室反省！');
     return total;   /* 返回值给 flLand 用来判「撞停了就别再连跳」（对齐源码 stopFlag） */
   }
   /* ── ✈ 航线横跨撞子（二十六更 · 源码 Rule.js attactPlane 的 superFlag 分支）────────
-     谁飞完航线，谁就把【对角社】停在自家归航道第 3 格上的艺人全部撞回机库。
+     谁飞完航线，谁就把【对角社】停在自家归航道第 3 格上的艺人全部撞回练习室。
      源码写死了四个 coordId：red→83 · blue→93 · yellow→63 · green→73，
      在臣的 v 体系里就是「该家 v = FL_OUT + FL_HIT_K」，所以这里按「色 + v」精确匹配
      （比源码只比 coordId 更稳：归航道只有本家能进，等价且不会误伤）。 */
@@ -3562,13 +3642,18 @@
     G.planes.forEach(function (ps, q) {
       if (q === p || G.colors[q] !== targetCol) return;
       ps.forEach(function (ov, oi) {
-        if (ov === FL_OUT + FL_HIT_K) { ps[oi] = -1; hits++; }
+        if (ov === FL_OUT + FL_HIT_K) {
+          var fromRC = flPieceRC(q, ov);        /* 归航道第 3 格 → 飞回自家练习室，一秒位移 */
+          ps[oi] = FL_HANGAR;
+          flFlyHome(q, oi, fromRC);
+          hits++;
+        }
       });
     });
     if (!hits) return 0;
     var rc = flHomeRC(targetCol, FL_HIT_K);
     cgLog('✈💥 航线横跨！' + FL_SOC[G.colors[p]] + '社·' + G.real[p] + ' 的包机越过'
-      + FL_SOC[targetCol] + '社归航道第 ' + (FL_HIT_K + 1) + ' 格，把停在那儿的 ' + hits + ' 架艺人撞回机库');
+      + FL_SOC[targetCol] + '社归航道第 ' + (FL_HIT_K + 1) + ' 格，把停在那儿的 ' + hits + ' 架艺人撞回练习室');
     G.msg = '✈💥 ' + G.names[p] + ' 的包机横跨 ' + FL_SOC[targetCol] + '社归航道，撞飞 ' + hits + ' 架！';
     G.flash = { home: targetCol, k: FL_HIT_K, t0: Date.now(), n: hits };
     if (p === 0) toast('✈💥 航线横跨！撞飞 ' + FL_SOC[targetCol] + '社 ' + hits + ' 架艺人');
@@ -3582,8 +3667,10 @@
     });
     if (!cands.length) return;
     var hit = cands[rnd(cands.length)];
-    G.planes[hit[0]][hit[1]] = -1;
-    cgLog('🚫 ' + G.names[hit[0]] + ' 的艺人被封杀，回机库反省');
+    var fromRC = flPieceRC(hit[0], G.planes[hit[0]][hit[1]]);
+    G.planes[hit[0]][hit[1]] = FL_HANGAR;
+    flFlyHome(hit[0], hit[1], fromRC);
+    cgLog('🚫 ' + G.names[hit[0]] + ' 的艺人被封杀，回练习室反省');
   }
   function flApplyEvent(p, idx) {
     if (!G.evdeck.length) G.evdeck = shuffle(flDeck32());
@@ -3645,57 +3732,104 @@
     } else if (f === 'kill') { flKillEnemy(p); }
     else if (f === 'reroll') {
       G.planes.forEach(function (ps) { ps.forEach(function (v, i) { if (v === FL_HANGAR && Math.random() < 0.5) ps[i] = FL_PAD; }); });
-      G.msg = '天命轮盘转动，一批未出道艺人被推到 ready 等待区待命！';
+      G.msg = '天命轮盘转动，一批未出道艺人被推到出道位待命！';
     } else { G.msg = e.n; }
   }
-  /* 落格结算（二十一更：按传统飞行棋修正顺序与条件）
-     撞子 → ✈ 航线直飞（只有落在本社色格才起飞）→ 🚀 同色连跳（+4，可连跳）→ ★ 事件 / 命运
+  /* 落格结算（二十一更立规 · 三十一更补齐「跳格 → 航线」这一环）
+     顺序：撞子 → ✈ 航线直飞（只有落在本社色航线格才起飞）→ 🚀 同色跳（+4）
      ⚠️ 老实现的三个错：① 航线格不判颜色，谁落上去都能飞；② 同色跳只跳一次，不连跳；
-        ③ 连跳/直飞之后不再撞子，敌机白捡一条命。 */
-  function flLand(p, idx, v, depth) {
+        ③ 连跳/直飞之后不再撞子，敌机白捡一条命。
+     ── 三十更：改成【异步链条】—— 每一步演出完（一秒位移）才走下一步，
+        哪个艺人触发了什么行为，眼睛跟得上。规则判定一个字没动，只是把
+        原来的「瞬时赋值」拆成「动画落地再赋值」。
+     ── 三十一更 · 补齐源码那一环「跳格落点压在本社航线格 → 继续飞 12」：
+        源码 index.js 的跳子分支里有一句 `if (coordValue.superCoord != null) { moveCoord(); }`
+        —— 跳到自家 ✈ 格上会再进一次结算帧，于是接着直飞。臣原来只做了「飞 → 跳」，
+        漏了「跳 → 飞」这个方向。
+        ⚠️ 两环各只能走一次（源码靠 superTime / flyAttackFlag 两个变量天然收敛）：
+           航线最多 1 次、同色跳最多 1 次，顺序两种都可能：
+             ① 落点就是 ✈ 格  → 飞 → 落点若是本社色格 → 跳 → 结束
+             ② 落点不是 ✈ 但 是同色格 → 跳 → 落点若是本社 ✈ 格 → 飞 → 结束 */
+  function flLand(p, idx, v, depth, done) {
+    done = done || function () { };
     if (v > FL_TOTAL) v = FL_TOTAL;
-    if (v >= FL_OUT) { G.planes[p][idx] = v; return G.planes[p][idx]; }
+    if (v >= FL_OUT) { G.planes[p][idx] = v; return done(G.planes[p][idx]); }
     var mc = G.colors[p];                 /* 本社颜色（'r'/'y'/'b'/'g'） */
     var cell0 = flRingCell(p, v);
-    /* 落点撞子；撞到了就「停手」——对齐源码的 stopFlag（撞子之后不许再起飞/连跳） */
+    /* ① 落点撞飞：那一格上的敌方全部飞回自家练习室；撞到了就「停手」
+       ——对齐源码 stopFlag（撞到人之后不许再起飞/连跳） */
     var stop = flBounceAt(p, cell0) > 0;
-    var flew = false;
-    /* ① ✈ 航线：落在本社颜色的航线格 → 一次直飞 12 步（跨越 1/4 圈）
-       ⚠️ 航线上正好压着敌机时不起飞（源码 `coordValue.superCoord != null && !stopFlag`）。 */
-    if (depth === 0 && !stop && FL_LINE[cell0] !== undefined && FL_CELLCOL[cell0] === mc) {
-      v = Math.min(FL_TOTAL, v + FL_LINE[cell0]);
-      flew = true;
-      cgLog('✈ 航线直飞 +' + FL_LINE[cell0] + '！' + G.names[p] + ' 的艺人搭上包机');
-      G.msg = '✈ ' + G.names[p] + ' 冲上航线，直飞 ' + FL_LINE[cell0] + ' 格！';
-      if (v < FL_OUT) {
-        /* ② 航线落点撞子（源码飞越后再调一次 attactPlane） */
-        if (flBounceAt(p, flRingCell(p, v))) stop = true;
-        /* ③ ✈ 航线横跨：撞飞「对角社」停在自家归航道第 3 格上的艺人
-           —— 源码 Rule.js superFlag 分支（red→83 / blue→93 / yellow→63 / green→73） */
-        if (flCrossHit(p, FL_LINE_HIT[mc])) stop = true;
+    var flew = false, hopped = false;
+
+    /* ── 第二步：✈ 航线 ─────────────────────────────────────────── */
+    var goLine = function () {
+      /* 落在本社颜色的航线格 → 一次直飞 12 步（跨越 1/4 圈）
+         ⚠️ 航线上正好压着敌机时不起飞（源码 `coordValue.superCoord != null && !stopFlag`）。
+         ⚠️ 一趟结算里只许飞一次（flew 闸门），否则「跳 → 飞 → 跳 → 飞」没完没了。 */
+      var cL = flRingCell(p, v);
+      if (!stop && !flew && FL_LINE[cL] !== undefined && FL_CELLCOL[cL] === mc) {
+        var n = FL_LINE[cL], to = Math.min(FL_TOTAL, v + n);
+        flew = true;
+        cgLog('✈ 航线直飞 +' + n + '！' + G.names[p] + ' 的艺人搭上包机');
+        G.msg = '✈ ' + G.names[p] + ' 冲上航线，直飞 ' + n + ' 格！';
+        G.flash = { tag: '✈ 包机直飞 +' + n, who: p, t0: Date.now(), n: 0,
+                    from: flRC(FL_START[mc] + v), to: flRC(FL_START[mc] + to) };
+        flFly(p, idx, flRC(FL_START[mc] + v), flRC(FL_START[mc] + to), FL_FLY_MS, {
+          hold: true, fromV: v, arrive: to, finish: function () {
+            v = to;
+            if (v < FL_OUT) {
+              /* 航线落点撞飞（源码飞越后再调一次 attactPlane） */
+              if (flBounceAt(p, flRingCell(p, v))) stop = true;
+              /* ✈ 航线横跨：撞飞「对角社」停在自家归航道第 3 格上的艺人
+                 —— 源码 Rule.js superFlag 分支（red→83 / blue→93 / yellow→63 / green→73） */
+              if (flCrossHit(p, FL_LINE_HIT[mc])) stop = true;
+            }
+            goJump();
+          }
+        });
+        return;
       }
-    }
-    /* ④ 🚀 同色跳：停在本社颜色的格子上 → 往前跳 4 格（下一个本社色格）
-       ⚠️ 只能跳一次！外圈每 4 格一循环，+4 之后【必定又是本社色】，
-          要是写「跳到不是本社色为止」就会无限跳。
-       ⚠️ 原图的 4 个「安全格」（id 11/24/37/50）踩上不触发跳子。
-       ⚠️ 刚撞到人就别跳了（源码 `!stopFlag`）。 */
-    var c2 = flRingCell(p, v);
-    if (depth === 0 && !stop && v < FL_OUT && FL_CELLCOL[c2] === mc && !FL_SAFE[c2]) {
-      v = Math.min(FL_TOTAL, v + 4);
-      cgLog('🚀 同色跳 +4！' + G.names[p] + ' 踩中本社色格，往前蹿一格');
-      G.msg = '🚀 ' + G.names[p] + ' 踩中本社色格，同色跳 +4！';
-      if (v < FL_OUT) flBounceAt(p, flRingCell(p, v));
-    }
-    G.planes[p][idx] = v;
-    var cellF = flRingCell(p, v);
-    /* 十七更：抽卡仪式——落 ★ 抽事件卡、冲 ✈ 航线抽命运卡，塔罗式三选一
-       ⚠️ 二十五更：这版先做「基础模板」，事件卡/命运卡整体关掉（FL_CARDS_ON=false），
-          ✈ 航线本身照样直飞 +12，只是不再翻牌。 */
-    if (!FL_CARDS_ON) return G.planes[p][idx];
-    if (depth === 0 && v < FL_OUT && FL_STAR.indexOf(cellF) >= 0) startDraw(p, 'event', idx);
-    else if (depth === 0 && flew) startDraw(p, 'fate', idx);
-    return G.planes[p][idx];
+      goJump();
+    };
+
+    /* ── 第三步：🚀 同色跳 +4 ───────────────────────────────────── */
+    var goJump = function () {
+      /* ⚠️ 只能跳一次！外圈每 4 格一循环，+4 之后【必定又是本社色】，
+            要是写「跳到不是本社色为止」就会无限跳。
+         ⚠️ 原图的 4 个「安全格」（id 11/24/37/50）踩上不触发跳子。
+         ⚠️ 刚撞到人就别跳了（源码 `!stopFlag`）。
+         ⚠️ 三十一更：跳完【要回到航线那一环再看一眼】——跳到自家 ✈ 格上得接着飞。 */
+      var c2 = flRingCell(p, v);
+      if (!stop && !hopped && v < FL_OUT && FL_CELLCOL[c2] === mc && !FL_SAFE[c2]) {
+        var to = Math.min(FL_TOTAL, v + 4);
+        hopped = true;
+        cgLog('🚀 同色跳 +4！' + G.names[p] + ' 踩中本社色格，往前蹿一格');
+        G.msg = '🚀 ' + G.names[p] + ' 踩中本社色格，同色跳 +4！';
+        G.flash = { tag: '🚀 同色跳格 +4', who: p, t0: Date.now(), n: 0,
+                    from: flRC(FL_START[mc] + v), to: flRC(FL_START[mc] + to) };
+        flFly(p, idx, flRC(FL_START[mc] + v), flRC(FL_START[mc] + to), FL_FLY_MS, {
+          hold: true, fromV: v, arrive: to, finish: function () {
+            v = to;
+            if (v < FL_OUT) flBounceAt(p, flRingCell(p, v));
+            goLine();          /* ★ 跳格落点压在本社 ✈ 格 → 继续飞 12（源码 moveCoord() 递归） */
+          }
+        });
+        return;
+      }
+      goEnd();
+    };
+
+    /* ── 第四步：落定 + 抽卡（抽卡这版关着，FL_CARDS_ON=false）───── */
+    var goEnd = function () {
+      G.planes[p][idx] = v;
+      var cellF = flRingCell(p, v);
+      if (!FL_CARDS_ON) { done(G.planes[p][idx]); return; }
+      if (depth === 0 && v < FL_OUT && FL_STAR.indexOf(cellF) >= 0) { G._afterCards = done; startDraw(p, 'event', idx); return; }
+      if (depth === 0 && flew) { G._afterCards = done; startDraw(p, 'fate', idx); return; }
+      done(G.planes[p][idx]);
+    };
+
+    goLine();
   }
   /* ================= 抽卡仪式（塔罗式三选一 · 十七更） ================= */
   function startDraw(p, kind, idx) {
@@ -3740,7 +3874,7 @@
       if (Date.now() - G.cardBanner.t0 > G.cardBanner.ms + 500) clearInterval(iv2);
     }, 220);
     G.draw = null;
-    var after = G._afterDraw; G._afterDraw = null;
+    var after = G._afterCards; G._afterCards = null;
     if (after) after();
     else { drawGame(); scheduleAI(); }
   }
@@ -3785,11 +3919,11 @@
     for (var i = 0; i < ps.length; i++) {
       var v = ps[i];
       if (v >= FL_TOTAL) continue;                 /* 已登顶 */
-      if (v === FL_HANGAR) {                       /* 机库里：只有掷 6 点得动（点它＝飞进等待区） */
-        if (dice === 6) out.push(i);
+      if (v === FL_HANGAR) {                       /* 练习室里：只有掷「起飞点数」才动得了（点它＝飞进出道位） */
+        if (flCanTakeoff(dice)) out.push(i);
         continue;
       }
-      /* 等待区（ready）和赛道上的：任何点数都能动 —— 源码 state=='ready'||'running' 一视同仁 */
+      /* 出道位（ready）和赛道上的：任何点数都能动 —— 源码 state=='ready'||'running' 一视同仁 */
       out.push(i);                                 /* 经典规矩：点数超了按「回退」处理，不锁死不出 */
     }
     return out;
@@ -3803,143 +3937,174 @@
     G.dice = 0;   /* 二十三更：重置骰子，这样下一回合点画布才能掷骰 */
     touchTurn();
   }
-  /* 十七更续：逐格走路动画——走 3 步就一格一格挪，不许「嗖」地瞬移 */
-  var FL_STEP_MS = 320;   /* 二十三更 v4：每格 320ms（原 230ms），走路更明显看清谁在动 */
-  /* 逐格走路：path 是一串「每一帧该停在哪个 v」，第 1 项＝起点。
-     ⚠️ path 里绝不出现 FL_HANGAR（-1）——机库那个位置由 ④ 段停机位负责画，
-        要是 path 里塞了 -1，棋子会在第一帧凭空消失。机库 → 等待区 请走 flStartFly。 */
-  function flStartAnim(p, idx, path, dice, finish) {
-    G.anim = { p: p, idx: idx, path: path, dice: dice, t0: Date.now(), finish: finish };
-    G.planes[p][idx] = path[0];
-    flAnimLoop();
+  /* ── 三十更 · 位移演出系统（陛下钦定：不许凭空消失再出现）────────────────
+     不管走子、跳格、航线直飞还是被撞飞，都得「看得见过程」——
+     正常走子 → 逐格挪；跳格 / 航线 / 撞飞回巢 → 一秒位移。
+     G.anims 是【并发数组】（一次撞飞可能好几架同时飞），每一项两种形态：
+       · 位移 { p, idx, fly:[起点RC, 终点RC], dur, t0, hold, arrive, fromV, finish }
+           hold:true  → 演出期间逻辑值【留在起点】，落地才写 arrive（走位类：起飞/跳格/航线）
+           hold:false → 逻辑值【已经写好】，动画只负责画（敌机被撞飞：逻辑先回练习室）
+       · 逐格 { p, idx, path:[v…], seg, t0, finish }
+     绘制层用 flAnimXY(p, idx) 拿插值坐标；flAnimBusy() 判断「还有没有在演」。 */
+  var FL_STEP_MS = 320;   /* 逐格走子：一格 320ms */
+  var FL_FLY_MS = 1000;   /* 跳格 / 航线直飞 / 撞飞回巢：一秒位移 */
+  var _animRAF = 0;
+  function flAnims() { if (!G.anims) G.anims = []; return G.anims; }
+  function flAnimBusy() { return flAnims().length > 0; }
+  /* 绘制层专用：正在飞的那一架 → 返回 985 参考坐标插值；其余情况返回 null */
+  function flAnimOf(p, idx) {
+    var list = flAnims();
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i];
+      if (a.p === p && a.idx === idx && a.fly) return a;
+    }
+    return null;
   }
-  /* 起飞（机库 → 等待区）：一次直线滑行、坐标插值 —— 对齐源码 animate({top,left},1500) 的观感。
-     ⚠️ 这一段 G.planes[p][idx] 仍然保持 FL_HANGAR，绘制层靠 flAnimXY() 取插值坐标。 */
-  function flStartFly(p, idx, arrive, finish) {
-    var col = G.colors[p];
-    var A = (FL_PADS[col] && FL_PADS[col][idx]) || FL_PAD_RC[col];
-    var B = FL_PAD_RC[col];
-    G.anim = { p: p, idx: idx, fly: [A, B], arrive: arrive, t0: Date.now(), dur: FL_DEPART_MS, finish: finish };
-    flAnimLoop();
-  }
-  /* 绘制层专用：正在起飞的那一架 → 返回插值坐标；其余情况返回 null */
   function flAnimXY(p, idx) {
-    var a = G && G.anim;
-    if (!a || !a.fly || a.p !== p || a.idx !== idx) return null;
+    var a = flAnimOf(p, idx);
+    if (!a) return null;
     var f = Math.min(1, (Date.now() - a.t0) / a.dur);
-    f = f * f * (3 - 2 * f);                      /* smoothstep：起步缓、落点稳 */
+    f = f * f * (3 - 2 * f);                    /* smoothstep：起步缓、落点稳 */
     return [a.fly[0][0] + (a.fly[1][0] - a.fly[0][0]) * f,
             a.fly[0][1] + (a.fly[1][1] - a.fly[0][1]) * f];
   }
-  function flAnimLoop() {
-    if (!G || !G.anim) return;
-    var a = G.anim;
-    if (a.fly) {                                   /* 起飞段：只推进时间，坐标交给 flAnimXY 插 */
-      if (Date.now() - a.t0 >= a.dur) {
-        var ff = a.finish; G.anim = null;
+  /* 逐格挪：path 是一串「每一帧该停在哪个 v」，第 1 项＝起点。
+     ⚠️ path 里绝不出现 FL_HANGAR（-1）——练习室那个位置由 ④ 段站位负责画，
+        要是 path 里塞了 -1，棋子会在第一帧凭空消失。练习室 → 出道位 请走 flFly。 */
+  function flWalk(p, idx, path, finish) {
+    flAnims().push({ p: p, idx: idx, path: path, seg: FL_STEP_MS, t0: Date.now(), finish: finish });
+    G.planes[p][idx] = path[0];
+    flAnimKick();
+  }
+  /* 一秒位移：从 fromRC 插值到 toRC（都是 985 参考坐标）。 */
+  function flFly(p, idx, fromRC, toRC, ms, opts) {
+    opts = opts || {};
+    if (!fromRC || !toRC) { if (opts.finish) opts.finish(); return; }
+    var a = { p: p, idx: idx, fly: [fromRC, toRC], dur: ms || FL_FLY_MS, t0: Date.now(),
+              hold: !!opts.hold, arrive: opts.arrive, fromV: opts.fromV, finish: opts.finish };
+    if (a.hold && a.fromV !== undefined && a.fromV !== null) G.planes[p][idx] = a.fromV;
+    flAnims().push(a);
+    flAnimKick();
+  }
+  /* 被撞飞 → 飞回自家练习室站位（逻辑值已经置成 FL_HANGAR，动画只管画） */
+  function flFlyHome(q, oi, fromRC) {
+    if (!fromRC) return;
+    var pads = FL_PADS[G.colors[q]];
+    var to = (pads && pads[oi]) || FL_PAD_RC[G.colors[q]];
+    flFly(q, oi, fromRC, to, FL_FLY_MS, { hold: false });
+  }
+  function flAnimKick() {                          /* 幂等：启动演出循环 */
+    if (_animRAF || !G || !flAnimBusy()) return;
+    _animRAF = requestAnimationFrame(flAnimTick);
+  }
+  function flAnimTick() {
+    _animRAF = 0;
+    if (!G) return;
+    var list = flAnims(), now = Date.now();
+    /* 倒序遍历 + splice 安全：finish 里可能又推新动画进来（链式演出） */
+    for (var i = list.length - 1; i >= 0; i--) {
+      var a = list[i];
+      if (a.fly) {
+        if (a.hold && a.fromV !== undefined && a.fromV !== null) G.planes[a.p][a.idx] = a.fromV;
+        if (now - a.t0 < a.dur) continue;
         if (a.arrive !== undefined && a.arrive !== null) G.planes[a.p][a.idx] = a.arrive;
-        drawGame();
-        if (ff) ff();
-        return;
+        list.splice(i, 1);
+        if (a.finish) a.finish();
+        continue;
       }
-      drawGame();
-      requestAnimationFrame(flAnimLoop);
-      return;
-    }
-    var k = Math.floor((Date.now() - a.t0) / FL_STEP_MS);
-    var j = Math.min(a.path.length - 1, k);
-    G.planes[a.p][a.idx] = a.path[j];
-    if (j >= a.path.length - 1) {
-      var f = a.finish; G.anim = null;
-      drawGame();
-      if (f) f();
-      return;
+      var j = Math.min(a.path.length - 1, Math.floor((now - a.t0) / a.seg));
+      G.planes[a.p][a.idx] = a.path[j];
+      if (j >= a.path.length - 1) {
+        list.splice(i, 1);
+        if (a.finish) a.finish();
+      }
     }
     drawGame();
-    requestAnimationFrame(flAnimLoop);
+    if (list.length) flAnimKick();
   }
-  /* 二十一更·叠子：同一格上本社的几架艺人算「一叠」，一起走、一起被撞回机库 */
+  /* 清场（重开一局 / 退出对局）：防止上一局的 rAF 打到新对局上 */
+  function flAnimStop() {
+    if (_animRAF) { cancelAnimationFrame(_animRAF); _animRAF = 0; }
+    if (G) G.anims = [];
+  }
+  /* 叠子识别（只用于显示 ×N 和撞子判定）：
+     ⚠️ 三十更·陛下钦定：叠在一起【不整摞一起走】，一次只挪点中的那一架；
+        被撞的时候仍然是「那一格上的敌方全部回练习室」——源码 Rule.js attactPlane 就是 each 全体。 */
   function flStackOf(p, v) {
     var out = [];
-    /* 机库和等待区都不算「一摞」：等待区是出发前的落脚点，四架各自独立迈步 */
     if (v === FL_HANGAR || v === FL_PAD || v === undefined || v === null) return out;
     G.planes[p].forEach(function (ov, i) { if (ov === v) out.push(i); });
     return out;
   }
   function flMove(p, idx, dice) {
-    if (G.anim) return;
+    if (flAnimBusy()) return;
     var ps = G.planes[p];
     var v0 = ps[idx];
     if (v0 >= FL_TOTAL) return;
-    if (v0 === FL_HANGAR && dice !== 6) return;
-    var fromHangar = (v0 === FL_HANGAR);   /* 出机库：只飞进等待区，不踏上赛道 */
-    var fromPad = (v0 === FL_PAD);         /* 从等待区迈步：等价于「出道格前一步」起步 */
-    /* 等待区在赛道上等价于 v = -1（出道格的前一格），所以走 dice 步正好落在 dice-1 */
+    if (v0 === FL_HANGAR && !flCanTakeoff(dice)) return;   /* 练习室里：非起飞点数点不动 */
+    var fromHangar = (v0 === FL_HANGAR);   /* 出练习室：只飞进出道位，不踏上通告圈 */
+    var fromPad = (v0 === FL_PAD);         /* 从出道位迈步：等价于「出道格前一步」起步 */
+    /* 出道位在通告圈上等价于 v = -1（出道格的前一格），所以走 dice 步正好落在 dice-1 */
     var base = fromPad ? FL_HANGAR : v0;
     var to = fromHangar ? FL_PAD : base + dice;
     /* 经典规矩：点数超过终点 → 沿归航道往回退（源码 backStepFlag 就是这么定的） */
     if (to > FL_TOTAL) { to = FL_TOTAL * 2 - to; if (to < 0) to = 0; }
     G.options = null;
     G.sel = [];
-    /* 跟这一架叠在同一格的兄弟姐妹（不含自己）——整叠一起挪 */
-    var mates = v0 >= 0 ? flStackOf(p, v0).filter(function (i) { return i !== idx; }) : [];
-    if (mates.length) cgLog('🗼 叠子起飞：' + G.names[p] + ' 的 ' + (mates.length + 1) + ' 架艺人叠成一摞一起走！');
-    if (fromHangar) cgLog('🎬 ' + G.names[p] + ' 的艺人滑出机库，停在 ready 等待区待命');
-    if (fromPad) cgLog('🛫 ' + G.names[p] + ' 的艺人从等待区起飞，踏上赛道！');
-    /* 走到位之后的收尾（原 flMove 下半段，原样保留） */
+    if (fromHangar) cgLog('🎬 ' + G.names[p] + ' 的艺人滑出练习室，停在出道位待命');
+    if (fromPad) cgLog('🛫 ' + G.names[p] + ' 的艺人从出道位起飞，踏上通告圈！');
+    /* 走到位之后的收尾 */
     var finish = function () {
-      var v = ps[idx];
-      /* 二十三更修：出道只停在起点格，不触发同色跳/航线/撞子（传统飞行棋规矩）
-         depth=99 让 flLand 跳过所有 depth===0 的分支 */
-      /* ⚠️ 出机库那一趟（机库 → 等待区）什么都不结算 —— 源码里 unready 分支也只是
-         animate 一下改个 state，没有任何 attactPlane / 跳子判定。
-         踏上赛道之后（含从等待区迈出的第 1 步）才走完整结算链。 */
-      if (!fromHangar) flLand(p, idx, v, 0);
-      /* 叠子：整摞跟到同一个落点（撞机时 flBounceAt 会把整摞一起清掉） */
-      mates.forEach(function (mi) { if (G.planes[p][mi] !== FL_TOTAL) G.planes[p][mi] = G.planes[p][idx]; });
-      G.msg = fromHangar
-        ? G.names[p] + ' 的艺人滑进 ready 等待区，再掷一次才起步'
-        : G.names[p] + ' 掷 ' + dice + '，艺人走到第 ' + Math.max(0, ps[idx]) + ' 步';
-      var after = function () {
-        /* 经典规矩：连掷三个 6 → 外场艺人全部回机库，这一轮不再补掷 */
-        var penalty = false;
-        if (!G.six) G.six = [0, 0, 0, 0];
-        if (dice === 6) {
-          G.six[p] = (G.six[p] || 0) + 1;
-          if (G.six[p] >= 3) {
-            var backN = 0;
-            G.planes[p].forEach(function (x, i) { if (x !== FL_HANGAR && x < FL_OUT) { G.planes[p][i] = FL_HANGAR; backN++; } });
-            G.six[p] = 0; penalty = true;
-            if (backN) {
-              cgLog('🎲🎲🎲 ' + G.names[p] + ' 连掷三个 6 —— 外场 ' + backN + ' 架艺人全部回机库！');
-              G.msg = '🎲 连掷三个 6！' + G.names[p] + ' 外场艺人全部回机库';
-              if (p === 0) toast('🎲🎲🎲 连掷三个 6，外场艺人全部回机库！');
-            }
-          }
-        } else G.six[p] = 0;
-        if (ps.every(function (x) { return x === FL_TOTAL; })) {
-          G.winSeat = p; G.over = G.names[p] + ' 的艺人全体登上永恒王座，番位之战大获全胜！♛🎉';
-          settleBets(); drawGame(); showResult(); return;
-        }
-        var again = !penalty && (G.againFlag || dice === 6);
-        G.againFlag = false;
-        if (!again) flNext(p);
-        else G.dice = 0;   /* 二十三更 v4：掷6再掷时重置骰子，让点画布掷骰生效 */
-        drawGame(); scheduleAI();
-      };
-      /* 抽卡仪式进行中 → 挂起后续，等牌翻开再走 */
-      if (G.draw && !G.draw.done) { G._afterDraw = after; drawGame(); return; }
-      after();
+      /* ⚠️ 出练习室那一趟（练习室 → 出道位）什么都不结算 —— 源码 index.js 的 unready 分支
+         也只是 animate 一下改个 state，没有任何 attactPlane / 跳子判定。
+         踏上通告圈之后（含从出道位迈出的第 1 步）才走完整结算链。 */
+      if (fromHangar) { after(); return; }
+      G.msg = G.names[p] + ' 掷 ' + dice + '，艺人走到第 ' + Math.max(0, ps[idx]) + ' 步';
+      flLand(p, idx, ps[idx], 0, after);
     };
-    if (fromHangar) { flStartFly(p, idx, FL_PAD, finish); return; }
-    /* 逐格路径：第 1 项＝起点（从等待区出发时，先停在等待区那一帧，看得见它起步）
+    /* 全部演出（走子 → 撞飞 → 跳格 → 航线）结束后的收尾 */
+    var after = function () {
+      /* 经典规矩：连掷三个 6 → 外场艺人全部回练习室，这一轮不再补掷 */
+      var penalty = false;
+      if (!G.six) G.six = [0, 0, 0, 0];
+      if (dice === 6) {
+        G.six[p] = (G.six[p] || 0) + 1;
+        if (G.six[p] >= 3) {
+          var backN = 0;
+          G.planes[p].forEach(function (x, i) { if (x !== FL_HANGAR && x < FL_OUT) { G.planes[p][i] = FL_HANGAR; backN++; } });
+          G.six[p] = 0; penalty = true;
+          if (backN) {
+            cgLog('🎲🎲🎲 ' + G.names[p] + ' 连掷三个 6 —— 外场 ' + backN + ' 架艺人全部回练习室！');
+            G.msg = '🎲 连掷三个 6！' + G.names[p] + ' 外场艺人全部回练习室';
+            if (p === 0) toast('🎲🎲🎲 连掷三个 6，外场艺人全部回练习室！');
+          }
+        }
+      } else G.six[p] = 0;
+      if (ps.every(function (x) { return x === FL_TOTAL; })) {
+        G.winSeat = p; G.over = G.names[p] + ' 的艺人全体登上永恒王座，番位之战大获全胜！♛🎉';
+        settleBets(); drawGame(); showResult(); return;
+      }
+      var again = !penalty && (G.againFlag || dice === 6);
+      G.againFlag = false;
+      if (!again) flNext(p);
+      else G.dice = 0;   /* 掷6再掷时重置骰子，让点画布掷骰生效 */
+      drawGame(); scheduleAI();
+    };
+    if (fromHangar) {
+      /* 起飞：练习室站位 → 出道位，直线滑行（源码是 animate({top,left},1500)） */
+      var col = G.colors[p];
+      flFly(p, idx, (FL_PADS[col] && FL_PADS[col][idx]) || FL_PAD_RC[col], FL_PAD_RC[col], FL_DEPART_MS,
+        { hold: true, fromV: FL_HANGAR, arrive: FL_PAD, finish: finish });
+      return;
+    }
+    /* 逐格路径：第 1 项＝起点（从出道位出发时，先停在出道位那一帧，看得见它起步）
        ⚠️ 超过终点时 to < 起点（沿归航道回退），路径必须【递减】生成 ——
           要是照抄升序循环会得到空数组，棋子被赋成 undefined（二十七更踩过的坑）。 */
     var path = [], p0 = fromPad ? 0 : v0;
     if (fromPad) path.push(FL_PAD);
     if (to >= p0) { for (var s = p0; s <= to; s++) path.push(s); }
     else { for (var sd = p0; sd >= to; sd--) path.push(sd); }
-    flStartAnim(p, idx, path, dice, finish);
+    flWalk(p, idx, path, finish);
   }
   function flAI(t) {
     var dice = 1 + rnd(6); G.dice = dice;
@@ -3949,7 +4114,7 @@
     var fc = opts.map(function (idx) {
       var v0 = G.planes[t][idx];
       var hangar = (v0 === FL_HANGAR), pad = (v0 === FL_PAD);
-      /* 出机库 → 只停到等待区（不算前进）；从等待区 → 走 dice 步，第 1 步落在出道格 */
+      /* 出练习室 → 只停到出道位（不算前进）；从出道位 → 走 dice 步，第 1 步落在出道格 */
       var target = hangar ? FL_PAD : (pad ? dice - 1 : v0 + dice);
       var cell = hangar ? FL_START[G.colors[t]]
         : flRingCell(t, Math.max(0, Math.min(target, FL_OUT - 1)));
@@ -3992,7 +4157,7 @@
   }
   /* ============ 二十五更 v2：经典飞行棋棋盘绘制（按参考源码 1:1 复刻） ============
      底板 + 72 个色块 + 73 个圆孔 ＝ 原版棋盘（臣从 background.png 逐像素抠出来的）；
-     再叠上 ▶ 出道格、✈ 航线格、四社机库（社名 / 经纪人 / 停机位）、归航道终点 ♛。
+     再叠上 ▶ 出道格、✈ 航线格、四社练习室（社名 / 经纪人 / 站位）、归航道终点 ♛。
      棋子 = 圆形（本色 + 白边 + 编号），同格同家叠成一摞写 ×N，
      当前回合金圈呼吸，能动的那几架带 ▼ 提示。 */
   function drawFlight(c, W, H) {
@@ -4113,7 +4278,7 @@
       c.font = 'bold ' + Math.max(9, cs * 0.62) + 'px "Arial","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif';
       c.fillText(FL_LETTER[k], PX(rc[0]), PY(rc[1]) + cs * 0.03);
     });
-    /* 四角 ready（机库出口标识，原图写在四角外侧、用本社颜色；上面两家倒着印） */
+    /* 四角「出道位」（练习室出口标识，原图写在四角外侧、用本社颜色；上面两家倒着印） */
     Object.keys(FL_READY).forEach(function (col) {
       var p = G.colors.indexOf(col);
       if (p < 0) return;
@@ -4124,13 +4289,13 @@
       c.fillStyle = FL_SKIN[FL_ART[col]];
       c.globalAlpha = 0.92;
       c.font = 'bold ' + Math.max(9, side * 0.030) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText('ready', 0, 0);
+      c.fillText('出道位', 0, 0);
       c.restore();
       c.globalAlpha = 1;
     });
     c.textBaseline = 'alphabetic';
 
-    /* ── ④ 四社机库：社名 + 经纪人真名 + 状态胶囊 + 4 个停机位 ── */
+    /* ── ④ 四社练习室：社名 + 经纪人真名 + 状态胶囊 + 4 个站位 ── */
     Object.keys(FL_QUAD).forEach(function (col) {
       var q = FL_QUAD[col], p = G.colors.indexOf(col), active = p >= 0;
       var isCur = active && G.turn === p && !G.over;
@@ -4174,9 +4339,9 @@
         c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();
         c.strokeStyle = canGo ? '#ffd166' : 'rgba(255,255,255,.5)';
         c.lineWidth = canGo ? Math.max(2, padR * 0.34) : Math.max(1, padR * 0.2); c.stroke();
-        if (v !== FL_HANGAR) return;    /* 已出道的画在跑道上，机库里不留影 */
-        /* 正在「滑出机库」的那一架交给 ⑥ 段按插值坐标画，机库里不能同时留残影 */
-        if (G.anim && G.anim.fly && G.anim.p === p && G.anim.idx === i) return;
+        if (v !== FL_HANGAR) return;    /* 已出道的画在跑道上，练习室里不留影 */
+        /* 正在「滑出练习室」的那一架交给 ⑥ 段按插值坐标画，练习室里不能同时留残影 */
+        if (flAnimXY(p, i)) return;   /* 正在飞的那一架交给 ⑥ 段按插值坐标画，练习室里不留残影 */
         c.beginPath(); c.arc(pcx, pcy, pr, 0, 6.2832);
         c.fillStyle = FL_COL[col]; c.globalAlpha = 0.95; c.fill(); c.globalAlpha = 1;
         c.strokeStyle = '#fff'; c.lineWidth = Math.max(1, pr * 0.16); c.stroke();
@@ -4237,16 +4402,20 @@
     });
     c.textBaseline = 'alphabetic';
 
-    /* ── ⑥ 棋子（圆形 + 编号；同格同家叠成一摞写 ×N） ── */
+    /* ── ⑥ 棋子（圆形 + 编号；同格同家叠成一摞写 ×N）
+       ⚠️ 三十更：叠子只是「显示 ×N」，一次只走点中的那一架；
+          正在飞的棋子加金色光圈 + 拖尾，看得出它从哪儿来、往哪儿去。 ── */
     var groups = {};
     G.colors.forEach(function (col, p) {
       G.planes[p].forEach(function (v, idx) {
-        var xy = flAnimXY(p, idx);              /* 正在滑出机库的那一架：拿插值坐标 */
-        if (!xy && v === FL_HANGAR) return;     /* 老实待在机库里的，由 ④ 段停机位负责画 */
+        var an = flAnimOf(p, idx);
+        var xy = an ? flAnimXY(p, idx) : null;  /* 正在飞的：拿插值坐标 */
+        if (!xy && v === FL_HANGAR) return;     /* 老实待在练习室里的，由 ④ 段站位负责画 */
         var rc = xy || flPieceRC(p, v); if (!rc) return;
         var key = p + '|' + rc[0] + ',' + rc[1];
-        if (!groups[key]) groups[key] = { p: p, col: col, rc: rc, list: [] };
+        if (!groups[key]) groups[key] = { p: p, col: col, rc: rc, list: [], fly: null };
         groups[key].list.push(idx);
+        if (an) groups[key].fly = an;
       });
     });
     Object.keys(groups).forEach(function (key) {
@@ -4255,6 +4424,20 @@
       var r = Math.max(6, side * 0.027);
       var isTurn = (G.turn === p && !G.over);
       var canGo = p === 0 && G.options && list.some(function (i) { return G.options.indexOf(i) >= 0; });
+      /* 飞行中：拖尾 + 金色光圈（「这架正在动」） */
+      if (gp.fly) {
+        var x0 = PX(gp.fly.fly[0][0]), y0 = PY(gp.fly.fly[0][1]);
+        var dx = x0 - cx, dy = y0 - cy;
+        for (var gi = 1; gi <= 3; gi++) {
+          var g2 = gi / 4.2;
+          c.beginPath(); c.arc(cx + dx * g2, cy + dy * g2, r * (0.8 - gi * 0.17), 0, 6.2832);
+          c.globalAlpha = 0.30 - gi * 0.075;
+          c.fillStyle = FL_COL[col]; c.fill();
+        }
+        c.globalAlpha = 1;
+        c.beginPath(); c.arc(cx, cy, r + side * 0.016 + pu0 * side * 0.007, 0, 6.2832);
+        c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2.5, side * 0.008); c.stroke();
+      }
       if (canGo) {
         c.beginPath(); c.arc(cx, cy, r + side * 0.010 + pu0 * side * 0.004, 0, 6.2832);
         c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, side * 0.007); c.stroke();
@@ -4331,8 +4514,8 @@
       l2 = (mine && G.options && G.options.length) ? '点棋盘上金圈里的艺人出动 / 走位 →'
         : (mine && G.dice === 6) ? '掷到 6！再摇一次'
           : (!mine ? '等 ' + G.names[G.turn] + ' 走棋……' : '这几点动不了，等下轮');
-    } else if (mine && !G.anim && !G.draw) {
-      l1 = '👆 点屏幕摇骰子'; c1 = '#ffd166'; l2 = '掷到 6 就能把机巢里的艺人送到 ready 等待区';
+    } else if (mine && !flAnimBusy() && !G.draw) {
+      l1 = '👆 点屏幕摇骰子'; c1 = '#ffd166'; l2 = '掷到 ' + flTakeoffLabel() + ' 就能把练习室里的艺人送上出道位';
     } else if (G.over) { l1 = '🏁 ' + String(G.over).slice(0, 22); c1 = '#ffd166'; }
     else { l1 = '▶ ' + G.names[G.turn] + ' 回合中…'; }
     c.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
@@ -4370,24 +4553,68 @@
     if (G.draw) drawDrawLayer(c, W, H);
   }
   /* ---------- 抽卡仪式绘制：遮罩 + 三张背面牌，点一张翻开 ---------- */
-  /* 二十一更：撞机闪光——「谁把谁撞回机库了」要在棋盘上闪一下才看得见 */
+  /* 演出层：两种形态 ——
+     ① 「谁触发了什么」（跳格 / 航线）：A→B 一条本社色光带 + 起点扩散环 + 起点上方飘标签；
+     ② 「撞飞」（落点撞子 / 航线横跨）：格子中心爆一圈白光 + 「💥 撞飞 ×N！」
+     —— 陛下钦定：整个过程要看得清是哪个艺人触发了什么行为。 */
   function drawFlFlash(c, W, H, sc, bx, by) {
     var F = G && G.flash;
     if (!F) return;
-    var age = Date.now() - F.t0;
-    if (age > 1500) { G.flash = null; return; }
-    /* 撞子在 52 格外环上 → flRC；航线横跨的撞子在【归航道】上 → flHomeRC */
-    var rc = (F.home !== undefined) ? flHomeRC(F.home, F.k || 0) : flRC(F.cell);
-    var cx = bx + rc[0] * sc, cy = by + rc[1] * sc;   /* 格子中心（985 坐标系） */
-    var unit = 52 * sc;
-    var k = age / 1500, a = 1 - k;
+    var MS = 1600, age = Date.now() - F.t0;
+    if (age > MS) { G.flash = null; return; }
+    var unit = 52 * sc, k = age / MS, a = 1 - k;
     c.save();
     c.globalAlpha = a;
-    var rr = unit * (0.55 + k * 1.9);
+    if (F.from && F.to) {
+      var x1 = bx + F.from[0] * sc, y1 = by + F.from[1] * sc;
+      var x2 = bx + F.to[0] * sc, y2 = by + F.to[1] * sc;
+      var colr = (G.colors && G.colors[F.who] !== undefined && FL_COL[G.colors[F.who]]) || '#ffd166';
+      /* ① A→B 光带（虚线，跟 flFly 的直线插值轨迹完全一致） */
+      c.globalAlpha = a * 0.85;
+      c.setLineDash([Math.max(5, unit * 0.26), Math.max(4, unit * 0.18)]);
+      c.strokeStyle = colr; c.lineWidth = Math.max(2, unit * 0.14);
+      c.globalAlpha = a;
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+      c.setLineDash([]);
+      /* 起点扩散环（「从这里出发的」） */
+      c.strokeStyle = '#fff'; c.lineWidth = Math.max(2, unit * 0.09);
+      c.beginPath(); c.arc(x1, y1, unit * (0.5 + k * 1.5), 0, 6.2832); c.stroke();
+      /* 终点落点环 */
+      c.strokeStyle = colr; c.lineWidth = Math.max(1.6, unit * 0.07);
+      c.beginPath(); c.arc(x2, y2, unit * (0.42 + k * 0.7), 0, 6.2832); c.stroke();
+      /* 起点上方飘标签 */
+      var fs = Math.max(13, unit * 0.44);
+      c.font = 'bold ' + fs + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      var tw = c.measureText(F.tag).width + fs * 1.1, th = fs * 1.62;
+      var lx = x1 - tw / 2, ly = y1 - th - unit * 0.85 - (1 - a) * 10;
+      c.fillStyle = 'rgba(20,10,40,.88)';
+      c.strokeStyle = colr; c.lineWidth = 2;
+      c.beginPath();
+      var rr = th / 2;
+      c.moveTo(lx + rr, ly); c.lineTo(lx + tw - rr, ly);
+      c.quadraticCurveTo(lx + tw, ly, lx + tw, ly + rr);
+      c.lineTo(lx + tw, ly + th - rr);
+      c.quadraticCurveTo(lx + tw, ly + th, lx + tw - rr, ly + th);
+      c.lineTo(lx + rr, ly + th);
+      c.quadraticCurveTo(lx, ly + th, lx, ly + th - rr);
+      c.lineTo(lx, ly + rr);
+      c.quadraticCurveTo(lx, ly, lx + rr, ly);
+      c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#fff';
+      c.fillText(F.tag, x1, ly + th / 2 + 1);
+      c.textBaseline = 'alphabetic';
+      c.restore(); return;
+    }
+    /* 撞子形态：52 格外环上用 flRC，航线横跨的撞子在归航道上用 flHomeRC */
+    var rc = (F.home !== undefined) ? flHomeRC(F.home, F.k || 0) : flRC(F.cell);
+    if (!rc) { G.flash = null; c.restore(); return; }
+    var cx = bx + rc[0] * sc, cy = by + rc[1] * sc;
+    var rr2 = unit * (0.55 + k * 1.9);
     c.strokeStyle = '#ffffff'; c.lineWidth = 3 + 5 * a;
-    c.beginPath(); c.arc(cx, cy, rr, 0, 6.2832); c.stroke();
+    c.beginPath(); c.arc(cx, cy, rr2, 0, 6.2832); c.stroke();
     c.strokeStyle = '#ffd166'; c.lineWidth = 2.5;
-    c.beginPath(); c.arc(cx, cy, rr * 0.6, 0, 6.2832); c.stroke();
+    c.beginPath(); c.arc(cx, cy, rr2 * 0.6, 0, 6.2832); c.stroke();
     c.fillStyle = '#ff9aa0';
     c.font = 'bold ' + Math.max(15, unit * 0.6) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
     c.textAlign = 'center';
@@ -4490,19 +4717,19 @@
     var sx = (x - g.bx) / g.sc, sy = (y - g.by) / g.sc;   /* 换回 985 参考坐标 */
     if (sx < -10 || sx > FL_U + 10 || sy < -10 || sy > FL_U + 10) return null;
     function near(pt, tol) { return Math.abs(sx - pt[0]) <= tol && Math.abs(sy - pt[1]) <= tol; }
-    /* ① 四社机库（准备区） */
+    /* ① 四社练习室（准备区） */
     var quad = null;
     Object.keys(FL_QUAD).forEach(function (k) {
       var q = FL_QUAD[k];
       if (sx >= q[0] && sx <= q[2] && sy >= q[1] && sy <= q[3]) quad = k;
     });
-    if (quad) return { t: FL_SOC[quad] + '社 · 机库（准备区）', d: '待出道艺人的停机位。掷到 6 才能把一架滑到旁边的 ready 等待区，掷到 6 还能再掷一次；下一次投骰（不必再是 6）才真正起步。' };
-    /* ①b ready 等待区（源码 index.js 的 unTop/unLeft 那 4 个点 —— 原图四角印着 ready 的空地） */
+    if (quad) return { t: FL_SOC[quad] + '社 · 练习室（准备区）', d: '未出道艺人的站位。本局起飞点数 = ' + flTakeoffLabel() + '，掷出这几个点数之一才能把一架滑到旁边的出道位；掷到 6 还能再掷一次；下一次投骰（不必再是起飞点数）才真正起步。' };
+    /* ①b 出道位（源码 index.js 的 unTop/unLeft 那 4 个点 —— 原图四角印着 ready 的空地） */
     var padCol = null;
     Object.keys(FL_PAD_RC).forEach(function (k) {
       if (near(FL_PAD_RC[k], 44)) padCol = k;
     });
-    if (padCol) return { t: '🛫 ' + FL_SOC[padCol] + '社 · ready 等待区', d: '掷 6 出机巢后先停这儿待命（源码 state = ready）。下一次投骰、任意点数都能从这儿起步，第 1 步落在自家 ▶ 出道格。' };
+    if (padCol) return { t: '🎤 ' + FL_SOC[padCol] + '社 · 出道位', d: '掷出本局起飞点数（' + flTakeoffLabel() + '）离开练习室后，先停这儿待命（源码 state = ready）。下一次投骰、任意点数都能从这儿起步，第 1 步落在自家 ▶ 出道格。' };
     /* ② 归航道 6 格（末格 = 终点王座） */
     var arm = null, armK = -1;
     Object.keys(FL_HOMES).forEach(function (k) {
@@ -4520,9 +4747,9 @@
       var cname = colName + '色格';
       var lt = FL_LETTER[i] ? '（格号 ' + FL_LETTER[i] + '）' : '';
       var st = Object.keys(FL_START).find(function (k) { return FL_START[k] === i; });
-      if (st) return { t: '▶ ' + FL_SOC[st] + '社 · 出道格' + lt, d: '从 ready 等待区迈出的第 1 步落点（出道 → 登顶全程 56 步）。' };
+      if (st) return { t: '▶ ' + FL_SOC[st] + '社 · 出道格' + lt, d: '从出道位迈出的第 1 步落点（出道 → 登顶全程 56 步）。' };
       if (FL_SAFE[i]) return { t: '⛑ 安全格 · ' + cname + lt, d: '原版 4 个安全点之一，踩上不触发同色跳。' };
-      if (FL_LINE[i] !== undefined) return { t: '✈ 航线（' + colName + '社专属）' + lt, d: '本社艺人踩中直飞 +12 格（包机），一次跨越 1/4 圈；航线横跨对角社归航道第 3 格 —— 停在那儿的敌机会被一起撞回机库。' };
+      if (FL_LINE[i] !== undefined) return { t: '✈ 航线（' + colName + '社专属）' + lt, d: '本社艺人踩中直飞 +12 格（包机），一次跨越 1/4 圈；航线横跨对角社归航道第 3 格 —— 停在那儿的敌机会被一起撞回练习室。' };
       return { t: '普通格 · ' + cname + lt, d: '恰好落在自家颜色格上会触发同色跳 +4。' };
     }
     return null;
@@ -4755,7 +4982,7 @@
     _tickTimer = setInterval(function () {
       if (!G) { stopTick(); return; }
       tickBets(); tickAllow();
-      if (!G.over && !G.ai[G.turn] && !G.spectate && Date.now() - (G.turnAt || Date.now()) > TURN_MS) autoPlayFor();
+      if (!G.over && !G.ai[G.turn] && !G.spectate && !flAnimBusy() && Date.now() - (G.turnAt || Date.now()) > TURN_MS) autoPlayFor();
       /* 押注条目节流刷新：秒数或彩池变了才重画左栏 */
       var poolKey = '';
       Object.keys(G.bet.pool).forEach(function (k) { var p = G.bet.pool[k]; if (p) poolKey += p.join(','); });
@@ -4819,7 +5046,7 @@
       /* 抽卡仪式进行中：只响应选牌 */
       if (G.draw) { var dl = drawLayerHit(x, y, W, H); if (dl >= 0) pickDrawCard(dl); return; }
       /* 二十三更·陛下钦定：我的回合点画布任意位置 → 掷骰子（除了点到棋子命中区） */
-      if (G.turn === 0 && !G.over && !G.spectate && !G.options && !G.anim && !_diceAnim && G.dice === 0) {
+      if (G.turn === 0 && !G.over && !G.spectate && !G.options && !flAnimBusy() && !_diceAnim && G.dice === 0) {
         /* 先检查是不是点到了棋子/头像等可交互区域 */
         var hitAnything = false;
         for (var fch = 0; fch < _flHits.length; fch++) {
@@ -4835,7 +5062,7 @@
         return;
       }
       /* 十七更续·陛下钦定：点「棋盘上的棋子」，不是点底栏那一排。
-         ① 机巢等待位上的那一架 → 出道；② 已经上环/归航的那一架 → 往前走。
+         ① 练习室站位上的那一架 → 出道位；② 已经上环/归航的那一架 → 往前走。
          底栏那排保留作兜底（万一小屏点不准还能点），但主入口是棋盘。 */
       for (var fh = 0; fh < _flHits.length; fh++) {
         var f = _flHits[fh];
@@ -4915,6 +5142,8 @@
     /* 无头测试调试口（不改任何玩法逻辑） */
     _spectate: function () { startGame(buildSetup(hall.game, hall.seats, hall.entry), { spectate: true }); },
     _state: function () { return G; },
+    _hall: function () { return hall; },
+    _helpData: function () { return CG_HELP; },   /* ⚠️ 别叫 _help —— 下面已经有一个 _help（打开说明面板）给占着了 */
     _anchors: seatAnchors,
     _geom: handGeom,
     _bet: function () { return G && G.bet; },
@@ -5003,13 +5232,35 @@
     _flHits: function () { return _flHits.map(function (h) { return { idx: h.idx, x: Math.round(h.x), y: Math.round(h.y), r: Math.round(h.r) }; }); },
     _flOptions: function () { return G && G.options ? G.options.slice() : null; },
     _flDice: function () { return G && G.dice; },
-    _flAnim: function () { return G && G.anim; },
+    _flAnim: function () {
+      var list = flAnims().map(function (a) {
+        return a.fly
+          ? { p: a.p, idx: a.idx, kind: 'fly', from: a.fly[0], to: a.fly[1], dur: a.dur, hold: !!a.hold, arrive: a.arrive }
+          : { p: a.p, idx: a.idx, kind: 'path', path: a.path.slice(), seg: a.seg };
+      });
+      return { busy: list.length > 0, n: list.length, list: list };
+    },
+    _flClear: function () { flAnimStop(); },
+    /* 正在飞的那一架此刻画在哪（985 参考坐标；没在飞就是 null）——实拍「一秒位移」用 */
+    _flAnimXY: function (p, idx) { return flAnimXY(p, idx); },
+    /* 三十一更 · 起飞点数：不传参数＝读当前档位；传 '6'/'56'/'246' ＝切档（无头验收用） */
+    _flTakeoff: function (k) {
+      if (typeof k === 'string') {
+        FL_TAKEOFF = flTakeoffMode(k).k;
+        if (hall) hall.takeoff = FL_TAKEOFF;
+        if (G) G.takeoff = FL_TAKEOFF;
+      }
+      return { k: flTakeoffK(), label: flTakeoffLabel(), set: flTakeoffMode2().set.slice(), modes: FL_TAKEOFF_MODES.map(function (m) { return m.k; }) };
+    },
+    /* 能不能用这个点数起飞（只读） */
+    _flCanTakeoff: function (dice) { return flCanTakeoff(dice); },
     _flDraw: function () { drawGame(); },
-    /* 无头验收用：把走路/起飞动画压到毫秒级，省掉逐格等待（只影响观感节奏，不动规则） */
-    _flSpeed: function (stepMs, departMs) {
+    /* 无头验收用：把走路/起飞/位移动画压到毫秒级，省掉逐格等待（只影响观感节奏，不动规则） */
+    _flSpeed: function (stepMs, flyMs, departMs) {
       if (typeof stepMs === 'number') FL_STEP_MS = stepMs;
+      if (typeof flyMs === 'number') FL_FLY_MS = flyMs;
       if (typeof departMs === 'number') FL_DEPART_MS = departMs;
-      return { step: FL_STEP_MS, depart: FL_DEPART_MS };
+      return { step: FL_STEP_MS, fly: FL_FLY_MS, depart: FL_DEPART_MS };
     },
     /* ===== 飞行棋棋盘配色 API（棋牌引擎的编辑页用；游戏侧不放入口）=========
        棋盘 ＝ 145 块可编辑地块（数据在 src/fl-board.js）。改色有两级：

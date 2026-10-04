@@ -1,9 +1,9 @@
-/* 拾光·澈屿 Service Worker v123
+/* 拾光·澈屿 Service Worker v135
    二十三更 v3：解决 Pad/手机缓存不更新问题——
    ① JS/CSS/JSON 改 network-first（3s 超时回缓存），保证每次拿最新
    ② 预缓存不再写版本号（避免 sw.js 里的旧版本号和 index.html 里的新版本号对不上）
    ③ 页面端通过 postMessage 拿 SW 版本号做比对，不一致自动刷新 */
-const CACHE = 'shuguang-v134';
+const CACHE = 'shuguang-v135';
 const PRECACHE = [
   './',
   './index.html',
