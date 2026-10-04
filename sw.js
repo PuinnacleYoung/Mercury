@@ -1,6 +1,6 @@
-/* 拾光·澈屿 Service Worker（根目录版）v92 —— 策略同 src/sw.js
+/* 拾光·澈屿 Service Worker（根目录版）v93 —— 策略同 src/sw.js
    JS/CSS/JSON 走 network-first（3s 超时回缓存），保证 Pad/手机也能立刻拿到最新代码 */
-const CACHE = 'shuguang-root-v92';
+const CACHE = 'shuguang-root-v94';
 const PRECACHE = [
   './',
   './index.html',
@@ -15,6 +15,8 @@ const PRECACHE = [
   './src/body-template.js',
   './src/npc-render.js',
   './src/map-placeholders.js',
+  './src/fl-draw.js',
+  './src/fl-board.js',
   './src/icons/icon-192.png',
   './src/icons/icon-512.png',
   './src/icons/icon-512-maskable.png',

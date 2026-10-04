@@ -95,6 +95,9 @@
   .bd-ttl .n{font-size:11px;font-weight:700;color:var(--hint);}
   .bd-tint{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);
     border-radius:10px;padding:6px 9px;margin-bottom:6px;font-size:12px;font-weight:700;}
+  .bd-grp{margin:0 0 10px;}
+  .bd-grp-h{font-size:12px;font-weight:800;color:var(--accent);margin:0 0 2px;}
+  .bd-grp-hint{font-size:10.5px;font-weight:700;color:var(--hint);line-height:1.5;margin:0 0 6px;}
   .bd-tint .sw{width:24px;height:24px;border-radius:7px;border:1px solid rgba(0,0,0,.14);flex:0 0 auto;}
   .bd-tint .nm{flex:1;min-width:0;}
   .bd-tint .nm i{font-style:normal;color:var(--hint);font-size:11px;font-weight:700;}
@@ -147,7 +150,8 @@
 <input type="file" id="file-import" accept="application/json,.json" style="display:none">
 <div class="toastbox" id="toastbox"></div>
 
-<script src="./fl-board.js?v=20261005a"></script>
+<script src="./fl-board.js?v=20261005d"></script>
+<script src="./fl-draw.js?v=20261005d"></script>
 <script src="./card-skin.js?v=20261002a"></script>
 <script>
 /* ============================================================
@@ -324,17 +328,38 @@ function bdHit(cv, x, y){
   }
   return null;
 }
+/* ⚠️ 三十一更：预览改成【跟游戏端同一份绘制】（src/fl-draw.js）——
+   以前这里自己画一套 145 块、没有机巢 / 王座 / 出道位 / 棋子，所以「棋子和引擎里
+   的东西对不齐」。现在底板、包机航线、145 块、字母、出道位三角徽章、四社机巢、
+   永恒王座区、棋子样本 全部走 FlDraw —— 跟对局里看到的像素级一致。 */
+let bdPieceSample = true;      /* 预览要不要叠棋子样本（核对棋子是否正好落在格中心） */
 function drawBoardPreview(){
   const cv = document.getElementById('bd-canvas'); if(!cv) return;
   const B = window.FL_BOARD; if(!B) return;
+  const FD = window.FlDraw;
   const ctx = cv.getContext('2d'), g = bdGeom(cv);
   const skin = B.loadSkin(), tileCol = B.loadTileCol();
-  ctx.fillStyle = skin.bg; ctx.fillRect(0, 0, cv.width, cv.height);
-  B.TILES.forEach(t=>{                          /* 145 块逐块自绘 */
-    B.path(ctx, t, g.mx, g.my, g.sc);
-    ctx.fillStyle = B.tileColor(t, skin, tileCol);
-    ctx.fill();
-  });
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if(FD){
+    const sc = cv.width / FD.U;
+    const cfg = {
+      c: ctx, W: cv.width, H: cv.height,
+      bx: 0, by: 0, sc: sc, side: FD.U * sc, cs: 52 * sc,
+      skin: skin, tileCol: tileCol, tiles: B.TILES,
+      colors: ['r', 'y', 'g', 'b'],       /* 预览固定摆全四家（跟游戏里 4 人局一致） */
+      names: ['示例', '示例', '示例', '示例'],
+      real:  ['示例经纪人', '示例经纪人', '示例经纪人', '示例经纪人'],
+      planes: bdPieceSample ? [[0, 55, -1, -1], [0, 55, -1, -1], [0, 55, -1, -1], [0, 55, -1, -1]] : null,
+      turn: -1, over: true, options: null, pulse: 0.5,
+      lineTag: '包机位', curCol: 'r', showStatus: false
+    };
+    FD.mk(cfg);
+    FD.paintBoard(cfg);
+    if(bdPieceSample) FD.paintPieces(cfg);
+  } else {
+    ctx.fillStyle = skin.bg; ctx.fillRect(0, 0, cv.width, cv.height);
+    B.TILES.forEach(t=>{ B.path(ctx, t, g.mx, g.my, g.sc); ctx.fillStyle = B.tileColor(t, skin, tileCol); ctx.fill(); });
+  }
   if(bdSel){                                    /* 选中高亮 */
     const t = B.TILES.find(x=>x.id===bdSel);
     if(t){ B.path(ctx, t, g.mx, g.my, g.sc);
@@ -377,14 +402,21 @@ function buildBoardPanel(){
   h += '<div class="bd-ttl">🎨 飞行棋棋盘配色 <span class="n">145 块地块（' +
        Object.keys(B.stats()).map(k=>B.stats()[k] + ' ' + k).join(' · ') + '）</span></div>';
   h += '<div class="hint">棋盘是从背景图【拆成一块块】的独立地块，每块都能改色。'
-     + '① 改下面 9 个调色键 → 同类地块一起变；② 点预览图上的某一块 → 只改那一块（优先级更高）。</div>';
-  Object.keys(B.SKIN_DEF).forEach(k=>{
-    h += '<div class="bd-tint">'
-      + '<span class="sw" data-sw="' + k + '" style="background:' + skin[k] + '"></span>'
-      + '<span class="nm">' + (B.TINT_LABEL[k] || k) + ' <i>（' + k + ' · ' + (cnt[k]||0) + ' 块）</i></span>'
-      + '<input type="color" data-tint="' + k + '" value="' + skin[k] + '">'
-      + '<button class="cs-btn tiny" data-tint-reset="' + k + '">↩</button>'
-      + '</div>';
+     + '<b>① 改「四社品牌色」→ 棋盘格、棋子、机巢、航线一起变</b>（单一真源）；'
+     + '② 点预览图上的某一块 → 只改那一块（优先级最高）。</div>';
+  const groups = B.TINT_GROUPS || [{ t: '调色键', keys: Object.keys(B.SKIN_DEF) }];
+  groups.forEach(grp=>{
+    h += '<div class="bd-grp"><div class="bd-grp-h">' + grp.t + '</div>';
+    if(grp.hint) h += '<div class="bd-grp-hint">' + grp.hint + '</div>';
+    (grp.keys||[]).forEach(k=>{
+      h += '<div class="bd-tint">'
+        + '<span class="sw" data-sw="' + k + '" style="background:' + skin[k] + '"></span>'
+        + '<span class="nm">' + (B.TINT_LABEL[k] || k) + ' <i>（' + k + ' · ' + (cnt[k]||0) + ' 块）</i></span>'
+        + '<input type="color" data-tint="' + k + '" value="' + skin[k] + '">'
+        + '<button class="cs-btn tiny" data-tint-reset="' + k + '">↩</button>'
+        + '</div>';
+    });
+    h += '</div>';
   });
   h += '<div class="hint" style="margin:8px 0 0">🖱 直接点下面棋盘上的任意一块 → 单独改它的颜色'
      + '（露出来的奶油色是底色，不是地块；那块颜色改上面「奶油底」那一行）</div>';
@@ -394,8 +426,12 @@ function buildBoardPanel(){
      + '<button class="cs-btn" id="bd-reset">↩️ 全部恢复原图配色</button>'
      + '<button class="cs-btn" id="bd-copy">📋 复制配色 JSON</button>'
      + '<button class="cs-btn" id="bd-import">📥 粘贴配色 JSON</button>'
+     + '<label class="cs-chk" style="margin-left:4px"><input type="checkbox" id="bd-piece"' + (bdPieceSample ? ' checked' : '') + '> 预览叠棋子样本</label>'
      + '</div></div>';
   host.innerHTML = h;
+
+  const pieceChk = document.getElementById('bd-piece');
+  if(pieceChk) pieceChk.onchange = ()=>{ bdPieceSample = pieceChk.checked; drawBoardPreview(); };
 
   host.querySelectorAll('input[data-tint]').forEach(inp=>{
     inp.oninput = ()=>{

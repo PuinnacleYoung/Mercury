@@ -68,11 +68,15 @@
      （36 矩形 + 16 三角形 + 20 多边形 + 73 圆孔）—— 逐块几何自绘，不再贴整张背景图；
      每块颜色都能改：FL_SKIN 按调色键批量改、FL_TILE_COL 按地块 id 单块覆盖。
      地块数据本体在 src/fl-board.js（跟棋牌引擎的配色编辑器共用一份）。 */
-  var FL_U = 985;        /* 参考坐标系边长 */
-  var FL_RING = 52;      /* 外环 52 格（一整圈） */
-  var FL_OUT = 50;       /* 自家在外环上走 50 格（v = 0..49） */
-  var FL_HOME = 6;       /* 归航道 6 格（v = 50..55，末格登顶） */
-  var FL_TOTAL = 55;     /* 登顶值（v = 0..55，出道 → 登顶全程 56 步） */
+  /* ⚠️ 三十一更：几何常量 + 棋盘绘制统一搬到 src/fl-draw.js（window.FlDraw）——
+     棋牌引擎的棋盘预览跟这里【共用同一份】，不再各画一套（那才是「棋子和引擎里
+     的东西对不齐」的病根）。这里只做取值，全部引用点一个都不用改。 */
+  var FLD = window.FlDraw || {};
+  var FL_U = FLD.U || 985;        /* 参考坐标系边长 */
+  var FL_RING = FLD.RING || 52;   /* 外环 52 格（一整圈） */
+  var FL_OUT = FLD.OUT || 50;     /* 自家在外环上走 50 格（v = 0..49） */
+  var FL_HOME = FLD.HOME || 6;    /* 归航道 6 格（v = 50..55，末格登顶） */
+  var FL_TOTAL = FLD.TOTAL || 55; /* 登顶值（v = 0..55，出道 → 登顶全程 56 步） */
   /* ── 两台「不在赛道上」的停靠位（二十七更 · 补上源码的出道位）────────────
      v = FL_HANGAR 练习室（未出道）· v = FL_PAD 出道位（ready）
      源码 index.js movePlane()：艺人在练习室里 state='unready'，掷 6 点它 →
@@ -81,35 +85,26 @@
      第 1 步正好落在自家出道格。臣之前把这一步整个吞了，是一出道就蹦上赛道。
      ⚠️ 出道位坐标＝源码硬编码的 unTop/unLeft（top/left → 臣的 [x,y] 是 [left,top]）：
         red 45/678 · blue 678/896 · yellow 892/258 · green 259/45 */
-  var FL_HANGAR = -1;
-  var FL_PAD = -2;
-  var FL_PAD_RC = { r: [678, 45], b: [896, 678], y: [258, 892], g: [45, 259] };
+  var FL_HANGAR = (FLD.HANGAR === undefined ? -1 : FLD.HANGAR);
+  var FL_PAD = (FLD.PAD === undefined ? -2 : FLD.PAD);
+  var FL_PAD_RC = FLD.PAD_RC || { r: [678, 45], b: [896, 678], y: [258, 892], g: [45, 259] };
   var FL_DEPART_MS = 700;   /* 练习室 → 出道位 的起飞动画时长（源码是 1500ms 的 animate） */
-  /* 外环 52 格中心（下标 0 = 红家出道格 id=1，顺时针一圈） */
-  var FL_RC = [[655,115],[678,174],[678,229],[655,288],[700,331],[758,310],[812,310],[871,330],[891,389],[891,440],[891,493],[891,546],[891,598],[870,655],[813,677],[757,677],[699,658],[656,699],[678,758],[678,812],[656,869],[599,893],[546,893],[493,893],[441,893],[389,893],[332,870],[309,812],[309,757],[333,700],[287,656],[228,677],[174,677],[115,654],[94,598],[94,546],[94,493],[94,440],[94,388],[117,331],[174,310],[229,310],[288,330],[331,287],[309,229],[309,174],[332,117],[389,95],[441,95],[494,95],[546,95],[598,95]];
-  var FL_START = { r: 0, b: 13, y: 26, g: 39 };   /* 各家在 FL_RC 里的起点下标 */
-  var FL_HOMER = [[494,179],[494,230],[494,283],[494,334],[494,386],[494,438]];
-  var FL_HOMEB = [[808,493],[756,493],[704,493],[652,493],[600,493],[548,493]];
-  var FL_HOMEY = [[493,808],[493,756],[493,704],[493,652],[493,600],[493,547]];
-  var FL_HOMEG = [[179,493],[231,493],[283,493],[335,493],[387,493],[437,493]];
-  var FL_CELLCOL = ['g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y','g','r','b','y'];  /* 52 格颜色循环 绿→红→蓝→黄 */
-  var FL_LINE = {4:12,17:12,30:12,43:12};  /* 航线格 → 直飞 +N 格 */
-  var FL_SAFE = {10:1,23:1,36:1,49:1};  /* 安全格：踩上不触发同色跳 */
-  /* ── 原图字母标注（20 个）────────────────────────────────────────────
-     key = 外环下标（＝ v），value = 原图印在该格中心圆盘上的字母。
-     原图做法：米色圆盘 + 用【本格颜色】镂空的字母（所以读起来像印在格子上）。
-     清单＝臣把原图逐格放大比对读出来的（N P O Q R S A T B C D F E G H I K J L W），
-     源码 Coord.js / Rule.js 都没引用它 —— 是原版棋盘印刷的站名标号，纯装饰。 */
-  var FL_LETTER = { 0:'N', 2:'P', 4:'O', 7:'Q', 10:'R', 13:'S', 15:'A', 17:'T', 20:'B', 23:'C', 26:'D', 28:'F', 30:'E', 33:'G', 36:'H', 39:'I', 41:'K', 43:'J', 46:'L', 49:'W' };
-  var FL_ART = { r:'r', y:'y', b:'b', g:'g' };   /* 逻辑色 → 调色键（三十更：键名直接就是社色） */
+  var FL_RC = FLD.RC || [];                                       /* 外环 52 格中心（下标 0 = 红家出道格 id=1） */
+  var FL_START = FLD.START || { r: 0, b: 13, y: 26, g: 39 };      /* 各家在 FL_RC 里的起点下标 */
+  var FL_HOMER = FLD.HOMER || [], FL_HOMEB = FLD.HOMEB || [];
+  var FL_HOMEY = FLD.HOMEY || [], FL_HOMEG = FLD.HOMEG || [];
+  var FL_CELLCOL = FLD.CELLCOL || [];                             /* 52 格颜色循环 绿→红→蓝→黄 */
+  var FL_LINE = FLD.LINE || {};                                   /* 航线格 → 直飞 +N 格 */
+  var FL_SAFE = FLD.SAFE || {};                                   /* 安全格：踩上不触发同色跳 */
+  var FL_LETTER = FLD.LETTER || {};                               /* 原图印在圆盘上的 20 个字母标注（纯装饰） */
+  var FL_ART = FLD.ART || { r:'r', y:'y', b:'b', g:'g' };         /* 逻辑色 → 调色键 */
   /* ── ✈ 航线横跨（源码 Rule.js attactPlane 的 superFlag 分支）─────────
-     谁飞完航线，谁就把「对角社」停在【归航道第 3 格】上的艺人撞回练习室。
-     源码按 coordId 判：red→83（黄家）· blue→93（绿家）· yellow→63（红家）· green→73（蓝家）；
-     83/93/63/73 在臣的 v 体系里统一就是「该家 v = 52」＝归航道下标 2。
-     为什么是「对角社」：四条航线都是直线，红(右上)↔黄(左下)、蓝(右下)↔绿(左上) 两两对角，
-     飞过去正好横跨对家那条归航道 —— 原图那四条带箭头的虚线就是它的可视化。 */
-  var FL_HIT_K = 2;                                   /* 归航道第 3 格（下标 2） */
-  var FL_LINE_HIT = { r:'y', b:'g', y:'r', g:'b' };   /* 飞航线的人 → 撞谁家 */
+     谁飞完航线，谁就把「对角社」停在【归航道第 3 格】上的艺人撞回练习室；
+     red→83（黄家）· blue→93（绿家）· yellow→63（红家）· green→73（蓝家），
+     换成 v 体系统一是「该家 v = 52」。四条航线两两对角，飞过去正好横跨对家归航道。
+     （原图 20 个字母标注也一并搬到 src/fl-draw.js。） */
+  var FL_HIT_K = (FLD.HIT_K === undefined ? 2 : FLD.HIT_K);       /* 归航道第 3 格（下标 2） */
+  var FL_LINE_HIT = FLD.LINE_HIT || { r:'y', b:'g', y:'r', g:'b' };   /* 飞航线的人 → 撞谁家 */
   /* ── 三十一更 · 起飞点数（对齐源码 index.html 的 #qifei 三档）──────────────
      源码那个「起飞点数」只有三颗按钮 + 一句 `tabStyle('#qifei li')` 负责点击高亮，
      Option.js / index.js 里【没有任何代码读 #qifei】—— 也就是说源码的实际行为恒等于
@@ -135,21 +130,14 @@
   /* 这个点数能不能起飞（能不能把练习室里的艺人送到出道位） */
   function flCanTakeoff(dice) { return flTakeoffMode2().set.indexOf(dice) >= 0; }
   function flTakeoffLabel() { return flTakeoffMode2().label; }
-  var FL_LINE_COL = { r:'#e05050', b:'#3b82f6', y:'#e8b23a', g:'#3fa34d' };  /* 虚线航线 = 四社色（三十更） */
-  /* 原图四条虚线航线：[起点格下标, 终点格下标, 两个「加油站」标签的位置(沿线 0~1)]
-     标签位置是从原图实测的 —— 每条线中间都被一块色带挡着（黄家线被红带挡、蓝家线被绿带挡…），
-     标签必须落在那块色带之外的米色段上，否则会被色块盖住。 */
-  var FL_LINE_RC = [
-    { col:'y', a:43, b:3,  lab:[0.31, 0.80] },   /* 黄 id44→id4 ，横线 y≈287，跨 63（红家归航道第 3 格） */
-    { col:'b', a:30, b:42, lab:[0.30, 0.83] },   /* 蓝 id31→id43，竖线 x≈287，跨 93（绿家） */
-    { col:'g', a:4,  b:16, lab:[0.21, 0.79] },   /* 绿 id5 →id17，竖线 x≈700，跨 73（蓝家） */
-    { col:'r', a:17, b:29, lab:[0.27, 0.73] }    /* 红 id18→id30，横线 y≈699，跨 83（黄家） */
-  ];
-  /* 练习室出口 ready 点：[x, y, 旋转角]。臣从原图四角带标尺放大图量的 ——
-     ⚠️ 上面两家（绿左上 / 红右上）原图是【倒着印】的（给坐对面的上家看），下面两家正着印。 */
-  var FL_READY = { g: [69, 288, 180], r: [716, 62, 180], y: [307, 927, 0], b: [925, 712, 0] };
-  var FL_QUAD  = { r: [739,40,945,246], b: [739,738,945,945], y: [40,738,246,945], g: [40,40,246,246] };
-  var FL_PADS  = { r: [[795,98],[890,98],[795,190],[890,190]], b: [[795,796],[890,796],[795,888],[890,888]], y: [[96,796],[191,796],[96,888],[191,888]], g: [[96,98],[191,98],[96,190],[191,190]] };
+  /* 虚线航线 = 四社色。三十一更起【派生自 FL_SKIN】，不再写死 —— 见下面 flBrand() 的注释。 */
+  var FL_LINE_COL = { get r() { return flBrand('r'); }, get y() { return flBrand('y'); },
+                      get b() { return flBrand('b'); }, get g() { return flBrand('g'); } };
+  /* 四条包机航线 / 四角出道位 / 四社机巢 / 机巢站位 —— 表都在 src/fl-draw.js（跟引擎共用） */
+  var FL_LINE_RC = FLD.LINE_RC || [];
+  var FL_READY = FLD.READY || { g: [69, 288, 180], r: [716, 62, 180], y: [307, 927, 0], b: [925, 712, 0] };
+  var FL_QUAD  = FLD.QUAD || { r: [739,40,945,246], b: [739,738,945,945], y: [40,738,246,945], g: [40,40,246,246] };
+  var FL_PADS  = FLD.PADS || {};   /* 机巢里 4 个站位圆
   /* ── 地块表 / 调色板统一放在 src/fl-board.js（游戏侧与棋牌引擎共用一份）──
      缺了它也能跑：下面给一份同款兜底，只是改色入口会失效。 */
   var FL_BOARD = window.FL_BOARD || null;
@@ -172,8 +160,17 @@
     try { drawGame(); } catch (e) { }
   }
 
-  var FL_COL = { r: '#e05050', y: '#e8b23a', b: '#3b82f6', g: '#3fa34d' };   /* 四社棋子色 */
-  var FL_SOC = { r: '星幕', y: '潮声', g: '拾光', b: '云顶' };
+  /* ── 四社品牌色：单一真源（三十一更 · 陛下钦定「引擎要能调四社颜色」）────────────
+     ⚠️ 以前这里躺着【第二套色】：fl-board.js 的 FL_SKIN_DEF（地块，引擎面板能调）
+        和下面写死的 FL_COL / FL_LINE_COL（棋子、机巢圆点、航线虚线、飞行光带）。
+        结果：在引擎里把「拾光社」改成靛蓝，只有棋盘格变，棋子和航线纹丝不动 ——
+        陛下原话「引擎应该是可以调颜色的，但你没给我提供调四个社的颜色的功能」。
+     现在全部从 FL_SKIN 派生（getter 动态取，引用点一个都不用改）；
+     改一处 → 地块 / 棋子 / 机巢圆点 / 航线虚线 / 飞行光带 五处一起变。 */
+  function flBrand(col) { return (FL_SKIN && FL_SKIN[FL_ART[col] || col]) || '#9aa0a6'; }
+  var FL_COL = { get r() { return flBrand('r'); }, get y() { return flBrand('y'); },
+                 get b() { return flBrand('b'); }, get g() { return flBrand('g'); } };   /* 四社棋子/机巢色（派生） */
+  var FL_SOC = FLD.SOC || { r: '星幕', y: '潮声', g: '拾光', b: '云顶' };
   var FL_HOMES = { r: FL_HOMER, b: FL_HOMEB, y: FL_HOMEY, g: FL_HOMEG };
   var FL_ENTRY = { r: 0, b: 0, y: 0, g: 0 };   /* 兼容旧引用（归航口＝外环第 50 步那一格） */
   function flRC(i) { return FL_RC[(((i % FL_RING) + FL_RING) % FL_RING)]; }
@@ -2419,7 +2416,13 @@
     /* 川麻：定缺没定完、或有人在等碰/杠/胡的时候，别让 AI 抢着摸牌 */
     if (G.game === 'mahjong' && (G.phase !== 'play' || G.pending)) return;
     if (!G.ai[G.turn]) return;
-    _aiTimer = setTimeout(aiStep, 620);
+    /* ⚠️ 三十二更：轮到我摇骰 / 演出还没演完的时候，AI 绝不能抢着动手 ——
+       以前这里没这道闸，aiStep 会撞进正在跑的演出里，flMove 被静默拦掉 →
+       那一手就丢了，回合永远不推进（陛下反馈的「卡在 AI 那个回合」）。
+       注意是【重新排期】而不是 return —— return 就是死等。 */
+    if (_diceAnim || flAnimBusy()) { _aiTimer = setTimeout(aiStep, 150); return; }
+    /* 三十一更：AI 要先摇骰子（FL_AI_ROLL_MS），所以这里的思考间隔收短，整体节奏反而更自然 */
+    _aiTimer = setTimeout(aiStep, 380);
   }
   function aiStep() {
     if (!G || G.over || !G.ai[G.turn]) return;
@@ -3878,41 +3881,81 @@
     if (after) after();
     else { drawGame(); scheduleAI(); }
   }
-  /* 二十三更：骰子旋转动画（1.5 秒快速滚数→慢停→定格+弹跳）增强赌狗刺激感 */
+  /* ── 骰子滚动演出（人 / AI 共用一份）────────────────────────────────────
+     ⚠️ 三十一更的旧写法：滚动时每帧纯随机 1..6，最后一帧「啪」一下赋 finalDice ——
+        滚动中可能停在 6，结果却是 1。陛下原话：
+        「摇骰子最后摇到 6，但是忽然从 6 跳到了 1，那 1 才是最后的结果……
+          你应该是动画最后停在哪，哪个点就是最终的结果。」
+     现在：预生成一条滚动序列，**最后三拍是减速的「…→ 前驱 → 最终点数」**，
+         并且按时间缓动取值 —— 起手快滚、收尾一格一格慢下来停住，
+         动画最后显示的点数【就是】最终结果，中途绝不跳变。 */
+  var FL_DICE_FRAMES = 16;              /* 滚动格数：够花，又能在 0.7~1.5s 内走完 */
+  function ring6(n) { return ((n - 1 + 600) % 6) + 1; }   /* 1..6 环形取值 */
+  function flDiceSeq(finalDice) {
+    var n = FL_DICE_FRAMES, out = [], i;
+    for (i = 0; i < n; i++) out.push(1 + rnd(6));
+    /* 最后三拍沿环形「逆时针倒推」= 正着看就是 finalDice-2 → finalDice-1 → finalDice，
+       像转盘一格一格拨到位 —— 不会出现「看着要停了却突然换成另一个点」。 */
+    out[n - 1] = finalDice;
+    out[n - 2] = ring6(finalDice - 1);
+    out[n - 3] = ring6(finalDice - 2);
+    return out;
+  }
+  /* 时间 → 序号：前 62% 快滚，后 38% 分三拍减速停住（最后一拍一定是最终点数） */
+  function flDiceIdx(t, n) {
+    if (t < 0.62) return Math.min(n - 4, Math.floor(t / 0.62 * (n - 3)));
+    if (t < 0.75) return n - 3;
+    if (t < 0.85) return n - 2;
+    return n - 1;
+  }
+  /* 摇骰子演出。⚠️ _diceToken 防「旧链被新链顶掉后永远不 done」——
+     那正是「卡在 AI 那个回合、没进入下一个回合」这类死锁的源头。 */
+  var _diceToken = 0;
+  function flSpin(finalDice, dur, done) {
+    var my = ++_diceToken;
+    if (!dur || dur <= 2) {                 /* 加速模式（无头验收）：不播动画直接落点 */
+      _diceAnim = null;
+      done(finalDice);
+      return;
+    }
+    var seq = flDiceSeq(finalDice), t0 = Date.now(), last = -1;
+    _diceAnim = { t0: t0, dur: dur, final: finalDice };
+    function step() {
+      if (!G || my !== _diceToken) return;  /* 被新的摇骰顶掉 → 安静退出，别去清别人的状态 */
+      var t = (Date.now() - t0) / dur;
+      if (t >= 1) {
+        _diceAnim = null;
+        drawGame();
+        done(finalDice);
+        return;
+      }
+      var i = flDiceIdx(t, seq.length);
+      if (i !== last) { last = i; G.dice = seq[i]; drawGame(); }
+      setTimeout(step, t < 0.7 ? 52 : 110);
+    }
+    step();
+  }
+  /* 二十三更：骰子旋转动画（1.5 秒快速滚数→慢停→定格）增强赌狗刺激感
+     三十二更：改走共用的 flSpin —— 收尾一定停在最终点数上 */
+  var FL_ROLL_MS = 1500;    /* 我自己的摇骰时长 */
   var _diceAnim = null;
   function flRoll() {
     if (G.turn !== 0 || G.over || G.spectate || _diceAnim) return;
     var finalDice = 1 + rnd(6);
-    var dur = 1500;
-    var t0 = Date.now();
     G.msg = '🎲 摇骰子中……';
-    _diceAnim = { t0: t0, dur: dur, final: finalDice };
-    function animStep() {
-      if (!G || !_diceAnim) return;
-      var elapsed = Date.now() - t0;
-      if (elapsed >= dur) {
-        /* 定格 */
-        _diceAnim = null;
-        G.dice = finalDice;
-        G.pick = -1; G.options = null;
-        G.lastPlay[0] = [{ kind: 'dice', n: finalDice }];
-        var opts = flMoves(0, finalDice);
-        touchTurn();
-        if (!opts.length) { G.msg = '我 掷了 ' + finalDice + '，没艺人可动'; flNext(0); touchTurn(); drawGame(); scheduleAI(); return; }
-        if (opts.length === 1) flMove(0, opts[0], finalDice);
-        else { G.msg = '我 掷了 ' + finalDice + '，点一架艺人出动'; G.options = opts; }
-        drawGame();
-        if (!G.options) scheduleAI();
-        return;
-      }
-      /* 滚动中：数字快速变化（前 70% 快、后 30% 慢） */
-      var frac = elapsed / dur;
-      var interval = frac < 0.7 ? 60 : (frac < 0.9 ? 150 : 300);
-      G.dice = 1 + Math.floor(Math.random() * 6);
+    flSpin(finalDice, FL_ROLL_MS, function (d) {
+      if (!G) return;
+      G.dice = d;
+      G.pick = -1; G.options = null;
+      G.lastPlay[0] = [{ kind: 'dice', n: d }];
+      var opts = flMoves(0, d);
+      touchTurn();
+      if (!opts.length) { G.msg = '我 掷了 ' + d + '，没艺人可动'; flNext(0); touchTurn(); drawGame(); scheduleAI(); return; }
+      if (opts.length === 1) flMove(0, opts[0], d);
+      else { G.msg = '我 掷了 ' + d + '，点一架艺人出动'; G.options = opts; }
       drawGame();
-      setTimeout(animStep, interval);
-    }
-    animStep();
+      if (!G.options) scheduleAI();
+    });
   }
   function flMoves(p, dice) {
     var out = [], ps = G.planes[p];
@@ -3928,10 +3971,30 @@
     }
     return out;
   }
+  /* ── 三十二更 · 回合顺序（陛下钦定：不能是 Z 字）────────────────────────
+     四家方位看 QUAD（985 坐标、左上原点）：
+       g 拾光 = 左上(40,40)    r 星幕 = 右上(739,40)
+       y 潮声 = 左下(40,738)   b 云顶 = 右下(739,738)
+     顺时针环 = 左上 → 右上 → 右下 → 左下 = g → r → b → y。
+     ⚠️ 旧写法 (from+1)%seats 是跟着 G.colors = ['r','y','g','b'] 走的 ——
+        画面上依次亮起「右上 → 左下 → 左上 → 右下」，一个「Z」字，
+        陛下原话：「看上去有点奇怪，呈现 Z 字形……不符合正常的逻辑」。
+     ⚠️ 只改【轮到谁】；玩家 ↔ 颜色 / 机巢 的绑定、每家的棋子位置一律不动。 */
+  var FL_CLOCK = ['g', 'r', 'b', 'y'];
+  function flClockNext(from) {
+    var col = G.colors[from];
+    var ci = FL_CLOCK.indexOf(col);
+    if (ci < 0) return (from + 1) % G.seats;
+    for (var k = 1; k <= 4; k++) {
+      var p = G.colors.indexOf(FL_CLOCK[(ci + k) % 4]);
+      if (p >= 0) return p;
+    }
+    return (from + 1) % G.seats;
+  }
   function flNext(from) {
     if (G.six) G.six[from] = 0;   /* 换人就清连掷 6 计数 */
-    var t = (from + 1) % G.seats;
-    if (G.skipFlag && G.skipFlag[t]) { G.skipFlag[t] = false; cgLog('🐕 ' + G.names[t] + ' 被狗仔盯梢，停一回合'); t = (t + 1) % G.seats; }
+    var t = flClockNext(from);
+    if (G.skipFlag && G.skipFlag[t]) { G.skipFlag[t] = false; cgLog('🐕 ' + G.names[t] + ' 被狗仔盯梢，停一回合'); t = flClockNext(t); }
     G.turn = t;
     G.round++;
     G.dice = 0;   /* 二十三更：重置骰子，这样下一回合点画布才能掷骰 */
@@ -4036,8 +4099,14 @@
     G.planes[p].forEach(function (ov, i) { if (ov === v) out.push(i); });
     return out;
   }
-  function flMove(p, idx, dice) {
-    if (flAnimBusy()) return;
+  function flMove(p, idx, dice, _retry) {
+    /* ⚠️ 三十二更：以前这里是【静默 return】—— 演出还在跑的时候点棋子，那一手直接蒸发：
+       骰子已经掷出去了，棋子没动，回合也没交出去 = 卡死。
+       现在改成有上限的排队重试（最多约 7 秒），宁可晚一点动，绝不丢回合。 */
+    if (flAnimBusy()) {
+      if ((_retry || 0) < 60) setTimeout(function () { flMove(p, idx, dice, (_retry || 0) + 1); }, 120);
+      return;
+    }
     var ps = G.planes[p];
     var v0 = ps[idx];
     if (v0 >= FL_TOTAL) return;
@@ -4106,30 +4175,47 @@
     else { for (var sd = p0; sd >= to; sd--) path.push(sd); }
     flWalk(p, idx, path, finish);
   }
+  /* ── 三十一更：AI 也播骰子滚动动画（陛下钦定：AI 出牌不能「卡一下」）────────
+     以前 AI 是 `var dice = 1 + rnd(6); G.dice = dice;` 瞬间赋值再动子 ——
+     玩家那边有 1.5 秒滚动，AI 却「啪」一下点数就砸出来，看着又顿又不自然。
+     现在 AI 也摇骰子，时长 FL_AI_ROLL_MS；验收脚本用 _flSpeed(1,1,1,1) 可跳过。 */
+  var FL_AI_ROLL_MS = 700;
+  function flAiRoll(t, done) {
+    var finalDice = 1 + rnd(6);
+    G.msg = '🎲 ' + G.names[t] + ' 摇骰子…';
+    flSpin(finalDice, FL_AI_ROLL_MS, function (d) {
+      if (!G) return;
+      G.dice = d;
+      G.lastPlay[t] = [{ kind: 'dice', n: d }];
+      G.msg = G.names[t] + ' 掷出 ' + d;
+      drawGame();
+      done(d);
+    });
+  }
   function flAI(t) {
-    var dice = 1 + rnd(6); G.dice = dice;
-    G.lastPlay[t] = [{ kind: 'dice', n: dice }];
-    var opts = flMoves(t, dice);
-    if (!opts.length) { G.msg = G.names[t] + ' 掷了 ' + dice + '，没艺人可动'; flNext(t); touchTurn(); drawGame(); scheduleAI(); return; }
-    var fc = opts.map(function (idx) {
-      var v0 = G.planes[t][idx];
-      var hangar = (v0 === FL_HANGAR), pad = (v0 === FL_PAD);
-      /* 出练习室 → 只停到出道位（不算前进）；从出道位 → 走 dice 步，第 1 步落在出道格 */
-      var target = hangar ? FL_PAD : (pad ? dice - 1 : v0 + dice);
-      var cell = hangar ? FL_START[G.colors[t]]
-        : flRingCell(t, Math.max(0, Math.min(target, FL_OUT - 1)));
-      var sc = hangar ? 8 : 0;
-      if (FL_LINE[cell] !== undefined) sc += 6;
-      if (FL_STAR.indexOf(cell) >= 0) sc += 4;
-      for (var q = 0; q < G.seats; q++) {
-        if (q === t) continue;
-        G.planes[q].forEach(function (ov) { if (ov >= 0 && ov < FL_OUT && flRingCell(q, ov) === cell) sc += 10; });
-      }
-      sc += Math.max(0, target) * 0.05;
-      return { i: idx, v: sc };
-    }).sort(function (a, b) { return b.v - a.v; });
-    var pickF = aiPick(fc);
-    flMove(t, pickF ? pickF.i : opts[rnd(opts.length)], dice);
+    flAiRoll(t, function (dice) {
+      var opts = flMoves(t, dice);
+      if (!opts.length) { G.msg = G.names[t] + ' 掷了 ' + dice + '，没艺人可动'; flNext(t); touchTurn(); drawGame(); scheduleAI(); return; }
+      var fc = opts.map(function (idx) {
+        var v0 = G.planes[t][idx];
+        var hangar = (v0 === FL_HANGAR), pad = (v0 === FL_PAD);
+        /* 出练习室 → 只停到出道位（不算前进）；从出道位 → 走 dice 步，第 1 步落在出道格 */
+        var target = hangar ? FL_PAD : (pad ? dice - 1 : v0 + dice);
+        var cell = hangar ? FL_START[G.colors[t]]
+          : flRingCell(t, Math.max(0, Math.min(target, FL_OUT - 1)));
+        var sc = hangar ? 8 : 0;
+        if (FL_LINE[cell] !== undefined) sc += 6;
+        if (FL_STAR.indexOf(cell) >= 0) sc += 4;
+        for (var q = 0; q < G.seats; q++) {
+          if (q === t) continue;
+          G.planes[q].forEach(function (ov) { if (ov >= 0 && ov < FL_OUT && flRingCell(q, ov) === cell) sc += 10; });
+        }
+        sc += Math.max(0, target) * 0.05;
+        return { i: idx, v: sc };
+      }).sort(function (a, b) { return b.v - a.v; });
+      var pickF = aiPick(fc);
+      flMove(t, pickF ? pickF.i : opts[rnd(opts.length)], dice);
+    });
   }
   /* 二十五更 v2：棋盘几何 —— 一律用参考源码的 985×985 坐标系，整体等比缩放到画布
      上留回合条、下留底栏（骰子 + 经纪人条），四周留一点纸边。 */
@@ -4179,285 +4265,32 @@
       c.closePath();
     }
 
-    /* ── ① 底板：奶油纸板（原图底色）+ 投影 ── */
-    c.save();
-    c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = Math.max(8, side * 0.03); c.shadowOffsetY = 4;
-    flPanel(c, bx, by, side, side * 0.032);
-    c.fillStyle = FL_SKIN.bg; c.fill();
-    c.restore();
-    c.save();
-    flPanel(c, bx, by, side, side * 0.032);
-    c.strokeStyle = 'rgba(122,100,62,.5)'; c.lineWidth = Math.max(1.5, side * 0.004); c.stroke();
-    c.restore();
-
-    /* ── ①b 四条虚线航线（原图：各家用自己那支原图色的双排虚线 + 箭头 + 「加油站」）──
-       原图把虚线【压在色块下面】——经过十字臂和归航道就被盖住，臣照原样：
-       先画线，再铺 ② 的色块，就得到一模一样的效果。
-       这四条线正好各横跨对角社归航道的第 3 格 —— 就是「航线撞飞」规则的可视化。 */
-    FL_LINE_RC.forEach(function (L) {
-      var A = flRC(L.a), B = flRC(L.b);
-      var x1 = PX(A[0]), y1 = PY(A[1]), x2 = PX(B[0]), y2 = PY(B[1]);
-      var ang = Math.atan2(y2 - y1, x2 - x1);
-      var K = side / FL_U;                         /* 985 参考单位 → 画布像素 */
-      var e0 = cs * 0.52, e1 = cs * 0.62;          /* 从起点格边缘画到终点格边缘 */
-      var sx = x1 + Math.cos(ang) * e0, sy = y1 + Math.sin(ang) * e0;
-      var ex = x2 - Math.cos(ang) * e1, ey = y2 - Math.sin(ang) * e1;
-      var colr = FL_LINE_COL[L.col];
-      var nx = -Math.sin(ang), ny = Math.cos(ang); /* 中心线的垂直方向 */
-      c.save();
-      c.strokeStyle = colr; c.fillStyle = colr;
-      c.lineWidth = Math.max(1.2, side * 0.0045);
-      c.setLineDash([Math.max(4, side * 0.016), Math.max(3, side * 0.012)]);
-      /* 原图是【双排】虚线：一排离中心线 6.5 单位、一排 19.5 单位，都在同一侧 */
-      [6.5, 19.5].forEach(function (off) {
-        c.beginPath();
-        c.moveTo(sx + nx * off * K, sy + ny * off * K);
-        c.lineTo(ex + nx * off * K, ey + ny * off * K);
-        c.stroke();
-      });
-      c.setLineDash([]);
-      /* 箭头挂在下面那排的末端，指向航线终点 */
-      var ax2 = ex + nx * 19.5 * K, ay2 = ey + ny * 19.5 * K;
-      var ah = Math.max(5, side * 0.019);
-      c.beginPath();
-      c.moveTo(ax2, ay2);
-      c.lineTo(ax2 - Math.cos(ang - 0.42) * ah, ay2 - Math.sin(ang - 0.42) * ah);
-      c.lineTo(ax2 - Math.cos(ang + 0.42) * ah, ay2 - Math.sin(ang + 0.42) * ah);
-      c.closePath(); c.fill();
-      /* 「加油站」×2（原图就写两处，避开中间被横跨的那一格）；先描一圈底色再写字，
-         免得虚线穿字看不清；竖线那两条原图是把字转 90° 竖排的。 */
-      var horiz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
-      var fs = Math.max(8, side * 0.017);
-      c.font = 'bold ' + fs + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      (L.lab || [0.30, 0.78]).forEach(function (t) {
-        var mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
-        c.save();
-        if (!horiz) { c.translate(mx, my); c.rotate(-Math.PI / 2); mx = 0; my = 0; }
-        c.lineWidth = fs * 0.44; c.strokeStyle = FL_SKIN.bg;
-        c.strokeText('加油站', mx, my);
-        c.fillStyle = colr;
-        c.fillText('加油站', mx, my);
-        c.restore();
-      });
-      c.restore();
-    });
-    c.textBaseline = 'alphabetic';
-
-    /* ── ② 棋盘地块（二十七更：从背景图拆出来的 145 块独立地块，逐块自绘）────────
-       每块按 kind 分派：rect 走矩形、tri / poly 走顶点、disc 走圆弧 ——
-       再也不用「贴一整张背景图」，也不用「逐像素抠轮廓」那套了。
-       颜色一律取 flTileColor(块)：想改色就改 FL_SKIN（按 tint 批量）或
-       FL_TILE_COL（按地块 id 单块覆盖），代码里不再有写死的色值。
-       ⚠️ disc 排在数组最后，所以圆孔天然画在色块上面（＝原图「挖孔露底色」的效果）。 */
-    FL_TILES.forEach(function (t) {
-      var r = t.r;
-      c.beginPath();
-      if (t.kind === 'rect') {
-        c.rect(PX(r[0]), PY(r[1]), r[2] * sc, r[3] * sc);
-      } else if (t.kind === 'disc') {
-        c.arc(PX(r[0]), PY(r[1]), Math.max(1.1, r[2] * sc), 0, 6.2832);
-      } else {
-        for (var k = 0; k < t.p.length; k += 2) {
-          var x = PX(t.p[k]), y = PY(t.p[k + 1]);
-          if (k === 0) c.moveTo(x, y); else c.lineTo(x, y);
-        }
-        c.closePath();
-      }
-      c.fillStyle = flTileColor(t);
-      c.fill();
-    });
-
-    /* ── ③b 原图字母标注 20 个（N P O Q R S A T B C D F E G H I K J L W）──
-       原图做法：格中心那颗米色圆盘（＝ ③ 已经画好的圆孔）上，用【本格颜色】镂空一个字母。
-       纯装饰：源码 Coord.js / Rule.js 都没引用，是原版棋盘印的站名标号。 */
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    Object.keys(FL_LETTER).forEach(function (k) {
-      var i = parseInt(k, 10), rc = flRC(i);
-      c.fillStyle = FL_SKIN[FL_ART[FL_CELLCOL[i]]];
-      c.font = 'bold ' + Math.max(9, cs * 0.62) + 'px "Arial","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(FL_LETTER[k], PX(rc[0]), PY(rc[1]) + cs * 0.03);
-    });
-    /* 四角「出道位」（练习室出口标识，原图写在四角外侧、用本社颜色；上面两家倒着印） */
-    Object.keys(FL_READY).forEach(function (col) {
-      var p = G.colors.indexOf(col);
-      if (p < 0) return;
-      var rd = FL_READY[col];
-      c.save();
-      c.translate(PX(rd[0]), PY(rd[1]));
-      if (rd[2]) c.rotate(rd[2] * Math.PI / 180);
-      c.fillStyle = FL_SKIN[FL_ART[col]];
-      c.globalAlpha = 0.92;
-      c.font = 'bold ' + Math.max(9, side * 0.030) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText('出道位', 0, 0);
-      c.restore();
-      c.globalAlpha = 1;
-    });
-    c.textBaseline = 'alphabetic';
-
-    /* ── ④ 四社练习室：社名 + 经纪人真名 + 状态胶囊 + 4 个站位 ── */
-    Object.keys(FL_QUAD).forEach(function (col) {
-      var q = FL_QUAD[col], p = G.colors.indexOf(col), active = p >= 0;
-      var isCur = active && G.turn === p && !G.over;
-      var x0 = PX(q[0]), y0 = PY(q[1]);
-      var w0 = (q[2] - q[0]) * sc, h0 = (q[3] - q[1]) * sc;
-      var cx0 = x0 + w0 / 2;
-      if (isCur) {
-        var ip = Math.max(2, side * 0.005);
-        rrect(x0 + ip, y0 + ip, w0 - ip * 2, h0 - ip * 2, side * 0.022);
-        c.strokeStyle = 'rgba(255,209,102,' + (0.65 + 0.35 * pu0).toFixed(3) + ')';
-        c.lineWidth = Math.max(2.5, side * 0.008); c.stroke();
-      }
-      /* 社名 + 经纪人真名：压在 4 个停机圆中间的空档上，垫一层半透明底才读得清 */
-      var cy0 = y0 + h0 / 2;
-      var nmTxt = FL_SOC[col] + '社';
-      var realTxt = active ? ((G.real && G.real[p]) || '？') : '虚位';
-      var f1 = Math.max(12, h0 * 0.125), f2 = Math.max(9, h0 * 0.085);
-      c.font = 'bold ' + f1 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      var w1 = c.measureText(nmTxt).width;
-      c.font = 'bold ' + f2 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      var w2 = c.measureText(realTxt).width;
-      var bw = Math.max(w1, w2) + h0 * 0.12, bh = f1 + f2 + h0 * 0.06;
-      var byy2 = cy0 - bh / 2;
-      rrect(cx0 - bw / 2, byy2, bw, bh, bh * 0.3);
-      c.fillStyle = 'rgba(28,16,44,.42)'; c.fill();
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = 'rgba(255,255,255,.98)';
-      c.font = 'bold ' + f1 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(nmTxt, cx0, byy2 + bh * 0.33);
-      c.globalAlpha = 0.95;
-      c.font = 'bold ' + f2 + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillText(realTxt, cx0, byy2 + bh * 0.72);
-      c.globalAlpha = 1; c.textBaseline = 'alphabetic';
-      if (!active) return;
-      var pads = FL_PADS[col], padR = side * 0.036, pr = side * 0.031;
-      G.planes[p].forEach(function (v, i) {
-        var pc = pads[i]; if (!pc) return;
-        var pcx = PX(pc[0]), pcy = PY(pc[1]);
-        var canGo = p === 0 && G.options && G.options.indexOf(i) >= 0;
-        c.beginPath(); c.arc(pcx, pcy, padR, 0, 6.2832);
-        c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();
-        c.strokeStyle = canGo ? '#ffd166' : 'rgba(255,255,255,.5)';
-        c.lineWidth = canGo ? Math.max(2, padR * 0.34) : Math.max(1, padR * 0.2); c.stroke();
-        if (v !== FL_HANGAR) return;    /* 已出道的画在跑道上，练习室里不留影 */
-        /* 正在「滑出练习室」的那一架交给 ⑥ 段按插值坐标画，练习室里不能同时留残影 */
-        if (flAnimXY(p, i)) return;   /* 正在飞的那一架交给 ⑥ 段按插值坐标画，练习室里不留残影 */
-        c.beginPath(); c.arc(pcx, pcy, pr, 0, 6.2832);
-        c.fillStyle = FL_COL[col]; c.globalAlpha = 0.95; c.fill(); c.globalAlpha = 1;
-        c.strokeStyle = '#fff'; c.lineWidth = Math.max(1, pr * 0.16); c.stroke();
-        c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = 'bold ' + Math.max(9, pr * 1.1) + 'px sans-serif';
-        c.fillText(i + 1, pcx, pcy + pr * 0.06);
-        c.textBaseline = 'alphabetic';
-        if (canGo) {
-          c.beginPath(); c.arc(pcx, pcy, padR + pu0 * side * 0.006, 0, 6.2832);
-          c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, padR * 0.3); c.stroke();
-          c.fillStyle = '#ffd166'; c.textAlign = 'center';
-          c.font = 'bold ' + Math.max(10, pr * 1.05) + 'px sans-serif';
-          c.fillText('▼', pcx, pcy - padR - pr * 0.35);
-        }
-        if (p === 0) _flHits.push({ idx: i, x: pcx, y: pcy, r: padR + Math.max(4, side * 0.01) });
-      });
-      /* 该家战报胶囊：当前回合 / 停一轮 / 刚掷的点数 */
-      var lastDice = (G.lastPlay && G.lastPlay[p] && G.lastPlay[p][0] && G.lastPlay[p][0].kind === 'dice') ? G.lastPlay[p][0].n : null;
-      var info = isCur ? '🎲 当前回合' : (G.skipFlag && G.skipFlag[p]) ? '⏸ 停一轮' : (lastDice !== null ? '🎲 ' + lastDice : '');
-      if (info) {
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.font = 'bold ' + Math.max(10, side * 0.018) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
-        var iw = c.measureText(info).width + side * 0.02, ih = Math.max(14, side * 0.024);
-        var ix = cx0 - iw / 2, iy = y0 + h0 * 0.775 - ih / 2;
-        rrect(ix, iy, iw, ih, ih / 2);
-        c.fillStyle = isCur ? 'rgba(58,34,6,.72)' : 'rgba(0,0,0,.34)'; c.fill();
-        c.strokeStyle = isCur ? 'rgba(255,209,102,.85)' : 'rgba(255,255,255,.28)';
-        c.lineWidth = 1; c.stroke();
-        c.fillStyle = isCur ? '#ffd166' : 'rgba(255,255,255,.95)';
-        c.fillText(info, cx0, y0 + h0 * 0.775);
-        c.textBaseline = 'alphabetic';
-      }
-    });
-
-    /* ── ⑤ 功能角标：出道格 ▶ / 航线格 ✈ / 归航道终点 ♛ ──
-       ⚠️ 原图格子里【只有字母】，没有 ▶/✈ —— 臣把这两个提示缩成小角标，并且
-          只给「当前回合那一家」亮，静态棋盘就跟原图一致，轮到谁才提示谁。 */
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    var curCol = (G.turn >= 0 && G.turn < G.colors.length) ? G.colors[G.turn] : null;
-    if (curCol) {
-      c.font = 'bold ' + Math.max(9, cs * 0.42) + 'px sans-serif';
-      var bd = [[flRC(FL_START[curCol]), '▶', '#ffd166'], [flRC(FL_LINE[FL_START[curCol] + 17]), '✈', FL_LINE_COL[curCol]]];
-      bd.forEach(function (b) {
-        if (!b[0]) return;
-        var bxx = PX(b[0][0]) - cs * 0.33, byy = PY(b[0][1]) + cs * 0.33;
-        c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = Math.max(1.5, cs * 0.06);
-        c.strokeText(b[1], bxx, byy);
-        c.fillStyle = b[2]; c.fillText(b[1], bxx, byy);
-      });
+    /* ═══ 三十一更：静态棋盘 + 棋子统一交给 src/fl-draw.js 画 ═══════════════
+       陛下原话「重新开发一下引擎，让它跟现在真实的素材真实对齐」——
+       以前游戏端和棋牌引擎各画一套，必然对不齐；现在两边共用这同一份绘制。
+       配色（四社品牌色）、几何、出道位徽章、王座区的改动全在 fl-draw.js，
+       改一次 → 游戏端与引擎预览同时变。 */
+    var FC = {
+      c: c, W: W, H: H, bx: bx, by: by, sc: sc, side: side, cs: cs,
+      skin: FL_SKIN, tileCol: FL_TILE_COL, tiles: FL_TILES,
+      colors: G.colors, names: G.names, real: G.real, planes: G.planes,
+      turn: G.turn, over: G.over, options: G.options, lastPlay: G.lastPlay,
+      skipFlag: G.skipFlag, meSeat: 0, pulse: pu0, hits: _flHits,
+      lineTag: '包机位',
+      curCol: (G.turn >= 0 && G.turn < G.colors.length) ? G.colors[G.turn] : null,
+      pieceRC: flPieceRC, animOf: flAnimOf, animXY: flAnimXY,
+      pieceImg: (typeof flPieceImg === 'function') ? flPieceImg : null
+    };
+    if (window.FlDraw) {
+      FlDraw.mk(FC);
+      FlDraw.paintBackdrop(FC);   /* ① 底板 + ①b 四条包机航线（虚线压在色块下面） */
+      FlDraw.paintTiles(FC);      /* ② 145 块地块 + ③b 20 个字母标注 */
+      FlDraw.paintPads(FC);       /* ③c 四角「出道位」华丽三角徽章 */
+      FlDraw.paintGarrison(FC);   /* ④ 四社机巢（社名 / 经纪人 / 4 个站位） */
+      FlDraw.paintFlags(FC);      /* ⑤ ▶ 出道格 / ✈ 航线格 角标 */
+      FlDraw.paintThrone(FC);     /* ⑥ 永恒王座区（四社汇聚 + 中央金冠） */
+      FlDraw.paintPieces(FC);     /* ⑦ 赛道上的棋子（含飞行插值 + 拖尾） */
     }
-    c.fillStyle = 'rgba(255,255,255,.92)';
-    c.font = 'bold ' + Math.max(10, cs * 0.62) + 'px sans-serif';
-    Object.keys(FL_HOMES).forEach(function (col) {
-      var arr = FL_HOMES[col], rc = arr[arr.length - 1];
-      c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = Math.max(1.5, cs * 0.06);
-      c.strokeText('♛', PX(rc[0]), PY(rc[1]) + cs * 0.04);
-      c.fillText('♛', PX(rc[0]), PY(rc[1]) + cs * 0.04);
-    });
-    c.textBaseline = 'alphabetic';
-
-    /* ── ⑥ 棋子（圆形 + 编号；同格同家叠成一摞写 ×N）
-       ⚠️ 三十更：叠子只是「显示 ×N」，一次只走点中的那一架；
-          正在飞的棋子加金色光圈 + 拖尾，看得出它从哪儿来、往哪儿去。 ── */
-    var groups = {};
-    G.colors.forEach(function (col, p) {
-      G.planes[p].forEach(function (v, idx) {
-        var an = flAnimOf(p, idx);
-        var xy = an ? flAnimXY(p, idx) : null;  /* 正在飞的：拿插值坐标 */
-        if (!xy && v === FL_HANGAR) return;     /* 老实待在练习室里的，由 ④ 段站位负责画 */
-        var rc = xy || flPieceRC(p, v); if (!rc) return;
-        var key = p + '|' + rc[0] + ',' + rc[1];
-        if (!groups[key]) groups[key] = { p: p, col: col, rc: rc, list: [], fly: null };
-        groups[key].list.push(idx);
-        if (an) groups[key].fly = an;
-      });
-    });
-    Object.keys(groups).forEach(function (key) {
-      var gp = groups[key], p = gp.p, col = gp.col, list = gp.list;
-      var cx = PX(gp.rc[0]), cy = PY(gp.rc[1]), n = list.length;
-      var r = Math.max(6, side * 0.027);
-      var isTurn = (G.turn === p && !G.over);
-      var canGo = p === 0 && G.options && list.some(function (i) { return G.options.indexOf(i) >= 0; });
-      /* 飞行中：拖尾 + 金色光圈（「这架正在动」） */
-      if (gp.fly) {
-        var x0 = PX(gp.fly.fly[0][0]), y0 = PY(gp.fly.fly[0][1]);
-        var dx = x0 - cx, dy = y0 - cy;
-        for (var gi = 1; gi <= 3; gi++) {
-          var g2 = gi / 4.2;
-          c.beginPath(); c.arc(cx + dx * g2, cy + dy * g2, r * (0.8 - gi * 0.17), 0, 6.2832);
-          c.globalAlpha = 0.30 - gi * 0.075;
-          c.fillStyle = FL_COL[col]; c.fill();
-        }
-        c.globalAlpha = 1;
-        c.beginPath(); c.arc(cx, cy, r + side * 0.016 + pu0 * side * 0.007, 0, 6.2832);
-        c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2.5, side * 0.008); c.stroke();
-      }
-      if (canGo) {
-        c.beginPath(); c.arc(cx, cy, r + side * 0.010 + pu0 * side * 0.004, 0, 6.2832);
-        c.strokeStyle = 'rgba(255,209,102,.95)'; c.lineWidth = Math.max(2, side * 0.007); c.stroke();
-        c.fillStyle = '#ffb703'; c.textAlign = 'center';
-        c.font = 'bold ' + Math.max(10, side * 0.030) + 'px sans-serif';
-        c.fillText('▼', cx, cy - r - side * 0.011);
-      }
-      if (isTurn) {
-        c.beginPath(); c.arc(cx, cy, r * 0.98, 0, 6.2832);
-        c.strokeStyle = 'rgba(255,209,102,.8)'; c.lineWidth = Math.max(1.4, side * 0.004); c.stroke();
-      }
-      if (p === 0) list.forEach(function (i) { _flHits.push({ idx: i, x: cx, y: cy, r: r + side * 0.012 }); });
-      c.beginPath(); c.arc(cx, cy, r * 0.82, 0, 6.2832);
-      c.fillStyle = FL_COL[col]; c.fill();
-      c.strokeStyle = isTurn ? '#ffd166' : '#fff'; c.lineWidth = Math.max(1.4, side * 0.0045); c.stroke();
-      c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.font = 'bold ' + Math.max(9, r * (n >= 2 ? 0.72 : 0.86)) + 'px sans-serif';
-      c.fillText(n >= 2 ? ('×' + n) : (list[0] + 1), cx, cy + 1);
-      c.textBaseline = 'alphabetic';
-    });
 
     /* 撞机闪光 + 抽卡横幅 */
     drawFlFlash(c, W, H, sc, bx, by);
@@ -4988,7 +4821,8 @@
       Object.keys(G.bet.pool).forEach(function (k) { var p = G.bet.pool[k]; if (p) poolKey += p.join(','); });
       var key = turnLeftSec() + '|' + poolKey + '|' + G.bet.mineCnt + '|' + (G.bet.closed ? 1 : 0) + '|' + (G.bet.myCur || '');
       if (key !== _leftKey) { _leftKey = key; renderLeft(); renderHud(); }
-      if (!G.over) drawGame();
+      /* 三十一更：动画期间由 rAF（flAnimTick）独占重绘，250ms 这一拍就别重复画了 */
+      if (!G.over && !flAnimBusy()) drawGame();
     }, 250);
   }
   function stopTick() { clearInterval(_tickTimer); _tickTimer = null; }
@@ -5220,7 +5054,10 @@
       RINGRC: FL_RC, TILES: FL_TILES, SKIN: FL_SKIN, TILE_COL: FL_TILE_COL, BOARD: FL_BOARD,
       LETTER: FL_LETTER, ART: FL_ART, LINE_RC: FL_LINE_RC, LINE_HIT: FL_LINE_HIT,
       LINE_COL: FL_LINE_COL, HIT_K: FL_HIT_K, READY: FL_READY,
-      HANGAR: FL_HANGAR, PAD: FL_PAD, PAD_RC: FL_PAD_RC
+      HANGAR: FL_HANGAR, PAD: FL_PAD, PAD_RC: FL_PAD_RC,
+      /* 三十二更：回合顺序（顺时针环）+ 骰子滚动序列 —— 无头验收直接读，不依赖界面 */
+      CLOCK: FL_CLOCK, nextSeat: flClockNext,
+      diceSeq: flDiceSeq, diceIdx: flDiceIdx
     },
     _flStack: function (p, v) { return flStackOf(p, v); },
     _flMove: function (p, idx, dice) { flMove(p, idx, dice); },
@@ -5256,11 +5093,12 @@
     _flCanTakeoff: function (dice) { return flCanTakeoff(dice); },
     _flDraw: function () { drawGame(); },
     /* 无头验收用：把走路/起飞/位移动画压到毫秒级，省掉逐格等待（只影响观感节奏，不动规则） */
-    _flSpeed: function (stepMs, flyMs, departMs) {
+    _flSpeed: function (stepMs, flyMs, departMs, aiRollMs) {
       if (typeof stepMs === 'number') FL_STEP_MS = stepMs;
       if (typeof flyMs === 'number') FL_FLY_MS = flyMs;
       if (typeof departMs === 'number') FL_DEPART_MS = departMs;
-      return { step: FL_STEP_MS, fly: FL_FLY_MS, depart: FL_DEPART_MS };
+      if (typeof aiRollMs === 'number') FL_AI_ROLL_MS = aiRollMs;
+      return { step: FL_STEP_MS, fly: FL_FLY_MS, depart: FL_DEPART_MS, aiRoll: FL_AI_ROLL_MS };
     },
     /* ===== 飞行棋棋盘配色 API（棋牌引擎的编辑页用；游戏侧不放入口）=========
        棋盘 ＝ 145 块可编辑地块（数据在 src/fl-board.js）。改色有两级：

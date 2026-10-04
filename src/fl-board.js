@@ -191,16 +191,26 @@
       };
 
   var TINT_LABEL = {
-    g: '拾光社 · 绿（外环格 / 机巢）',
-    r: '星幕社 · 红（外环格 / 机巢）',
-    b: '云顶社 · 蓝（外环格 / 机巢）',
-    y: '潮声社 · 黄（外环格 / 机巢）',
+    g: '拾光社 · 绿',
+    r: '星幕社 · 红',
+    b: '云顶社 · 蓝',
+    y: '潮声社 · 黄',
     gl: '拾光 · 机巢停机位',
     rl: '星幕 · 机巢停机位',
     bl: '云顶 · 机巢停机位',
     yl: '潮声 · 机巢停机位',
     bg: '淡紫底 · 圆孔露出来的颜色'
   };
+  /* ── 调色键分组（三十一更 · 陛下钦定「引擎要能调四社颜色」）─────────────────
+     ⚠️ 以前 9 个键平铺成一列，陛下根本看不出「哪个是四社色」。
+     更要命的是：改 g/r/b/y 时只有【地块】跟着变，棋子 / 机巢圆点 / 航线虚线 /
+     飞行光带 全写死在 card-games.js 里 —— 现在那四处也派生了，改这里五处一起变。 */
+  var TINT_GROUPS = [
+    { t: '① 四社品牌色', hint: '改这里 → 棋盘格 + 棋子 + 机巢圆点 + 航线虚线 + 飞行光带 一起变',
+      keys: ['g', 'r', 'b', 'y'] },
+    { t: '② 机巢停机位（四社浅色）', hint: '机巢里 4 个站位圆盘的浅色底', keys: ['gl', 'rl', 'bl', 'yl'] },
+    { t: '③ 棋盘底色', hint: '145 块之间的底色，圆孔里露出来的就是它', keys: ['bg'] }
+  ];
   var K_SKIN = 'fl_board_skin_v1', K_TILE = 'fl_board_tiles_v1';
 
   function colorOk(v) { return typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v); }
@@ -220,8 +230,12 @@
       localStorage.setItem(K_TILE, JSON.stringify(tileCol || {}));
     } catch (e) { }
   }
-  /* 把一块地块描成路径（只建路径不填色，样式交给调用方） */
+  /* 把一块地块描成路径（只建路径不填色，样式交给调用方）
+     ⚠️ 三十二更：轮廓【唯一真源】是 FlDraw.tilePath（方形圆角 / 异形倒角）。
+         以前这里自己写一套直角 rect，跟 FlDraw 画的圆角对不上 ——
+         引擎点选高亮的描边会掐进圆角里。现在一律委托过去，这里只留兜底。 */
   function path(ctx, t, mx, my, sc) {
+    if (w.FlDraw && w.FlDraw.tilePath) { w.FlDraw.tilePath(ctx, t, mx, my, sc); return; }
     var r = t.r;
     ctx.beginPath();
     if (t.kind === 'rect') {
@@ -242,7 +256,7 @@
   }
 
   w.FL_BOARD = {
-    TILES: FL_TILES, SKIN_DEF: FL_SKIN_DEF, TINT_LABEL: TINT_LABEL,
+    TILES: FL_TILES, SKIN_DEF: FL_SKIN_DEF, TINT_LABEL: TINT_LABEL, TINT_GROUPS: TINT_GROUPS,
     KEYS: { skin: K_SKIN, tiles: K_TILE },
     colorOk: colorOk, loadSkin: loadSkin, loadTileCol: loadTileCol, save: save,
     path: path, tileColor: tileColor,
