@@ -45,3 +45,6 @@ server/data.json
 
 # 服务器媒体库（运行时目录，视频不上 git）
 /media/
+
+# ghpush 清单法临时文件
+gh_list.bin

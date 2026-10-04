@@ -87,6 +87,24 @@
     background:rgba(40,30,60,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;
     transition:.22s;pointer-events:none;z-index:99;}
   .toastbox.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* 飞行棋棋盘配色（二十七更 · 145 块可编辑地块） */
+  #board-panel{display:none;}
+  #board-panel.on{display:block;}
+  .bd-ttl{font-size:13px;font-weight:800;color:var(--ink);margin:0 0 6px;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;}
+  .bd-ttl .n{font-size:11px;font-weight:700;color:var(--hint);}
+  .bd-tint{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);
+    border-radius:10px;padding:6px 9px;margin-bottom:6px;font-size:12px;font-weight:700;}
+  .bd-tint .sw{width:24px;height:24px;border-radius:7px;border:1px solid rgba(0,0,0,.14);flex:0 0 auto;}
+  .bd-tint .nm{flex:1;min-width:0;}
+  .bd-tint .nm i{font-style:normal;color:var(--hint);font-size:11px;font-weight:700;}
+  .bd-tint input[type=color]{width:34px;height:26px;padding:1px;border:1px solid var(--line);border-radius:7px;background:#fff;}
+  .bd-cv{width:100%;max-width:520px;height:auto;display:block;border-radius:12px;border:1px solid var(--line);
+    background:#fffdcb;cursor:crosshair;margin:8px 0;touch-action:manipulation;}
+  .bd-sel{font-size:12px;font-weight:700;color:var(--ink);background:var(--accent-tint);border:1px solid var(--line);
+    border-radius:10px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .bd-sel input[type=color]{width:34px;height:26px;padding:1px;border:1px solid var(--line);border-radius:7px;background:#fff;}
+  .bd-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -120,12 +138,16 @@
         <div class="hint">规则现在只是占位配置，游戏端读同一份数据；真玩法逻辑在「游戏端棋牌大厅」里跑。</div>
       </div>
     </div>
-    <div class="right" id="skin-panel"></div>
+    <div class="right">
+      <div id="skin-panel"></div>
+      <div id="board-panel"></div>
+    </div>
   </div>
 </div>
 <input type="file" id="file-import" accept="application/json,.json" style="display:none">
 <div class="toastbox" id="toastbox"></div>
 
+<script src="./fl-board.js?v=20261005a"></script>
 <script src="./card-skin.js?v=20261002a"></script>
 <script>
 /* ============================================================
@@ -269,11 +291,167 @@ function buildRules(){
   box.appendChild(info);
 }
 
+/* ---------- 飞行棋棋盘配色（二十七更 · 145 块可编辑地块）----------
+   地块数据在 fl-board.js（游戏侧绘制与本页共用一份）。
+   两级改色：① 改 9 个调色键 → 同类地块一起变；② 点预览图上的某一块 → 只改那一块。
+   存 localStorage（fl_board_skin_v1 / fl_board_tiles_v1），游戏端下次进棋盘直接生效。 */
+let bdSel = null, bdMiss = false;
+
+/* ⚠️ 落盘铁律：绝不拿「构建时快照」整体覆盖 —— 那会把另一半（单块覆盖/调色键）
+   冲掉。所有改动一律先把 localStorage 里的最新两份读出来、合并这一处改动、再写回。
+   （二十七更踩过：改调色键 → 用面板快照 save() → fl_board_tiles_v1 被清成 {}）*/
+function bdPersist(patch){
+  const B = window.FL_BOARD; if(!B) return null;
+  const skin = B.loadSkin(), tiles = B.loadTileCol();
+  if(patch && patch.resetAll){
+    Object.keys(B.SKIN_DEF).forEach(k=>{ skin[k] = B.SKIN_DEF[k]; });
+    Object.keys(tiles).forEach(k=>{ delete tiles[k]; });
+  }
+  if(patch && patch.skin) Object.keys(patch.skin).forEach(k=>{ if(B.colorOk(patch.skin[k])) skin[k] = patch.skin[k]; });
+  if(patch && patch.tiles) Object.keys(patch.tiles).forEach(id=>{ if(B.colorOk(patch.tiles[id])) tiles[id] = patch.tiles[id]; });
+  if(patch && patch.delTile) delete tiles[patch.delTile];
+  B.save(skin, tiles);
+  return { skin, tiles };
+}
+
+function bdGeom(cv){ const sc = cv.width / 985; return { sc, mx:x=>x*sc, my:y=>y*sc }; }
+function bdHit(cv, x, y){
+  const B = window.FL_BOARD; if(!B) return null;
+  const ctx = cv.getContext('2d'), g = bdGeom(cv);
+  for(let i=B.TILES.length-1;i>=0;i--){        /* 反向遍历：后画的在上层，先命中 */
+    B.path(ctx, B.TILES[i], g.mx, g.my, g.sc);
+    if(ctx.isPointInPath(x, y)) return B.TILES[i].id;
+  }
+  return null;
+}
+function drawBoardPreview(){
+  const cv = document.getElementById('bd-canvas'); if(!cv) return;
+  const B = window.FL_BOARD; if(!B) return;
+  const ctx = cv.getContext('2d'), g = bdGeom(cv);
+  const skin = B.loadSkin(), tileCol = B.loadTileCol();
+  ctx.fillStyle = skin.bg; ctx.fillRect(0, 0, cv.width, cv.height);
+  B.TILES.forEach(t=>{                          /* 145 块逐块自绘 */
+    B.path(ctx, t, g.mx, g.my, g.sc);
+    ctx.fillStyle = B.tileColor(t, skin, tileCol);
+    ctx.fill();
+  });
+  if(bdSel){                                    /* 选中高亮 */
+    const t = B.TILES.find(x=>x.id===bdSel);
+    if(t){ B.path(ctx, t, g.mx, g.my, g.sc);
+      ctx.strokeStyle = '#ff2d95'; ctx.lineWidth = 3; ctx.stroke(); }
+  }
+}
+function renderBdSel(){
+  const el = document.getElementById('bd-sel'); if(!el) return;
+  const B = window.FL_BOARD; if(!B) return;
+  const skin = B.loadSkin(), tileCol = B.loadTileCol();
+  if(!bdSel){
+    el.textContent = bdMiss
+      ? '这里没有地块（露出来的是奶油底色）—— 点到有颜色的地块上再试'
+      : '点预览图上任意一块地块 → 这里会显示它，然后单块改色';
+    return;
+  }
+  const t = B.TILES.find(x=>x.id===bdSel); if(!t) return;
+  const now = B.tileColor(t, skin, tileCol), custom = !!tileCol[t.id];
+  el.innerHTML = '<b>选中 ' + t.id + '</b> · ' + t.kind + ' · 调色键 ' + t.tint
+    + ' · <span style="display:inline-block;width:18px;height:18px;border-radius:5px;vertical-align:-3px;border:1px solid rgba(0,0,0,.15);background:' + now + '"></span> ' + now
+    + (custom ? ' <b style="color:#c75050">已单块覆盖</b>' : '');
+  const inp = document.createElement('input'); inp.type = 'color'; inp.value = now;
+  inp.oninput = ()=>{ bdPersist({ tiles: { [t.id]: inp.value } }); drawBoardPreview(); renderBdSel(); };
+  el.appendChild(inp);
+  if(custom){
+    const b = document.createElement('button'); b.className = 'cs-btn tiny'; b.textContent = '↩ 取消单块改色';
+    b.onclick = ()=>{ bdPersist({ delTile: t.id }); drawBoardPreview(); renderBdSel(); };
+    el.appendChild(b);
+  }
+}
+function buildBoardPanel(){
+  const host = document.getElementById('board-panel'); if(!host) return;
+  const B = window.FL_BOARD;
+  if(cur !== 'flight' || !B){ host.className = ''; host.innerHTML = ''; return; }
+  host.className = 'on';
+  const skin = B.loadSkin(), tileCol = B.loadTileCol();
+  const cnt = {}; B.TILES.forEach(t=>{ cnt[t.tint] = (cnt[t.tint]||0)+1; });
+
+  let h = '<div class="cardbox">';
+  h += '<div class="bd-ttl">🎨 飞行棋棋盘配色 <span class="n">145 块地块（' +
+       Object.keys(B.stats()).map(k=>B.stats()[k] + ' ' + k).join(' · ') + '）</span></div>';
+  h += '<div class="hint">棋盘是从背景图【拆成一块块】的独立地块，每块都能改色。'
+     + '① 改下面 9 个调色键 → 同类地块一起变；② 点预览图上的某一块 → 只改那一块（优先级更高）。</div>';
+  Object.keys(B.SKIN_DEF).forEach(k=>{
+    h += '<div class="bd-tint">'
+      + '<span class="sw" data-sw="' + k + '" style="background:' + skin[k] + '"></span>'
+      + '<span class="nm">' + (B.TINT_LABEL[k] || k) + ' <i>（' + k + ' · ' + (cnt[k]||0) + ' 块）</i></span>'
+      + '<input type="color" data-tint="' + k + '" value="' + skin[k] + '">'
+      + '<button class="cs-btn tiny" data-tint-reset="' + k + '">↩</button>'
+      + '</div>';
+  });
+  h += '<div class="hint" style="margin:8px 0 0">🖱 直接点下面棋盘上的任意一块 → 单独改它的颜色'
+     + '（露出来的奶油色是底色，不是地块；那块颜色改上面「奶油底」那一行）</div>';
+  h += '<canvas id="bd-canvas" class="bd-cv" width="520" height="520"></canvas>';
+  h += '<div class="bd-sel" id="bd-sel"></div>';
+  h += '<div class="bd-act">'
+     + '<button class="cs-btn" id="bd-reset">↩️ 全部恢复原图配色</button>'
+     + '<button class="cs-btn" id="bd-copy">📋 复制配色 JSON</button>'
+     + '<button class="cs-btn" id="bd-import">📥 粘贴配色 JSON</button>'
+     + '</div></div>';
+  host.innerHTML = h;
+
+  host.querySelectorAll('input[data-tint]').forEach(inp=>{
+    inp.oninput = ()=>{
+      const k = inp.dataset.tint;
+      const sw = host.querySelector('[data-sw="' + k + '"]'); if(sw) sw.style.background = inp.value;
+      bdPersist({ skin: { [k]: inp.value } }); drawBoardPreview();
+    };
+  });
+  host.querySelectorAll('[data-tint-reset]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const k = btn.dataset.tintReset;
+      const inp = host.querySelector('input[data-tint="' + k + '"]'); if(inp) inp.value = B.SKIN_DEF[k];
+      const sw = host.querySelector('[data-sw="' + k + '"]'); if(sw) sw.style.background = B.SKIN_DEF[k];
+      bdPersist({ skin: { [k]: B.SKIN_DEF[k] } }); drawBoardPreview();
+    };
+  });
+  document.getElementById('bd-reset').onclick = ()=>{
+    if(!confirm('把棋盘 145 块地块全部恢复成原图配色？')) return;
+    bdPersist({ resetAll: true }); bdSel = null; bdMiss = false; buildBoardPanel(); toast('↩️ 棋盘已恢复原图配色');
+  };
+  document.getElementById('bd-copy').onclick = ()=>{
+    const json = JSON.stringify({ v:1, skin:B.loadSkin(), tiles:B.loadTileCol() });
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(json).then(()=>toast('📋 配色 JSON 已复制'), ()=>prompt('复制这段 JSON：', json));
+    } else prompt('复制这段 JSON：', json);
+  };
+  document.getElementById('bd-import').onclick = ()=>{
+    const s = prompt('把配色 JSON 粘进来：'); if(!s) return;
+    try{
+      const o = JSON.parse(s); if(!o || o.v !== 1) throw 0;
+      const skin = {}, tiles = {};
+      if(o.skin) Object.keys(B.SKIN_DEF).forEach(k=>{ if(B.colorOk(o.skin[k])) skin[k] = o.skin[k]; });
+      if(o.tiles) Object.keys(o.tiles).forEach(id=>{ if(B.colorOk(o.tiles[id])) tiles[id] = o.tiles[id]; });
+      bdPersist({ resetAll: true, skin: skin, tiles: tiles });
+      bdSel = null; bdMiss = false; buildBoardPanel(); toast('📥 配色已导入');
+    }catch(e){ toast('❌ 这段 JSON 不是棋盘配色'); }
+  };
+  const cv = document.getElementById('bd-canvas');
+  cv.onclick = e=>{
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) * cv.width / r.width;
+    const y = (e.clientY - r.top) * cv.height / r.height;
+    bdSel = bdHit(cv, x, y); bdMiss = !bdSel;
+    renderBdSel(); drawBoardPreview();
+  };
+  renderBdSel();
+  drawBoardPreview();
+  setTimeout(drawBoardPreview, 120);
+}
+
 /* ---------- 页面 ---------- */
 function buildPage(){
   const g = GAMES.find(x=>x.id===cur);
   buildRules();
   CardSkin.buildEditorPanel(document.getElementById('skin-panel'), g.deck, drawPreview);
+  buildBoardPanel();
   drawPreview();
   /* 图片异步加载完补画 */
   setTimeout(drawPreview, 200); setTimeout(drawPreview, 800);
