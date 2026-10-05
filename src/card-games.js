@@ -2023,14 +2023,32 @@
   }
 
   /* ---------- 通用：手牌几何 ---------- */
-  function handGeom(n, cw, W) {
+  /* ⚠️ 三十四更：tight=true 是「一张挨一张」模式（川麻将用，陛下钦定）——
+       牌与牌零重叠零留缝，一整排看过去是连续的。
+       能排下的前提是调用方把牌宽收到 W*0.94/n 以内（drawMj 里算），
+       这里再夹一次兜底（真放不下才允许极轻微重叠，绝不飞出屏幕）。 */
+  var HAND_AVAIL = 0.94;
+  function handGeom(n, cw, W, tight) {
+    var full = W * HAND_AVAIL;
     var maxW = Math.min(W - 24, W * 0.86) - cw;
-    var step = n > 1 ? Math.min(cw * 0.86, maxW / (n - 1)) : 0;
+    var step;
+    if (n > 1) {
+      step = tight ? Math.min(cw, (full - cw) / (n - 1))
+                   : Math.min(cw * 0.86, maxW / (n - 1));
+      if (!(step > 0)) step = 1;
+    } else step = 0;
     var x0 = W / 2 - (step * (n - 1) + cw) / 2;
     return { x0: x0, step: step };
   }
-  function hitHand(x, y, n, W, H, cw, ch, baseY) {
-    var g = handGeom(n, cw, W);
+  /* 我的手牌宽度（三十四更）——【绘制与点击命中共用这一份】，不许两边各算一遍。
+     按手牌张数把牌宽收进可用宽度：张数多则牌窄一点，但保证 n 张能一张挨一张排下。 */
+  function mjHandTw(W, H) {
+    var base = cardW(W, H, 11);
+    var n = Math.max(1, (G && G.hands && G.hands[0]) ? G.hands[0].length : 13);
+    return Math.max(34, Math.min(base, W * HAND_AVAIL / n));
+  }
+  function hitHand(x, y, n, W, H, cw, ch, baseY, tight) {
+    var g = handGeom(n, cw, W, tight);
     if (y < baseY - ch * 0.2 || y > baseY + ch) return -1;
     /* ⚠️ 十七更：手牌是叠着画的，右边的牌压在左边上面——必须从右往左命中，
        否则点到的永远是底下那张（陛下反馈：斗地主牌面点击不准确）。 */
@@ -2042,10 +2060,11 @@
   }
   /* drawHandRow：画手牌一排。
      lackSuit=定缺的门（传 null 不灰），缺门的牌半透明+「缺」角标。
-     mjSelIdx=麻将选中预览的那张（弹起+金框），其他游戏传 -1。 */
-  function drawHandRow(c, hand, W, H, cw, ch, baseY, sel, deck, flipIdx, lackSuit, mjSelIdx) {
+     mjSelIdx=麻将选中预览的那张（弹起+金框），其他游戏传 -1。
+     tight=「一张挨一张」模式（三十四更·川麻将用，陛下钦定）。 */
+  function drawHandRow(c, hand, W, H, cw, ch, baseY, sel, deck, flipIdx, lackSuit, mjSelIdx, tight) {
     var n = hand.length;
-    var g = handGeom(n, cw, W);
+    var g = handGeom(n, cw, W, tight);
     for (var i = 0; i < n; i++) {
       var isSel = (sel && sel.indexOf(i) >= 0) || (mjSelIdx === i);
       var cx = g.x0 + i * g.step, cy = baseY - (isSel ? Math.round(cw * 0.28) : 0);
@@ -3161,11 +3180,19 @@
      布局：三条水平带 = 上家带（顶 18%）+ 中央牌河带（中间 44%）+ 我的手牌带（底 38%）
      左右家贴在中央带两侧（不占独立列，跟牌河共存）。 */
   function drawMj(c, W, H) {
-    var tw = cardW(W, H, 11), th = tw * 1.36;
+    var twBase = cardW(W, H, 11);
+    /* ══ 三十四更 · 陛下钦定：我的手牌「一张挨一张」排 ══
+       以前每张叠掉 14%（step = 0.86×牌宽），加上牌面里那圈内框留白，
+       看着又挤又有缝。现在按手牌张数把牌宽收进可用宽度 → 一张不压一张，
+       张数多时牌自动窄一点，但绝不重叠。
+       ⚠️ 这个收窄只作用在【我的手牌】上，对手小牌 / 牌河 / 副露仍走原尺寸，
+          免得本来就只有 20~45px 的对手牌再被连累缩水。 */
+    var tw = mjHandTw(W, H);
+    var th = tw * 1.36;
     setActsBottom(th + 20 + 46);
 
     /* 统一尺寸：对手牌/副露/牌河全用同一个 "小牌" 尺寸，PC 上放大到看得清 */
-    var sw = Math.max(20, Math.min(tw * 0.42, W * 0.038));  /* 对手小牌宽（PC 上约 38~45px） */
+    var sw = Math.max(20, Math.min(twBase * 0.42, W * 0.038));  /* 对手小牌宽（PC 上约 38~45px） */
     var sh = sw * 1.36, ss = sw * 1.05;
     var rw = sw, rh = sh, rs = sw * 1.05;                    /* 牌河用同尺寸（不再 micro） */
     var kw = Math.max(15, sw * 0.7), kh = kw * 1.36, ks = kw * 1.1;  /* 副露略小 */
@@ -3328,9 +3355,9 @@
     if (myMs.length) mjMeldsRow(c, myMs, 8, H - th - 20 - kh - 6, kw, kh, ks);
     if (!G.spectate) {
       var hand = G.hands[0];
-      var gm = handGeom(hand.length, tw, W);
+      var gm = handGeom(hand.length, tw, W, true);
       var mjSel0 = (G._mjSel >= 0 && G._mjSel < hand.length) ? G._mjSel : -1;
-      drawHandRow(c, hand, W, H, tw, th, H - th - 20, null, 'mahjong', null, G.lack && G.lack[0], mjSel0);
+      drawHandRow(c, hand, W, H, tw, th, H - th - 20, null, 'mahjong', null, G.lack && G.lack[0], mjSel0, true);
       /* 选中的牌上方：显示"打这张→听什么" */
       if (mjSel0 >= 0 && (G.drawn || G.mustDiscard)) {
         var selTile = hand[mjSel0];
@@ -3383,7 +3410,7 @@
       }
       /* drawn 牌的选中状态（右边隔开的那张） */
       if (G.drawn && G._mjSel === hand.length) {
-        var drGm = handGeom(hand.length, tw, W);
+        var drGm = handGeom(hand.length, tw, W, true);
         var drX = Math.min(drGm.x0 + drGm.step * (hand.length - 1) + tw + 14, W - tw - 10);
         SK.drawCard(c, 'mahjong', G.drawn, drX, H - th - 34 - Math.round(tw * 0.28), tw, th, { hi: '#ffd166' });
         c.fillStyle = 'rgba(255,255,255,.55)'; c.font = '12px sans-serif'; c.textAlign = 'center';
@@ -3403,7 +3430,7 @@
       c.fillText((G.turn === 0 && !G.over ? '▶ ' : '') + '我 · ' + hand.length + ' 张' +
         (G.drawn ? '（点一张出去 · 右边隔开的是刚接的）' : (G.mustDiscard ? '（碰/杠完了，打一张）' : '（自动接令中…）')), W / 2, H - 6);
     } else {
-      var g0 = handGeom(Math.min(G.hands[0].length, 13), tw * 0.6, W);
+      var g0 = handGeom(Math.min(G.hands[0].length, 13), tw * 0.6, W, true);
       for (var k = 0; k < Math.min(G.hands[0].length, 13); k++) SK.drawBack(c, 'mahjong', g0.x0 + k * g0.step, H - th * 0.6 - 16, tw * 0.6, th * 0.6);
       c.fillStyle = 'rgba(255,255,255,.88)'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
       c.fillText(seatTitle(0) + ' · ' + G.hands[0].length + ' 张', W / 2, H - 6);
@@ -5099,12 +5126,12 @@
     } else if (G.game === 'mahjong') {
       /* 二十三更 v6：单击选中预览听牌，双击（再点同一张）打出。
          陛下钦定：点一张牌 → 显示"打这张听什么"，再点同一张才真出去。 */
-      var tw = cardW(W, H, 11), th = tw * 1.36;
+      var tw = mjHandTw(W, H), th = tw * 1.36;
       var n = G.hands[0].length;
-      var j = hitHand(x, y, n, W, H, tw, th, H - th - 20);
+      var j = hitHand(x, y, n, W, H, tw, th, H - th - 20, true);
       var clickedDrawn = false;
       if (j < 0 && G.drawn) {
-        var gmj = handGeom(n, tw, W);
+        var gmj = handGeom(n, tw, W, true);
         var gx = Math.min(gmj.x0 + gmj.step * (n - 1) + tw + 14, W - tw - 10);
         if (x >= gx && x <= gx + tw && y >= H - th - 34 && y <= H - 34) { j = n; clickedDrawn = true; }
       }
@@ -5264,6 +5291,21 @@
       };
     },
     _mjAuto: function () { return mjAutoDraw(); },
+    /* 三十四更：手牌几何直通口（验收用）—— tight=false 是老的「叠着排」，
+       tight=true 是新增的「一张挨一张」。断言 step == cw 即证明紧挨。 */
+    _handGeom: function (n, cw, W, tight) { return handGeom(n, cw, W, tight); },
+    /* 三十四更：我的手牌几何（验收用）—— tw/th 是收窄后的牌尺寸，step 是相邻两张的间距。
+       step 必须 == tw 才叫「一张挨一张」（不留缝也不重叠）。 */
+    _mjHandGeom: function () {
+      if (!G || G.game !== 'mahjong') return null;
+      var o = ctxOf();
+      var tw = mjHandTw(o.W, o.H), th = tw * 1.36;
+      var n = (G.hands && G.hands[0]) ? G.hands[0].length : 0;
+      var g = handGeom(n, tw, o.W, true);
+      return { n: n, W: o.W, H: o.H, tw: tw, th: th, step: g.step, x0: g.x0,
+               base: cardW(o.W, o.H, 11), tight: Math.abs(g.step - tw) < 0.01,
+               rowW: g.step * Math.max(0, n - 1) + tw, avail: o.W * HAND_AVAIL };
+    },
     _mjWin: function (p, tile, from, ziMo) { mjWin(p, tile, from, ziMo); },
     _mjResult: function () { var b = $('cg-mjres'); return b ? { open: b.classList.contains('open'), text: b.textContent } : null; },
     /* 二十二更：通用结算面板调试口（四玩法同款） */

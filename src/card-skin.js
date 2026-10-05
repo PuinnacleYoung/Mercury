@@ -221,16 +221,16 @@
     },
     mahjong: function (ctx, sk, card, x, y, w, h) {
       var c = GLYPH_DEF.mahjong.colors[card.suit] || '#455a64';
-      ctx.save();
-      ctx.fillStyle = '#fffdf7'; ctx.strokeStyle = c; ctx.lineWidth = Math.max(1.5, w * 0.03);
-      rrect(ctx, x + w * 0.14, y + h * 0.10, w * 0.72, h * 0.80, w * 0.06);
-      ctx.fill(); ctx.stroke();
-      ctx.restore();
+      /* ══ 三十四更 · 陛下钦定：牌面不再套那圈内框 ══
+         原先这里画了一个缩到 72%×80% 的白色圆角框（fill + stroke），把符号框在中间一小块：
+         手牌一叠起来，框与框之间全是留白 → 看着「又挤又有缝」，牌面还显小。
+         现在直接去掉内框，符号铺满整张牌，牌与牌紧挨时像一整排。 */
+      var box = Math.min(w, h);
       if (card.kind === 'honor') {                       /* 风牌 / 箭牌：一个字占满 */
-        drawGlyph(ctx, 'mahjong', card.rank, x + w / 2, y + h / 2, Math.min(w, h) * 0.62, c);
+        drawGlyph(ctx, 'mahjong', card.rank, x + w / 2, y + h / 2, box * 0.86, c);
       } else {                                            /* 数牌：上数字下花色（一万 = 一 + 萬） */
-        drawGlyph(ctx, 'mahjong', 'n' + card.rank, x + w / 2, y + h * 0.33, Math.min(w, h) * 0.40, c);
-        drawGlyph(ctx, 'mahjong', card.suit, x + w / 2, y + h * 0.70, Math.min(w, h) * 0.40, c);
+        drawGlyph(ctx, 'mahjong', 'n' + card.rank, x + w / 2, y + h * 0.300, box * 0.54, c);
+        drawGlyph(ctx, 'mahjong', card.suit, x + w / 2, y + h * 0.720, box * 0.54, c);
       }
     },
     doudizhu: function (ctx, sk, card, x, y, w, h) {
@@ -262,9 +262,16 @@
     opt = opt || {};
     var sk = deck(d);
     if (opt.flip) { drawBack(ctx, d, x, y, w, h); return; }
+    /* ⚠️ 三十四更 · 陛下钦定：川麻将牌面【不套牌卡边框】。
+       每张牌各自一圈圆角框 + 粗描边，就算把手牌排成紧挨的一排，
+       看着依然是一张张分开的卡片（框线就是"缝"）。
+       去掉框之后牌面直接连成一整排，字也能放到最大。
+       ⚠️ 只作用于【牌面】—— 牌背（drawBack）该有的框一个不少。 */
+    var noFace = (d === 'mahjong');
+    var rad = noFace ? Math.min(3, w * 0.08) : ((sk.frame && sk.frame.r) || 14);
     /* 牌底 */
     ctx.save();
-    rrect(ctx, x, y, w, h, (sk.frame && sk.frame.r) || 14);
+    rrect(ctx, x, y, w, h, rad);
     ctx.fillStyle = sk.base || '#fffdf7'; ctx.fill();
     ctx.save(); ctx.clip();
     /* ① 底纹 */
@@ -276,14 +283,14 @@
         for (var ty = y; ty < y + h; ty += th) for (var tx = x; tx < x + w; tx += tw) ctx.drawImage(pi, tx, ty, tw, th);
       } else ctx.drawImage(pi, x, y, w, h);
       ctx.globalAlpha = 1;
-    } else {
+    } else if (!noFace) {
       placeholderPattern(ctx, x, y, w, h, (sk.pattern && sk.pattern.ph) || 'grid', '#8d6e63', (sk.pattern && sk.pattern.alpha) || 0.3);
     }
     ctx.restore();
-    /* ② 边框 */
-    var fi = sk.frame && sk.frame.img ? img(sk.frame.img) : null;
+    /* ② 边框（麻将牌面跳过） */
+    var fi = (!noFace && sk.frame && sk.frame.img) ? img(sk.frame.img) : null;
     if (ready(fi)) ctx.drawImage(fi, x, y, w, h);
-    else {
+    else if (!noFace) {
       ctx.save();
       ctx.strokeStyle = (sk.frame && sk.frame.c) || '#2b2140';
       ctx.lineWidth = (sk.frame && sk.frame.w) || 5;
@@ -296,11 +303,11 @@
     ctx.restore();
     if (opt.dim) {
       ctx.save(); ctx.globalAlpha = 0.42; ctx.fillStyle = '#0b0714';
-      rrect(ctx, x, y, w, h, (sk.frame && sk.frame.r) || 14); ctx.fill(); ctx.restore();
+      rrect(ctx, x, y, w, h, rad); ctx.fill(); ctx.restore();
     }
     if (opt.hi) {
       ctx.save(); ctx.strokeStyle = opt.hi; ctx.lineWidth = 4;
-      rrect(ctx, x + 2, y + 2, w - 4, h - 4, (sk.frame && sk.frame.r) || 14); ctx.stroke(); ctx.restore();
+      rrect(ctx, x + 2, y + 2, w - 4, h - 4, rad); ctx.stroke(); ctx.restore();
     }
   }
   function drawBack(ctx, d, x, y, w, h) {

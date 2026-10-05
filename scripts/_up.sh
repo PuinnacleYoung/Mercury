@@ -1,27 +1,37 @@
 #!/bin/bash
+mkdir -p $(dirname /opt/mercury/src/card-skin.js)
+cp -p /opt/mercury/src/card-skin.js /opt/mercury/src/card-skin.js.bak_20261005_122129 2>/dev/null || true
+cp /tmp/mcup/opt__mercury__src__card-skin.js /opt/mercury/src/card-skin.js || exit 9
+chown root:root /opt/mercury/src/card-skin.js 2>/dev/null || true
+echo OK /opt/mercury/src/card-skin.js
 mkdir -p $(dirname /opt/mercury/src/card-games.js)
-cp -p /opt/mercury/src/card-games.js /opt/mercury/src/card-games.js.bak_20261005_112736 2>/dev/null || true
+cp -p /opt/mercury/src/card-games.js /opt/mercury/src/card-games.js.bak_20261005_122129 2>/dev/null || true
 cp /tmp/mcup/opt__mercury__src__card-games.js /opt/mercury/src/card-games.js || exit 9
 chown root:root /opt/mercury/src/card-games.js 2>/dev/null || true
 echo OK /opt/mercury/src/card-games.js
 mkdir -p $(dirname /opt/mercury/src/index.html)
-cp -p /opt/mercury/src/index.html /opt/mercury/src/index.html.bak_20261005_112736 2>/dev/null || true
+cp -p /opt/mercury/src/index.html /opt/mercury/src/index.html.bak_20261005_122129 2>/dev/null || true
 cp /tmp/mcup/opt__mercury__src__index.html /opt/mercury/src/index.html || exit 9
 chown root:root /opt/mercury/src/index.html 2>/dev/null || true
 echo OK /opt/mercury/src/index.html
+mkdir -p $(dirname /opt/mercury/src/棋牌引擎.html)
+cp -p /opt/mercury/src/棋牌引擎.html /opt/mercury/src/棋牌引擎.html.bak_20261005_122129 2>/dev/null || true
+cp /tmp/mcup/opt__mercury__src__棋牌引擎.html /opt/mercury/src/棋牌引擎.html || exit 9
+chown root:root /opt/mercury/src/棋牌引擎.html 2>/dev/null || true
+echo OK /opt/mercury/src/棋牌引擎.html
 mkdir -p $(dirname /opt/mercury/src/sw.js)
-cp -p /opt/mercury/src/sw.js /opt/mercury/src/sw.js.bak_20261005_112736 2>/dev/null || true
+cp -p /opt/mercury/src/sw.js /opt/mercury/src/sw.js.bak_20261005_122129 2>/dev/null || true
 cp /tmp/mcup/opt__mercury__src__sw.js /opt/mercury/src/sw.js || exit 9
 chown root:root /opt/mercury/src/sw.js 2>/dev/null || true
 echo OK /opt/mercury/src/sw.js
 mkdir -p $(dirname /opt/mercury/sw.js)
-cp -p /opt/mercury/sw.js /opt/mercury/sw.js.bak_20261005_112736 2>/dev/null || true
+cp -p /opt/mercury/sw.js /opt/mercury/sw.js.bak_20261005_122129 2>/dev/null || true
 cp /tmp/mcup/opt__mercury__sw.js /opt/mercury/sw.js || exit 9
 chown root:root /opt/mercury/sw.js 2>/dev/null || true
 echo OK /opt/mercury/sw.js
 mkdir -p $(dirname /opt/mercury/README.md)
-cp -p /opt/mercury/README.md /opt/mercury/README.md.bak_20261005_112736 2>/dev/null || true
+cp -p /opt/mercury/README.md /opt/mercury/README.md.bak_20261005_122129 2>/dev/null || true
 cp /tmp/mcup/opt__mercury__README.md /opt/mercury/README.md || exit 9
 chown root:root /opt/mercury/README.md 2>/dev/null || true
 echo OK /opt/mercury/README.md
-echo LANDED 5
+echo LANDED 7
