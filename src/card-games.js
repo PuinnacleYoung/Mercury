@@ -444,7 +444,42 @@
       '@media (max-width:880px){' +
       '.cg-rail{position:absolute;top:0;bottom:0;z-index:15;width:min(78%,300px);flex-basis:auto;' +
       'background:rgba(14,8,30,.96);box-shadow:0 0 24px rgba(0,0,0,.5);}' +
-      '.cg-rail.rl{left:0;}.cg-rail.rr{right:0;}}';
+      '.cg-rail.rl{left:0;}.cg-rail.rr{right:0;}}' +
+      /* ══ 三十三更 · 手机横屏紧凑带（视口高 ≤ 560 且当前是飞行棋，由 JS 挂 .cg-compact）══
+         陛下原话「棋盘占比非常小，在手机上几乎看不清」「骰子显示在左下角，单独占了一个横」
+                 「顶部也可以改一下布局，挪到旁边去」。
+         病根：四条【横带】把 390px 的高度啃掉一半 ——
+           顶栏 49 + 回合条 29 + 骰子底栏 56 + 提示条 19 ≈ 153px，棋盘只剩 ~215px（55%）。
+         对策（横屏最不缺的就是左右空档，把纵向占用全换成横向占用）：
+           ① 顶栏整条折成【右侧竖列】：标题在上、对局面板居中、按钮换行堆在下 —— 纵向 0 占用
+           ② 回合条 + 骰子搬进棋盘【左侧竖带】（陛下钦点「显示在屏幕的左边」）
+           ③ 只剩底部一条 19px 的提示行
+         实测棋盘 ≈ 85~90% 视口高。⚠️ 只对飞行棋生效：另外三局的底栏要放手牌/牌河，不动。 */
+      '#cg-hall.cg-compact .cg-top{position:absolute;right:0;top:0;bottom:0;z-index:16;' +
+      'width:114px;min-height:0;padding:4px;gap:4px;flex-direction:row;flex-wrap:wrap;' +
+      'align-content:flex-start;align-items:flex-start;background:rgba(12,7,26,.56);border-bottom:none;}' +
+      '#cg-hall.cg-compact #cg-ttw{flex:0 0 100%;order:1;}' +
+      '#cg-hall.cg-compact .cg-top .tt{font-size:11.5px;line-height:1.2;white-space:normal;}' +
+      '#cg-hall.cg-compact .cg-top .st{display:none;}' +
+      /* 对局面板：竖排一列，把横向的 chip 变成纵向的清单（横屏只有这里放得下） */
+      '#cg-hall.cg-compact #cg-hud{flex:0 0 100%;order:2;margin-left:0;flex-direction:column;' +
+      'align-items:stretch;gap:1px;flex-wrap:nowrap;overflow-y:auto;max-height:64%;min-height:0;}' +
+      /* ⚠️ 竖列只有 114px 宽，chip 一定要允许换行 —— 否则「★… ✦… ◈…」第三个币会被挤到列外看不见。
+         padding / 行高都压到最小：飞行棋的对局面板有 11 行，松一点小屏就得滚动。 */
+      '#cg-hall.cg-compact .cg-hi{font-size:9.5px;padding:1px 5px;line-height:1.3;text-align:left;white-space:normal;}' +
+      '#cg-hall.cg-compact #cg-cbtn{order:3;}#cg-hall.cg-compact #cg-hbtn{order:4;}' +
+      '#cg-hall.cg-compact #cg-lbtn{order:5;}#cg-hall.cg-compact #cg-rbtn{order:6;}' +
+      '#cg-hall.cg-compact #cg-x{order:7;}' +
+      '#cg-hall.cg-compact .cg-tbtn{width:auto;min-width:26px;height:24px;padding:0 6px;font-size:11.5px;border-radius:7px;}' +
+      '#cg-hall.cg-compact .cg-tbtn.wide{width:auto;padding:0 7px;font-size:10.5px;letter-spacing:0;}' +
+      /* 底部提示行让开右侧竖列 */
+      '#cg-hall.cg-compact .cg-tip{padding:2px 122px 2px 9px;font-size:10.5px;}' +
+      /* 动作按钮 / 退出 → 挪到左侧竖带下段（骰子下面）。
+         ⚠️ 退出必须抬到 bottom:26px（提示行高 19 + 6），压在 bottom:6 会把提示行首字吃掉
+            —— 三十三更自测截图抓到。 */
+      '#cg-hall.cg-compact .cg-acts{left:6px;transform:none;bottom:60px;width:auto;max-width:104px;gap:4px;}' +
+      '#cg-hall.cg-compact .cg-acts .cg-btn{padding:5px 7px;font-size:10.5px;line-height:1.25;}' +
+      '#cg-hall.cg-compact #cg-quit{left:6px;right:auto;bottom:26px;padding:4px 9px;font-size:11px;border-radius:8px;}';
     document.head.appendChild(s);
 
     el = document.createElement('div');
@@ -452,7 +487,9 @@
     el.innerHTML =
       '<div class="cg-top">' +
       '  <button class="cg-tbtn wide" id="cg-cbtn" title="聊天频道">💬 聊天</button>' +
-      '  <div><div class="tt" id="cg-tt">棋牌</div><div class="st" id="cg-st"></div></div>' +
+      /* ⚠️ 三十三更：给标题容器加 id —— 手机横屏的紧凑带要把整条顶栏折到右侧竖列，
+         排版要靠 #cg-ttw / #cg-hud 做 flex 换行，没有 id 就没法单独定位。 */
+      '  <div id="cg-ttw"><div class="tt" id="cg-tt">棋牌</div><div class="st" id="cg-st"></div></div>' +
       '  <div id="cg-hud"></div>' +
       '  <button class="cg-tbtn wide" id="cg-hbtn" title="玩法说明" style="border-color:rgba(201,182,245,.55);color:#c9b6f5;background:rgba(139,111,214,.14);">❓ 玩法</button>' +
       '  <button class="cg-tbtn" id="cg-lbtn" title="押注区">💰</button>' +
@@ -505,13 +542,14 @@
     $('cg-canvas').addEventListener('mouseleave', function () { showCellTip(0, 0, null); });
     /* 侧栏开关：大屏默认展开，手机默认收起（机型适配） */
     function railDefault() {
-      var wide = window.innerWidth > 880;
+      var wide = cgWide();
       $('cg-left').classList.toggle('open', wide);
       $('cg-right').classList.toggle('open', wide);
     }
     railDefault();
     window.addEventListener('resize', function () {
-      if (G) { resizeCanvas(); drawGame(); }
+      /* 三十三更：转屏（横↔竖）会翻转紧凑带，必须先切类再量画布 */
+      if (G) { syncCompact(); resizeCanvas(); drawGame(); }
     });
     /* 十七更续：两条侧栏各自独立开关——点哪个开/关哪个，不许再把另一条关掉。
        默认（大屏）两条都开，手机上两条都收起当抽屉用。 */
@@ -930,23 +968,43 @@
       else if (G.game === 'flight') {
         out += '<span class="cg-hi">第 ' + G.round + ' 回合</span>';
         if (G.colors && G.planes) {
-          var prog = [];
-          G.colors.forEach(function (c, p) {
-            var pl = G.planes[p] || [];
-            var top = pl.filter(function (v) { return v === FL_TOTAL; }).length;
-            prog.push(FL_SOC[c] + ' ' + top + '/4');
-          });
-          out += '<span class="cg-hi">登顶 ' + esc(prog.join('·')) + '</span>';
+          /* ⚠️ 三十三更：手机横屏时顶栏折成 114px 宽的右列，一行塞不下「登顶 星幕 0/4·…」
+             → 改成一社一行（正好读成一个小排行榜）；PC / 竖屏保持原来的一行长句。 */
+          if (flCompactOn()) {
+            G.colors.forEach(function (c, p) {
+              var pl = G.planes[p] || [];
+              var top = pl.filter(function (v) { return v === FL_TOTAL; }).length;
+              out += '<span class="cg-hi">' + FL_SOC[c] + ' ' + top + '/4</span>';
+            });
+          } else {
+            var prog = [];
+            G.colors.forEach(function (c, p) {
+              var pl = G.planes[p] || [];
+              var top = pl.filter(function (v) { return v === FL_TOTAL; }).length;
+              prog.push(FL_SOC[c] + ' ' + top + '/4');
+            });
+            out += '<span class="cg-hi">登顶 ' + esc(prog.join('·')) + '</span>';
+          }
         }
       }
-      if (G.bet) out += '<span class="cg-hi' + (G.bet.closed ? '' : ' cur') + '">' + (G.bet.closed ? '🔒 封盘' : '💰 押注窗 ' + betLeftSec() + 's') + '</span>';
+      if (G.bet) out += '<span class="cg-hi' + (G.bet.closed ? '' : ' cur') + '">'
+        + (G.bet.closed ? '🔒 封盘' : '💰 押注窗 ' + betLeftSec() + 's') + '</span>';
     }
     var w = walletAll(), parts = [];
-    Object.keys(CUR).forEach(function (k) {
-      var on = G && GAMES[G.game] && GAMES[G.game].cur === k;
-      parts.push('<span class="cg-hi' + (on ? ' cur' : '') + '">' + CUR[k].em + CUR[k].n + ' ' + fmt(w[k] || 0) + '</span>');
-    });
-    out += parts.join('');
+    if (flCompactOn()) {
+      /* 紧凑：三个币各占一行（竖列里「★499,000 ✦500,000 ◈500,000」挤成一行会折得很脏），
+         当前局用的那个币单独高亮一档。 */
+      var curKey = (G && GAMES[G.game]) ? GAMES[G.game].cur : null;
+      Object.keys(CUR).forEach(function (k) {
+        out += '<span class="cg-hi' + (curKey === k ? ' cur' : '') + '">' + CUR[k].em + fmt(w[k] || 0) + '</span>';
+      });
+    } else {
+      Object.keys(CUR).forEach(function (k) {
+        var on = G && GAMES[G.game] && GAMES[G.game].cur === k;
+        parts.push('<span class="cg-hi' + (on ? ' cur' : '') + '">' + CUR[k].em + CUR[k].n + ' ' + fmt(w[k] || 0) + '</span>');
+      });
+      out += parts.join('');
+    }
     if (G) out += '<span class="cg-hi">👥 观战 ' + ((G.specs ? G.specs.length : 0) + (G.spectate ? 1 : 0)) + '</span>';
     if (G && G.entry) out += '<span class="cg-hi">🎟 入场 ' + CUR[G.entry.cur].em + fmt(G.entry.amt) + '</span>';
     hud.innerHTML = out;
@@ -1194,6 +1252,7 @@
     stopBubbleTimer();                    /* 厅都关了，气泡的清理定时器别留着空转 */
     if (el) {
       el.classList.remove('on');
+      el.classList.remove('cg-compact');   /* 三十三更：收摊顺手把紧凑带摘掉（G 已清空，重开再算） */
       var q = $('cg-quit'); if (q) q.style.display = 'none';
       var hp = $('cg-help'); if (hp) hp.classList.remove('open');
       closeMjResult();                  /* 二十一更：收摊时把结算面板一起收掉 */
@@ -1712,11 +1771,14 @@
     closeMjResult();                    /* 二十一更：开新局把上一局的结算面板收掉 */
     /* 十九更续：开局标题切到「对局中」——别再挂着「等待位面 · 还没开房」 */
     var gTop = GAMES[setup.game];
-    $('cg-tt').textContent = gTop.em + ' ' + gTop.name + (spectate ? ' · 观战中' : ' · 对局中');
+    /* 紧凑带的标题列只有 114px 宽 → 只留「图标 + 局名」，状态交给下面的提示行 */
+    $('cg-tt').textContent = flCompactOn() ? (gTop.em + ' ' + gTop.name)
+      : (gTop.em + ' ' + gTop.name + (spectate ? ' · 观战中' : ' · 对局中'));
     $('cg-st').textContent = gTop.place + (hall.code ? ' · 房号 ' + hall.code : ' · 单机快局');
+    syncCompact();                      /* 三十三更：先定紧凑带，再量画布（顺序不能倒） */
     resizeCanvas();
     /* 大屏展开左右栏（openHall 里收起过），手机保持抽屉（机型适配） */
-    var wide2 = window.innerWidth > 880;
+    var wide2 = cgWide();
     /* 十七更续：大屏两条侧栏一起开（陛下钦定默认两个都开） */
     $('cg-left').classList.toggle('open', wide2);
     $('cg-right').classList.toggle('open', wide2);
@@ -1779,8 +1841,9 @@
     else if (G.game === 'mahjong') drawMj(c, W, H);
     else if (G.game === 'flight') drawFlight(c, W, H);
     else if (G.game === 'doudizhu') drawDd(c, W, H);
-    /* 十七更：当前回合指针 + 倒计时条（陛下要的：中间有指针指着谁在出牌 + 高亮 + 倒计时） */
-    if (!G.over && !G.spectate) drawTurnBar(c, W, H);
+    /* 十七更：当前回合指针 + 倒计时条（陛下要的：中间有指针指着谁在出牌 + 高亮 + 倒计时）
+       ⚠️ 三十三更：手机横屏的飞行棋把这条画进左侧竖带了，别再压棋盘顶边。 */
+    if (!G.over && !G.spectate && !flCompactOn()) drawTurnBar(c, W, H);
     var turnTxt = G.over ? ('🏁 ' + G.over) : (G.msg || ('轮到：' + (G.names[G.turn] || '—')));
     $('cg-tip').textContent = turnTxt + '　' + (G.over ? ('（结算面板已弹出 · 点「再来一局」重开）') : tipText());
     renderActs(actionDefs());
@@ -4219,7 +4282,45 @@
   }
   /* 二十五更 v2：棋盘几何 —— 一律用参考源码的 985×985 坐标系，整体等比缩放到画布
      上留回合条、下留底栏（骰子 + 经纪人条），四周留一点纸边。 */
+  /* ══ 三十三更 · 手机横屏紧凑带 ═══════════════════════════════════════════════
+     判定看的是【视口高】不是宽 —— 棋盘是正方形，垂直空间才是瓶颈。
+     ⚠️ 只对飞行棋生效：UNO / 川麻 / 斗地主的底栏要摆手牌与牌河，一概不动。 */
+  var CG_COMPACT_H = 560;
+  function flCompactOn() {
+    if (!G || G.game !== 'flight') return false;
+    return (window.innerHeight || 9999) <= CG_COMPACT_H;
+  }
+  /* 棋盘左侧竖带宽度（回合倒计时 + 骰子 + 提示都住里头）——只吃横向空档 */
+  function cgStripW() {
+    var H = window.innerHeight || 390;
+    return Math.round(Math.max(76, Math.min(H * 0.28, 108)));
+  }
+  /* 右侧竖列宽度（顶栏折过来的那一列）——必须和 CSS 里的 114px 对上 */
+  var CG_RIGHT_W = 114;
+  function cgRightW() { return CG_RIGHT_W; }
+  /* 切紧凑类（开局 / 重绘 / 转屏都会调；class 没变就不碰 DOM） */
+  function syncCompact() {
+    if (!el) return;
+    var on = flCompactOn();
+    if (el.classList.contains('cg-compact') !== on) el.classList.toggle('cg-compact', on);
+  }
+  /* 「大屏」＝ 宽够 且 不是横屏手机。横屏手机虽然宽也够（844），但高不够，
+     左右栏一开就把正方形棋盘挤没了 —— 必须连同紧凑带一起收。 */
+  function cgWide() { return window.innerWidth > 880 && !flCompactOn(); }
   function flGeom(W, H) {
+    if (flCompactOn()) {
+      /* 紧凑：左留骰子竖带、右留顶栏竖列，棋盘在中间取最大正方形，纵向几乎吃满 */
+      var strip = cgStripW(), rw = cgRightW(), pad = 10;
+      var zone = W - strip - rw - pad * 2;          /* 棋盘可用的横向地带 */
+      var av = Math.min(zone, H - pad * 2);
+      var sc2 = Math.max(0.05, av / FL_U);
+      var side2 = FL_U * sc2;
+      var bx2 = Math.round(strip + pad + Math.max(0, (zone - side2) / 2));
+      var by2 = Math.round(Math.max(pad, (H - side2) / 2));
+      return { bx: bx2, by: by2, sc: sc2, side: side2,
+               cs: 52 * sc2, csx: 52 * sc2, csy: 52 * sc2, bw: side2,
+               strip: strip, right: rw, compact: true };
+    }
     var topBar = Math.round(H * 0.075) + 6;   /* 回合条 */
     var botBar = 64;                          /* 底栏（骰子 + 经纪人条） */
     var avail = Math.min(W - 20, H - topBar - botBar);
@@ -4227,7 +4328,7 @@
     var side = FL_U * sc;
     var bx = Math.round((W - side) / 2);
     var by = Math.round(topBar + Math.max(0, (H - topBar - botBar - side) / 2));
-    return { bx: bx, by: by, sc: sc, side: side, cs: 52 * sc, csx: 52 * sc, csy: 52 * sc, bw: side };
+    return { bx: bx, by: by, sc: sc, side: side, cs: 52 * sc, csx: 52 * sc, csy: 52 * sc, bw: side, compact: false };
   }
   /* 棋盘底板（奶油纸板）圆角矩形，drawFlight / flCellAt 共用 */
   function flPanel(c, bx, by, side, r) {
@@ -4241,13 +4342,208 @@
     c.lineTo(x0, y0 + p); c.quadraticCurveTo(x0, y0, x0 + p, y0);
     c.closePath();
   }
+  /* 圆角矩形路径（竖带背板 / 小卡片用；drawFlight 里那个 rrect 是局部函数，这儿要独立一份） */
+  function flRR(c, x, y, w, h, r) {
+    r = Math.max(1, Math.min(r, w / 2, h / 2));
+    c.beginPath();
+    c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
+  /* ══ 三十三更：骰子与提示文案抽成「一份」═══════════════════════════════════
+     以前只有底栏会用，现在左侧竖带也要用 —— 两处各写一份必然说法不一致
+     （三十二更「两套绘制对不齐」的教训）。所以统一成 flDiceDraw / flHintLines，
+     底栏与竖带都调这两个，改一处两处一起变。 */
+  function flShowDice() { return (G.dice > 0 || !!_diceAnim); }
+  function flDiceDraw(c, dx, dy, ds) {
+    c.save();
+    if (flShowDice()) {
+      var ddx = dx, ddy = dy;
+      if (_diceAnim) {
+        var frac0 = Math.min(1, (Date.now() - _diceAnim.t0) / _diceAnim.dur);
+        var bounce = Math.sin(frac0 * Math.PI * 6) * (1 - frac0) * 4;
+        c.translate(ddx + ds / 2, ddy + ds / 2);
+        c.rotate(Math.sin(frac0 * Math.PI * 8) * (1 - frac0) * 0.18);
+        c.translate(-ds / 2, -ds / 2 + bounce);
+        ddx = 0; ddy = 0;
+      }
+      c.fillStyle = '#fff'; c.fillRect(ddx, ddy, ds, ds);
+      c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 2; c.strokeRect(ddx, ddy, ds, ds);
+      c.fillStyle = '#241a3d';
+      var pts = {
+        1: [[.5, .5]], 2: [[.28, .28], [.72, .72]], 3: [[.25, .25], [.5, .5], [.75, .75]],
+        4: [[.28, .28], [.72, .28], [.28, .72], [.72, .72]],
+        5: [[.28, .28], [.72, .28], [.5, .5], [.28, .72], [.72, .72]],
+        6: [[.28, .25], [.72, .25], [.28, .5], [.72, .5], [.28, .75], [.72, .75]]
+      }[G.dice];
+      if (pts) pts.forEach(function (pt) {
+        c.beginPath(); c.arc(ddx + pt[0] * ds, ddy + pt[1] * ds, ds * 0.09, 0, 6.2832); c.fill();
+      });
+    } else {
+      c.globalAlpha = 0.5;
+      flRR(c, dx, dy, ds, ds, ds * 0.18);
+      c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2; c.stroke();
+      c.globalAlpha = 1;
+      c.fillStyle = 'rgba(255,255,255,.55)';
+      c.font = 'bold ' + Math.max(16, ds * 0.5) + 'px sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+      c.fillText('?', dx + ds / 2, dy + ds * 0.68);
+    }
+    c.restore();
+  }
+  /* 骰子旁的两行提示（底栏 / 竖带共用）。返回 {l1,l2,c1}
+     short=true 给左侧竖带用：竖带只有 ~100px 宽，写全「星幕社·体检 掷出 6」要折成两行、
+     第二行只剩一个孤零零的「6」很难看 —— 名字已经挂在竖带顶上，这里省掉。 */
+  function flHintLines(short) {
+    var mine = (G.turn === 0 && !G.over);
+    var nm = G.names[G.turn];
+    if (G.spectate) return { l1: '👁 观战中' + (short ? '' : ' · ' + nm + ' 回合'), l2: '', c1: 'rgba(255,255,255,.9)' };
+    if (_diceAnim) return { l1: '🎲 摇骰子中……', l2: '停在哪就是哪', c1: '#ffd166' };
+    if (flShowDice()) {
+      return {
+        l1: (short ? '🎲 掷出 ' : nm + ' 掷出 ') + G.dice, c1: '#ffd166',
+        l2: (mine && G.options && G.options.length) ? '点棋盘上金圈里的艺人出动 / 走位 →'
+          : (mine && G.dice === 6) ? '掷到 6！再摇一次'
+            : (!mine ? (short ? '等 ' + nm + ' 走棋' : '等 ' + nm + ' 走棋……') : '这几点动不了，等下轮')
+      };
+    }
+    if (mine && !flAnimBusy() && !G.draw) {
+      return { l1: '👆 点屏幕摇骰子', c1: '#ffd166',
+               l2: '掷到 ' + flTakeoffLabel() + ' 就能把练习室里的艺人送上出道位' };
+    }
+    if (G.over) return { l1: '🏁 ' + String(G.over).slice(0, 22), l2: '', c1: '#ffd166' };
+    return { l1: '▶ ' + nm + ' 回合中…', l2: '', c1: 'rgba(255,255,255,.9)' };
+  }
+  /* 按像素宽把中文逐字断行（竖带窄，长句必须换行才读得全） */
+  function flWrap(c, text, maxW) {
+    var out = [], line = '';
+    for (var i = 0; i < text.length; i++) {
+      var t = line + text[i];
+      if (c.measureText(t).width > maxW && line) { out.push(line); line = text[i]; }
+      else line = t;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+  /* ══ 三十三更 · 手机横屏：棋盘左侧竖带 ═══════════════════════════════════════
+     陛下原话「骰子显示在左下角，单独占了一个横，可以改成显示在屏幕的左边」。
+     这条带从下往上排：① 回合倒计时 ② 骰子 ③ 提示两行 ④ 我的四架小方块。
+     竖带只吃掉横向空档（横屏左右本来一大片空），纵向一格不占 → 棋盘吃满高度。 */
+  /* 竖带几何：先算好每一块的落点，再交给 drawFlStrip 画 —— 这样验收脚本能直接量
+     「骰子是不是在竖带里」「四架小方块有没有被退出按钮压住」，不靠肉眼看图。 */
+  var FL_STRIP_BOTTOM = 62;             /* 底部留给 DOM 的动作按钮 + 退出 */
+  function flStripGeom(W, H, g) {
+    var strip = (g && g.strip) || cgStripW(), pad = 7, colW = strip - pad * 2;
+    var s = {};
+    s.strip = strip; s.pad = pad; s.colW = colW; s.cx = pad + colW / 2;
+    var y = 14;
+    s.head = { x: pad, y: y, w: colW, h: 20 };
+    y += 24;
+    s.clock = (!G.over && !G.spectate && G.turn === 0) ? { y: y, h: 12 } : null;
+    if (s.clock) y += 14;
+    var ds = Math.round(Math.min(colW - 6, Math.max(34, H * 0.16)));
+    y += 4;
+    s.dice = { x: Math.round(pad + colW / 2 - ds / 2), y: y, s: ds };
+    y += ds + 8;
+    s.pieces = null;
+    if (!G.spectate) {
+      var sw = Math.round(Math.min(26, (colW - 18) / 4));
+      s.pieces = { x: pad, y: y, s: sw, gap: (colW - sw * 4) / 3 };
+      y += sw + 10;
+    }
+    s.textY = y;
+    s.room = H - FL_STRIP_BOTTOM;
+    s.bottom = FL_STRIP_BOTTOM;
+    return s;
+  }
+  function drawFlStrip(c, W, H, g) {
+    var S = flStripGeom(W, H, g);
+    var strip = S.strip, pad = S.pad, colW = S.colW, cx = S.cx, y = 14;
+    /* 背板：深色玻璃，跟奶油底板拉开层次。
+       ⚠️ 别只压 0.3 的黑 —— 棋盘底是浅紫渐变，压不深的话白字读不清（自测截图发现）。 */
+    c.save();
+    flRR(c, pad - 2, 6, colW + 4, H - 12, 13);
+    c.fillStyle = 'rgba(18,10,36,.56)'; c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1; c.stroke();
+    c.restore();
+
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+
+    /* ① 回合归属 + 倒计时（我的回合金色呼吸，别家灰白） */
+    var myTurn = (G.turn === 0 && !G.over);
+    var pu = pulse();
+    c.font = 'bold 11.5px "PingFang SC","Microsoft YaHei",sans-serif';
+    var who = G.over ? '🏁 终局' : (G.spectate ? '👁 观战' : G.names[G.turn]);
+    flRR(c, S.head.x, S.head.y, S.head.w, S.head.h, 7);
+    c.fillStyle = (myTurn && !G.over) ? 'rgba(255,209,102,' + (0.10 + 0.16 * pu).toFixed(3) + ')'
+                                      : 'rgba(255,255,255,.07)';
+    c.fill();
+    c.fillStyle = (myTurn && !G.over) ? '#ffd166' : 'rgba(255,255,255,.82)';
+    c.fillText(who.length > 6 ? who.slice(0, 6) + '…' : who, cx, S.head.y + 14);
+    y += 24;
+    if (S.clock) {
+      c.font = 'bold 10px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillStyle = 'rgba(255,209,102,.9)';
+      c.fillText('⏱ ' + turnLeftSec() + 's', cx, y + 9);
+      y += 14;
+    }
+
+    /* ② 骰子（正方形居中，宽度贴着竖带走） */
+    flDiceDraw(c, S.dice.x, S.dice.y, S.dice.s);
+    y = S.dice.y + S.dice.s + 8;
+
+    /* ③ 我的四架小方块（兜底：棋盘上点不准还能点这儿）
+       ⚠️ 必须排在骰子【后面、提示前面】—— 竖带最底下留给 DOM 的「动作按钮 / 退出」，
+          之前放在底部被退出按钮压住了（三十三更自测抓到）。 */
+    if (S.pieces) {
+      var p = S.pieces;
+      G.planes[0].forEach(function (v, i) {
+        var x = p.x + i * (p.s + p.gap);
+        var sel = G.options && G.options.indexOf(i) >= 0;
+        if (sel) {
+          c.beginPath(); c.arc(x + p.s / 2, p.y + p.s / 2, p.s / 2 + 3.5 + pulse() * 2, 0, 6.2832);
+          c.strokeStyle = 'rgba(255,209,102,.9)'; c.lineWidth = 2; c.stroke();
+        }
+        c.beginPath(); c.arc(x + p.s / 2, p.y + p.s / 2, p.s / 2, 0, 6.2832);
+        c.fillStyle = FL_COL[G.colors[0]];
+        c.globalAlpha = v === FL_TOTAL ? 0.45 : 1; c.fill(); c.globalAlpha = 1;
+        c.fillStyle = '#fff'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center';
+        var tag = v === FL_HANGAR ? '–' : (v === FL_PAD ? '待' : (v === FL_TOTAL ? '♛' : (v >= FL_OUT ? '↵' : v + '')));
+        c.fillText(tag, x + p.s / 2, p.y + p.s / 2 + 3);
+      });
+      y = p.y + p.s + 10;
+    }
+
+    /* ④ 提示文案（逐字断行；底部给动作按钮留出余量） */
+    var H2 = flHintLines(true);
+    var room = S.room;
+    c.textAlign = 'center';
+    c.font = 'bold 11px "PingFang SC","Microsoft YaHei",sans-serif';
+    c.fillStyle = H2.c1;
+    var L1 = flWrap(c, H2.l1, colW), n1 = Math.min(2, L1.length);
+    if (y < room) {
+      L1.slice(0, n1).forEach(function (t, i) { c.fillText(t, cx, y + 11 + i * 13); });
+      y += 13 * n1 + 4;
+    }
+    if (H2.l2 && y < room) {
+      c.font = '10px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillStyle = 'rgba(255,255,255,.62)';
+      var L2 = flWrap(c, H2.l2, colW), n2 = Math.min(3, L2.length, Math.floor((room - y) / 12));
+      L2.slice(0, Math.max(0, n2)).forEach(function (t, i) { c.fillText(t, cx, y + 9 + i * 12); });
+    }
+    c.textAlign = 'left';
+  }
   /* ============ 二十五更 v2：经典飞行棋棋盘绘制（按参考源码 1:1 复刻） ============
      底板 + 72 个色块 + 73 个圆孔 ＝ 原版棋盘（臣从 background.png 逐像素抠出来的）；
      再叠上 ▶ 出道格、✈ 航线格、四社练习室（社名 / 经纪人 / 站位）、归航道终点 ♛。
      棋子 = 圆形（本色 + 白边 + 编号），同格同家叠成一摞写 ×N，
      当前回合金圈呼吸，能动的那几架带 ▼ 提示。 */
   function drawFlight(c, W, H) {
-    setActsBottom(96 + 46);
+    syncCompact();                      /* 三十三更：转屏后立刻切紧凑带（幂等） */
+    /* 动作按钮落点：紧凑带由 CSS 钉在左下角（骰子下面），PC / 竖屏才要算棋盘下沿 */
+    if (!flCompactOn()) setActsBottom(96 + 46);
     _flHits = [];
     var Gm = flGeom(W, H);
     var bx = Gm.bx, by = Gm.by, sc = Gm.sc, side = Gm.side;
@@ -4255,15 +4551,6 @@
     var pu0 = pulse();
     function PX(x) { return bx + x * sc; }
     function PY(y) { return by + y * sc; }
-    function rrect(x, y, w, h, r) {
-      r = Math.max(1, Math.min(r, w / 2, h / 2));
-      c.beginPath();
-      c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
-      c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
-      c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
-      c.closePath();
-    }
 
     /* ═══ 三十一更：静态棋盘 + 棋子统一交给 src/fl-draw.js 画 ═══════════════
        陛下原话「重新开发一下引擎，让它跟现在真实的素材真实对齐」——
@@ -4295,92 +4582,51 @@
     /* 撞机闪光 + 抽卡横幅 */
     drawFlFlash(c, W, H, sc, bx, by);
     drawFlBanner(c, W, H);
-    /* ── ⑦ 底栏：骰子就摆在左下角（不再单独占一条横带，棋盘能画得更大） ── */
-    var bh2 = 56, byy = H - bh2;
-    c.fillStyle = 'rgba(0,0,0,.42)'; c.fillRect(0, byy, W, bh2);
-    var showDice = (G.dice > 0 || _diceAnim);
-    var ds = bh2 - 14, dx0 = 12, dy0 = byy + 7;
-    if (showDice) {
-      var ddx = dx0, ddy = dy0;
-      if (_diceAnim) {
-        var frac0 = Math.min(1, (Date.now() - _diceAnim.t0) / _diceAnim.dur);
-        var bounce = Math.sin(frac0 * Math.PI * 6) * (1 - frac0) * 4;
-        c.save();
-        c.translate(ddx + ds / 2, ddy + ds / 2);
-        c.rotate(Math.sin(frac0 * Math.PI * 8) * (1 - frac0) * 0.18);
-        c.translate(-ds / 2, -ds / 2 + bounce);
-        ddx = 0; ddy = 0;
-      }
-      c.fillStyle = '#fff'; c.fillRect(ddx, ddy, ds, ds);
-      c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 2; c.strokeRect(ddx, ddy, ds, ds);
-      c.fillStyle = '#241a3d';
-      var dn = G.dice;
-      var pts = {
-        1: [[.5, .5]], 2: [[.28, .28], [.72, .72]], 3: [[.25, .25], [.5, .5], [.75, .75]],
-        4: [[.28, .28], [.72, .28], [.28, .72], [.72, .72]],
-        5: [[.28, .28], [.72, .28], [.5, .5], [.28, .72], [.72, .72]],
-        6: [[.28, .25], [.72, .25], [.28, .5], [.72, .5], [.28, .75], [.72, .75]]
-      }[dn];
-      if (pts) pts.forEach(function (pt) {
-        c.beginPath(); c.arc(ddx + pt[0] * ds, ddy + pt[1] * ds, ds * 0.09, 0, 6.2832); c.fill();
-      });
-      if (_diceAnim) c.restore();
+    /* ── ⑦ 底栏 ／ 左侧竖带 ──────────────────────────────────────────────────
+       三十三更（陛下钦定）：手机横屏（视口高 ≤ 560）时，骰子与回合条搬去棋盘【左边】的
+       竖带里，纵向一像素不占 → 棋盘能吃满高度。PC / 竖屏仍走老的底栏（不动）。 */
+    if (Gm.compact) {
+      drawFlStrip(c, W, H, Gm);
     } else {
-      c.save();
-      c.globalAlpha = 0.5;
-      rrect(dx0, dy0, ds, ds, ds * 0.18);
-      c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 2; c.stroke();
-      c.restore();
-      c.fillStyle = 'rgba(255,255,255,.55)';
-      c.font = 'bold ' + Math.max(16, ds * 0.5) + 'px sans-serif'; c.textAlign = 'center';
-      c.fillText('?', dx0 + ds / 2, dy0 + ds * 0.68);
-    }
-    /* 骰子右边的两行提示 */
-    var tx0 = dx0 + ds + 12, narrow = W < 760;
-    var mine = (G.turn === 0 && !G.over);
-    c.textAlign = 'left';
-    var l1 = '', l2 = '', c1 = 'rgba(255,255,255,.9)', c2 = 'rgba(255,255,255,.6)';
-    if (G.spectate) { l1 = '👁 观战中 · ' + G.names[G.turn] + ' 回合'; }
-    else if (_diceAnim) { l1 = '🎲 摇骰子中……'; c1 = '#ffd166'; l2 = '松手就定格'; }
-    else if (showDice) {
-      l1 = G.names[G.turn] + ' 掷出 ' + G.dice; c1 = '#ffd166';
-      l2 = (mine && G.options && G.options.length) ? '点棋盘上金圈里的艺人出动 / 走位 →'
-        : (mine && G.dice === 6) ? '掷到 6！再摇一次'
-          : (!mine ? '等 ' + G.names[G.turn] + ' 走棋……' : '这几点动不了，等下轮');
-    } else if (mine && !flAnimBusy() && !G.draw) {
-      l1 = '👆 点屏幕摇骰子'; c1 = '#ffd166'; l2 = '掷到 ' + flTakeoffLabel() + ' 就能把练习室里的艺人送上出道位';
-    } else if (G.over) { l1 = '🏁 ' + String(G.over).slice(0, 22); c1 = '#ffd166'; }
-    else { l1 = '▶ ' + G.names[G.turn] + ' 回合中…'; }
-    c.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
-    c.fillStyle = c1; c.fillText(l1, tx0, byy + 24);
-    if (!narrow && l2) {
-      c.font = 'bold 11px "PingFang SC","Microsoft YaHei",sans-serif';
-      c.fillStyle = c2; c.fillText(l2, tx0, byy + 43);
-    }
-    /* 我的四架棋子小方块（居中兜底：小屏点不准还能点这里） */
-    if (!G.spectate) {
-      var meTurn = (G.turn === 0 && !G.over);
-      var sw = 30, gap = 40, rowW = 4 * gap;
-      var x0 = W - rowW - 8;
-      if (meTurn) {
-        var pu3 = pulse();
-        c.strokeStyle = 'rgba(255,209,102,' + (0.4 + 0.5 * pu3).toFixed(3) + ')'; c.lineWidth = 2.5;
-        c.strokeRect(8, byy + 4, Math.min(240, W - 16), bh2 - 8);
+      var bh2 = 56, byy = H - bh2;
+      c.fillStyle = 'rgba(0,0,0,.42)'; c.fillRect(0, byy, W, bh2);
+      var ds = bh2 - 14, dx0 = 12, dy0 = byy + 7;
+      flDiceDraw(c, dx0, dy0, ds);
+      /* 骰子右边的两行提示 */
+      var tx0 = dx0 + ds + 12, narrow = W < 760;
+      var H1 = flHintLines();
+      c.textAlign = 'left';
+      c.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+      c.fillStyle = H1.c1; c.fillText(H1.l1, tx0, byy + 24);
+      if (!narrow && H1.l2) {
+        c.font = 'bold 11px "PingFang SC","Microsoft YaHei",sans-serif';
+        c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText(H1.l2, tx0, byy + 43);
       }
-      G.planes[0].forEach(function (v, i) {
-        var x = x0 + i * gap, y = byy + 8;
-        var sel = G.options && G.options.indexOf(i) >= 0;
-        if (sel) {
-          c.beginPath(); c.arc(x + sw / 2, y + sw / 2, sw / 2 + 4 + pulse() * 2.5, 0, 6.2832);
-          c.strokeStyle = 'rgba(255,209,102,.9)'; c.lineWidth = 2.5; c.stroke();
+      /* 我的四架棋子小方块（居中兜底：小屏点不准还能点这里） */
+      if (!G.spectate) {
+        var meTurn = (G.turn === 0 && !G.over);
+        var sw = 30, gap = 40, rowW = 4 * gap;
+        var x0 = W - rowW - 8;
+        if (meTurn) {
+          var pu3 = pulse();
+          c.strokeStyle = 'rgba(255,209,102,' + (0.4 + 0.5 * pu3).toFixed(3) + ')'; c.lineWidth = 2.5;
+          c.strokeRect(8, byy + 4, Math.min(240, W - 16), bh2 - 8);
         }
-        c.beginPath(); c.arc(x + sw / 2, y + sw / 2, sw / 2, 0, 6.2832);
-        c.fillStyle = FL_COL[G.colors[0]];
-        c.globalAlpha = v === FL_TOTAL ? 0.45 : 1; c.fill(); c.globalAlpha = 1;
-        c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
-        var tag = v === FL_HANGAR ? '–' : (v === FL_PAD ? '待' : (v === FL_TOTAL ? '♛' : (v >= FL_OUT ? '↵' : v + '')));
-        c.fillText(tag, x + sw / 2, y + sw / 2 + 3.5);
-      });
+        G.planes[0].forEach(function (v, i) {
+          var x = x0 + i * gap, y = byy + 8;
+          var sel = G.options && G.options.indexOf(i) >= 0;
+          if (sel) {
+            c.beginPath(); c.arc(x + sw / 2, y + sw / 2, sw / 2 + 4 + pulse() * 2.5, 0, 6.2832);
+            c.strokeStyle = 'rgba(255,209,102,.9)'; c.lineWidth = 2.5; c.stroke();
+          }
+          c.beginPath(); c.arc(x + sw / 2, y + sw / 2, sw / 2, 0, 6.2832);
+          c.fillStyle = FL_COL[G.colors[0]];
+          c.globalAlpha = v === FL_TOTAL ? 0.45 : 1; c.fill(); c.globalAlpha = 1;
+          c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
+          var tag = v === FL_HANGAR ? '–' : (v === FL_PAD ? '待' : (v === FL_TOTAL ? '♛' : (v >= FL_OUT ? '↵' : v + '')));
+          c.fillText(tag, x + sw / 2, y + sw / 2 + 3.5);
+        });
+      }
     }
     /* 抽卡仪式层（压在最上面） */
     if (G.draw) drawDrawLayer(c, W, H);
@@ -4904,11 +5150,26 @@
         var ddx = x - f.x, ddy = y - f.y;
         if (ddx * ddx + ddy * ddy <= f.r * f.r) { flMove(0, f.idx, G.dice); return; }
       }
-      /* 底栏那排小圆（兜底）：几何跟 drawFlight ⑦ 一致 —— 贴在右下角 */
-      var sw = 30, gap = 40, rowW = 4 * gap, x0 = W - rowW - 8, y0 = H - 56 + 8;
-      for (var k = 0; k < G.planes[0].length; k++) {
-        var px = x0 + k * gap, py = y0;
-        if (x >= px && x <= px + sw && y >= py && y <= py + sw && G.options.indexOf(k) >= 0) { flMove(0, k, G.dice); return; }
+      /* 四架小方块（兜底命中区）：几何必须跟实际画的地方一致 ——
+         ⚠️ 三十三更修：以前写死「右下角一排」（W - rowW - 8, H - 56 + 8）。
+         手机横屏把这排搬到【左边竖带】后，写死的右下角就成了一个「看不见却能点」的幽灵热点，
+         而真正画出来的四架反而点不到。现在统一走 flStripGeom / 底栏两套几何。 */
+      var k, px, py, sw, gap, x0, y0;
+      if (flCompactOn()) {
+        var SP = flStripGeom(W, H, flGeom(W, H)).pieces;
+        if (SP) {
+          for (k = 0; k < G.planes[0].length; k++) {
+            px = SP.x + k * (SP.s + SP.gap); py = SP.y; sw = SP.s;
+            if (x >= px - 3 && x <= px + sw + 3 && y >= py - 3 && y <= py + sw + 3
+                && G.options.indexOf(k) >= 0) { flMove(0, k, G.dice); return; }
+          }
+        }
+      } else {
+        sw = 30; gap = 40; x0 = W - 4 * gap - 8; y0 = H - 56 + 8;
+        for (k = 0; k < G.planes[0].length; k++) {
+          px = x0 + k * gap; py = y0;
+          if (x >= px && x <= px + sw && y >= py && y <= py + sw && G.options.indexOf(k) >= 0) { flMove(0, k, G.dice); return; }
+        }
       }
       var info = flCellAt(x, y, W, H);
       if (info) showCellTip(x, y, info);
@@ -5068,6 +5329,8 @@
     /* 棋盘棋子命中区（验证「点棋子出动」用；只读，不改玩法） */
     _flHits: function () { return _flHits.map(function (h) { return { idx: h.idx, x: Math.round(h.x), y: Math.round(h.y), r: Math.round(h.r) }; }); },
     _flOptions: function () { return G && G.options ? G.options.slice() : null; },
+    /* 三十三更：算「这个点数能动哪几架」（只读，不动规则）——布局验收要摆确定局面 */
+    _flMoves: function (p, d) { return (typeof flMoves === 'function') ? flMoves(p, d) : []; },
     _flDice: function () { return G && G.dice; },
     _flAnim: function () {
       var list = flAnims().map(function (a) {
@@ -5092,6 +5355,50 @@
     /* 能不能用这个点数起飞（只读） */
     _flCanTakeoff: function (dice) { return flCanTakeoff(dice); },
     _flDraw: function () { drawGame(); },
+    /* ══ 三十三更 · 布局体检口（只读）══════════════════════════════════════════
+       手机横屏「棋盘够不够大」的验收依据：一次把每条横带的高度、画布可用区、
+       棋盘边长（side）全交出来，任何一条数不对都能立刻指出来。 */
+    _layout: function () {
+      var cv = $('cg-canvas'), h = $('cg-hall');
+      /* ⚠️ 注意：本文件的 $() 是 getElementById，不是 querySelector ——
+         这里要按「id 或选择器」两种都能查，所以走 querySelector。 */
+      function R(sel) {
+        var e = typeof sel === 'string' ? document.querySelector(sel) : sel;
+        if (!e) return null;
+        var r = e.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.left), y: Math.round(r.top) };
+      }
+      var g = null;
+      try { if (G && G.game === 'flight') g = flGeom(cv.clientWidth, cv.clientHeight); } catch (e) { }
+      var vh = window.innerHeight || 0;
+      return {
+        vw: window.innerWidth, vh: vh, dpr: window.devicePixelRatio || 1,
+        compact: flCompactOn(), cls: h ? h.classList.contains('cg-compact') : null,
+        strip: cgStripW(), right: cgRightW(),
+        top: R('.cg-top'), tip: R('.cg-tip'), center: R('#cg-center'),
+        cv: cv ? { w: cv.clientWidth, h: cv.clientHeight } : null,
+        acts: R('#cg-acts'), quit: R('#cg-quit'),
+        side: g ? Math.round(g.side) : null,
+        bx: g ? g.bx : null, by: g ? g.by : null,
+        /* 棋盘边长占可视高的比例 —— 横屏（高是最短边）时这就是陛下说的「占比」 */
+        ratio: (g && vh) ? +(g.side / vh).toFixed(3) : null,
+        /* 棋盘边长 ÷ 视口【短边】—— 竖屏下棋盘受宽度限制，ratio 会骗人，这个才是通用判据 */
+        fill: (g && g.side) ? +(g.side / Math.min(window.innerWidth, vh)).toFixed(3) : null,
+        /* 真正吃掉纵向的横带合计 = 可视高 − 画布高（顶栏若已折成竖列，这里就不算它） */
+        chrome: (cv && vh) ? (vh - cv.clientHeight) : null
+      };
+    },
+    /* 三十三更 · 左侧竖带几何（只读）：骰子 / 倒计时 / 四架小方块的落点，
+       给验收脚本量「有没有跑到竖带外面」「有没有被退出按钮压住」。 */
+    _flStrip: function () {
+      var cv = $('cg-canvas');
+      if (!G || G.game !== 'flight' || !cv || !flCompactOn()) return null;
+      var g = flGeom(cv.clientWidth, cv.clientHeight);
+      var S = flStripGeom(cv.clientWidth, cv.clientHeight, g);
+      return { strip: S.strip, colW: S.colW, head: S.head, clock: S.clock,
+               dice: S.dice, pieces: S.pieces, textY: Math.round(S.textY),
+               room: Math.round(S.room), cvH: cv.clientHeight, cvW: cv.clientWidth };
+    },
     /* 无头验收用：把走路/起飞/位移动画压到毫秒级，省掉逐格等待（只影响观感节奏，不动规则） */
     _flSpeed: function (stepMs, flyMs, departMs, aiRollMs) {
       if (typeof stepMs === 'number') FL_STEP_MS = stepMs;
